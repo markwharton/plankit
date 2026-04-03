@@ -87,6 +87,7 @@ type VersionFile struct {
 type Hooks struct {
 	PostVersion string `json:"postVersion,omitempty"`
 	PreCommit   string `json:"preCommit,omitempty"`
+	PreRelease  string `json:"preRelease,omitempty"`
 }
 
 // ChangelogConfig is the .changelog.json schema.
@@ -133,7 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 1. Load config.
-	config := loadConfig(cfg.ReadFile)
+	config := LoadConfig(cfg.ReadFile)
 
 	// 2. Get latest tag.
 	tagOutput, err := cfg.GitExec("tag", "--list", "v*", "--sort=-v:refname")
@@ -274,8 +275,9 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// loadConfig reads .changelog.json or returns defaults.
-func loadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
+// LoadConfig reads .changelog.json and returns the parsed config.
+// Falls back to defaults if the file is missing or malformed.
+func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
 	data, err := readFile(".changelog.json")
 	if err != nil {
 		return ChangelogConfig{Types: defaultTypes}

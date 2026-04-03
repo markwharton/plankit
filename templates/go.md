@@ -1,6 +1,7 @@
 # CLAUDE.md — Go Extensions
 
 Go-specific guidelines to add to your project's CLAUDE.md alongside the base template.
+These can be added as sections in your CLAUDE.md or folded into Project Conventions.
 
 ## Dependencies and Architecture
 

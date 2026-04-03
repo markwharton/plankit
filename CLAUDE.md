@@ -13,6 +13,7 @@ make build-all      # Cross-compile for 5 platforms
 make install        # Install to GOPATH/bin
 make lint           # Run go vet
 pk changelog        # Generate CHANGELOG.md, commit, and tag release
+pk release          # Validate and push release to origin
 ```
 
 ## Architecture
@@ -21,6 +22,7 @@ pk changelog        # Generate CHANGELOG.md, commit, and tag release
 - `docs/` -- Methodology and getting started documentation
 - `internal/changelog/` -- `pk changelog` (generate changelog from conventional commits, commit, tag)
 - `internal/hooks/` -- Shared stdin JSON parsing for Claude Code hook payloads
+- `internal/release/` -- `pk release` (validate pre-flight checks, push tag to origin)
 - `internal/preserve/` -- `pk preserve` (PostToolUse: preserve approved plans)
 - `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)
 - `internal/setup/` -- `pk setup` (configure project .claude/settings.json)
@@ -35,6 +37,7 @@ pk changelog        # Generate CHANGELOG.md, commit, and tag release
 - Subcommand routing via `os.Args` switch + `flag.FlagSet`
 - Version injection: `-ldflags "-X .../version.version=x.y.z"` (overrides `debug.ReadBuildInfo()`)
 - All user messages to stderr, stdout reserved for hook protocol JSON
+- CLI flags use `--kebab-case` (e.g., `--dry-run`, `--project-dir`)
 - Hook commands always exit 0 (errors reported via systemMessage or stderr)
 - Tests use dependency injection (Config struct) and `t.TempDir()` for filesystem tests
 

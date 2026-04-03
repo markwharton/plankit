@@ -8,6 +8,7 @@
 //	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
+//	pk release     Validate and push release to origin
 //	pk setup       Configure a project's .claude/settings.json
 //	pk version     Print version
 package main
@@ -20,6 +21,7 @@ import (
 	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
+	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/setup"
 	"github.com/markwharton/plankit/internal/update"
 	"github.com/markwharton/plankit/internal/version"
@@ -36,6 +38,8 @@ func main() {
 		runChangelog(os.Args[2:])
 	case "preserve":
 		runPreserve(os.Args[2:])
+	case "release":
+		runRelease(os.Args[2:])
 	case "protect":
 		os.Exit(protect.Run(os.Stdin, os.Stdout, os.Stderr, os.Getenv))
 	case "setup":
@@ -80,6 +84,19 @@ func runPreserve(args []string) {
 	}
 
 	os.Exit(preserve.Run(cfg))
+}
+
+func runRelease(args []string) {
+	fs := flag.NewFlagSet("release", flag.ExitOnError)
+	dryRun := fs.Bool("dry-run", false, "Validate without pushing")
+	branch := fs.String("branch", "main", "Expected branch for release")
+	fs.Parse(args)
+
+	cfg := release.DefaultConfig()
+	cfg.DryRun = *dryRun
+	cfg.Branch = *branch
+
+	os.Exit(release.Run(cfg))
 }
 
 func runSetup(args []string) {
@@ -136,6 +153,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "User commands:")
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag release")
+	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--branch main]")
+	fmt.Fprintln(os.Stderr, "                                      Validate and push release to origin")
 	fmt.Fprintln(os.Stderr, "  pk setup [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version                          Print version and check for updates")

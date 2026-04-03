@@ -39,6 +39,7 @@ Re-run setup anytime to switch.
 
 ```
 pk changelog [options]    Generate changelog, commit, and tag release
+pk release [options]      Validate and push release to origin
 pk preserve [--notify]    Preserve approved plan (PostToolUse hook)
 pk protect                Block edits to docs/plans/ (PreToolUse hook)
 pk setup [options]        Configure project hooks and skills
@@ -61,7 +62,8 @@ Copy `base.md` into your project as `CLAUDE.md` and extend with relevant technol
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — install, setup, first run
-- [Changelog](docs/changelog.md) — pk changelog, .changelog.json configuration
+- [Changelog](docs/pk-changelog.md) — pk changelog, .changelog.json configuration
+- [Release](docs/pk-release.md) — pk release, pre-flight checks, hooks.preRelease
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
 

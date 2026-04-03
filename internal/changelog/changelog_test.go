@@ -11,7 +11,7 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	t.Run("full config", func(t *testing.T) {
-		cfg := loadConfig(func(name string) ([]byte, error) {
+		cfg := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{
 				"types": [{"type":"feat","section":"Features"}],
 				"versionFiles": [{"path":"package.json","type":"json"}],
@@ -33,7 +33,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("types only", func(t *testing.T) {
-		cfg := loadConfig(func(name string) ([]byte, error) {
+		cfg := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"types":[{"type":"fix","section":"Fixed"}]}`), nil
 		})
 		if len(cfg.Types) != 1 || cfg.Types[0].Type != "fix" {
@@ -42,7 +42,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("missing file returns defaults", func(t *testing.T) {
-		cfg := loadConfig(func(name string) ([]byte, error) {
+		cfg := LoadConfig(func(name string) ([]byte, error) {
 			return nil, os.ErrNotExist
 		})
 		if len(cfg.Types) != len(defaultTypes) {
@@ -51,7 +51,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("malformed JSON returns defaults", func(t *testing.T) {
-		cfg := loadConfig(func(name string) ([]byte, error) {
+		cfg := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{not json}`), nil
 		})
 		if len(cfg.Types) != len(defaultTypes) {
@@ -60,7 +60,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("empty types uses defaults", func(t *testing.T) {
-		cfg := loadConfig(func(name string) ([]byte, error) {
+		cfg := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"types":[]}`), nil
 		})
 		if len(cfg.Types) != len(defaultTypes) {

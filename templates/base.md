@@ -92,3 +92,11 @@ Rules for the code itself.
 - Use conventional commit messages: `feat:`, `fix:`, `security:`, `deprecate:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`.
 - Never include "BREAKING CHANGE" in commit messages unless there is an actual breaking change.
 - No emojis in docs, scripts, code, or output unless explicitly requested.
+
+## Project Conventions
+
+Project-specific rules that supplement the standards above. Replace these examples with your own.
+
+- (Example: CLI flags use `--kebab-case`; shell scripts match the same flag names)
+- (Example: All HTTP handlers return `Result<T>` with explicit error codes)
+- (Example: Release via `pk changelog` then `pk release`)

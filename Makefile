@@ -42,11 +42,10 @@ fmt:
 lint:
 	go vet ./...
 
-# Release: tag and push to trigger CI build
-# Usage: make release VERSION=1.0.0
+# Release: validate and push to trigger CI build
 release:
-	./scripts/release.sh $(VERSION)
+	pk release
 
-# Dry run: run all release checks without tagging
+# Dry run: run all release checks without pushing
 release-dry:
-	./scripts/release.sh $(VERSION) --dry-run
+	pk release --dry-run
