@@ -460,12 +460,25 @@ func TestAppendRefLink(t *testing.T) {
 		if !strings.HasSuffix(got, "[v0.1.0]: https://example.com\n") {
 			t.Errorf("got %q", got)
 		}
+		// First ref link should have double newline separator from content.
+		if !strings.Contains(got, "## [v0.1.0]\n\n[v0.1.0]:") {
+			t.Errorf("expected double newline before first ref link, got %q", got)
+		}
 	})
 
 	t.Run("to content without trailing newline", func(t *testing.T) {
 		got := appendRefLink("# Changelog", "[v0.1.0]: https://example.com")
 		if !strings.Contains(got, "# Changelog\n\n[v0.1.0]") {
 			t.Errorf("got %q", got)
+		}
+	})
+
+	t.Run("after existing ref link uses single newline", func(t *testing.T) {
+		existing := "# Changelog\n\n[v0.1.0]: https://example.com/v0.1.0\n"
+		got := appendRefLink(existing, "[v0.2.0]: https://example.com/v0.2.0")
+		want := "[v0.1.0]: https://example.com/v0.1.0\n[v0.2.0]: https://example.com/v0.2.0\n"
+		if !strings.HasSuffix(got, want) {
+			t.Errorf("got %q, want suffix %q", got, want)
 		}
 	})
 }
@@ -642,8 +655,8 @@ func TestRun_firstRelease(t *testing.T) {
 	if !hasTag {
 		t.Error("missing git tag")
 	}
-	if !strings.Contains(stderr.String(), "Released v0.1.0") {
-		t.Error("missing release message")
+	if !strings.Contains(stderr.String(), "Tagged v0.1.0") {
+		t.Error("missing tagged message")
 	}
 }
 

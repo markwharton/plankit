@@ -123,6 +123,9 @@ var defaultTypes = []TypeConfig{
 // commitRegex parses conventional commit subjects: type(scope)!: message
 var commitRegex = regexp.MustCompile(`^(\w+)(?:\(([^)]*)\))?(!)?\s*:\s*(.+)$`)
 
+// refLinkDefRegex matches a markdown reference link definition: [label]: URL
+var refLinkDefRegex = regexp.MustCompile(`^\[[^\]]+\]:\s`)
+
 const changelogHeader = `# Changelog
 
 All notable changes to this project will be documented in this file.
@@ -271,7 +274,7 @@ func Run(cfg Config) int {
 		return 1
 	}
 
-	fmt.Fprintf(cfg.Stderr, "Released %s\n", nextTag)
+	fmt.Fprintf(cfg.Stderr, "Tagged %s\n", nextTag)
 	return 0
 }
 
@@ -580,10 +583,25 @@ func parseRepoURL(remoteURL string) string {
 }
 
 // appendRefLink appends a markdown reference link definition to the content.
-// Ensures proper newline separation.
+// Uses single newline when appending after an existing reference link,
+// double newline when separating from other content.
 func appendRefLink(content, refLink string) string {
 	s := strings.TrimRight(content, "\n")
+	if refLinkDefRegex.MatchString(lastLine(s)) {
+		return s + "\n" + refLink + "\n"
+	}
 	return s + "\n\n" + refLink + "\n"
+}
+
+// lastLine returns the last non-empty line from s.
+func lastLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) != "" {
+			return lines[i]
+		}
+	}
+	return ""
 }
 
 // firstLine returns the first non-empty line from s.
