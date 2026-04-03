@@ -17,15 +17,15 @@ make lint           # Run go vet
 ## Architecture
 
 - `cmd/pk/main.go` -- Entry point, subcommand routing
+- `docs/` -- Methodology and getting started documentation
 - `internal/hooks/` -- Shared stdin JSON parsing for Claude Code hook payloads
-- `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)
 - `internal/preserve/` -- `pk preserve` (PostToolUse: preserve approved plans)
+- `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)
 - `internal/setup/` -- `pk setup` (configure project .claude/settings.json)
+- `internal/setup/skills/` -- Embedded skill files compiled into pk binary
 - `internal/update/` -- Version checker (GitHub releases, daily cache)
 - `internal/version/` -- Build version via ldflags
-- `skills/` -- Skill files installed by pk setup
 - `templates/` -- Reference CLAUDE.md starters
-- `docs/` -- Methodology and getting started documentation
 
 ## Conventions
 

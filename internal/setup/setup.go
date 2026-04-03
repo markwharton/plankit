@@ -3,13 +3,18 @@
 package setup
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
+
+//go:embed skills/*/SKILL.md
+var skillsFS embed.FS
 
 // Hook represents a single hook command entry.
 // Field order determines JSON output order.
@@ -81,35 +86,28 @@ type Skill struct {
 	Content string
 }
 
-// skills returns the skills to install.
-func skills() []Skill {
-	return []Skill{
-		{
-			Name: "preserve",
-			Content: `---
-name: preserve
-description: Preserve the most recently approved plan to docs/plans/
----
-Preserve the most recently approved plan to docs/plans/ and commit it.
-
-Run the following command:
-
-pk preserve
-
-Report the result to the user.
-`,
-		},
-		{
-			Name: "review",
-			Content: `---
-name: review
-description: Comprehensive code review across all dimensions
----
-
-Code review: DRY violations, anti-patterns, design tokens, security.
-`,
-		},
+// skills returns the skills to install from the embedded filesystem.
+func skills() ([]Skill, error) {
+	entries, err := fs.ReadDir(skillsFS, "skills")
+	if err != nil {
+		return nil, err
 	}
+
+	var result []Skill
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		content, err := fs.ReadFile(skillsFS, "skills/"+entry.Name()+"/SKILL.md")
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, Skill{
+			Name:    entry.Name(),
+			Content: string(content),
+		})
+	}
+	return result, nil
 }
 
 // Run configures the project's .claude/settings.json to use plankit.
@@ -169,7 +167,11 @@ func Run(projectDir string, stderr io.Writer, preserveMode string) error {
 	fmt.Fprintf(stderr, "Configured plankit in %s (preserve mode: %s)\n", settingsFile, preserveMode)
 
 	// Install skills.
-	for _, skill := range skills() {
+	skillsList, err := skills()
+	if err != nil {
+		return fmt.Errorf("failed to load embedded skills: %w", err)
+	}
+	for _, skill := range skillsList {
 		skillDir := filepath.Join(settingsDir, "skills", skill.Name)
 		if err := os.MkdirAll(skillDir, 0755); err != nil {
 			return fmt.Errorf("failed to create skills directory: %w", err)
