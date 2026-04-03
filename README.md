@@ -61,6 +61,7 @@ Copy `base.md` into your project as `CLAUDE.md` and extend with relevant technol
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — install, setup, first run
+- [Changelog](docs/changelog.md) — pk changelog, .changelog.json configuration
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
 
