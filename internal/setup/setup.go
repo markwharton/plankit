@@ -56,23 +56,23 @@ func buildHookConfig(preserveMode string) HooksConfig {
 
 	switch preserveMode {
 	case "auto":
-		config.PostToolUse = preserveHookEntry("pk preserve", "Preserving approved plan...", 60)
+		config.PostToolUse = preserveHookEntry("pk preserve", "Preserving approved plan...", true, 60)
 	case "manual":
-		config.PostToolUse = preserveHookEntry("pk preserve --notify", "Checking plan...", 10)
+		config.PostToolUse = preserveHookEntry("pk preserve --notify", "Checking plan...", false, 10)
 	}
 
 	return config
 }
 
 // preserveHookEntry builds a PostToolUse entry for the given preserve command.
-func preserveHookEntry(command, statusMessage string, timeout int) []HookEntry {
+func preserveHookEntry(command, statusMessage string, async bool, timeout int) []HookEntry {
 	return []HookEntry{
 		{
 			Matcher: "ExitPlanMode",
 			Hooks: []Hook{{
 				Type:          "command",
 				Command:       command,
-				Async:         true,
+				Async:         async,
 				Timeout:       timeout,
 				StatusMessage: statusMessage,
 			}},

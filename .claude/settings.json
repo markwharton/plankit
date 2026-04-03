@@ -29,7 +29,6 @@
           {
             "type": "command",
             "command": "pk preserve --notify",
-            "async": true,
             "timeout": 10,
             "statusMessage": "Checking plan..."
           }

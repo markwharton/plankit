@@ -225,10 +225,13 @@ func TestRun_manualMode(t *testing.T) {
 		t.Fatalf("PostToolUse = %v, want 1 entry", hooks["PostToolUse"])
 	}
 
-	// Verify the command uses --notify.
+	// Verify the command uses --notify and is synchronous (no async field).
 	hookData, _ := json.Marshal(postToolUse[0])
 	if !strings.Contains(string(hookData), "--notify") {
 		t.Errorf("PostToolUse hook = %s, want to contain --notify", string(hookData))
+	}
+	if strings.Contains(string(hookData), "async") {
+		t.Errorf("PostToolUse hook = %s, manual mode should not be async", string(hookData))
 	}
 
 	if !strings.Contains(stderr.String(), "preserve mode: manual") {
