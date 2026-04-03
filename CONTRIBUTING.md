@@ -30,6 +30,7 @@ make fmt      # Format code
 
 ```bash
 git tag v0.0.0                    # one-time baseline (if no tags exist)
+git push origin v0.0.0            # push so comparison links work
 pk changelog                      # scan, write CHANGELOG.md, commit, tag
 git push --follow-tags            # done
 ```

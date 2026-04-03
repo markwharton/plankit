@@ -214,19 +214,29 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 12. Read existing CHANGELOG.md.
+	// 12. Get repo URL for comparison links.
+	repoURL := ""
+	if remoteURL, err := cfg.GitExec("remote", "get-url", "origin"); err == nil {
+		repoURL = parseRepoURL(remoteURL)
+	}
+
+	// 13. Read existing CHANGELOG.md.
 	existing, _ := cfg.ReadFile("CHANGELOG.md")
 
-	// 13. Insert section.
+	// 14. Insert section and comparison link.
 	updated := insertSection(string(existing), section)
+	if repoURL != "" {
+		refLink := fmt.Sprintf("[%s]: %s/compare/%s...%s", nextTag, repoURL, latestTag, nextTag)
+		updated = appendRefLink(updated, refLink)
+	}
 
-	// 14. Write CHANGELOG.md.
+	// 15. Write CHANGELOG.md.
 	if err := cfg.WriteFile("CHANGELOG.md", []byte(updated), 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to write CHANGELOG.md: %v\n", err)
 		return 1
 	}
 
-	// 15. Run preCommit hook.
+	// 16. Run preCommit hook.
 	if config.Hooks.PreCommit != "" {
 		fmt.Fprintf(cfg.Stderr, "Running preCommit hook...\n")
 		if err := cfg.RunScript("VERSION=" + ver + " " + config.Hooks.PreCommit); err != nil {
@@ -235,7 +245,7 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 16. Git add, commit, tag.
+	// 17. Git add, commit, tag.
 	// Explicitly add CHANGELOG.md (may be new/untracked) and version files.
 	addFiles := []string{"add", "CHANGELOG.md"}
 	for _, vf := range config.VersionFiles {
@@ -551,6 +561,27 @@ func spliceJSONVersion(content []byte, newVersion string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("no version field found at root level")
+}
+
+// parseRepoURL converts a git remote URL to an HTTPS base URL.
+// Handles SSH (git@github.com:owner/repo.git) and HTTPS formats.
+func parseRepoURL(remoteURL string) string {
+	u := strings.TrimSpace(remoteURL)
+	// SSH format: git@github.com:owner/repo.git
+	if strings.HasPrefix(u, "git@") {
+		u = strings.TrimPrefix(u, "git@")
+		u = strings.Replace(u, ":", "/", 1)
+		u = "https://" + u
+	}
+	u = strings.TrimSuffix(u, ".git")
+	return u
+}
+
+// appendRefLink appends a markdown reference link definition to the content.
+// Ensures proper newline separation.
+func appendRefLink(content, refLink string) string {
+	s := strings.TrimRight(content, "\n")
+	return s + "\n\n" + refLink + "\n"
 }
 
 // firstLine returns the first non-empty line from s.

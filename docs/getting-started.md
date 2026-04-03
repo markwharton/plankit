@@ -23,6 +23,8 @@ This creates:
 your-project/.claude/
 ├── settings.json         # Hooks config + Bash(pk:*) permission
 └── skills/
+    ├── changelog/
+    │   └── SKILL.md      # /changelog skill
     ├── preserve/
     │   └── SKILL.md      # /preserve skill
     └── review/

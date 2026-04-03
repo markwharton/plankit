@@ -434,6 +434,42 @@ func TestParseLog(t *testing.T) {
 	})
 }
 
+func TestParseRepoURL(t *testing.T) {
+	tests := []struct {
+		name string
+		input string
+		want  string
+	}{
+		{"SSH", "git@github.com:markwharton/plankit.git", "https://github.com/markwharton/plankit"},
+		{"HTTPS with .git", "https://github.com/markwharton/plankit.git", "https://github.com/markwharton/plankit"},
+		{"HTTPS without .git", "https://github.com/markwharton/plankit", "https://github.com/markwharton/plankit"},
+		{"SSH with trailing newline", "git@github.com:owner/repo.git\n", "https://github.com/owner/repo"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parseRepoURL(tt.input); got != tt.want {
+				t.Errorf("parseRepoURL(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAppendRefLink(t *testing.T) {
+	t.Run("to content with trailing newline", func(t *testing.T) {
+		got := appendRefLink("# Changelog\n\n## [v0.1.0]\n", "[v0.1.0]: https://example.com")
+		if !strings.HasSuffix(got, "[v0.1.0]: https://example.com\n") {
+			t.Errorf("got %q", got)
+		}
+	})
+
+	t.Run("to content without trailing newline", func(t *testing.T) {
+		got := appendRefLink("# Changelog", "[v0.1.0]: https://example.com")
+		if !strings.Contains(got, "# Changelog\n\n[v0.1.0]") {
+			t.Errorf("got %q", got)
+		}
+	})
+}
+
 func TestSpliceJSONVersion(t *testing.T) {
 	t.Run("package.json style", func(t *testing.T) {
 		input := []byte(`{
@@ -544,6 +580,9 @@ func TestRun_firstRelease(t *testing.T) {
 			if args[0] == "log" {
 				return "abc1234\x00feat: add feature\x00\x00def5678\x00fix: fix bug\x00\x00", nil
 			}
+			if args[0] == "remote" {
+				return "git@github.com:owner/repo.git", nil
+			}
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
@@ -581,6 +620,9 @@ func TestRun_firstRelease(t *testing.T) {
 	}
 	if !strings.Contains(content, "fix bug (def5678)") {
 		t.Error("missing fix entry")
+	}
+	if !strings.Contains(content, "[v0.1.0]: https://github.com/owner/repo/compare/v0.0.0...v0.1.0") {
+		t.Error("missing comparison link")
 	}
 
 	// Verify git operations.

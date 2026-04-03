@@ -24,3 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 - add skills, templates, methodology docs, and README (e147405)
+
+[v0.1.0]: https://github.com/markwharton/plankit/compare/v0.0.0...v0.1.0

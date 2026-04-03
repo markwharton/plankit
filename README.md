@@ -6,7 +6,7 @@ Plan-driven development toolkit for [Claude Code](https://docs.anthropic.com/en/
 
 - **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed automatically
 - **Protects preserved plans** from accidental edits by Claude Code
-- **Installs skills** — `/preserve` for manual plan saving, `/review` for comprehensive code review
+- **Installs skills** — `/preserve` for manual plan saving, `/review` for comprehensive code review, `/changelog` for release management
 - **Provides CLAUDE.md templates** — battle-tested guidelines for working effectively with Claude Code
 
 ## Install
@@ -24,7 +24,7 @@ cd your-project
 pk setup
 ```
 
-This configures `.claude/settings.json` with hooks and installs the `/preserve` and `/review` skills. Restart Claude Code to apply.
+This configures `.claude/settings.json` with hooks and installs the `/preserve`, `/review`, and `/changelog` skills. Restart Claude Code to apply.
 
 ### Modes
 
@@ -38,6 +38,7 @@ Re-run setup anytime to switch.
 ## Commands
 
 ```
+pk changelog [options]    Generate changelog, commit, and tag release
 pk preserve [--notify]    Preserve approved plan (PostToolUse hook)
 pk protect                Block edits to docs/plans/ (PreToolUse hook)
 pk setup [options]        Configure project hooks and skills
