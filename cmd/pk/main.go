@@ -72,9 +72,9 @@ func runPreserve(args []string) {
 	cfg := preserve.DefaultConfig()
 	cfg.Notify = *notify
 	cfg.CheckUpdate = func() string {
-		latest, available := update.Check(update.DefaultConfig(version.Version))
+		latest, available := update.Check(update.DefaultConfig(version.Version()))
 		if available {
-			return update.FormatNotice(latest, version.Version)
+			return update.FormatNotice(latest, version.Version())
 		}
 		return ""
 	}
@@ -116,13 +116,13 @@ func runSetup(args []string) {
 }
 
 func runVersion() {
-	fmt.Fprintf(os.Stderr, "pk %s\n", version.Version)
+	fmt.Fprintf(os.Stderr, "pk %s\n", version.Version())
 	printUpdateNotice()
 }
 
 func printUpdateNotice() {
-	if latest, available := update.Check(update.DefaultConfig(version.Version)); available {
-		fmt.Fprintf(os.Stderr, "%s\n", update.FormatNotice(latest, version.Version))
+	if latest, available := update.Check(update.DefaultConfig(version.Version())); available {
+		fmt.Fprintf(os.Stderr, "%s\n", update.FormatNotice(latest, version.Version()))
 	}
 }
 

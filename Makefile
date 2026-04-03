@@ -3,7 +3,7 @@ VERSION?=dev
 BUILD_DIR=dist
 
 # Build flags for smaller binaries
-LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.Version=$(VERSION)
+LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 
 .PHONY: all build clean test install fmt lint build-all release release-dry
 

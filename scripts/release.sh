@@ -80,7 +80,7 @@ echo "--- Cross-compile verification ---"
 BUILD_DIR=$(mktemp -d)
 trap "rm -rf $BUILD_DIR" EXIT
 
-LDFLAGS="-s -w -X github.com/markwharton/plankit/internal/version.Version=${VERSION}"
+LDFLAGS="-s -w -X github.com/markwharton/plankit/internal/version.version=${VERSION}"
 
 for PLATFORM in "${PLATFORMS[@]}"; do
   OS="${PLATFORM%-*}"

@@ -33,7 +33,7 @@ pk changelog        # Generate CHANGELOG.md, commit, and tag release
 
 - Go 1.21+, zero external dependencies (stdlib only)
 - Subcommand routing via `os.Args` switch + `flag.FlagSet`
-- Version injection: `-ldflags "-X .../version.Version=x.y.z"`
+- Version injection: `-ldflags "-X .../version.version=x.y.z"` (overrides `debug.ReadBuildInfo()`)
 - All user messages to stderr, stdout reserved for hook protocol JSON
 - Hook commands always exit 0 (errors reported via systemMessage or stderr)
 - Tests use dependency injection (Config struct) and `t.TempDir()` for filesystem tests
