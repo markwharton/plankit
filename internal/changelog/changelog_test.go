@@ -481,6 +481,14 @@ func TestAppendRefLink(t *testing.T) {
 			t.Errorf("got %q, want suffix %q", got, want)
 		}
 	})
+
+	t.Run("duplicate ref link skipped", func(t *testing.T) {
+		existing := "# Changelog\n\n[v0.1.0]: https://example.com/v0.1.0\n"
+		got := appendRefLink(existing, "[v0.1.0]: https://example.com/v0.1.0")
+		if got != existing {
+			t.Errorf("expected no change, got %q", got)
+		}
+	})
 }
 
 func TestSpliceJSONVersion(t *testing.T) {

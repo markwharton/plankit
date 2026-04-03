@@ -586,6 +586,10 @@ func parseRepoURL(remoteURL string) string {
 // Uses single newline when appending after an existing reference link,
 // double newline when separating from other content.
 func appendRefLink(content, refLink string) string {
+	// Skip if this exact reference link already exists.
+	if strings.Contains(content, refLink) {
+		return content
+	}
 	s := strings.TrimRight(content, "\n")
 	if refLinkDefRegex.MatchString(lastLine(s)) {
 		return s + "\n" + refLink + "\n"
