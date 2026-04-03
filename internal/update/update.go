@@ -20,6 +20,10 @@ type CacheEntry struct {
 	Latest    string    `json:"latest"`
 }
 
+const updateTimeout = 2 * time.Second
+
+var updateClient = &http.Client{Timeout: updateTimeout}
+
 // Config holds injectable dependencies for testing.
 type Config struct {
 	CurrentVersion string
@@ -33,7 +37,7 @@ func DefaultConfig(currentVersion string) Config {
 	return Config{
 		CurrentVersion: currentVersion,
 		CacheDir:       os.UserCacheDir,
-		HTTPGet:        http.Get,
+		HTTPGet:        updateClient.Get,
 		Now:            time.Now,
 	}
 }
