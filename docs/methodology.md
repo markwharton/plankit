@@ -32,6 +32,14 @@ Plan-driven development uses Claude Code's plan mode as the foundation for AI-as
 - Quick fixes, typos, single-file changes
 - Exploratory work where you're still figuring out the question
 
+## Why guidelines matter
+
+LLMs are non-deterministic. Without constraints, they reach for familiar patterns — regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. These tendencies produce code that looks right but drifts from the developer's intent.
+
+Every convention in the templates is a countermeasure to a specific tendency. "Data-first, model-first" prevents the LLM from discarding structure it was given. "Fail fast, no silent fallbacks" prevents it from masking problems with invented defaults. "All-or-nothing consistency" prevents partial updates across related files.
+
+The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions — but mostly, deterministic outputs come from deliberate constraints.
+
 ## Guidelines
 
 The `templates/base.md` file provides universal CLAUDE.md guidelines, split into two sections:

@@ -2,6 +2,8 @@
 
 Plan-driven development toolkit for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Designed for small teams and independent developers.
 
+LLMs are open-ended by nature; development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.
+
 ## What it does
 
 - **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed automatically
