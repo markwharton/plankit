@@ -70,6 +70,6 @@ The `/review` skill runs a comprehensive code review:
 Code review: DRY violations, anti-patterns, design tokens, security.
 ```
 
-This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist.
+This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist. The short prompt gives the LLM room to be comprehensive; the templates keep it from being wrong.
 
 Use it iteratively — run `/review` after generating code, after refactoring, or at the start of a session to improve an existing codebase. The two-pass approach (generate first, review second) works because it separates creation from criticism.
