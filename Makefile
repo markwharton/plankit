@@ -5,7 +5,7 @@ BUILD_DIR=dist
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.Version=$(VERSION)
 
-.PHONY: all build clean test install fmt lint build-all
+.PHONY: all build clean test install fmt lint build-all release release-dry
 
 all: build
 
@@ -41,3 +41,12 @@ fmt:
 # Lint code
 lint:
 	go vet ./...
+
+# Release: tag and push to trigger CI build
+# Usage: make release VERSION=1.0.0
+release:
+	./scripts/release.sh $(VERSION)
+
+# Dry run: run all release checks without tagging
+release-dry:
+	./scripts/release.sh $(VERSION) --dry
