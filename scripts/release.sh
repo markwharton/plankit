@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Usage:
 #   ./scripts/release.sh            # Validate and push tag at HEAD to trigger CI release
-#   ./scripts/release.sh --dry      # Run all checks without pushing
+#   ./scripts/release.sh --dry-run      # Run all checks without pushing
 
 BINARY_NAME="pk"
 PLATFORMS=("darwin-amd64" "darwin-arm64" "linux-amd64" "linux-arm64" "windows-amd64")
@@ -13,7 +13,7 @@ PLATFORMS=("darwin-amd64" "darwin-arm64" "linux-amd64" "linux-arm64" "windows-am
 # --- Parse arguments ---
 
 DRY_RUN=false
-if [ "${1:-}" = "--dry" ]; then
+if [ "${1:-}" = "--dry-run" ]; then
   DRY_RUN=true
 fi
 
@@ -101,7 +101,7 @@ echo "  All 5 platforms built successfully"
 if [ "$DRY_RUN" = true ]; then
   echo ""
   echo "--- Dry run complete ---"
-  echo "  All checks passed. Run without --dry to push."
+  echo "  All checks passed. Run without --dry-run to push."
   exit 0
 fi
 

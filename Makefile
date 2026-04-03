@@ -49,4 +49,4 @@ release:
 
 # Dry run: run all release checks without tagging
 release-dry:
-	./scripts/release.sh $(VERSION) --dry
+	./scripts/release.sh $(VERSION) --dry-run

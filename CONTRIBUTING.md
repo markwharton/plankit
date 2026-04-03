@@ -39,7 +39,7 @@ git push --follow-tags            # done
 
 ```bash
 pk changelog                      # scan, write CHANGELOG.md, commit, tag
-scripts/release.sh --dry          # validate, test, cross-compile (dry run)
+scripts/release.sh --dry-run          # validate, test, cross-compile (dry run)
 scripts/release.sh                # push branch + tag → triggers GitHub Actions
 ```
 
