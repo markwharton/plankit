@@ -27,6 +27,8 @@ your-project/.claude/
     │   └── SKILL.md      # /changelog skill
     ├── preserve/
     │   └── SKILL.md      # /preserve skill
+    ├── release/
+    │   └── SKILL.md      # /release skill
     └── review/
         └── SKILL.md      # /review skill
 ```
