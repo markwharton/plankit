@@ -4,32 +4,30 @@ set -euo pipefail
 # Release script for plankit
 #
 # Usage:
-#   ./scripts/release.sh 1.0.0        # Tags v1.0.0 and pushes to trigger CI release
-#   ./scripts/release.sh 1.0.0 --dry  # Run all checks without tagging or pushing
+#   ./scripts/release.sh            # Validate and push tag at HEAD to trigger CI release
+#   ./scripts/release.sh --dry      # Run all checks without pushing
 
 BINARY_NAME="pk"
 PLATFORMS=("darwin-amd64" "darwin-arm64" "linux-amd64" "linux-arm64" "windows-amd64")
 
 # --- Parse arguments ---
 
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <version> [--dry]"
-  echo "  version: semver without 'v' prefix (e.g., 1.0.0)"
-  echo "  --dry:   run checks only, don't tag or push"
-  exit 1
-fi
-
-VERSION="$1"
 DRY_RUN=false
-if [ "${2:-}" = "--dry" ]; then
+if [ "${1:-}" = "--dry" ]; then
   DRY_RUN=true
 fi
 
-TAG="v${VERSION}"
+# Find version tag at HEAD.
+TAG=$(git tag --points-at HEAD | grep '^v' | head -1)
+if [ -z "$TAG" ]; then
+  echo "Error: no version tag at HEAD — run 'pk changelog' first"
+  exit 1
+fi
+VERSION="${TAG#v}"
 
-# Validate semver format
+# Validate semver format.
 if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-  echo "Error: version must be semver (e.g., 1.0.0), got: $VERSION"
+  echo "Error: tag $TAG is not valid semver"
   exit 1
 fi
 
@@ -56,24 +54,17 @@ if [ "$BRANCH" != "main" ]; then
 fi
 echo "  On main branch"
 
-# 3. Up to date with remote
+# 3. Not behind remote (local may be ahead after pk changelog commit)
 git fetch origin main --quiet
-LOCAL=$(git rev-parse HEAD)
+MERGE_BASE=$(git merge-base HEAD origin/main)
 REMOTE=$(git rev-parse origin/main)
-if [ "$LOCAL" != "$REMOTE" ]; then
-  echo "Error: local main is not up to date with origin/main"
-  echo "  local:  $LOCAL"
-  echo "  remote: $REMOTE"
+if [ "$MERGE_BASE" != "$REMOTE" ]; then
+  echo "Error: local main is behind origin/main — pull first"
   exit 1
 fi
-echo "  Up to date with origin/main"
+echo "  Not behind origin/main"
 
-# 4. Tag doesn't already exist
-if git rev-parse "$TAG" >/dev/null 2>&1; then
-  echo "Error: tag $TAG already exists"
-  exit 1
-fi
-echo "  Tag $TAG is available"
+echo "  Tag $TAG exists at HEAD"
 
 # --- Run tests ---
 
@@ -105,24 +96,19 @@ done
 
 echo "  All 5 platforms built successfully"
 
-# --- Tag and push ---
+# --- Push ---
 
 if [ "$DRY_RUN" = true ]; then
   echo ""
   echo "--- Dry run complete ---"
-  echo "  All checks passed. Run without --dry to tag and push."
+  echo "  All checks passed. Run without --dry to push."
   exit 0
 fi
 
 echo ""
-echo "--- Tagging ${TAG} ---"
-git tag "$TAG"
-echo "  Created tag $TAG"
-
-echo ""
-echo "--- Pushing tag to origin ---"
-git push origin "$TAG"
-echo "  Pushed $TAG"
+echo "--- Pushing to origin ---"
+git push origin main "$TAG"
+echo "  Pushed main and $TAG"
 
 echo ""
 echo "=== Release ${TAG} started ==="

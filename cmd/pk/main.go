@@ -5,6 +5,7 @@
 //
 // Commands:
 //
+//	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk setup       Configure a project's .claude/settings.json
@@ -16,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/setup"
@@ -30,6 +32,8 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "changelog":
+		runChangelog(os.Args[2:])
 	case "preserve":
 		runPreserve(os.Args[2:])
 	case "protect":
@@ -45,6 +49,19 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+func runChangelog(args []string) {
+	fs := flag.NewFlagSet("changelog", flag.ExitOnError)
+	bump := fs.String("bump", "", "Override version bump: major, minor, or patch")
+	dryRun := fs.Bool("dry-run", false, "Preview without writing, committing, or tagging")
+	fs.Parse(args)
+
+	cfg := changelog.DefaultConfig()
+	cfg.Bump = *bump
+	cfg.DryRun = *dryRun
+
+	os.Exit(changelog.Run(cfg))
 }
 
 func runPreserve(args []string) {
@@ -117,6 +134,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
+	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
+	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag release")
 	fmt.Fprintln(os.Stderr, "  pk setup [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version                          Print version and check for updates")

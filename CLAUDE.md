@@ -12,12 +12,14 @@ make test           # Run tests with race detector
 make build-all      # Cross-compile for 5 platforms
 make install        # Install to GOPATH/bin
 make lint           # Run go vet
+pk changelog        # Generate CHANGELOG.md, commit, and tag release
 ```
 
 ## Architecture
 
 - `cmd/pk/main.go` -- Entry point, subcommand routing
 - `docs/` -- Methodology and getting started documentation
+- `internal/changelog/` -- `pk changelog` (generate changelog from conventional commits, commit, tag)
 - `internal/hooks/` -- Shared stdin JSON parsing for Claude Code hook payloads
 - `internal/preserve/` -- `pk preserve` (PostToolUse: preserve approved plans)
 - `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)

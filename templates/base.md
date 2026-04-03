@@ -89,6 +89,6 @@ Rules for the code itself.
 
 ### Commits
 
-- Use conventional commit messages: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`, `security:`, `perf:`.
+- Use conventional commit messages: `feat:`, `fix:`, `security:`, `deprecate:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`.
 - Never include "BREAKING CHANGE" in commit messages unless there is an actual breaking change.
 - No emojis in docs, scripts, code, or output unless explicitly requested.

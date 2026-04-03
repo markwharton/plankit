@@ -26,22 +26,32 @@ make fmt      # Format code
 
 ## Release
 
-Releases are automated via GitHub Actions. The workflow:
-
-1. Run the release script with a dry run first:
+### Any repo using pk
 
 ```bash
-scripts/release.sh 1.0.0 --dry
+git tag v0.0.0                    # one-time baseline (if no tags exist)
+pk changelog                      # scan, write CHANGELOG.md, commit, tag
+git push --follow-tags            # done
 ```
 
-This validates: clean working tree, on main branch, up to date with origin, tag available, tests pass, cross-compilation works for all 5 platforms.
-
-2. If the dry run passes, run without `--dry`:
+### plankit (with build validation)
 
 ```bash
-scripts/release.sh 1.0.0
+pk changelog                      # scan, write CHANGELOG.md, commit, tag
+scripts/release.sh --dry          # validate, test, cross-compile (dry run)
+scripts/release.sh                # push branch + tag → triggers GitHub Actions
 ```
 
-This creates and pushes a `v1.0.0` tag. GitHub Actions picks up the tag, builds binaries for all platforms, generates checksums, and creates a GitHub Release.
+`pk changelog` auto-detects the version bump from conventional commits. Override
+with `--bump major|minor|patch`. Preview with `--dry-run`.
+
+Git tags are the single version source. If no tags exist, `pk changelog` will
+prompt you to create a baseline tag.
+
+Type-to-section mapping, version file updates, and lifecycle hooks are configured
+in `.changelog.json`.
+
+The release script finds the tag at HEAD (created by `pk changelog`), validates
+the build, then pushes both the branch and tag to trigger CI.
 
 Monitor at: https://github.com/markwharton/plankit/actions
