@@ -20,6 +20,8 @@ pk release --dry-run      # validate (optional)
 pk release                # push branch + tag to origin
 ```
 
+Run these commands in sequence — any commits between `pk changelog` and `pk release` will move HEAD past the version tag, causing the release to fail.
+
 For any project using `pk`, this replaces manual `git push --follow-tags` with pre-flight validation.
 
 ## What it does
