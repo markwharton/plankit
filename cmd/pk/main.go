@@ -102,7 +102,7 @@ func runRelease(args []string) {
 func runSetup(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
-	preserveMode := fs.String("preserve", "auto", "Plan preservation mode: auto or manual")
+	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual or auto")
 	fs.Parse(args)
 
 	dir := *projectDir

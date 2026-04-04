@@ -6,7 +6,7 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 
 ## What it does
 
-- **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed automatically
+- **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed
 - **Protects preserved plans** from accidental edits by Claude Code
 - **Installs Claude Code skills** — `/changelog`, `/release`, `/preserve`, `/review`
 - **Provides CLAUDE.md templates** — battle-tested guidelines for working effectively with Claude Code
@@ -31,8 +31,8 @@ This configures `.claude/settings.json` with hooks and installs skills. Restart 
 ### Modes
 
 ```bash
-pk setup                       # Auto: preserve plans on ExitPlanMode
-pk setup --preserve manual     # Manual: use /preserve when ready
+pk setup                       # Manual: use /preserve when ready
+pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
 ```
 
 Re-run setup anytime to switch.

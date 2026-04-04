@@ -40,6 +40,8 @@ pk release          # Validate and push release to origin
 - CLI flags use `--kebab-case` (e.g., `--dry-run`, `--project-dir`)
 - Hook commands always exit 0 (errors reported via systemMessage or stderr)
 - Tests use dependency injection (Config struct) and `t.TempDir()` for filesystem tests
+- When changing defaults, flags, or behavior: grep the repo for all references (README, docs/, CLI help, tests) before considering the change complete
+- Amending commits is OK if not yet pushed; otherwise create a new commit (never force push)
 
 ## Hook Protocol
 

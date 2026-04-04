@@ -38,9 +38,8 @@ Restart Claude Code to apply changes.
 ## Setup options
 
 ```bash
-pk setup                          # Default: auto-preserve plans on ExitPlanMode
-pk setup --preserve manual        # Manual: use /preserve skill when ready
-pk setup --preserve auto          # Explicit auto mode
+pk setup                          # Default: manual — use /preserve skill when ready
+pk setup --preserve auto          # Auto: preserve plans on ExitPlanMode
 pk setup --project-dir /path/to   # Specify project directory
 ```
 
@@ -52,7 +51,7 @@ Re-run setup anytime to switch modes.
 2. Enter plan mode (`/plan`)
 3. Describe a task, let Claude create a plan
 4. Approve the plan and exit plan mode
-5. The plan is preserved in `docs/plans/` (auto mode) or type `/preserve` (manual mode)
+5. Type `/preserve` to save the plan to `docs/plans/` (or automatic in auto mode)
 
 ## What happens
 
