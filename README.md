@@ -45,7 +45,7 @@ pk release [options]      Validate and push release to origin
 pk preserve [--notify]    Preserve approved plan (PostToolUse hook)
 pk protect                Block edits to docs/plans/ (PreToolUse hook)
 pk setup [options]        Configure project hooks and skills
-pk version                Print version and check for updates
+pk version [--verbose]    Print version and check for updates
 ```
 
 ## Templates
@@ -68,6 +68,10 @@ Copy `base.md` into your project as `CLAUDE.md` and extend with relevant technol
 - [Release](docs/pk-release.md) — pk release, pre-flight checks, hooks.preRelease
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
+
+## Known Limitations
+
+- **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline — no local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
 
 ## Cross-platform
 
