@@ -65,6 +65,16 @@ func TestExtractPlanPath(t *testing.T) {
 			text: "",
 			want: "",
 		},
+		{
+			name: "root user path",
+			text: `Plan saved to /root/.claude/plans/idempotent-singing-cocoa.md`,
+			want: "/root/.claude/plans/idempotent-singing-cocoa.md",
+		},
+		{
+			name: "path in multiline response",
+			text: "Plan approved.\nSaved to /home/user/.claude/plans/my-plan.md\nDone.",
+			want: "/home/user/.claude/plans/my-plan.md",
+		},
 	}
 
 	for _, tt := range tests {
@@ -590,6 +600,162 @@ func TestRun(t *testing.T) {
 		}
 		if !strings.Contains(out, "Update available") {
 			t.Errorf("stdout = %q, want update notice", out)
+		}
+	})
+
+	t.Run("root home directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planFile := filepath.Join(plansDir, "idempotent-singing-cocoa.md")
+		planContent := "# Test Plan from Web Session\n\nThis plan was created in a remote web session with root home directory."
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		var addPath string
+
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "add" {
+					addPath = args[1]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		wantPath := "docs/plans/2026-03-11-001-test-plan-from-web-session.md"
+		if addPath != wantPath {
+			t.Errorf("git add path = %q, want %q", addPath, wantPath)
+		}
+
+		destFile := filepath.Join(projectDir, wantPath)
+		content, err := os.ReadFile(destFile)
+		if err != nil {
+			t.Fatalf("plan file not written: %v", err)
+		}
+		if string(content) != planContent {
+			t.Errorf("content mismatch")
+		}
+	})
+
+	t.Run("json object tool_response with plan path", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planFile := filepath.Join(plansDir, "my-plan.md")
+		planContent := "# JSON Response Plan\n\nThis plan tests extraction from a JSON object tool_response."
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		// tool_response is a JSON object, not a string.
+		inputJSON := fmt.Sprintf(`{"tool_response":{"planPath":"%s","approved":true},"cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		var addPath string
+
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "add" {
+					addPath = args[1]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		wantPath := "docs/plans/2026-03-11-001-json-response-plan.md"
+		if addPath != wantPath {
+			t.Errorf("git add path = %q, want %q", addPath, wantPath)
+		}
+	})
+
+	t.Run("json object tool_response falls back to latest plan", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Fallback from JSON\n\nThis plan tests fallback when JSON tool_response has no plan path."
+		planFile := filepath.Join(plansDir, "latest.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		// JSON object with no .claude/plans/ path.
+		inputJSON := fmt.Sprintf(`{"tool_response":{"status":"approved","message":"Plan complete"},"cwd":"%s"}`, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		var commitMsg string
+
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "commit" {
+					commitMsg = args[2]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if !strings.Contains(commitMsg, "Fallback from JSON") {
+			t.Errorf("commit message = %q, want to contain 'Fallback from JSON'", commitMsg)
 		}
 	})
 }
