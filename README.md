@@ -19,6 +19,8 @@ go install github.com/markwharton/plankit/cmd/pk@latest
 
 Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases).
 
+After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below or [Getting Started](docs/getting-started.md) for details.
+
 ## Setup
 
 ```bash
