@@ -6,7 +6,10 @@
 //   - make build: ldflags sets "dev" for development builds
 package version
 
-import "runtime/debug"
+import (
+	"fmt"
+	"runtime/debug"
+)
 
 // version is set at build time via -ldflags for development and release builds.
 // Empty means no ldflags were set (go install path).
@@ -23,4 +26,22 @@ func Version() string {
 		return info.Main.Version
 	}
 	return "dev"
+}
+
+// VerboseInfo returns additional build information (Go version and build date).
+// Returns empty string if build info is unavailable.
+func VerboseInfo() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	goVer := info.GoVersion
+	buildDate := "unknown"
+	for _, s := range info.Settings {
+		if s.Key == "vcs.time" {
+			buildDate = s.Value
+			break
+		}
+	}
+	return fmt.Sprintf("  go: %s\n  build: %s", goVer, buildDate)
 }

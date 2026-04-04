@@ -10,7 +10,7 @@
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Validate and push release to origin
 //	pk setup       Configure a project's .claude/settings.json
-//	pk version     Print version
+//	pk version     Print version (--verbose for build details)
 package main
 
 import (
@@ -45,7 +45,7 @@ func main() {
 	case "setup":
 		runSetup(os.Args[2:])
 	case "version", "--version", "-v":
-		runVersion()
+		runVersion(os.Args[2:])
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -132,8 +132,17 @@ func runSetup(args []string) {
 	printUpdateNotice()
 }
 
-func runVersion() {
+func runVersion(args []string) {
+	fs := flag.NewFlagSet("version", flag.ExitOnError)
+	verbose := fs.Bool("verbose", false, "Show build date and Go version")
+	fs.Parse(args)
+
 	fmt.Fprintf(os.Stderr, "pk %s\n", version.Version())
+	if *verbose {
+		if info := version.VerboseInfo(); info != "" {
+			fmt.Fprintln(os.Stderr, info)
+		}
+	}
 	printUpdateNotice()
 }
 
@@ -157,7 +166,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                                      Validate and push release to origin")
 	fmt.Fprintln(os.Stderr, "  pk setup [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
-	fmt.Fprintln(os.Stderr, "  pk version                          Print version and check for updates")
+	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands read JSON from stdin and write JSON to stdout.")
 	fmt.Fprintln(os.Stderr, "They are designed to be called by Claude Code, not directly.")
