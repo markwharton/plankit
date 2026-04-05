@@ -74,6 +74,12 @@ This prompt is intentionally short and unbounded. Claude understands each term, 
 
 Use it iteratively — run `/review` after generating code, after refactoring, or at the start of a session to improve an existing codebase. The two-pass approach (generate first, review second) works because it separates creation from criticism.
 
+## Use what you build
+
+plankit follows its own guidelines. The same CLAUDE.md that `pk setup` creates for your project is what plankit uses itself — universal base plus project conventions added via `/init`. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
+
+This is sometimes called "eating your own dog food." If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
+
 ## Plan review
 
 Plans are drafts, not commitments. They improve through iteration.
