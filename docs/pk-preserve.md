@@ -6,6 +6,7 @@ Preserve an approved plan to `docs/plans/` as a timestamped file, committed and 
 
 ```bash
 pk preserve                # preserve the most recent plan
+pk preserve --dry-run      # preview without writing, committing, or pushing
 pk preserve --notify       # check for a plan and notify without preserving
 ```
 
@@ -22,6 +23,7 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 
 ## Flags
 
+- **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. Used by the `/preserve` skill for confirmation before proceeding.
 - **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready.
 
 ## Hook protocol

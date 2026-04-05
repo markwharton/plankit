@@ -71,10 +71,12 @@ func runChangelog(args []string) {
 func runPreserve(args []string) {
 	fs := flag.NewFlagSet("preserve", flag.ExitOnError)
 	notify := fs.Bool("notify", false, "Notify only, do not preserve")
+	dryRun := fs.Bool("dry-run", false, "Preview without writing, committing, or pushing")
 	fs.Parse(args)
 
 	cfg := preserve.DefaultConfig()
 	cfg.Notify = *notify
+	cfg.DryRun = *dryRun
 	cfg.CheckUpdate = func() string {
 		latest, available := update.Check(update.DefaultConfig(version.Version()))
 		if available {
@@ -157,7 +159,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "pk - Plan-driven development toolkit for Claude Code")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands (called by Claude Code, not directly):")
-	fmt.Fprintln(os.Stderr, "  pk preserve [--notify]              Preserve approved plan (PostToolUse hook)")
+	fmt.Fprintln(os.Stderr, "  pk preserve [--notify] [--dry-run]  Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
