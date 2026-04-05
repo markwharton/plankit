@@ -103,6 +103,7 @@ func runSetup(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual or auto")
+	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	fs.Parse(args)
 
 	dir := *projectDir
@@ -124,7 +125,7 @@ func runSetup(args []string) {
 		os.Exit(1)
 	}
 
-	if err := setup.Run(dir, os.Stderr, *preserveMode); err != nil {
+	if err := setup.Run(dir, os.Stderr, *preserveMode, *force); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}

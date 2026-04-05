@@ -6,10 +6,10 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 
 ## What it does
 
+- **Creates a universal CLAUDE.md** if your project doesn't have one — battle-tested guidelines that work as-is
 - **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed
 - **Protects preserved plans** from accidental edits by Claude Code
-- **Installs Claude Code skills** — `/changelog`, `/release`, `/preserve`, `/review`
-- **Provides CLAUDE.md templates** — battle-tested guidelines for working effectively with Claude Code
+- **Installs Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`, `/review`
 
 ## Install
 
@@ -41,33 +41,29 @@ Re-run setup anytime to switch.
 
 ## Commands
 
-```
-pk changelog [options]    Generate changelog, commit, and tag release
-pk release [options]      Validate and push release to origin
-pk preserve [--notify]    Preserve approved plan (PostToolUse hook)
-pk protect                Block edits to docs/plans/ (PreToolUse hook)
-pk setup [options]        Configure project hooks and skills
-pk version [--verbose]    Print version and check for updates
-```
+| Command | Description |
+|---------|-------------|
+| `pk setup` | Configure project hooks, skills, and CLAUDE.md — [details](docs/pk-setup.md) |
+| `pk changelog` | Generate changelog, commit, and tag — [details](docs/pk-changelog.md) |
+| `pk release` | Validate and push release — [details](docs/pk-release.md) |
+| `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
+| `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |
+| `pk version` | Print version and check for updates — [details](docs/pk-version.md) |
 
 ## Templates
 
-The `templates/` directory contains starter CLAUDE.md files:
+`pk setup` automatically creates a universal CLAUDE.md if your project doesn't have one. Use `/init` to add project-specific conventions.
 
-| Template | Use for |
-|----------|---------|
-| `base.md` | Universal principles — start here |
-| `go.md` | Go projects |
-| `typescript.md` | TypeScript/Node/Bun projects |
-| `azure.md` | Azure infrastructure and deployment |
+The `templates/` directory contains reference material for extending your setup:
 
-Copy `base.md` into your project as `CLAUDE.md` and extend with relevant technology templates.
+| Directory | Contents |
+|-----------|----------|
+| `templates/` | CLAUDE.md extension examples — `base.md`, `go.md`, `typescript.md`, `azure.md` |
+| `templates/skills/` | Example skills to copy and adapt — `smoke-test.md`, `validate.md` |
 
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — install, setup, first run
-- [Changelog](docs/pk-changelog.md) — pk changelog, .changelog.json configuration
-- [Release](docs/pk-release.md) — pk release, pre-flight checks, hooks.preRelease
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
 

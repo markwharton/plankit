@@ -34,14 +34,14 @@ Plan-driven development uses Claude Code's plan mode as the foundation for AI-as
 
 ## Guidelines
 
-The `templates/base.md` file provides universal CLAUDE.md guidelines, split into two sections:
+`pk setup` installs a universal CLAUDE.md with guidelines split into two sections:
 
-- **Model Behavior** — instructions for how Claude should think and communicate (honesty, transparency, STOP/ASK/WAIT, testing discipline)
-- **Development Standards** — rules for the code itself (data-first, fail fast, all-or-nothing consistency, two-pass generation)
+- **Model Behavior** — instructions for how Claude should think and communicate (honesty, scope discipline, read before writing, testing discipline)
+- **Development Standards** — rules for the code itself (data-first, fail fast, all-or-nothing consistency, git discipline)
 
-This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The base template makes both explicit.
+This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The universal template makes both explicit.
 
-Technology-specific templates (`go.md`, `typescript.md`, `azure.md`) extend the base with conventions for specific stacks. Copy the base into your project's CLAUDE.md and add relevant sections from the technology templates.
+Use `/init` to add project-specific conventions. Technology-specific reference templates (`go.md`, `typescript.md`, `azure.md`) are available in `templates/` for further customization.
 
 ## Why guidelines matter
 
@@ -73,3 +73,11 @@ Code review: DRY violations, anti-patterns, design tokens, security.
 This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist. The short prompt gives the LLM room to be comprehensive; the templates keep it from being wrong.
 
 Use it iteratively — run `/review` after generating code, after refactoring, or at the start of a session to improve an existing codebase. The two-pass approach (generate first, review second) works because it separates creation from criticism.
+
+## Plan review
+
+Plans are drafts, not commitments. They improve through iteration.
+
+- **Push back on specifics.** Name what's wrong and why. "This section contradicts our convention X" is actionable. "I don't like it" isn't.
+- **Stay calm during review.** Frustration during plan review is normal — especially when details seem wrong or inconsistent — but counterproductive. The plan is a conversation, not a confrontation.
+- **Take the time needed.** Context is not the constraint it used to be. Invest in getting the plan right rather than rushing to approve.

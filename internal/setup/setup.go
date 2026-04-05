@@ -3,7 +3,9 @@
 package setup
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,10 +13,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 //go:embed skills/*/SKILL.md
 var skillsFS embed.FS
+
+//go:embed template/CLAUDE.md
+var templateFS embed.FS
 
 // Hook represents a single hook command entry.
 // Field order determines JSON output order.
@@ -110,8 +116,138 @@ func skills() ([]Skill, error) {
 	return result, nil
 }
 
+const commentPrefix = "<!-- pk:sha256:"
+const commentSuffix = " -->"
+const frontmatterKey = "pk_sha256: "
+
+// contentSHA computes the SHA256 hash of content.
+func contentSHA(content string) string {
+	h := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(h[:])
+}
+
+// extractSHA extracts a pk SHA and the hashed content from a file.
+// Supports two formats:
+//   - HTML comment on first line: <!-- pk:sha256:... --> (for CLAUDE.md)
+//   - YAML frontmatter field: pk_sha256: ... (for skills with frontmatter)
+//
+// Returns (sha, hashedContent, found).
+func extractSHA(fileContent string) (string, string, bool) {
+	// Try HTML comment on first line.
+	firstNewline := strings.IndexByte(fileContent, '\n')
+	if firstNewline > 0 {
+		firstLine := fileContent[:firstNewline]
+		if strings.HasPrefix(firstLine, commentPrefix) && strings.HasSuffix(firstLine, commentSuffix) {
+			sha := firstLine[len(commentPrefix) : len(firstLine)-len(commentSuffix)]
+			content := fileContent[firstNewline+1:]
+			return sha, content, true
+		}
+	}
+
+	// Try frontmatter pk_sha256 field.
+	if strings.HasPrefix(fileContent, "---\n") {
+		closeIdx := strings.Index(fileContent[4:], "\n---\n")
+		if closeIdx >= 0 {
+			frontmatter := fileContent[4 : 4+closeIdx]
+			body := fileContent[4+closeIdx+5:] // skip past \n---\n
+			for _, line := range strings.Split(frontmatter, "\n") {
+				if strings.HasPrefix(line, frontmatterKey) {
+					sha := strings.TrimSpace(line[len(frontmatterKey):])
+					return sha, body, true
+				}
+			}
+		}
+	}
+
+	return "", "", false
+}
+
+// embedSHA embeds a SHA into content using the appropriate format.
+// Skills (content starting with ---) use a frontmatter field.
+// Other files use an HTML comment on the first line.
+func embedSHA(content string, sha string) string {
+	if strings.HasPrefix(content, "---\n") {
+		// Insert pk_sha256 field into existing frontmatter.
+		closeIdx := strings.Index(content[4:], "\n---\n")
+		if closeIdx >= 0 {
+			frontmatter := content[4 : 4+closeIdx]
+			body := content[4+closeIdx+5:]
+			return "---\n" + frontmatter + "\n" + frontmatterKey + sha + "\n---\n" + body
+		}
+	}
+	// HTML comment on first line.
+	return commentPrefix + sha + commentSuffix + "\n" + content
+}
+
+// shouldUpdate checks whether a managed file should be updated.
+// Returns (true, reason) if the file should be written, (false, reason) if it should be skipped.
+func shouldUpdate(path string, newContent string, force bool) (bool, string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, "created"
+		}
+		return false, "skipped (unreadable)"
+	}
+
+	if force {
+		return true, "updated (forced)"
+	}
+
+	storedSHA, hashedContent, found := extractSHA(string(data))
+	if !found {
+		return false, "skipped (not managed by pk)"
+	}
+
+	if contentSHA(hashedContent) != storedSHA {
+		return false, "skipped (modified by user)"
+	}
+
+	return true, "updated"
+}
+
+// writeManaged writes content to path with a SHA marker embedded in the file.
+// Skills with YAML frontmatter get a pk_sha256 field; other files get an HTML comment on line 1.
+// If the file exists and has been modified by the user, it is skipped unless force is true.
+func writeManaged(path string, content string, stderr io.Writer, force bool) error {
+	update, reason := shouldUpdate(path, content, force)
+	if !update {
+		fmt.Fprintf(stderr, "  %s: %s\n", filepath.Base(path), reason)
+		return nil
+	}
+
+	// Compute SHA over the body that will be hashed (content after frontmatter for skills,
+	// content after the comment line for CLAUDE.md). Since embedSHA splits at the same
+	// boundaries as extractSHA, we hash the original content which becomes the body.
+	var sha string
+	if strings.HasPrefix(content, "---\n") {
+		// For skills: SHA covers the body after frontmatter.
+		closeIdx := strings.Index(content[4:], "\n---\n")
+		if closeIdx >= 0 {
+			body := content[4+closeIdx+5:]
+			sha = contentSHA(body)
+		} else {
+			sha = contentSHA(content)
+		}
+	} else {
+		// For non-frontmatter files: SHA covers the full content.
+		sha = contentSHA(content)
+	}
+
+	managed := embedSHA(content, sha)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("failed to create directory for %s: %w", path, err)
+	}
+	if err := os.WriteFile(path, []byte(managed), 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", path, err)
+	}
+	fmt.Fprintf(stderr, "  %s: %s\n", filepath.Base(path), reason)
+	return nil
+}
+
 // Run configures the project's .claude/settings.json to use plankit.
-func Run(projectDir string, stderr io.Writer, preserveMode string) error {
+func Run(projectDir string, stderr io.Writer, preserveMode string, force bool) error {
 	settingsDir := filepath.Join(projectDir, ".claude")
 	settingsFile := filepath.Join(settingsDir, "settings.json")
 
@@ -166,21 +302,27 @@ func Run(projectDir string, stderr io.Writer, preserveMode string) error {
 
 	fmt.Fprintf(stderr, "Configured plankit in %s (preserve mode: %s)\n", settingsFile, preserveMode)
 
+	// Install CLAUDE.md if none exists or if pristine (never forced — CLAUDE.md is user-owned once customized).
+	claudeTemplate, err := fs.ReadFile(templateFS, "template/CLAUDE.md")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded CLAUDE.md template: %w", err)
+	}
+	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
+	if err := writeManaged(claudeFile, string(claudeTemplate), stderr, false); err != nil {
+		return err
+	}
+
 	// Install skills.
 	skillsList, err := skills()
 	if err != nil {
 		return fmt.Errorf("failed to load embedded skills: %w", err)
 	}
+	fmt.Fprintln(stderr, "Skills:")
 	for _, skill := range skillsList {
-		skillDir := filepath.Join(settingsDir, "skills", skill.Name)
-		if err := os.MkdirAll(skillDir, 0755); err != nil {
-			return fmt.Errorf("failed to create skills directory: %w", err)
+		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
+		if err := writeManaged(skillFile, skill.Content, stderr, force); err != nil {
+			return err
 		}
-		skillFile := filepath.Join(skillDir, "SKILL.md")
-		if err := os.WriteFile(skillFile, []byte(skill.Content), 0644); err != nil {
-			return fmt.Errorf("failed to write skill %s: %w", skill.Name, err)
-		}
-		fmt.Fprintf(stderr, "Installed skill: /%s\n", skill.Name)
 	}
 
 	// Check if pk is in PATH.

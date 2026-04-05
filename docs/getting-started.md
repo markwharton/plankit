@@ -20,20 +20,24 @@ pk setup
 This creates:
 
 ```
-your-project/.claude/
-├── settings.json         # Hooks config + Bash(pk:*) permission
-└── skills/
-    ├── changelog/
-    │   └── SKILL.md      # /changelog skill
-    ├── preserve/
-    │   └── SKILL.md      # /preserve skill
-    ├── release/
-    │   └── SKILL.md      # /release skill
-    └── review/
-        └── SKILL.md      # /review skill
+your-project/
+├── CLAUDE.md                 # Universal guidelines (if none existed)
+└── .claude/
+    ├── settings.json         # Hooks config + Bash(pk:*) permission
+    └── skills/
+        ├── changelog/
+        │   └── SKILL.md      # /changelog skill
+        ├── init/
+        │   └── SKILL.md      # /init skill
+        ├── preserve/
+        │   └── SKILL.md      # /preserve skill
+        ├── release/
+        │   └── SKILL.md      # /release skill
+        └── review/
+            └── SKILL.md      # /review skill
 ```
 
-Restart Claude Code to apply changes.
+Restart Claude Code to apply changes. See [pk setup](pk-setup.md) for all options.
 
 ## Setup options
 
@@ -59,13 +63,13 @@ Re-run setup anytime to switch modes.
 - **Plan protection**: Once preserved, plans cannot be accidentally edited or overwritten by Claude Code.
 - **Duplicate detection**: If the same plan content has already been preserved today, it's skipped.
 
-## Copy a CLAUDE.md template
+## Customize your CLAUDE.md
 
-The `templates/` directory contains starter CLAUDE.md files:
+`pk setup` creates a universal CLAUDE.md with proven guidelines for Model Behavior and Development Standards. To add project-specific conventions:
 
-- `base.md` — Universal principles (start here)
-- `go.md` — Go-specific extensions
-- `typescript.md` — TypeScript/Node/Bun extensions
-- `azure.md` — Azure infrastructure, secrets, CI/CD
+1. Start Claude Code in your project
+2. Type `/init`
+3. Claude explores your project and proposes a Project Conventions section
+4. Review and approve the additions
 
-Copy `base.md` into your project as `CLAUDE.md` and extend it with relevant technology templates and your project-specific sections.
+For technology-specific guidelines, see the reference templates in `templates/`.

@@ -25,11 +25,13 @@ pk release          # Validate and push release to origin
 - `internal/release/` -- `pk release` (validate pre-flight checks, push tag to origin)
 - `internal/preserve/` -- `pk preserve` (PostToolUse: preserve approved plans)
 - `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)
-- `internal/setup/` -- `pk setup` (configure project .claude/settings.json)
+- `internal/setup/` -- `pk setup` (configure project .claude/settings.json, install CLAUDE.md and skills)
 - `internal/setup/skills/` -- Embedded skill files compiled into pk binary
+- `internal/setup/template/` -- Embedded universal CLAUDE.md template
 - `internal/update/` -- Version checker (GitHub releases, daily cache)
 - `internal/version/` -- Build version via ldflags
-- `templates/` -- Reference CLAUDE.md starters
+- `templates/` -- Reference CLAUDE.md extension examples
+- `templates/skills/` -- Example skills for builders to copy and adapt
 
 ## Conventions
 
@@ -42,6 +44,7 @@ pk release          # Validate and push release to origin
 - Tests use dependency injection (Config struct) and `t.TempDir()` for filesystem tests
 - When changing defaults, flags, or behavior: grep the repo for all references (README, docs/, CLI help, tests) before considering the change complete
 - Amending commits is OK if not yet pushed; otherwise create a new commit (never force push)
+- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). Higher-level docs (README, getting-started, methodology) link to command docs and only change when concepts change
 
 ## Hook Protocol
 
