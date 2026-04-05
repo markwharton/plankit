@@ -27,14 +27,10 @@ your-project/
     └── skills/
         ├── changelog/
         │   └── SKILL.md      # /changelog skill
-        ├── init/
-        │   └── SKILL.md      # /init skill
         ├── preserve/
         │   └── SKILL.md      # /preserve skill
-        ├── release/
-        │   └── SKILL.md      # /release skill
-        └── review/
-            └── SKILL.md      # /review skill
+        └── release/
+            └── SKILL.md      # /release skill
 ```
 
 Restart Claude Code to apply changes. See [pk setup](pk-setup.md) for all options.
@@ -65,11 +61,4 @@ Re-run setup anytime to switch modes.
 
 ## Customize your CLAUDE.md
 
-`pk setup` creates a universal CLAUDE.md with proven guidelines for Model Behavior and Development Standards. To add project-specific conventions:
-
-1. Start Claude Code in your project
-2. Type `/init`
-3. Claude explores your project and proposes a Project Conventions section
-4. Review and approve the additions
-
-For technology-specific guidelines, see the reference templates in `templates/`.
+`pk setup` creates a universal CLAUDE.md if your project doesn't have one — proven guidelines for Model Behavior and Development Standards. To add project-specific conventions, ask Claude to analyze your project and generate a `## Project Conventions` section — it will explore the codebase and propose conventions for your approval. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd) for details.

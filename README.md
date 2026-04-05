@@ -9,7 +9,7 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 - **Creates a universal CLAUDE.md** if your project doesn't have one — battle-tested guidelines that work as-is
 - **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed
 - **Protects preserved plans** from accidental edits by Claude Code
-- **Installs Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`, `/review`
+- **Installs Claude Code skills** — `/changelog`, `/release`, `/preserve`
 
 ## Install
 
@@ -49,17 +49,6 @@ Re-run setup anytime to switch.
 | `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |
 | `pk version` | Print version and check for updates — [details](docs/pk-version.md) |
-
-## Templates
-
-`pk setup` automatically creates a universal CLAUDE.md if your project doesn't have one. Use `/init` to add project-specific conventions.
-
-The `templates/` directory contains reference material for extending your setup:
-
-| Directory | Contents |
-|-----------|----------|
-| `templates/` | CLAUDE.md extension examples — `base.md`, `go.md`, `typescript.md`, `azure.md` |
-| `templates/skills/` | Example skills to copy and adapt — `smoke-test.md`, `validate.md` |
 
 ## Documentation
 

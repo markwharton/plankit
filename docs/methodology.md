@@ -47,13 +47,13 @@ The goal is a plan you're confident in before execution begins — discarding a 
 
 This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The universal template makes both explicit.
 
-Use `/init` to add project-specific conventions. Technology-specific reference templates (`go.md`, `typescript.md`, `azure.md`) are available in `templates/` for further customization.
+Ask Claude to analyze your project and generate a `## Project Conventions` section for your CLAUDE.md — it will explore the codebase and propose conventions for your approval. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd) for details.
 
 ## Why guidelines matter
 
 LLMs are non-deterministic. Without constraints, they reach for familiar patterns — regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. These tendencies produce code that looks right but drifts from the developer's intent.
 
-Every convention in the templates is a countermeasure to a specific tendency. "Data-first, model-first" prevents the LLM from discarding structure it was given. "Fail fast, no silent fallbacks" prevents it from masking problems with invented defaults. "All-or-nothing consistency" prevents partial updates across related files.
+Every convention in the guidelines is a countermeasure to a specific tendency. "Data-first, model-first" prevents the LLM from discarding structure it was given. "Fail fast, no silent fallbacks" prevents it from masking problems with invented defaults. "All-or-nothing consistency" prevents partial updates across related files.
 
 The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions — but mostly, deterministic outputs come from deliberate constraints.
 
@@ -70,18 +70,22 @@ The compounding effect: plan mode + guidelines + tests + self-testing creates a 
 
 ## Code review
 
-The `/review` skill runs a comprehensive code review:
+The Two-Pass Code Generation standard in CLAUDE.md encodes a pattern with two distinct roles: **generator** and **reviewer**. The same LLM plays both, but with different objectives. The first pass focuses on correctness and completeness — get it working. The second pass shifts perspective to look for DRY violations, missing abstractions, magic numbers, and unnecessary complexity. The developer directs both passes and decides what ships.
 
-```
-Code review: DRY violations, anti-patterns, design tokens, security.
-```
+This separation works because creation and criticism are different cognitive modes. Trying to optimize while generating leads to premature abstraction or paralysis. Reviewing after the fact, with working code in front of you, produces better judgement about what actually needs abstracting.
 
-This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist. The short prompt gives the LLM room to be comprehensive; the templates keep it from being wrong.
+Ask Claude to review code after generating it:
 
-Use it iteratively — run `/review` after generating code, after refactoring, or at the start of a session to improve an existing codebase. The two-pass approach (generate first, review second) works because it separates creation from criticism.
+> Code review: DRY violations, anti-patterns, design tokens, security.
+
+This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist. The short prompt gives the LLM room to be comprehensive; the guidelines keep it from being wrong.
+
+Use it iteratively — after generating code, after refactoring, or at the start of a session to improve an existing codebase.
+
+For frequent use, create a `/review` skill — see [Create your own skills](pk-setup.md#create-your-own-skills).
 
 ## Use what you build
 
-plankit follows its own guidelines. The same CLAUDE.md that `pk setup` creates for your project is what plankit uses itself — universal base plus project conventions added via `/init`. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
+plankit follows its own guidelines. The same CLAUDE.md that `pk setup` creates for your project is what plankit uses itself — universal base plus project conventions. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
 
 This is sometimes called "eating your own dog food", or dogfooding. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
