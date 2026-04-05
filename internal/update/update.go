@@ -3,9 +3,11 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,9 +22,17 @@ type CacheEntry struct {
 	Latest    string    `json:"latest"`
 }
 
-const updateTimeout = 2 * time.Second
-
-var updateClient = &http.Client{Timeout: updateTimeout}
+// updateClient forces IPv4 to avoid AAAA DNS lookup timeouts that block
+// Go's dual-stack resolver even when A records resolve instantly.
+var updateClient = &http.Client{
+	Timeout: 5 * time.Second,
+	Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+			return (&net.Dialer{Timeout: 2 * time.Second}).DialContext(ctx, "tcp4", addr)
+		},
+		TLSHandshakeTimeout: 2 * time.Second,
+	},
+}
 
 // Config holds injectable dependencies for testing.
 type Config struct {
