@@ -32,6 +32,12 @@ Plan-driven development uses Claude Code's plan mode as the foundation for AI-as
 - Quick fixes, typos, single-file changes
 - Exploratory work where you're still figuring out the question
 
+## Directing the plan
+
+Plan review is where the developer directs the outcome. Sometimes the plan isn't going in the right direction and that's frustrating. Frustration is a signal that the way you're directing needs to change. You can keep iterating — context windows are large enough now. You can stop and come back later with fresh perspective. Or you can discard the plan entirely.
+
+The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
+
 ## Guidelines
 
 `pk setup` installs a universal CLAUDE.md with guidelines split into two sections:
@@ -79,11 +85,3 @@ Use it iteratively — run `/review` after generating code, after refactoring, o
 plankit follows its own guidelines. The same CLAUDE.md that `pk setup` creates for your project is what plankit uses itself — universal base plus project conventions added via `/init`. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
 
 This is sometimes called "eating your own dog food." If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
-
-## Plan review
-
-Plans are drafts, not commitments. They improve through iteration.
-
-- **Push back on specifics.** Name what's wrong and why. "This section contradicts our convention X" is actionable. "I don't like it" isn't.
-- **Stay calm during review.** Frustration during plan review is normal — especially when details seem wrong or inconsistent — but counterproductive. The plan is a conversation, not a confrontation.
-- **Take the time needed.** Context is not the constraint it used to be. Invest in getting the plan right rather than rushing to approve.
