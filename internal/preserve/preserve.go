@@ -33,6 +33,8 @@ type Config struct {
 
 	// Notify outputs a systemMessage prompt without preserving.
 	Notify bool
+	// DryRun previews the preserve without writing, committing, or pushing.
+	DryRun bool
 	// CheckUpdate returns an update notice string, or "".
 	CheckUpdate func() string
 }
@@ -131,6 +133,18 @@ func Run(cfg Config) int {
 		return 0
 	}
 	filename := fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
+
+	// Dry-run mode: preview without writing, committing, or pushing.
+	if cfg.DryRun {
+		relPath := filepath.Join("docs", "plans", filename)
+		fmt.Fprintf(cfg.Stderr, "pk preserve --dry-run:\n")
+		fmt.Fprintf(cfg.Stderr, "  Plan:   %s\n", title)
+		fmt.Fprintf(cfg.Stderr, "  File:   %s\n", relPath)
+		fmt.Fprintf(cfg.Stderr, "  Commit: plan: %s [skip ci]\n", title)
+		fmt.Fprintf(cfg.Stderr, "  Push:   git push origin HEAD\n")
+		return 0
+	}
+
 	destFile := filepath.Join(destDir, filename)
 	if err := os.WriteFile(destFile, content, 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write plan: %v\n", err)

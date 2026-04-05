@@ -15,7 +15,7 @@ pk setup --project-dir /path/to/dir   # specify project directory
 
 1. **Configures `.claude/settings.json`** with PreToolUse and PostToolUse hooks, and adds `Bash(pk:*)` permission for skill execution.
 2. **Creates `CLAUDE.md`** from the universal template if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
-3. **Installs skills** to `.claude/skills/`: `/changelog`, `/init`, `/preserve`, `/release`, `/review`. User-modified skills are skipped unless `--force` is used.
+3. **Installs skills** to `.claude/skills/`: `/changelog`, `/preserve`, `/release`. User-modified skills are skipped unless `--force` is used.
 4. **Checks PATH** and warns if `pk` is not found.
 
 After setup, restart Claude Code to apply changes.
@@ -24,9 +24,55 @@ After setup, restart Claude Code to apply changes.
 
 The universal CLAUDE.md provides battle-tested guidelines for Model Behavior and Development Standards. On its own, it prevents the most common issues — scope creep, silent fallbacks, shortcuts without permission, untested changes. That's the floor.
 
-Run `/init` to add project-specific conventions — build commands, test runner, commit types, directory patterns. Without `/init`, Claude follows the rules but has to rediscover the project each session. With `/init`, it knows the project from the start.
+Add a `## Project Conventions` section to make Claude productive from the first message of every session. Without project conventions, Claude follows the rules but has to rediscover the project each session. With them, it knows the project from the start.
 
-Run `/init` again anytime to refresh conventions as the project evolves. The Project Conventions section will grow naturally through use — the base doesn't need to be perfect, it needs to be enough that the first session doesn't go off the rails.
+### Customize your CLAUDE.md
+
+After running `pk setup`, ask Claude to add project-specific conventions. You can paste the prompt below directly, or create it as a reusable `/init` skill (see [Create your own skills](#create-your-own-skills)).
+
+> Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
+>
+> Run this after `pk setup` to add project-specific conventions, or re-run anytime as the project evolves.
+>
+> **Steps:**
+>
+> 1. Read the existing CLAUDE.md. If it does not exist, stop and tell the user to run `pk setup` first.
+> 2. If a `## Project Conventions` section already exists, read it carefully — this is a refresh, not a blank slate. Preserve conventions that are still accurate, update what has changed, and add anything new.
+> 3. Explore the project to identify:
+>    - Primary language(s) and framework(s)
+>    - Build system and test runner
+>    - Directory structure and file organization
+>    - Existing conventions visible in code (naming, patterns, configuration)
+> 4. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point.
+> 5. Show the proposed section to the user and ask for confirmation before writing.
+>
+> **Rules:**
+>
+> - **Append only.** Do not modify the Model Behavior or Development Standards sections.
+> - If a `## Project Conventions` section already exists, replace it with the updated version — do not duplicate it.
+> - **Remove the pk SHA marker.** If the first line is `<!-- pk:sha256:... -->`, remove it. Once customized, the file is user-owned and the marker is stale.
+> - Keep conventions specific and actionable — not generic advice.
+> - Include the project's test command, build command, and any deployment patterns you discover.
+> - If the project uses `.changelog.json`, include the configured commit types.
+
+### Create your own skills
+
+Skills are markdown files in `.claude/skills/` that Claude Code discovers automatically. You can create skills for any workflow your project needs.
+
+A skill file uses YAML frontmatter for metadata and markdown for instructions:
+
+```markdown
+---
+name: my-skill
+description: What this skill does
+---
+
+Instructions for Claude to follow when the user invokes /my-skill.
+```
+
+Place the file at `.claude/skills/my-skill/SKILL.md` and restart Claude Code. Users invoke it with `/my-skill`.
+
+Skills work well for repeatable workflows — code review checklists, smoke tests, deployment procedures, project initialization. Keep the prompt focused: Claude understands broad terms like "DRY violations" and "anti-patterns" without needing exhaustive checklists.
 
 ## Preserve modes
 

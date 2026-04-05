@@ -554,6 +554,67 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("dry-run previews without writing or committing", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Dry Run Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "dry-run-test.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) {
+				// Only rev-parse should be called; no add/commit/push.
+				return "", nil
+			},
+			DryRun: true,
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		// Verify preview output on stderr.
+		output := stderr.String()
+		if !strings.Contains(output, "Dry Run Plan") {
+			t.Errorf("stderr = %q, want plan title", output)
+		}
+		if !strings.Contains(output, "docs/plans/2026-03-11-001-dry-run-plan.md") {
+			t.Errorf("stderr = %q, want destination path", output)
+		}
+		if !strings.Contains(output, "plan: Dry Run Plan [skip ci]") {
+			t.Errorf("stderr = %q, want commit message preview", output)
+		}
+
+		// Verify no file was written.
+		destFile := filepath.Join(projectDir, "docs", "plans", "2026-03-11-001-dry-run-plan.md")
+		if _, err := os.Stat(destFile); err == nil {
+			t.Error("dry-run should not write the plan file")
+		}
+
+		// Verify no stdout (no systemMessage).
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty in dry-run mode", stdout.String())
+		}
+	})
+
 	t.Run("update notice appended to systemMessage", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		plansDir := filepath.Join(tmpDir, ".claude", "plans")

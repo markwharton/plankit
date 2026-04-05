@@ -48,8 +48,8 @@
 
 ### Two-Pass Code Generation
 
-- **First pass:** Generate working code — DRY violations are acceptable.
-- **Second pass:** Refactor — add abstractions, remove magic numbers, create shared components.
+- **First pass:** Get it working — focus on correctness and completeness.
+- **Second pass:** Review — look for DRY violations, missing abstractions, magic numbers, and unnecessary complexity. Refactor what you find.
 - **Resist premature abstraction.** Three similar lines is better than the wrong abstraction. ([The Wrong Abstraction](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction))
 
 ### Security

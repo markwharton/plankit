@@ -5,7 +5,12 @@ description: Preserve the most recently approved plan to docs/plans/
 
 Preserve the most recently approved plan to docs/plans/ and commit it.
 
-Run the following command:
+First, preview with a dry run:
+
+pk preserve --dry-run
+
+Show the preview to the user and ask for confirmation before proceeding.
+If confirmed, run:
 
 pk preserve
 
