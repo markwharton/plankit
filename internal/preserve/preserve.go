@@ -151,7 +151,7 @@ func Run(cfg Config) int {
 	}
 
 	// Git commit.
-	commitMsg := fmt.Sprintf("plan: preserve approved plan -- %s [skip ci]", title)
+	commitMsg := fmt.Sprintf("plan: %s [skip ci]", title)
 	if _, err := cfg.GitExec(projectDir, "commit", "-m", commitMsg); err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: git commit failed: %v\n", err)
 		return 0
