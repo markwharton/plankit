@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.4.0] - 2026-04-06
+
+### Added
+
+- use plan: commit type for preserved plans, exclude from changelog (26b1e6d)
+- add --dry-run to pk preserve (32898aa)
+- add additionalContext to notify hook and elevate grep-before-done guideline (ca86724)
+
+### Fixed
+
+- force IPv4 in update checker to avoid AAAA DNS timeouts (c5f743b)
+- correct version ldflags case in CI and clean up code review findings (96e6790)
+- use %v for all error formatting in release.go (6128e2d)
+
+### Changed
+
+- simplify plan commit message to just the title (ac13310)
+- remove templates and non-core skills (init, review) (a3d29f9)
+
+### Documentation
+
+- restructure methodology and rewrite plan review section (aeb4449)
+- add dogfooding term to methodology (a1095b7)
+- document duplicate sequence numbers in team usage (657f181)
+
+### Maintenance
+
+- bump actions/upload-artifact from 4.6.2 to 7.0.0 (023ac22)
+- bump actions/download-artifact from 4.3.0 to 8.0.1 (4fd4858)
+- bump actions/checkout from 4.3.1 to 6.0.2 (386b3a0)
+- remove plan files for re-commit with plan: type (411b2bf)
+- bump actions/setup-go from 5.6.0 to 6.4.0 (5e7752c)
+- ignore stray pk binary in project root (194be67)
+
 ## [v0.3.0] - 2026-04-05
 
 ### Added
@@ -82,3 +116,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.1.0]: https://github.com/markwharton/plankit/compare/v0.0.0...v0.1.0
 [v0.2.0]: https://github.com/markwharton/plankit/compare/v0.1.0...v0.2.0
 [v0.3.0]: https://github.com/markwharton/plankit/compare/v0.2.0...v0.3.0
+[v0.4.0]: https://github.com/markwharton/plankit/compare/v0.3.0...v0.4.0
