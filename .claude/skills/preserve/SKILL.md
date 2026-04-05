@@ -1,12 +1,17 @@
 ---
 name: preserve
 description: Preserve the most recently approved plan to docs/plans/
-pk_sha256: ca645cd006a488ef61b241390ec992ab0f9b57c57e9a577982eb51c1c1d53dde
+pk_sha256: 5244e685cd27aac830b110b7b258ab796b4b8bf393304bc3b3f69640accb6a4f
 ---
 
 Preserve the most recently approved plan to docs/plans/ and commit it.
 
-Run the following command:
+First, preview with a dry run:
+
+pk preserve --dry-run
+
+Show the preview to the user and ask for confirmation before proceeding.
+If confirmed, run:
 
 pk preserve
 

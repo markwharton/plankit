@@ -552,6 +552,9 @@ func TestRun(t *testing.T) {
 		if !strings.Contains(stdout.String(), "/preserve") {
 			t.Errorf("stdout = %q, want slash command reference", stdout.String())
 		}
+		if !strings.Contains(stdout.String(), "additionalContext") {
+			t.Errorf("stdout = %q, want additionalContext for Claude", stdout.String())
+		}
 	})
 
 	t.Run("dry-run previews without writing or committing", func(t *testing.T) {

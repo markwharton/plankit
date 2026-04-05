@@ -93,7 +93,10 @@ func Run(cfg Config) int {
 	// Notify-only mode: output plan title, don't preserve.
 	if cfg.Notify {
 		title := extractTitle(string(content))
-		cfg.writeSystemMessage(fmt.Sprintf("Plan '%s' ready. Type /preserve to save it.", title))
+		cfg.writeHookResponse(
+			fmt.Sprintf("Plan '%s' ready. Type /preserve to save it.", title),
+			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /preserve to save it to docs/plans/.", title),
+		)
 		return 0
 	}
 
@@ -312,15 +315,35 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
+// hookResponse represents the JSON output for PostToolUse hooks.
+type hookResponse struct {
+	SystemMessage     string              `json:"systemMessage,omitempty"`
+	HookSpecificOutput *hookSpecificOutput `json:"hookSpecificOutput,omitempty"`
+}
+
+type hookSpecificOutput struct {
+	AdditionalContext string `json:"additionalContext,omitempty"`
+}
+
 // writeSystemMessage outputs a hook systemMessage JSON to stdout.
 // If CheckUpdate is configured and returns a notice, it is appended.
 func (cfg Config) writeSystemMessage(msg string) {
+	cfg.writeHookResponse(msg, "")
+}
+
+// writeHookResponse outputs a hook response with both systemMessage (shown to user)
+// and additionalContext (injected into Claude's next turn).
+func (cfg Config) writeHookResponse(msg, context string) {
 	if cfg.CheckUpdate != nil {
 		if notice := cfg.CheckUpdate(); notice != "" {
 			msg += " | " + notice
 		}
 	}
-	data, _ := json.Marshal(map[string]string{"systemMessage": msg})
+	resp := hookResponse{SystemMessage: msg}
+	if context != "" {
+		resp.HookSpecificOutput = &hookSpecificOutput{AdditionalContext: context}
+	}
+	data, _ := json.Marshal(resp)
 	fmt.Fprint(cfg.Stdout, string(data))
 }
 

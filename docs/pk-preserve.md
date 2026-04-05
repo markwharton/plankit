@@ -28,10 +28,10 @@ The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based
 ## Flags
 
 - **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. Used by the `/preserve` skill for confirmation before proceeding.
-- **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready.
+- **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready. The response includes `additionalContext` so Claude is aware of the plan and can inform the user.
 
 ## Hook protocol
 
 - **Input:** PostToolUse JSON on stdin (includes `tool_response` with the plan path).
-- **Output:** `{"systemMessage": "..."}` on stdout.
+- **Output:** `{"systemMessage": "..."}` on stdout (shown to user). In notify mode, also includes `{"hookSpecificOutput": {"additionalContext": "..."}}` to inject context into Claude's next turn.
 - **Exit code:** Always 0. Errors are reported via stderr or systemMessage.

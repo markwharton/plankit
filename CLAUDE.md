@@ -45,6 +45,7 @@
 ### All-or-Nothing Consistency
 
 - **Update every related location together.** No partial renames, no half-updated contracts. If you change it in one place, change it everywhere.
+- **Grep before done.** When fixing a pattern, grep the repo for all instances before considering it complete. One fix is not done until every occurrence is fixed.
 
 ### Two-Pass Code Generation
 
@@ -82,6 +83,8 @@ make lint           # Run go vet
 pk changelog        # Generate CHANGELOG.md, commit, and tag release
 pk release          # Validate and push release to origin
 ```
+
+- **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` drops a binary in the working directory; the Makefile routes output to `dist/`.
 
 ### Architecture
 
@@ -127,4 +130,4 @@ pk release          # Validate and push release to origin
 Claude Code hooks receive JSON on stdin and produce JSON on stdout:
 
 - **PreToolUse**: Output `{"decision":"block","reason":"..."}` + exit 0 to block. Exit 0 with no output to allow. Any non-zero exit (including command-not-found 127) is non-blocking.
-- **PostToolUse**: Output `{"systemMessage":"..."}` + exit 0 for feedback. Non-zero exit is a non-blocking error.
+- **PostToolUse**: Output `{"systemMessage":"..."}` + exit 0 for user-visible feedback. Use `{"hookSpecificOutput":{"additionalContext":"..."}}` to inject context into Claude's next turn. Both fields can be combined in one response. Non-zero exit is a non-blocking error.

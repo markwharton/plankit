@@ -45,6 +45,7 @@
 ### All-or-Nothing Consistency
 
 - **Update every related location together.** No partial renames, no half-updated contracts. If you change it in one place, change it everywhere.
+- **Grep before done.** When fixing a pattern, grep the repo for all instances before considering it complete. One fix is not done until every occurrence is fixed.
 
 ### Two-Pass Code Generation
 
