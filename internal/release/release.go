@@ -75,7 +75,7 @@ func Run(cfg Config) int {
 	// 3. Pre-flight: clean working tree.
 	status, err := cfg.GitExec("status", "--porcelain")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
 		return 1
 	}
 	if status != "" {
@@ -87,7 +87,7 @@ func Run(cfg Config) int {
 	// 4. Pre-flight: on expected branch.
 	branch, err := cfg.GitExec("branch", "--show-current")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git branch failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git branch failed: %v\n", err)
 		return 1
 	}
 	if branch != cfg.Branch {
@@ -99,19 +99,19 @@ func Run(cfg Config) int {
 	// 5. Pre-flight: not behind remote.
 	_, err = cfg.GitExec("fetch", "origin", cfg.Branch, "--quiet")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git fetch failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git fetch failed: %v\n", err)
 		return 1
 	}
 
 	mergeBase, err := cfg.GitExec("merge-base", "HEAD", "origin/"+cfg.Branch)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git merge-base failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git merge-base failed: %v\n", err)
 		return 1
 	}
 
 	remote, err := cfg.GitExec("rev-parse", "origin/" + cfg.Branch)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git rev-parse failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git rev-parse failed: %v\n", err)
 		return 1
 	}
 
@@ -129,7 +129,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "\n--- Running pre-release hook ---\n")
 		fmt.Fprintf(cfg.Stderr, "  %s\n", config.Hooks.PreRelease)
 		if err := cfg.RunScript(config.Hooks.PreRelease); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: pre-release hook failed: %s\n", err)
+			fmt.Fprintf(cfg.Stderr, "Error: pre-release hook failed: %v\n", err)
 			return 1
 		}
 		fmt.Fprintln(cfg.Stderr, "  Hook passed")
@@ -145,7 +145,7 @@ func Run(cfg Config) int {
 	fmt.Fprintf(cfg.Stderr, "\n--- Pushing to origin ---\n")
 	_, err = cfg.GitExec("push", "origin", cfg.Branch, tag)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git push failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", cfg.Branch, tag)
