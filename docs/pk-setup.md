@@ -14,8 +14,8 @@ pk setup --project-dir /path/to/dir   # specify project directory
 ## What it does
 
 1. **Configures `.claude/settings.json`** with PreToolUse and PostToolUse hooks, and adds `Bash(pk:*)` permission for skill execution.
-2. **Creates `CLAUDE.md`** from the universal template if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone.
-3. **Installs skills** to `.claude/skills/`: `/changelog`, `/init`, `/preserve`, `/release`, `/review`. Same update rules as CLAUDE.md — user-modified skills are not overwritten.
+2. **Creates `CLAUDE.md`** from the universal template if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
+3. **Installs skills** to `.claude/skills/`: `/changelog`, `/init`, `/preserve`, `/release`, `/review`. User-modified skills are skipped unless `--force` is used.
 4. **Checks PATH** and warns if `pk` is not found.
 
 After setup, restart Claude Code to apply changes.
@@ -37,19 +37,18 @@ Re-run setup anytime to switch modes.
 
 ## Managed file protection
 
-Files installed by `pk setup` include a SHA256 marker on the first line:
+Files installed by `pk setup` include a SHA256 integrity marker. The format depends on the file type:
 
-```
-<!-- pk:sha256:abc123... -->
-```
+- **CLAUDE.md** — HTML comment on the first line: `<!-- pk:sha256:... -->`
+- **Skills** — `pk_sha256` field in the YAML frontmatter
 
-On re-run, `pk setup` checks this marker:
+On re-run, `pk setup` checks the marker:
 
 - **File is pristine** (SHA matches) — updated to the latest version.
 - **File was modified by user** (SHA mismatch) — skipped with a warning.
 - **File has no marker** (not managed by pk) — skipped.
 
-Use `--force` to overwrite all managed skills regardless of modifications. CLAUDE.md is never force-overwritten — once customized (via `/init` or manually), it is user-owned.
+`--force` overrides this for skills only. CLAUDE.md is never force-overwritten.
 
 ## Flags
 
