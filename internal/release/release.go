@@ -53,7 +53,7 @@ func Run(cfg Config) int {
 	// 1. Find version tag at HEAD.
 	tagOutput, err := cfg.GitExec("tag", "--points-at", "HEAD")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %s\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
 		return 1
 	}
 

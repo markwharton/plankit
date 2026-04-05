@@ -44,7 +44,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          go build -ldflags "-s -w -X github.com/markwharton/plankit/internal/version.Version=${VERSION}" \
+          go build -ldflags "-s -w -X github.com/markwharton/plankit/internal/version.version=${VERSION}" \
             -o pk-${{ matrix.suffix }}${{ matrix.ext }} \
             ./cmd/pk
 

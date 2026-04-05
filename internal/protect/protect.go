@@ -5,6 +5,7 @@ package protect
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -12,12 +13,30 @@ import (
 	"github.com/markwharton/plankit/internal/hooks"
 )
 
+// Config holds the dependencies for the protect command.
+type Config struct {
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+	Env    func(string) string
+}
+
+// DefaultConfig returns a Config wired to real OS resources.
+func DefaultConfig() Config {
+	return Config{
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Env:    os.Getenv,
+	}
+}
+
 // Run reads a PreToolUse hook payload from stdin and blocks edits to docs/plans/.
 // Returns the process exit code (always 0 for hook commands).
-func Run(stdin io.Reader, stdout io.Writer, stderr io.Writer, env func(string) string) int {
-	input, err := hooks.ReadInput(stdin)
+func Run(cfg Config) int {
+	input, err := hooks.ReadInput(cfg.Stdin)
 	if err != nil {
-		fmt.Fprintf(stderr, "pk protect: failed to read input: %v\n", err)
+		fmt.Fprintf(cfg.Stderr, "pk protect: failed to read input: %v\n", err)
 		return 0
 	}
 
@@ -25,7 +44,7 @@ func Run(stdin io.Reader, stdout io.Writer, stderr io.Writer, env func(string) s
 		return 0
 	}
 
-	projectDir := env("CLAUDE_PROJECT_DIR")
+	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
 	if projectDir == "" {
 		projectDir = input.CWD
 	}
@@ -34,7 +53,7 @@ func Run(stdin io.Reader, stdout io.Writer, stderr io.Writer, env func(string) s
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, projectDir) {
-		fmt.Fprint(stdout, `{"decision":"block","reason":"docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation."}`)
+		fmt.Fprint(cfg.Stdout, `{"decision":"block","reason":"docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation."}`)
 	}
 
 	return 0

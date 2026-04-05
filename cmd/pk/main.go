@@ -41,7 +41,7 @@ func main() {
 	case "release":
 		runRelease(os.Args[2:])
 	case "protect":
-		os.Exit(protect.Run(os.Stdin, os.Stdout, os.Stderr, os.Getenv))
+		os.Exit(protect.Run(protect.DefaultConfig()))
 	case "setup":
 		runSetup(os.Args[2:])
 	case "version", "--version", "-v":

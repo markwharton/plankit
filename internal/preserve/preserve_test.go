@@ -31,9 +31,9 @@ func TestSlugify(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			got := Slugify(tt.title, tt.maxLen)
+			got := slugify(tt.title, tt.maxLen)
 			if got != tt.want {
-				t.Errorf("Slugify(%q, %d) = %q, want %q", tt.title, tt.maxLen, got, tt.want)
+				t.Errorf("slugify(%q, %d) = %q, want %q", tt.title, tt.maxLen, got, tt.want)
 			}
 		})
 	}

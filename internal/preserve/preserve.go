@@ -83,7 +83,9 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Skip trivially short plans.
+	// Skip trivially short plans (< 50 bytes). Real plans have a title,
+	// context section, and at least a few lines of substance. Plans below
+	// this threshold are typically empty templates or aborted drafts.
 	if len(content) < 50 {
 		return 0
 	}
@@ -117,7 +119,7 @@ func Run(cfg Config) int {
 	// Extract title and build destination path.
 	title := extractTitle(string(content))
 	datePrefix := cfg.Now().Format("2006-01-02")
-	slug := Slugify(title, 60)
+	slug := slugify(title, 60)
 	destDir := filepath.Join(projectDir, "docs", "plans")
 
 	// Ensure directory exists before scanning for sequence number.
@@ -200,8 +202,8 @@ func extractTitle(content string) string {
 	return "untitled plan"
 }
 
-// Slugify converts a title to a URL-friendly slug.
-func Slugify(title string, maxLen int) string {
+// slugify converts a title to a URL-friendly slug.
+func slugify(title string, maxLen int) string {
 	var b strings.Builder
 	prevHyphen := false
 

@@ -75,14 +75,19 @@ func TestRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			env := func(key string) string {
-				if key == "CLAUDE_PROJECT_DIR" {
-					return tt.projectDir
-				}
-				return ""
+			cfg := Config{
+				Stdin:  strings.NewReader(tt.json),
+				Stdout: &stdout,
+				Stderr: &stderr,
+				Env: func(key string) string {
+					if key == "CLAUDE_PROJECT_DIR" {
+						return tt.projectDir
+					}
+					return ""
+				},
 			}
 
-			exitCode := Run(strings.NewReader(tt.json), &stdout, &stderr, env)
+			exitCode := Run(cfg)
 
 			if exitCode != 0 {
 				t.Errorf("exit code = %d, want 0", exitCode)
