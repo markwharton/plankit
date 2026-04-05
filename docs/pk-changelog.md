@@ -27,11 +27,9 @@ Git tags are the single version source. If no tags exist, `pk changelog` exits w
 
 ```
 Error: no version tags found
-  To start from scratch:     git tag v0.0.0
-  To match existing version: git tag v1.2.3
+  To start from scratch: git tag v0.0.0 && git push origin v0.0.0
+  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)
 ```
-
-Push the baseline tag so comparison links work: `git push origin v0.0.0`
 
 ## Version bump
 

@@ -148,8 +148,8 @@ func Run(cfg Config) int {
 	latestTag := firstLine(tagOutput)
 	if latestTag == "" {
 		fmt.Fprintln(cfg.Stderr, "Error: no version tags found")
-		fmt.Fprintln(cfg.Stderr, "  To start from scratch:     git tag v0.0.0")
-		fmt.Fprintln(cfg.Stderr, "  To match existing version: git tag v1.2.3")
+		fmt.Fprintln(cfg.Stderr, "  To start from scratch: git tag v0.0.0 && git push origin v0.0.0")
+		fmt.Fprintln(cfg.Stderr, "  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)")
 		return 1
 	}
 	baseVersion, ok := parseVersion(latestTag)
