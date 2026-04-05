@@ -22,10 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 - warn against commits between changelog and release steps (87273a9)
-- preserve approved plan -- Pin GitHub Actions to SHAs + Dependabot for Actions [skip ci] (26b88c2)
 - add Known Limitations section for Ultraplan compatibility (55404ef)
 - clarify install-to-setup flow and reorder methodology sections (926cfd2)
-- preserve approved plan -- Plan: Expand plankit setup with universal CLAUDE.md, /init skill, and skill templates [skip ci] (9112575)
 - merge universal guidelines into plankit's own CLAUDE.md (74a3bee)
 - add 'use what you build' section to methodology (e345d22)
 
@@ -54,7 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 
 - add changelog documentation and fix skill file consistency (4999270)
-- preserve approved plan -- Template extensibility + `pk release` [skip ci] (7864046)
 - articulate why guidelines matter for LLM-assisted development (be8f171)
 - connect unbounded prompts to template constraints in methodology (5da5a5f)
 

@@ -121,7 +121,7 @@ pk release          # Validate and push release to origin
 ### Commits and Releases
 
 - Amending commits is OK if not yet pushed; otherwise create a new commit (never force push)
-- Commit types: `feat`, `fix`, `deprecate`, `revert`, `security`, `refactor`, `perf`, `docs`, `chore`, `test`, `build`, `ci`, `style` (see `.changelog.json`)
+- Commit types: `feat`, `fix`, `deprecate`, `revert`, `security`, `refactor`, `perf`, `docs`, `chore`, `test`, `build`, `ci`, `style` (see `.changelog.json`); `plan` is used by pk preserve and excluded from changelog
 - GitHub Actions are pinned to commit SHAs, not mutable tags
 
 ### Hook Protocol

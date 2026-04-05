@@ -171,7 +171,7 @@ func TestRun(t *testing.T) {
 			"rev-parse --is-inside-work-tree",
 			"add docs/plans/2026-03-11-001-test-plan.md",
 			"diff --cached --quiet",
-			"commit -m docs: preserve approved plan -- Test Plan [skip ci]",
+			"commit -m plan: preserve approved plan -- Test Plan [skip ci]",
 			"push origin HEAD",
 		}
 		if len(gitCalls) != len(wantCalls) {
