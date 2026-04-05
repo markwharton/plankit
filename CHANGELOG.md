@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.3.0] - 2026-04-05
+
+### Added
+
+- add --verbose flag to pk version for build details (1c82c00)
+- add universal CLAUDE.md, /init skill, managed file protection, and command docs (1ea9324)
+
+### Fixed
+
+- remove duplicate changelog section and guard against duplicate ref links (0e623a1)
+- pin GitHub Actions to commit SHAs and add Dependabot for actions (6e34030)
+- default preserve mode to manual (opt-in for auto) (5bafe8f)
+- add push hint to no-tags error message in pk changelog (4ba0936)
+
+### Documentation
+
+- warn against commits between changelog and release steps (87273a9)
+- preserve approved plan -- Pin GitHub Actions to SHAs + Dependabot for Actions [skip ci] (26b88c2)
+- add Known Limitations section for Ultraplan compatibility (55404ef)
+- clarify install-to-setup flow and reorder methodology sections (926cfd2)
+- preserve approved plan -- Plan: Expand plankit setup with universal CLAUDE.md, /init skill, and skill templates [skip ci] (9112575)
+- merge universal guidelines into plankit's own CLAUDE.md (74a3bee)
+- add 'use what you build' section to methodology (e345d22)
+
+### Maintenance
+
+- add preserve compatibility tests for root home and JSON tool_response (bc71e90)
+- add changelog and release skills from pk setup (8ef944e)
+- update installed skills via pk setup --force (c223b4e)
+
 ## [v0.2.0] - 2026-04-04
 
 ### Added
@@ -54,3 +84,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 [v0.1.0]: https://github.com/markwharton/plankit/compare/v0.0.0...v0.1.0
 [v0.2.0]: https://github.com/markwharton/plankit/compare/v0.1.0...v0.2.0
+[v0.3.0]: https://github.com/markwharton/plankit/compare/v0.2.0...v0.3.0
