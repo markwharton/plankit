@@ -37,3 +37,7 @@ The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based
 - **Input:** PostToolUse JSON on stdin (includes `tool_response` with the plan path).
 - **Output:** `{"systemMessage": "..."}` on stdout (shown to user). In notify mode, also includes `{"hookSpecificOutput": {"additionalContext": "..."}}` to inject context into Claude's next turn.
 - **Exit code:** Always 0. Errors are reported via stderr or systemMessage.
+
+## Environment
+
+- **CLAUDE_PROJECT_DIR** — Used to resolve the project root. Falls back to `cwd` from the hook payload.

@@ -1,6 +1,6 @@
 ---
 name: changelog
-description: Update CHANGELOG.md from git history, commit, and tag a release
+description: Update CHANGELOG.md from git history, commit, and tag version
 pk_sha256: 8284d51d1c83b7f8b8c98c3a8329946980144ddacbc84c6b59e5d097c0b0e834
 ---
 

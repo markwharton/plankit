@@ -5,7 +5,8 @@
 //
 // Commands:
 //
-//	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag
+//	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag version
+//	pk guard       PreToolUse hook: block git mutations on protected branches
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Validate and push release to origin
@@ -171,7 +172,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
-	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag release")
+	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--branch main]")
 	fmt.Fprintln(os.Stderr, "                                      Validate and push release to origin")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")

@@ -1,6 +1,6 @@
 ---
 name: changelog
-description: Update CHANGELOG.md from git history, commit, and tag a release
+description: Update CHANGELOG.md from git history, commit, and tag version
 ---
 
 Generate a changelog release using pk.

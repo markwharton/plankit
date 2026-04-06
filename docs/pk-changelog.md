@@ -1,6 +1,6 @@
 # pk changelog
 
-Generate CHANGELOG.md from conventional commits, commit, and tag a release.
+Generate CHANGELOG.md from conventional commits, commit, and tag.
 
 ## Usage
 
@@ -92,6 +92,7 @@ If `types` is omitted or empty, defaults are used:
 | `build` | Maintenance |
 | `ci` | Maintenance |
 | `style` | Maintenance |
+| `plan` | Plans (hidden) |
 
 ### versionFiles
 

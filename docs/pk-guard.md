@@ -47,3 +47,7 @@ The `/init` skill can configure guard for you. When you specify protected branch
 - **Input:** PreToolUse JSON on stdin (includes `tool_input.command` for Bash).
 - **Output:** `{"decision":"block","reason":"..."}` on stdout to block. No output to allow.
 - **Exit code:** Always 0.
+
+## Environment
+
+- **CLAUDE_PROJECT_DIR** — Used to resolve the project root. Falls back to `cwd` from the hook payload.
