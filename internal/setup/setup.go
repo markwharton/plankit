@@ -262,13 +262,11 @@ func Run(projectDir string, stderr io.Writer, preserveMode string, force bool) e
 		settings = make(map[string]json.RawMessage)
 	}
 
-	// Marshal the hooks config.
+	// Merge plankit hooks with any existing user hooks.
 	hookConfig := buildHookConfig(preserveMode)
-	hooksJSON, err := json.Marshal(hookConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal hooks config: %w", err)
+	if err := mergeHooks(settings, hookConfig); err != nil {
+		return fmt.Errorf("failed to merge hooks: %w", err)
 	}
-	settings["hooks"] = json.RawMessage(hooksJSON)
 
 	// Add pk permission for skill execution.
 	if err := addPermission(settings, "Bash(pk:*)"); err != nil {
@@ -377,4 +375,51 @@ func addPermission(settings map[string]json.RawMessage, perm string) error {
 	settings["permissions"] = json.RawMessage(permsJSON)
 
 	return nil
+}
+
+// mergeHooks merges plankit hooks into existing settings, preserving user hooks.
+// Existing hooks with commands starting with "pk " are replaced; all others are kept.
+func mergeHooks(settings map[string]json.RawMessage, newHooks HooksConfig) error {
+	var existing HooksConfig
+	if raw, ok := settings["hooks"]; ok {
+		if err := json.Unmarshal(raw, &existing); err != nil {
+			return err
+		}
+	}
+
+	merged := HooksConfig{
+		PreToolUse:  mergeHookCategory(existing.PreToolUse, newHooks.PreToolUse),
+		PostToolUse: mergeHookCategory(existing.PostToolUse, newHooks.PostToolUse),
+	}
+
+	hooksJSON, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	settings["hooks"] = json.RawMessage(hooksJSON)
+	return nil
+}
+
+// mergeHookCategory removes plankit hooks from existing entries and appends new plankit entries.
+func mergeHookCategory(existing, plankit []HookEntry) []HookEntry {
+	var result []HookEntry
+	for _, entry := range existing {
+		filtered := filterNonPlankitHooks(entry.Hooks)
+		if len(filtered) > 0 {
+			entry.Hooks = filtered
+			result = append(result, entry)
+		}
+	}
+	return append(result, plankit...)
+}
+
+// filterNonPlankitHooks returns hooks whose command does not start with "pk ".
+func filterNonPlankitHooks(hooks []Hook) []Hook {
+	var result []Hook
+	for _, h := range hooks {
+		if !strings.HasPrefix(h.Command, "pk ") {
+			result = append(result, h)
+		}
+	}
+	return result
 }

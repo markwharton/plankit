@@ -111,6 +111,11 @@ Lifecycle hooks that run as shell commands during the release process. The `VERS
 
 If a hook fails, the release is aborted.
 
+## Flags
+
+- **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
+- **--dry-run** — Preview the changelog output without writing, committing, or tagging.
+
 ## Comparison links
 
 `pk changelog` appends markdown reference-style links at the bottom of CHANGELOG.md, linking each version heading to its GitHub comparison page:

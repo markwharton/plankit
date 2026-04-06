@@ -167,7 +167,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag release")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--branch main]")
 	fmt.Fprintln(os.Stderr, "                                      Validate and push release to origin")
-	fmt.Fprintln(os.Stderr, "  pk setup [--project-dir <dir>] [--preserve auto|manual]")
+	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
 	fmt.Fprintln(os.Stderr, "")

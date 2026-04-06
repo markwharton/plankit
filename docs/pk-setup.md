@@ -7,13 +7,13 @@ Configure a project's hooks, skills, and CLAUDE.md for use with plankit.
 ```bash
 pk setup                              # default: manual preserve mode
 pk setup --preserve auto              # auto-preserve plans on ExitPlanMode
-pk setup --force                      # overwrite all managed files
 pk setup --project-dir /path/to/dir   # specify project directory
+pk setup --force                      # overwrite all managed skills
 ```
 
-## What it does
+## How it works
 
-1. **Configures `.claude/settings.json`** with PreToolUse and PostToolUse hooks, and adds `Bash(pk:*)` permission for skill execution.
+1. **Configures `.claude/settings.json`** with PreToolUse and PostToolUse hooks, and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** from the universal template if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
 3. **Installs skills** to `.claude/skills/`: `/changelog`, `/preserve`, `/release`. User-modified skills are skipped unless `--force` is used.
 4. **Checks PATH** and warns if `pk` is not found.

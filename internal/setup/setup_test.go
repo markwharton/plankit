@@ -358,6 +358,165 @@ func TestRun_manualMode(t *testing.T) {
 	}
 }
 
+func TestMergeHooks_freshSettings(t *testing.T) {
+	settings := make(map[string]json.RawMessage)
+	hooks := buildHookConfig("manual")
+
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var result HooksConfig
+	json.Unmarshal(settings["hooks"], &result)
+
+	if len(result.PreToolUse) != 2 {
+		t.Errorf("PreToolUse = %d entries, want 2", len(result.PreToolUse))
+	}
+	if len(result.PostToolUse) != 1 {
+		t.Errorf("PostToolUse = %d entries, want 1", len(result.PostToolUse))
+	}
+}
+
+func TestMergeHooks_existingUserHooks(t *testing.T) {
+	existing := `{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-checker","timeout":5}]}]}`
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(existing),
+	}
+	hooks := buildHookConfig("manual")
+
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var result HooksConfig
+	json.Unmarshal(settings["hooks"], &result)
+
+	// User's Bash hook + plankit's Edit and Write hooks.
+	if len(result.PreToolUse) != 3 {
+		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
+	}
+
+	// Verify user hook is first (preserved before plankit entries).
+	if result.PreToolUse[0].Matcher != "Bash" {
+		t.Errorf("first PreToolUse matcher = %q, want Bash", result.PreToolUse[0].Matcher)
+	}
+	if result.PreToolUse[0].Hooks[0].Command != "my-checker" {
+		t.Errorf("first hook command = %q, want my-checker", result.PreToolUse[0].Hooks[0].Command)
+	}
+}
+
+func TestMergeHooks_existingPlankitHooks(t *testing.T) {
+	// Simulate old plankit hooks (e.g., from a previous pk setup with auto mode).
+	existing := `{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"pk protect","timeout":5}]}],"PostToolUse":[{"matcher":"ExitPlanMode","hooks":[{"type":"command","command":"pk preserve","async":true,"timeout":60}]}]}`
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(existing),
+	}
+	// Re-setup with manual mode — should replace old plankit hooks.
+	hooks := buildHookConfig("manual")
+
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var result HooksConfig
+	json.Unmarshal(settings["hooks"], &result)
+
+	// Should have plankit's 2 PreToolUse entries (old one removed, new ones added).
+	if len(result.PreToolUse) != 2 {
+		t.Errorf("PreToolUse = %d entries, want 2", len(result.PreToolUse))
+	}
+
+	// PostToolUse should have the manual mode hook (--notify), not the old auto one.
+	if len(result.PostToolUse) != 1 {
+		t.Fatalf("PostToolUse = %d entries, want 1", len(result.PostToolUse))
+	}
+	if !strings.Contains(result.PostToolUse[0].Hooks[0].Command, "--notify") {
+		t.Errorf("PostToolUse command = %q, want --notify", result.PostToolUse[0].Hooks[0].Command)
+	}
+}
+
+func TestMergeHooks_mixedHooks(t *testing.T) {
+	// An entry with both a plankit hook and a user hook on the same matcher.
+	existing := `{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"pk protect","timeout":5},{"type":"command","command":"my-linter","timeout":10}]}]}`
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(existing),
+	}
+	hooks := buildHookConfig("manual")
+
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var result HooksConfig
+	json.Unmarshal(settings["hooks"], &result)
+
+	// Should have: user's Edit entry (my-linter only) + plankit's Edit + plankit's Write = 3.
+	if len(result.PreToolUse) != 3 {
+		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
+	}
+
+	// First entry should be the user's surviving hook.
+	if result.PreToolUse[0].Matcher != "Edit" {
+		t.Errorf("first matcher = %q, want Edit", result.PreToolUse[0].Matcher)
+	}
+	if len(result.PreToolUse[0].Hooks) != 1 {
+		t.Fatalf("first entry hooks = %d, want 1", len(result.PreToolUse[0].Hooks))
+	}
+	if result.PreToolUse[0].Hooks[0].Command != "my-linter" {
+		t.Errorf("first hook command = %q, want my-linter", result.PreToolUse[0].Hooks[0].Command)
+	}
+}
+
+func TestRun_existingHooks(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(settingsDir, 0755)
+
+	existing := `{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-checker","timeout":5}]}]}}`
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	os.WriteFile(settingsFile, []byte(existing), 0644)
+
+	var stderr bytes.Buffer
+	if err := Run(projectDir, &stderr, "manual", false); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	data, _ := os.ReadFile(settingsFile)
+	var settings map[string]json.RawMessage
+	json.Unmarshal(data, &settings)
+
+	var hooks HooksConfig
+	json.Unmarshal(settings["hooks"], &hooks)
+
+	// User's Bash hook should survive.
+	found := false
+	for _, entry := range hooks.PreToolUse {
+		if entry.Matcher == "Bash" {
+			for _, h := range entry.Hooks {
+				if h.Command == "my-checker" {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Errorf("user's Bash hook lost after pk setup, PreToolUse = %+v", hooks.PreToolUse)
+	}
+
+	// Plankit hooks should also be present.
+	hasProtect := false
+	for _, entry := range hooks.PreToolUse {
+		for _, h := range entry.Hooks {
+			if h.Command == "pk protect" {
+				hasProtect = true
+			}
+		}
+	}
+	if !hasProtect {
+		t.Error("plankit protect hook missing after merge")
+	}
+}
+
 func TestContentSHA(t *testing.T) {
 	content := "hello world\n"
 	sha := contentSHA(content)

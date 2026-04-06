@@ -10,21 +10,9 @@ pk release --dry-run              # validate without pushing
 pk release --branch develop       # release from a non-main branch
 ```
 
-## Workflow
+## How it works
 
-`pk release` is the second step after `pk changelog`:
-
-```bash
-pk changelog              # scan commits, write CHANGELOG.md, commit, tag
-pk release --dry-run      # validate (optional)
-pk release                # push branch + tag to origin
-```
-
-Run these commands in sequence — any commits between `pk changelog` and `pk release` will move HEAD past the version tag, causing the release to fail.
-
-For any project using `pk`, this replaces manual `git push --follow-tags` with pre-flight validation.
-
-## What it does
+`pk release` is the second step after `pk changelog`. Run them in sequence — any commits between `pk changelog` and `pk release` will move HEAD past the version tag, causing the release to fail.
 
 1. **Find version tag at HEAD** — looks for a `v*` tag created by `pk changelog`. Exits with an error if none exists.
 2. **Validate semver format** — ensures the tag matches `vX.Y.Z`.
