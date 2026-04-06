@@ -1,4 +1,7 @@
 {
+  "guard": {
+    "protectedBranches": ["main"]
+  },
   "changelog": {
     "types": [
       {"type": "feat", "section": "Added"},
