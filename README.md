@@ -6,10 +6,11 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 
 ## What it does
 
-- **Creates a universal CLAUDE.md** if your project doesn't have one — battle-tested guidelines that work as-is
+- **Creates CLAUDE.md** with critical rules, and installs detailed guidelines as `.claude/rules/`
+- **Guards protected branches** — blocks git mutations on configured branches via hooks
 - **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed to git
 - **Protects preserved plans** from accidental edits by Claude Code
-- **Installs Claude Code skills** — `/changelog`, `/release`, `/preserve`
+- **Installs Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`
 
 ## Install
 
@@ -46,6 +47,7 @@ Re-run setup anytime to switch.
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md — [details](docs/pk-setup.md) |
 | `pk changelog` | Generate changelog, commit, and tag — [details](docs/pk-changelog.md) |
 | `pk release` | Validate and push release — [details](docs/pk-release.md) |
+| `pk guard` | Block git mutations on protected branches — [details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |
 | `pk version` | Print version and check for updates — [details](docs/pk-version.md) |
@@ -55,6 +57,7 @@ Re-run setup anytime to switch.
 - [Getting Started](docs/getting-started.md) — install, setup, first run
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
+- [Resources](docs/resources.md) — Claude Code best practices, git references
 
 ## Known Limitations
 

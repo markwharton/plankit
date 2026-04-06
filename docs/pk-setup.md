@@ -31,8 +31,6 @@ Add a `## Project Conventions` section to make Claude productive from the first 
 
 After running `pk setup`, run `/init` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, asks about branch protection, and proposes a `## Project Conventions` section for your approval.
 
-For more on writing effective CLAUDE.md files, see [Best practices](https://code.claude.com/docs/en/best-practices) and [How Claude remembers your project](https://code.claude.com/docs/en/memory).
-
 ### Create your own skills
 
 Skills are markdown files in `.claude/skills/` that Claude Code discovers automatically. You can create skills for any workflow your project needs.
