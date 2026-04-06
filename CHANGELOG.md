@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.5.0] - 2026-04-07
+
+### Added
+
+- broaden init prompt to discover business and domain rules (d7ae137)
+- default pk preserve to commit-only, add --push flag (aa039a4)
+- add plan as hidden commit type in changelog config (1f80bd6)
+- slim CLAUDE.md template, move guidelines to .claude/rules/ (e754db8)
+- add pk guard to block git mutations on protected branches (063c834)
+- ship /init as managed skill, remove inline prompt from docs (c047940)
+- add project conventions and guard config for protected branches (55a993d)
+
+### Fixed
+
+- merge hooks instead of replacing in pk setup (4319731)
+- show skill name in setup output, apply new template and hooks (eef51e4)
+
+### Changed
+
+- rename .changelog.json to .pk.json with nested structure (123e19c)
+
+### Documentation
+
+- add release skill guardrail and documentation conventions (29d6347)
+- add plankit.life landing page and GitHub Pages deployment (01fadea)
+- add commit/push guideline and fix convention format wording (0b0bbad)
+- add Benjamin Franklin quote to site references (234de37)
+- list plan as a hidden type in CLAUDE.md conventions (30381e4)
+- add pk guard documentation and update architecture (1330f1b)
+- add resources.md for external references (01209af)
+- add rules conversation with Claude Code self-assessment (a48e4f6)
+- fix completeness and consistency across pk command docs (3e0adcd)
+
 ## [v0.4.0] - 2026-04-06
 
 ### Added
@@ -117,3 +150,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.2.0]: https://github.com/markwharton/plankit/compare/v0.1.0...v0.2.0
 [v0.3.0]: https://github.com/markwharton/plankit/compare/v0.2.0...v0.3.0
 [v0.4.0]: https://github.com/markwharton/plankit/compare/v0.3.0...v0.4.0
+[v0.5.0]: https://github.com/markwharton/plankit/compare/v0.4.0...v0.5.0
