@@ -233,6 +233,13 @@ func TestIsGitMutation(t *testing.T) {
 		{"ls -la", false},
 		{"git commit", true},
 		{"git push", true},
+		// Compound commands.
+		{"git checkout main && git merge dev", true},
+		{"git status && git commit -m 'test'", true},
+		{"git log; git push origin main", true},
+		{"git checkout main || git merge dev", true},
+		{"git status && git log", false},
+		{"echo hello && ls -la", false},
 	}
 
 	for _, tt := range tests {

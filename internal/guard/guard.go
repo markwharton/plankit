@@ -99,12 +99,39 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// isGitMutation checks if the command is a git operation that mutates the branch.
+// isGitMutation checks if any subcommand in a (possibly compound) command
+// is a git operation that mutates the branch. Splits on &&, ||, and ;
+// to handle chained commands like "git checkout main && git merge dev".
 func isGitMutation(command string) bool {
-	// Normalize: trim leading whitespace, handle chained commands.
-	cmd := strings.TrimSpace(command)
+	for _, sub := range splitShellCommands(command) {
+		if isGitMutationSingle(sub) {
+			return true
+		}
+	}
+	return false
+}
 
-	// Check for git commands that mutate the branch.
+// splitShellCommands splits a command string on shell operators (&&, ||, ;).
+func splitShellCommands(command string) []string {
+	// Replace operators with a common delimiter, then split.
+	s := command
+	s = strings.ReplaceAll(s, "&&", "\x00")
+	s = strings.ReplaceAll(s, "||", "\x00")
+	s = strings.ReplaceAll(s, ";", "\x00")
+	parts := strings.Split(s, "\x00")
+
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+// isGitMutationSingle checks if a single command is a git mutation.
+func isGitMutationSingle(cmd string) bool {
 	mutations := []string{
 		"git commit",
 		"git push",

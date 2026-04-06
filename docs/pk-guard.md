@@ -9,8 +9,8 @@ Block git mutations on protected branches.
 ## How it works
 
 1. Reads the Bash command from the hook payload.
-2. Checks if the command is a git mutation (`commit`, `push`, `merge`, `rebase`).
-3. If it is, reads the `guard.protectedBranches` array from `.pk.json`.
+2. Splits compound commands (`&&`, `||`, `;`) and checks each subcommand for git mutations (`commit`, `push`, `merge`, `rebase`).
+3. If any subcommand is a mutation, reads the `guard.protectedBranches` array from `.pk.json`.
 4. Gets the current branch via `git rev-parse --abbrev-ref HEAD`.
 5. If the current branch is in the protected list, blocks the operation.
 
