@@ -280,8 +280,19 @@ func writeManaged(path string, content string, stderr io.Writer, force bool) err
 	if err := os.WriteFile(path, []byte(managed), 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", path, err)
 	}
-	fmt.Fprintf(stderr, "  %s: %s\n", filepath.Base(path), reason)
+	fmt.Fprintf(stderr, "  %s: %s\n", displayName(path), reason)
 	return nil
+}
+
+// displayName returns a short display name for a managed file path.
+// Uses parent/file for skills (e.g., "init/SKILL.md") and just the filename otherwise.
+func displayName(path string) string {
+	dir := filepath.Base(filepath.Dir(path))
+	base := filepath.Base(path)
+	if base == "SKILL.md" {
+		return dir + "/" + base
+	}
+	return base
 }
 
 // Run configures the project's .claude/settings.json to use plankit.

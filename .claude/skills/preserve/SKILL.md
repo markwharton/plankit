@@ -1,7 +1,7 @@
 ---
 name: preserve
 description: Preserve the most recently approved plan to docs/plans/
-pk_sha256: 5244e685cd27aac830b110b7b258ab796b4b8bf393304bc3b3f69640accb6a4f
+pk_sha256: f532434f2bace0307a64197c1b0cee9b5a890c5e5858e83b14ceb547bd71183d
 ---
 
 Preserve the most recently approved plan to docs/plans/ and commit it.
@@ -14,5 +14,7 @@ Show the preview to the user and ask for confirmation before proceeding.
 If confirmed, run:
 
 pk preserve
+
+This commits the plan locally. Do not push — the user decides when to push.
 
 Report the result to the user.
