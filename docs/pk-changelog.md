@@ -41,24 +41,26 @@ The bump is auto-detected from conventional commits:
 
 Override with `--bump major|minor|patch`.
 
-## .changelog.json
+## .pk.json
 
-Optional configuration file in the project root. All fields are optional.
+Changelog configuration lives under the `changelog` key in `.pk.json`. All fields are optional.
 
 ```json
 {
-  "types": [
-    {"type": "feat", "section": "Added"},
-    {"type": "fix", "section": "Fixed"},
-    {"type": "docs", "hidden": true}
-  ],
-  "versionFiles": [
-    {"path": "package.json", "type": "json"},
-    {"path": "package-lock.json", "type": "json"}
-  ],
-  "hooks": {
-    "postVersion": "node -e \"...propagate version...\"",
-    "preCommit": "npm install --package-lock-only"
+  "changelog": {
+    "types": [
+      {"type": "feat", "section": "Added"},
+      {"type": "fix", "section": "Fixed"},
+      {"type": "docs", "hidden": true}
+    ],
+    "versionFiles": [
+      {"path": "package.json", "type": "json"},
+      {"path": "package-lock.json", "type": "json"}
+    ],
+    "hooks": {
+      "postVersion": "node -e \"...propagate version...\"",
+      "preCommit": "npm install --package-lock-only"
+    }
   }
 }
 ```

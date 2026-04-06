@@ -90,7 +90,12 @@ type Hooks struct {
 	PreRelease  string `json:"preRelease,omitempty"`
 }
 
-// ChangelogConfig is the .changelog.json schema.
+// PkConfig is the top-level .pk.json schema. Each key maps to a pk command.
+type PkConfig struct {
+	Changelog ChangelogConfig `json:"changelog,omitempty"`
+}
+
+// ChangelogConfig holds configuration for pk changelog.
 type ChangelogConfig struct {
 	Types        []TypeConfig  `json:"types,omitempty"`
 	VersionFiles []VersionFile `json:"versionFiles,omitempty"`
@@ -279,21 +284,21 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// LoadConfig reads .changelog.json and returns the parsed config.
+// LoadConfig reads .pk.json and returns the changelog config.
 // Falls back to defaults if the file is missing or malformed.
 func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
-	data, err := readFile(".changelog.json")
+	data, err := readFile(".pk.json")
 	if err != nil {
 		return ChangelogConfig{Types: defaultTypes}
 	}
-	var config ChangelogConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	var pk PkConfig
+	if err := json.Unmarshal(data, &pk); err != nil {
 		return ChangelogConfig{Types: defaultTypes}
 	}
-	if len(config.Types) == 0 {
-		config.Types = defaultTypes
+	if len(pk.Changelog.Types) == 0 {
+		pk.Changelog.Types = defaultTypes
 	}
-	return config
+	return pk.Changelog
 }
 
 // parseVersion parses "vX.Y.Z" into a Version.

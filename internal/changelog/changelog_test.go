@@ -12,11 +12,11 @@ import (
 func TestLoadConfig(t *testing.T) {
 	t.Run("full config", func(t *testing.T) {
 		cfg := LoadConfig(func(name string) ([]byte, error) {
-			return []byte(`{
+			return []byte(`{"changelog":{
 				"types": [{"type":"feat","section":"Features"}],
 				"versionFiles": [{"path":"package.json","type":"json"}],
 				"hooks": {"postVersion":"echo done","preCommit":"echo pre"}
-			}`), nil
+			}}`), nil
 		})
 		if len(cfg.Types) != 1 || cfg.Types[0].Section != "Features" {
 			t.Errorf("types = %v, want Features", cfg.Types)
@@ -34,7 +34,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("types only", func(t *testing.T) {
 		cfg := LoadConfig(func(name string) ([]byte, error) {
-			return []byte(`{"types":[{"type":"fix","section":"Fixed"}]}`), nil
+			return []byte(`{"changelog":{"types":[{"type":"fix","section":"Fixed"}]}}`), nil
 		})
 		if len(cfg.Types) != 1 || cfg.Types[0].Type != "fix" {
 			t.Errorf("types = %v, want fix", cfg.Types)
@@ -61,7 +61,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("empty types uses defaults", func(t *testing.T) {
 		cfg := LoadConfig(func(name string) ([]byte, error) {
-			return []byte(`{"types":[]}`), nil
+			return []byte(`{"changelog":{"types":[]}}`), nil
 		})
 		if len(cfg.Types) != len(defaultTypes) {
 			t.Errorf("types count = %d, want %d", len(cfg.Types), len(defaultTypes))
@@ -607,7 +607,7 @@ func TestRun_firstRelease(t *testing.T) {
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
+			if name == ".pk.json" {
 				return nil, os.ErrNotExist
 			}
 			return nil, os.ErrNotExist // no existing CHANGELOG.md
@@ -865,8 +865,8 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
-				return []byte(`{"types":[{"type":"feat","section":"Added"},{"type":"docs","hidden":true}]}`), nil
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"types":[{"type":"feat","section":"Added"},{"type":"docs","hidden":true}]}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},
@@ -895,7 +895,7 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 func TestRun_versionFiles(t *testing.T) {
 	var stderr bytes.Buffer
 	files := map[string][]byte{
-		".changelog.json": []byte(`{"versionFiles":[{"path":"package.json","type":"json"}]}`),
+		".pk.json": []byte(`{"changelog":{"versionFiles":[{"path":"package.json","type":"json"}]}}`),
 		"package.json":    []byte(`{"name":"test","version":"0.0.0"}`),
 	}
 	var updatedPkg []byte
@@ -953,8 +953,8 @@ func TestRun_hooks(t *testing.T) {
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
-				return []byte(`{"hooks":{"postVersion":"echo post","preCommit":"echo pre"}}`), nil
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"hooks":{"postVersion":"echo post","preCommit":"echo pre"}}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},
@@ -997,8 +997,8 @@ func TestRun_hookFailure(t *testing.T) {
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
-				return []byte(`{"hooks":{"postVersion":"fail"}}`), nil
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"hooks":{"postVersion":"fail"}}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},

@@ -55,7 +55,7 @@ After running `pk setup`, ask Claude to add project-specific conventions. You ca
 > - **Remove the pk SHA marker.** If the first line is `<!-- pk:sha256:... -->`, remove it. Once customized, the file is user-owned and the marker is stale.
 > - Keep conventions specific and actionable — not generic advice.
 > - Include the project's test command, build command, and any deployment patterns you discover.
-> - If the project uses `.changelog.json`, include the configured commit types.
+> - If the project uses `.pk.json`, include the configured commit types.
 > - For business rules, read into services, components, and pages — do not stop at file structure. Extract actual values, defaults, and logic constraints.
 
 ### Create your own skills

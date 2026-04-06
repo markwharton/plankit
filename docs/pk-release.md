@@ -20,17 +20,19 @@ pk release --branch develop       # release from a non-main branch
    - Working tree is clean (no uncommitted changes)
    - On the expected branch (default: `main`)
    - Local branch is not behind the remote (fetches and compares)
-4. **Run pre-release hook** — executes `hooks.preRelease` from `.changelog.json` if configured.
+4. **Run pre-release hook** — executes `changelog.hooks.preRelease` from `.pk.json` if configured.
 5. **Push** — pushes the branch and tag to origin.
 
 ## Pre-release hook
 
-The `hooks.preRelease` field in `.changelog.json` runs a shell command before pushing. Use it for project-specific validation like tests or builds:
+The `changelog.hooks.preRelease` field in `.pk.json` runs a shell command before pushing. Use it for project-specific validation like tests or builds:
 
 ```json
 {
-  "hooks": {
-    "preRelease": "go test -race ./..."
+  "changelog": {
+    "hooks": {
+      "preRelease": "go test -race ./..."
+    }
   }
 }
 ```

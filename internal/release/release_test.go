@@ -229,8 +229,8 @@ func TestRun_preReleaseHook(t *testing.T) {
 		Stderr:  &stderr,
 		GitExec: stubGitExec(happyGit("v1.0.0", "main")),
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
-				return []byte(`{"hooks":{"preRelease":"echo test"}}`), nil
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"hooks":{"preRelease":"echo test"}}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},
@@ -257,8 +257,8 @@ func TestRun_preReleaseHookFailure(t *testing.T) {
 		Stderr:  &stderr,
 		GitExec: stubGitExec(happyGit("v1.0.0", "main")),
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".changelog.json" {
-				return []byte(`{"hooks":{"preRelease":"false"}}`), nil
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"hooks":{"preRelease":"false"}}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},
