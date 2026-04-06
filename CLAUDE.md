@@ -92,13 +92,15 @@ pk release          # Validate and push release to origin
 - `cmd/pk/main.go` -- Entry point, subcommand routing
 - `docs/` -- Methodology and getting started documentation
 - `internal/changelog/` -- `pk changelog` (generate changelog from conventional commits, commit, tag)
+- `internal/guard/` -- `pk guard` (PreToolUse: block git mutations on protected branches)
 - `internal/hooks/` -- Shared stdin JSON parsing for Claude Code hook payloads
 - `internal/release/` -- `pk release` (validate pre-flight checks, push tag to origin)
 - `internal/preserve/` -- `pk preserve` (PostToolUse: preserve approved plans)
 - `internal/protect/` -- `pk protect` (PreToolUse: block edits to docs/plans/)
-- `internal/setup/` -- `pk setup` (configure project .claude/settings.json, install CLAUDE.md and skills)
+- `internal/setup/` -- `pk setup` (configure project .claude/settings.json, install CLAUDE.md, rules, and skills)
+- `internal/setup/rules/` -- Embedded rule files installed to .claude/rules/
 - `internal/setup/skills/` -- Embedded skill files compiled into pk binary
-- `internal/setup/template/` -- Embedded universal CLAUDE.md template
+- `internal/setup/template/` -- Embedded CLAUDE.md template (critical rules only)
 - `internal/update/` -- Version checker (GitHub releases, daily cache)
 - `internal/version/` -- Build version via ldflags
 
