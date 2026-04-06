@@ -81,14 +81,26 @@ func TestRun_freshProject(t *testing.T) {
 		}
 	}
 
+	// Verify rules were created with SHA markers.
+	for _, name := range []string{"model-behavior", "development-standards", "git-discipline"} {
+		ruleFile := filepath.Join(projectDir, ".claude", "rules", name+".md")
+		data, err := os.ReadFile(ruleFile)
+		if err != nil {
+			t.Fatalf("rule %s not created: %v", name, err)
+		}
+		if !strings.Contains(string(data), "pk_sha256: ") {
+			t.Errorf("rule %s missing pk_sha256 in frontmatter", name)
+		}
+	}
+
 	// Verify CLAUDE.md was created.
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
 	claudeData, err := os.ReadFile(claudeFile)
 	if err != nil {
 		t.Fatalf("CLAUDE.md not created: %v", err)
 	}
-	if !strings.Contains(string(claudeData), "## Model Behavior") {
-		t.Error("CLAUDE.md missing Model Behavior section")
+	if !strings.Contains(string(claudeData), "## Critical Rules") {
+		t.Error("CLAUDE.md missing Critical Rules section")
 	}
 	if !strings.Contains(string(claudeData), "<!-- pk:sha256:") {
 		t.Error("CLAUDE.md missing SHA marker")
@@ -123,18 +135,16 @@ func TestRun_createsClaudeMD(t *testing.T) {
 	if !strings.Contains(content, "# CLAUDE.md") {
 		t.Error("CLAUDE.md missing heading")
 	}
-	// Should have key sections.
-	for _, section := range []string{"## Model Behavior", "## Development Standards", "### Git Discipline", "### Testing Discipline"} {
-		if !strings.Contains(content, section) {
-			t.Errorf("CLAUDE.md missing section: %s", section)
-		}
+	// Should have critical rules section.
+	if !strings.Contains(content, "## Critical Rules") {
+		t.Error("CLAUDE.md missing Critical Rules section")
 	}
-	// Should NOT have placeholder text from base.md.
-	if strings.Contains(content, "Replace these examples") {
-		t.Error("CLAUDE.md contains placeholder text from base.md")
+	// Should be lean (no detailed sections — those are in .claude/rules/).
+	if strings.Contains(content, "## Model Behavior") {
+		t.Error("CLAUDE.md should not contain Model Behavior (moved to rules)")
 	}
-	if strings.Contains(content, "Project Conventions") {
-		t.Error("CLAUDE.md should not contain Project Conventions section")
+	if strings.Contains(content, "## Development Standards") {
+		t.Error("CLAUDE.md should not contain Development Standards (moved to rules)")
 	}
 }
 

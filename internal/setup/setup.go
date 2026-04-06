@@ -19,6 +19,9 @@ import (
 //go:embed skills/*/SKILL.md
 var skillsFS embed.FS
 
+//go:embed rules/*.md
+var rulesFS embed.FS
+
 //go:embed template/CLAUDE.md
 var templateFS embed.FS
 
@@ -110,6 +113,37 @@ func skills() ([]Skill, error) {
 		}
 		result = append(result, Skill{
 			Name:    entry.Name(),
+			Content: string(content),
+		})
+	}
+	return result, nil
+}
+
+// Rule represents a rules file to install.
+type Rule struct {
+	Name    string
+	Content string
+}
+
+// rules returns the rules to install from the embedded filesystem.
+func rules() ([]Rule, error) {
+	entries, err := fs.ReadDir(rulesFS, "rules")
+	if err != nil {
+		return nil, err
+	}
+
+	var result []Rule
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		content, err := fs.ReadFile(rulesFS, "rules/"+entry.Name())
+		if err != nil {
+			return nil, err
+		}
+		name := strings.TrimSuffix(entry.Name(), ".md")
+		result = append(result, Rule{
+			Name:    name,
 			Content: string(content),
 		})
 	}
@@ -319,6 +353,19 @@ func Run(projectDir string, stderr io.Writer, preserveMode string, force bool) e
 	for _, skill := range skillsList {
 		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
 		if err := writeManaged(skillFile, skill.Content, stderr, force); err != nil {
+			return err
+		}
+	}
+
+	// Install rules.
+	rulesList, err := rules()
+	if err != nil {
+		return fmt.Errorf("failed to load embedded rules: %w", err)
+	}
+	fmt.Fprintln(stderr, "Rules:")
+	for _, rule := range rulesList {
+		ruleFile := filepath.Join(settingsDir, "rules", rule.Name+".md")
+		if err := writeManaged(ruleFile, rule.Content, stderr, force); err != nil {
 			return err
 		}
 	}
