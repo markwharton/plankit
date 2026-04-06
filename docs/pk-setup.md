@@ -43,7 +43,9 @@ After running `pk setup`, ask Claude to add project-specific conventions. You ca
 >    - Build system and test runner
 >    - Directory structure and file organization
 >    - Existing conventions visible in code (naming, patterns, configuration)
-> 4. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point.
+>    - Business and domain rules embedded in application logic, if applicable (default values, calculation rules, workflow states, status transitions, business logic, UI behavior conventions, data safety constraints)
+>    - Domain model relationships and creation flows, if applicable (which entities relate to which, what entry points exist, what gets pre-filled)
+> 4. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings.
 > 5. Show the proposed section to the user and ask for confirmation before writing.
 >
 > **Rules:**
@@ -54,6 +56,7 @@ After running `pk setup`, ask Claude to add project-specific conventions. You ca
 > - Keep conventions specific and actionable — not generic advice.
 > - Include the project's test command, build command, and any deployment patterns you discover.
 > - If the project uses `.changelog.json`, include the configured commit types.
+> - For business rules, read into services, components, and pages — do not stop at file structure. Extract actual values, defaults, and logic constraints.
 
 ### Create your own skills
 
