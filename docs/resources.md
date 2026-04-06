@@ -9,3 +9,39 @@
 ## Git
 
 - [Git Tools — Rewriting History](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History) — Why commit and push are separate decisions
+
+> **Don't push your work until you're happy with it.** One of the cardinal rules of Git is that, since so much work is local within your clone, you have a great deal of freedom to rewrite your history locally. However, once you push your work, it is a different story entirely, and you should consider pushed work as final unless you have good reason to change it. In short, you should avoid pushing your work until you're happy with it and ready to share it with the rest of the world.
+
+## GitHub CLI
+
+- [gh reference](https://cli.github.com/manual/) — Full command reference
+
+### Release flow (independent developer)
+
+All changes go through `dev` — `main` is protected by `pk guard`. The release
+flow is the one time you touch `main`, and it's done manually:
+
+```bash
+pk changelog                          # on dev: generate changelog, commit, and tag version
+git switch main && git merge dev      # merge to main (manual — guard blocks Claude Code)
+pk release                            # on main: validate and push
+git switch dev                        # switch back
+git push origin dev                   # sync dev with origin
+```
+
+> `git switch` requires Git 2.23+. Use `git checkout` if `switch` is not available.
+
+### Useful commands
+
+```bash
+# Workflow runs
+gh run list --workflow=<file> --limit=1     # check status
+gh run cancel <run-id>                      # kill a stuck run
+gh run rerun <run-id>                       # retry it
+gh run watch <run-id>                       # live follow
+
+# PRs and issues
+gh pr create --title "..." --body "..."     # create PR from current branch
+gh pr list                                  # list open PRs
+gh api repos/owner/repo/pulls/123/comments  # read PR comments
+```
