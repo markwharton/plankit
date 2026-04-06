@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/markwharton/plankit/internal/changelog"
+	"github.com/markwharton/plankit/internal/guard"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
@@ -40,6 +41,8 @@ func main() {
 		runPreserve(os.Args[2:])
 	case "release":
 		runRelease(os.Args[2:])
+	case "guard":
+		os.Exit(guard.Run(guard.DefaultConfig()))
 	case "protect":
 		os.Exit(protect.Run(protect.DefaultConfig()))
 	case "setup":
@@ -161,6 +164,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "pk - Plan-driven development toolkit for Claude Code")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands (called by Claude Code, not directly):")
+	fmt.Fprintln(os.Stderr, "  pk guard                            Block git mutations on protected branches (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
 	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")

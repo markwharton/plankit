@@ -53,6 +53,10 @@ func buildHookConfig(preserveMode string) HooksConfig {
 	config := HooksConfig{
 		PreToolUse: []HookEntry{
 			{
+				Matcher: "Bash",
+				Hooks:   []Hook{{Type: "command", Command: "pk guard", Timeout: 5}},
+			},
+			{
 				Matcher: "Edit",
 				Hooks:   []Hook{{Type: "command", Command: "pk protect", Timeout: 5}},
 			},

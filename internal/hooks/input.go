@@ -13,9 +13,10 @@ type Input struct {
 	CWD          string          `json:"cwd,omitempty"`
 }
 
-// ToolInput contains the parameters passed to Edit/Write tool calls.
+// ToolInput contains the parameters passed to tool calls.
 type ToolInput struct {
 	FilePath string `json:"file_path,omitempty"`
+	Command  string `json:"command,omitempty"`
 }
 
 // ReadInput reads and parses the Claude Code hook JSON payload from the given reader.

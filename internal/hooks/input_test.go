@@ -7,11 +7,12 @@ import (
 
 func TestReadInput(t *testing.T) {
 	tests := []struct {
-		name     string
-		json     string
-		wantPath string
-		wantCWD  string
-		wantErr  bool
+		name        string
+		json        string
+		wantPath    string
+		wantCommand string
+		wantCWD     string
+		wantErr     bool
 	}{
 		{
 			name:     "edit with file_path",
@@ -24,6 +25,12 @@ func TestReadInput(t *testing.T) {
 			json:     `{"tool_input": {"file_path": "/tmp/test.md"}, "cwd": "/projects/foo"}`,
 			wantPath: "/tmp/test.md",
 			wantCWD:  "/projects/foo",
+		},
+		{
+			name:        "bash with command",
+			json:        `{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/projects/foo"}`,
+			wantCommand: "git commit -m 'test'",
+			wantCWD:     "/projects/foo",
 		},
 		{
 			name:    "no tool_input",
@@ -54,12 +61,15 @@ func TestReadInput(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if tt.wantPath != "" {
+			if tt.wantPath != "" || tt.wantCommand != "" {
 				if input.ToolInput == nil {
 					t.Fatal("expected ToolInput, got nil")
 				}
 				if input.ToolInput.FilePath != tt.wantPath {
 					t.Errorf("FilePath = %q, want %q", input.ToolInput.FilePath, tt.wantPath)
+				}
+				if input.ToolInput.Command != tt.wantCommand {
+					t.Errorf("Command = %q, want %q", input.ToolInput.Command, tt.wantCommand)
 				}
 			}
 			if input.CWD != tt.wantCWD {

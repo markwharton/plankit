@@ -37,8 +37,8 @@ func TestRun_freshProject(t *testing.T) {
 	json.Unmarshal(settings["hooks"], &hooks)
 
 	preToolUse, ok := hooks["PreToolUse"].([]interface{})
-	if !ok || len(preToolUse) != 2 {
-		t.Fatalf("PreToolUse = %v, want 2 entries", hooks["PreToolUse"])
+	if !ok || len(preToolUse) != 3 {
+		t.Fatalf("PreToolUse = %v, want 3 entries", hooks["PreToolUse"])
 	}
 
 	postToolUse, ok := hooks["PostToolUse"].([]interface{})
@@ -379,8 +379,8 @@ func TestMergeHooks_freshSettings(t *testing.T) {
 	var result HooksConfig
 	json.Unmarshal(settings["hooks"], &result)
 
-	if len(result.PreToolUse) != 2 {
-		t.Errorf("PreToolUse = %d entries, want 2", len(result.PreToolUse))
+	if len(result.PreToolUse) != 3 {
+		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
 	}
 	if len(result.PostToolUse) != 1 {
 		t.Errorf("PostToolUse = %d entries, want 1", len(result.PostToolUse))
@@ -401,9 +401,9 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 	var result HooksConfig
 	json.Unmarshal(settings["hooks"], &result)
 
-	// User's Bash hook + plankit's Edit and Write hooks.
-	if len(result.PreToolUse) != 3 {
-		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
+	// User's Bash hook + plankit's Bash/guard, Edit/protect, Write/protect.
+	if len(result.PreToolUse) != 4 {
+		t.Errorf("PreToolUse = %d entries, want 4", len(result.PreToolUse))
 	}
 
 	// Verify user hook is first (preserved before plankit entries).
@@ -431,9 +431,9 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 	var result HooksConfig
 	json.Unmarshal(settings["hooks"], &result)
 
-	// Should have plankit's 2 PreToolUse entries (old one removed, new ones added).
-	if len(result.PreToolUse) != 2 {
-		t.Errorf("PreToolUse = %d entries, want 2", len(result.PreToolUse))
+	// Should have plankit's 3 PreToolUse entries (old one removed, new ones added).
+	if len(result.PreToolUse) != 3 {
+		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
 	}
 
 	// PostToolUse should have the manual mode hook (--notify), not the old auto one.
@@ -460,9 +460,9 @@ func TestMergeHooks_mixedHooks(t *testing.T) {
 	var result HooksConfig
 	json.Unmarshal(settings["hooks"], &result)
 
-	// Should have: user's Edit entry (my-linter only) + plankit's Edit + plankit's Write = 3.
-	if len(result.PreToolUse) != 3 {
-		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
+	// Should have: user's Edit entry (my-linter only) + plankit's Bash/guard + Edit/protect + Write/protect = 4.
+	if len(result.PreToolUse) != 4 {
+		t.Errorf("PreToolUse = %d entries, want 4", len(result.PreToolUse))
 	}
 
 	// First entry should be the user's surviving hook.
