@@ -118,6 +118,7 @@ var defaultTypes = []TypeConfig{
 	{Type: "build", Section: "Maintenance"},
 	{Type: "ci", Section: "Maintenance"},
 	{Type: "style", Section: "Maintenance"},
+	{Type: "plan", Section: "Plans", Hidden: true},
 }
 
 // commitRegex parses conventional commit subjects: type(scope)!: message

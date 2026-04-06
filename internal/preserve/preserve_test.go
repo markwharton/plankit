@@ -98,6 +98,7 @@ func TestExtractTitle(t *testing.T) {
 		{"no heading", "No heading here\nJust text", "untitled plan"},
 		{"empty content", "", "untitled plan"},
 		{"h2 but no h1", "## Subheading\nContent", "untitled plan"},
+		{"Plan: prefix preserved", "# Plan: Fix hooks merge\nContent", "Plan: Fix hooks merge"},
 	}
 
 	for _, tt := range tests {
