@@ -35,6 +35,8 @@ type Config struct {
 	Notify bool
 	// DryRun previews the preserve without writing, committing, or pushing.
 	DryRun bool
+	// Push pushes to origin after committing. Default is commit only.
+	Push bool
 	// CheckUpdate returns an update notice string, or "".
 	CheckUpdate func() string
 }
@@ -146,7 +148,9 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "  Plan:   %s\n", title)
 		fmt.Fprintf(cfg.Stderr, "  File:   %s\n", relPath)
 		fmt.Fprintf(cfg.Stderr, "  Commit: plan: %s [skip ci]\n", title)
-		fmt.Fprintf(cfg.Stderr, "  Push:   git push origin HEAD\n")
+		if cfg.Push {
+			fmt.Fprintf(cfg.Stderr, "  Push:   git push origin HEAD\n")
+		}
 		return 0
 	}
 
@@ -176,11 +180,15 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Git push (non-fatal).
-	if _, err := cfg.GitExec(projectDir, "push", "origin", "HEAD"); err != nil {
-		cfg.writeSystemMessage(fmt.Sprintf("Plan committed locally but push failed: docs/plans/%s", filename))
+	// Git push (only when --push is set).
+	if cfg.Push {
+		if _, err := cfg.GitExec(projectDir, "push", "origin", "HEAD"); err != nil {
+			cfg.writeSystemMessage(fmt.Sprintf("Plan committed locally but push failed: docs/plans/%s", filename))
+		} else {
+			cfg.writeSystemMessage(fmt.Sprintf("Approved plan committed and pushed: docs/plans/%s", filename))
+		}
 	} else {
-		cfg.writeSystemMessage(fmt.Sprintf("Approved plan committed and pushed: docs/plans/%s", filename))
+		cfg.writeSystemMessage(fmt.Sprintf("Approved plan committed: docs/plans/%s", filename))
 	}
 
 	return 0

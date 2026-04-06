@@ -55,7 +55,7 @@ Re-run setup anytime to switch modes.
 
 ## What happens
 
-- **Plan preservation**: Approved plans are saved as timestamped files in `docs/plans/`, committed, and pushed to your remote.
+- **Plan preservation**: Approved plans are saved as timestamped files in `docs/plans/` and committed. Push when you're ready (`--push` to include it automatically).
 - **Plan protection**: Once preserved, plans cannot be accidentally edited or overwritten by Claude Code.
 - **Duplicate detection**: If the same plan content has already been preserved today, it's skipped.
 

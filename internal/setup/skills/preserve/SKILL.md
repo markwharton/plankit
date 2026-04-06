@@ -14,4 +14,6 @@ If confirmed, run:
 
 pk preserve
 
+This commits the plan locally. Do not push — the user decides when to push.
+
 Report the result to the user.

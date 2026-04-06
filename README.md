@@ -7,7 +7,7 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 ## What it does
 
 - **Creates a universal CLAUDE.md** if your project doesn't have one — battle-tested guidelines that work as-is
-- **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed and pushed
+- **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed to git
 - **Protects preserved plans** from accidental edits by Claude Code
 - **Installs Claude Code skills** — `/changelog`, `/release`, `/preserve`
 

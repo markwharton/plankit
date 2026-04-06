@@ -166,12 +166,77 @@ func TestRun(t *testing.T) {
 			t.Errorf("content mismatch")
 		}
 
-		// Verify git calls.
+		// Verify git calls (no push by default).
 		wantCalls := []string{
 			"rev-parse --is-inside-work-tree",
 			"add docs/plans/2026-03-11-001-test-plan.md",
 			"diff --cached --quiet",
 			"commit -m plan: Test Plan [skip ci]",
+		}
+		if len(gitCalls) != len(wantCalls) {
+			t.Fatalf("git calls = %v, want %v", gitCalls, wantCalls)
+		}
+		for i, want := range wantCalls {
+			if gitCalls[i] != want {
+				t.Errorf("git call %d = %q, want %q", i, gitCalls[i], want)
+			}
+		}
+
+		// Verify stdout has systemMessage (commit only, no push).
+		if !strings.Contains(stdout.String(), "Approved plan committed:") {
+			t.Errorf("stdout = %q, want commit-only systemMessage", stdout.String())
+		}
+	})
+
+	t.Run("push flag pushes to origin", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planFile := filepath.Join(plansDir, "test-plan.md")
+		planContent := "# Push Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		var gitCalls []string
+
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				call := strings.Join(args, " ")
+				gitCalls = append(gitCalls, call)
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+			Push: true,
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		// Verify push is included in git calls.
+		wantCalls := []string{
+			"rev-parse --is-inside-work-tree",
+			"add docs/plans/2026-03-11-001-push-plan.md",
+			"diff --cached --quiet",
+			"commit -m plan: Push Plan [skip ci]",
 			"push origin HEAD",
 		}
 		if len(gitCalls) != len(wantCalls) {
@@ -183,9 +248,9 @@ func TestRun(t *testing.T) {
 			}
 		}
 
-		// Verify stdout has systemMessage.
+		// Verify stdout says "committed and pushed".
 		if !strings.Contains(stdout.String(), "Approved plan committed and pushed") {
-			t.Errorf("stdout = %q, want systemMessage", stdout.String())
+			t.Errorf("stdout = %q, want pushed systemMessage", stdout.String())
 		}
 	})
 
@@ -659,7 +724,7 @@ func TestRun(t *testing.T) {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
 		out := stdout.String()
-		if !strings.Contains(out, "Approved plan committed and pushed") {
+		if !strings.Contains(out, "Approved plan committed:") {
 			t.Errorf("stdout = %q, want commit message", out)
 		}
 		if !strings.Contains(out, "Update available") {

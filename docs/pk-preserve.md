@@ -1,11 +1,12 @@
 # pk preserve
 
-Preserve an approved plan to `docs/plans/` as a timestamped file, committed and pushed.
+Preserve an approved plan to `docs/plans/` as a timestamped file and commit it.
 
 ## Usage
 
 ```bash
-pk preserve                # preserve the most recent plan
+pk preserve                # preserve and commit the most recent plan
+pk preserve --push         # also push to origin after committing
 pk preserve --dry-run      # preview without writing, committing, or pushing
 pk preserve --notify       # check for a plan and notify without preserving
 ```
@@ -18,7 +19,7 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 2. Extracts the plan title from the first `# heading`.
 3. Generates a filename: `{date}-{seq:03d}-{slug}.md` (e.g., `2026-04-05-001-add-auth-middleware.md`).
 4. Checks for duplicate content (same plan already preserved today → skip).
-5. Writes to `docs/plans/`, runs `git add`, `git commit`, and `git push origin HEAD`.
+5. Writes to `docs/plans/`, runs `git add` and `git commit`. If `--push` is set, also runs `git push origin HEAD`.
 6. Outputs a `{"systemMessage": "..."}` JSON response on stdout.
 
 ## Team usage
@@ -28,6 +29,7 @@ The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based
 ## Flags
 
 - **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. Used by the `/preserve` skill for confirmation before proceeding.
+- **--push** — Push to origin after committing. By default, `pk preserve` commits only — push when you're ready.
 - **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready. The response includes `additionalContext` so Claude is aware of the plan and can inform the user.
 
 ## Hook protocol

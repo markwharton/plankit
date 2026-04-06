@@ -102,6 +102,10 @@ pk release          # Validate and push release to origin
 - `internal/update/` -- Version checker (GitHub releases, daily cache)
 - `internal/version/` -- Build version via ldflags
 
+### Design
+
+- **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
+
 ### Language and Dependencies
 
 - Go 1.21+, zero external dependencies (stdlib only)
