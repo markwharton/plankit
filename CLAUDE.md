@@ -116,8 +116,10 @@ pk release          # Validate and push release to origin
 
 ### Documentation
 
+- Convention format: use "Label: detail" when the topic isn't obvious from the first few words; use a plain statement when the rule speaks for itself
 - Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). Higher-level docs (README, getting-started, methodology) link to command docs and only change when concepts change
 - When changing defaults, flags, or behavior: grep the repo for all references (README, docs/, CLI help, tests) before considering the change complete
+- Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally)
 
 ### Commits and Releases
 
