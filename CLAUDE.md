@@ -65,6 +65,7 @@
 ### Git Discipline
 
 - **Don't push your work until you're happy with it.** Locally, you have full freedom — amend, reorder, combine. Once pushed, history is shared and rewriting creates problems downstream.
+- **Commit and push are separate decisions.** Commit when the work is ready; push when you're confident.
 - **Never force push.** If a pushed commit needs fixing, make a new commit.
 - **Commit with purpose.** Each commit is one logical change. Follow Conventional Commits to make history scannable.
 - **Never include BREAKING CHANGE** in commit messages unless there is an actual breaking change.
@@ -116,7 +117,7 @@ pk release          # Validate and push release to origin
 
 ### Documentation
 
-- Convention format: use "Label: detail" when the topic isn't obvious from the first few words; use a plain statement when the rule speaks for itself
+- Convention format: bold principle, then concise context — plain statement when the rule speaks for itself
 - Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). Higher-level docs (README, getting-started, methodology) link to command docs and only change when concepts change
 - When changing defaults, flags, or behavior: grep the repo for all references (README, docs/, CLI help, tests) before considering the change complete
 - Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally)
