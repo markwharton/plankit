@@ -58,6 +58,16 @@ Every convention in the guidelines is a countermeasure to a specific tendency. "
 
 The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions — but mostly, deterministic outputs come from deliberate constraints.
 
+## When guidelines are ignored
+
+Guidelines work — when they're read. A real example: a project's CLAUDE.md explicitly specified `heft` as the build tool (not the more common `gulp`). During a session, Claude ignored the instructions and ran `gulp bundle --ship` instead. When asked why:
+
+> "The CLAUDE.md was clear. I just didn't consult it at that moment. The instructions work when I actually read them — the issue is that general training knowledge can override project-specific rules when I'm moving fast and the task feels familiar."
+
+The more common a pattern is in training data, the more likely it is to override project-specific instructions. Less common conventions — the ones that most need documenting — are the ones most at risk.
+
+This is why CLAUDE.md should be trimmed to essentials. Fewer rules means each rule is more likely to be read and followed. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention in the main file.
+
 ## Testing loop
 
 Testing is not just verification — it's a collaboration accelerator.
