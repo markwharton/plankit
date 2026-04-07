@@ -1,10 +1,12 @@
 ---
 name: changelog
 description: Update CHANGELOG.md from git history, commit, and tag version
-pk_sha256: 8284d51d1c83b7f8b8c98c3a8329946980144ddacbc84c6b59e5d097c0b0e834
+pk_sha256: 0b301ad68e87b149fa8684fdbb1b84eb775c8dbecca2e8f443ba8bd1eacca857
 ---
 
 Generate a changelog release using pk.
+
+Run this on a development branch, not on a guarded branch (e.g., main).
 
 First, preview with a dry run:
 
@@ -15,4 +17,4 @@ If confirmed, run:
 
 pk changelog
 
-Report the result to the user.
+Report the result to the user. Follow with `/release` to merge and push.

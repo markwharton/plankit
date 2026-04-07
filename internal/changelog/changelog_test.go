@@ -1098,3 +1098,58 @@ func TestRun_subsequentRelease(t *testing.T) {
 		t.Error("old entries should be preserved")
 	}
 }
+
+func TestRun_guardedBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "main\n", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+		},
+		Now: fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "protected branch") {
+		t.Errorf("stderr = %q, want protected branch warning", stderr.String())
+	}
+}
+
+func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "dev\n", nil
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+		},
+		Now:    fixedTime,
+		DryRun: true,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if strings.Contains(stderr.String(), "protected branch") {
+		t.Errorf("should not warn on unprotected branch")
+	}
+}

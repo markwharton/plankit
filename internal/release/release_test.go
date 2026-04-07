@@ -18,7 +18,7 @@ func stubGitExec(handlers map[string]func(args ...string) (string, error)) func(
 	}
 }
 
-// happyGit returns git stubs for a clean, valid release state.
+// happyGit returns git stubs for a clean, valid legacy release state.
 func happyGit(tag, branch string) map[string]func(args ...string) (string, error) {
 	return map[string]func(args ...string) (string, error){
 		"tag": func(args ...string) (string, error) {
@@ -45,9 +45,55 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 	}
 }
 
+// happyGitMerge returns git stubs for a merge flow release state.
+func happyGitMerge(tag, sourceBranch, releaseBranch string) map[string]func(args ...string) (string, error) {
+	currentBranch := sourceBranch
+	return map[string]func(args ...string) (string, error){
+		"tag": func(args ...string) (string, error) {
+			return tag, nil
+		},
+		"status": func(args ...string) (string, error) {
+			return "", nil
+		},
+		"branch": func(args ...string) (string, error) {
+			return currentBranch, nil
+		},
+		"fetch": func(args ...string) (string, error) {
+			return "", nil
+		},
+		"merge-base": func(args ...string) (string, error) {
+			return "abc123", nil
+		},
+		"rev-parse": func(args ...string) (string, error) {
+			return "abc123", nil
+		},
+		"switch": func(args ...string) (string, error) {
+			currentBranch = args[1]
+			return "", nil
+		},
+		"merge": func(args ...string) (string, error) {
+			return "", nil
+		},
+		"push": func(args ...string) (string, error) {
+			return "", nil
+		},
+	}
+}
+
 func noConfig(_ string) ([]byte, error) {
 	return nil, os.ErrNotExist
 }
+
+func mergeConfig(releaseBranch string) func(string) ([]byte, error) {
+	return func(name string) ([]byte, error) {
+		if name == ".pk.json" {
+			return []byte(fmt.Sprintf(`{"release":{"branch":%q}}`, releaseBranch)), nil
+		}
+		return nil, os.ErrNotExist
+	}
+}
+
+// --- Legacy flow tests (no release.branch configured) ---
 
 func TestRun_happyPath(t *testing.T) {
 	var stderr bytes.Buffer
@@ -63,7 +109,6 @@ func TestRun_happyPath(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -96,7 +141,6 @@ func TestRun_dryRun(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 		DryRun:   true,
 	}
 
@@ -120,7 +164,6 @@ func TestRun_noTagAtHead(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -140,7 +183,6 @@ func TestRun_invalidSemver(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -163,7 +205,6 @@ func TestRun_dirtyWorkingTree(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -172,26 +213,6 @@ func TestRun_dirtyWorkingTree(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "working tree is not clean") {
 		t.Errorf("stderr = %q, want dirty tree message", stderr.String())
-	}
-}
-
-func TestRun_wrongBranch(t *testing.T) {
-	var stderr bytes.Buffer
-	git := happyGit("v1.0.0", "feature-branch")
-
-	cfg := Config{
-		Stderr:   &stderr,
-		GitExec:  stubGitExec(git),
-		ReadFile: noConfig,
-		Branch:   "main",
-	}
-
-	code := Run(cfg)
-	if code != 1 {
-		t.Fatalf("exit code = %d, want 1", code)
-	}
-	if !strings.Contains(stderr.String(), "not on main branch") {
-		t.Errorf("stderr = %q, want wrong branch message", stderr.String())
 	}
 }
 
@@ -209,7 +230,6 @@ func TestRun_behindRemote(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -238,7 +258,6 @@ func TestRun_preReleaseHook(t *testing.T) {
 			hookCommand = command
 			return nil
 		},
-		Branch: "main",
 	}
 
 	code := Run(cfg)
@@ -265,7 +284,6 @@ func TestRun_preReleaseHookFailure(t *testing.T) {
 		RunScript: func(command string) error {
 			return fmt.Errorf("exit status 1")
 		},
-		Branch: "main",
 	}
 
 	code := Run(cfg)
@@ -288,7 +306,6 @@ func TestRun_pushFailure(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "main",
 	}
 
 	code := Run(cfg)
@@ -300,7 +317,252 @@ func TestRun_pushFailure(t *testing.T) {
 	}
 }
 
-func TestRun_customBranch(t *testing.T) {
+// --- Merge flow tests (release.branch configured) ---
+
+func TestRun_mergeFlow_happyPath(t *testing.T) {
+	var stderr bytes.Buffer
+	var pushCalls [][]string
+
+	git := happyGitMerge("v1.2.3", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushCalls = append(pushCalls, args)
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if len(pushCalls) != 2 {
+		t.Fatalf("push called %d times, want 2", len(pushCalls))
+	}
+	// First push: release branch + tag
+	if pushCalls[0][2] != "main" || pushCalls[0][3] != "v1.2.3" {
+		t.Errorf("first push = %v, want [push origin main v1.2.3]", pushCalls[0])
+	}
+	// Second push: source branch
+	if pushCalls[1][2] != "dev" {
+		t.Errorf("second push = %v, want [push origin dev]", pushCalls[1])
+	}
+	if !strings.Contains(stderr.String(), "Merged dev into main") {
+		t.Errorf("stderr missing merge confirmation: %s", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_noTag(t *testing.T) {
+	var stderr bytes.Buffer
+	var pushCalls [][]string
+
+	git := happyGitMerge("", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushCalls = append(pushCalls, args)
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if len(pushCalls) != 2 {
+		t.Fatalf("push called %d times, want 2", len(pushCalls))
+	}
+	// First push: release branch only (no tag)
+	if pushCalls[0][2] != "main" || len(pushCalls[0]) != 3 {
+		t.Errorf("first push = %v, want [push origin main]", pushCalls[0])
+	}
+	if !strings.Contains(stderr.String(), "Release dev → main") {
+		t.Errorf("stderr missing release header: %s", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_dryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	pushCalled := false
+	switchCalled := false
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushCalled = true
+		return "", nil
+	}
+	git["switch"] = func(args ...string) (string, error) {
+		switchCalled = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		DryRun:   true,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if pushCalled {
+		t.Error("push should not be called in dry run")
+	}
+	if switchCalled {
+		t.Error("switch should not be called in dry run")
+	}
+	if !strings.Contains(stderr.String(), "Would merge dev into main") {
+		t.Errorf("stderr missing merge preview: %s", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_alreadyOnReleaseBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGit("v1.0.0", "main")
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "switch to your development branch first") {
+		t.Errorf("stderr = %q, want development branch message", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_mergeFails(t *testing.T) {
+	var stderr bytes.Buffer
+	switchedBack := false
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["merge"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("not fast-forward")
+	}
+	originalSwitch := git["switch"]
+	git["switch"] = func(args ...string) (string, error) {
+		if args[1] == "dev" {
+			switchedBack = true
+		}
+		return originalSwitch(args...)
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "merge failed") {
+		t.Errorf("stderr = %q, want merge failure message", stderr.String())
+	}
+	if !switchedBack {
+		t.Error("should switch back to source branch after merge failure")
+	}
+}
+
+func TestRun_mergeFlow_pushFails_switchesBack(t *testing.T) {
+	var stderr bytes.Buffer
+	switchedBack := false
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("permission denied")
+	}
+	originalSwitch := git["switch"]
+	git["switch"] = func(args ...string) (string, error) {
+		if args[1] == "dev" {
+			switchedBack = true
+		}
+		return originalSwitch(args...)
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !switchedBack {
+		t.Error("should switch back to source branch after push failure")
+	}
+}
+
+func TestRun_mergeFlow_dirtyTree(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["status"] = func(args ...string) (string, error) {
+		return " M dirty.go", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "working tree is not clean") {
+		t.Errorf("stderr = %q, want dirty tree message", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_sourceBehindRemote(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["merge-base"] = func(args ...string) (string, error) {
+		// For the source branch behind-remote check
+		if len(args) >= 3 && args[2] == "origin/dev" {
+			return "local123", nil
+		}
+		return "abc123", nil
+	}
+	git["rev-parse"] = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[1] == "origin/dev" {
+			return "remote456", nil
+		}
+		return "abc123", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "behind origin/dev") {
+		t.Errorf("stderr = %q, want behind remote message", stderr.String())
+	}
+}
+
+func TestRun_legacyFlow_noReleaseBranch(t *testing.T) {
 	var stderr bytes.Buffer
 	var pushArgs []string
 
@@ -314,7 +576,6 @@ func TestRun_customBranch(t *testing.T) {
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: noConfig,
-		Branch:   "develop",
 	}
 
 	code := Run(cfg)

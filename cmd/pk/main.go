@@ -9,7 +9,7 @@
 //	pk guard       PreToolUse hook: block git mutations on protected branches
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
-//	pk release     Validate and push release to origin
+//	pk release     Merge to release branch, validate, and push
 //	pk setup       Configure a project's .claude/settings.json
 //	pk version     Print version (--verbose for build details)
 package main
@@ -96,13 +96,11 @@ func runPreserve(args []string) {
 
 func runRelease(args []string) {
 	fs := flag.NewFlagSet("release", flag.ExitOnError)
-	dryRun := fs.Bool("dry-run", false, "Validate without pushing")
-	branch := fs.String("branch", "main", "Expected branch for release")
+	dryRun := fs.Bool("dry-run", false, "Validate without merging or pushing")
 	fs.Parse(args)
 
 	cfg := release.DefaultConfig()
 	cfg.DryRun = *dryRun
-	cfg.Branch = *branch
 
 	os.Exit(release.Run(cfg))
 }
@@ -173,8 +171,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "User commands:")
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
-	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--branch main]")
-	fmt.Fprintln(os.Stderr, "                                      Validate and push release to origin")
+	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Merge to release branch, validate, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")

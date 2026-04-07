@@ -90,9 +90,15 @@ type Hooks struct {
 	PreRelease  string `json:"preRelease,omitempty"`
 }
 
+// GuardConfig holds the guard section of .pk.json (read-only, for branch checking).
+type GuardConfig struct {
+	ProtectedBranches []string `json:"protectedBranches,omitempty"`
+}
+
 // PkConfig is the top-level .pk.json schema. Each key maps to a pk command.
 type PkConfig struct {
 	Changelog ChangelogConfig `json:"changelog,omitempty"`
+	Guard     GuardConfig     `json:"guard,omitempty"`
 }
 
 // ChangelogConfig holds configuration for pk changelog.
@@ -143,7 +149,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 1. Load config.
-	config := LoadConfig(cfg.ReadFile)
+	fullConfig := LoadFullConfig(cfg.ReadFile)
+	config := fullConfig.ChangelogConfig
+
+	// 1a. Check if on a guarded branch.
+	if branch, err := cfg.GitExec("branch", "--show-current"); err == nil {
+		branch = strings.TrimSpace(branch)
+		for _, protected := range fullConfig.Guard.ProtectedBranches {
+			if branch == protected {
+				fmt.Fprintf(cfg.Stderr, "Error: you're on %q which is a protected branch — switch to your development branch first\n", branch)
+				return 1
+			}
+		}
+	}
 
 	// 2. Get latest tag.
 	tagOutput, err := cfg.GitExec("tag", "--list", "v*", "--sort=-v:refname")
@@ -284,21 +302,33 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// LoadConfig reads .pk.json and returns the changelog config.
+// FullConfig holds both changelog and guard config from .pk.json.
+type FullConfig struct {
+	ChangelogConfig
+	Guard GuardConfig
+}
+
+// LoadFullConfig reads .pk.json and returns changelog + guard config.
 // Falls back to defaults if the file is missing or malformed.
-func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
+func LoadFullConfig(readFile func(string) ([]byte, error)) FullConfig {
 	data, err := readFile(".pk.json")
 	if err != nil {
-		return ChangelogConfig{Types: defaultTypes}
+		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}
 	}
 	var pk PkConfig
 	if err := json.Unmarshal(data, &pk); err != nil {
-		return ChangelogConfig{Types: defaultTypes}
+		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}
 	}
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
-	return pk.Changelog
+	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}
+}
+
+// LoadConfig reads .pk.json and returns the changelog config.
+// Falls back to defaults if the file is missing or malformed.
+func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
+	return LoadFullConfig(readFile).ChangelogConfig
 }
 
 // parseVersion parses "vX.Y.Z" into a Version.

@@ -1,7 +1,4 @@
 {
-  "guard": {
-    "protectedBranches": ["main"]
-  },
   "changelog": {
     "types": [
       {"type": "feat", "section": "Added"},
@@ -22,5 +19,11 @@
     "hooks": {
       "preRelease": "go test -race ./..."
     }
+  },
+  "guard": {
+    "protectedBranches": ["main"]
+  },
+  "release": {
+    "branch": "main"
   }
 }

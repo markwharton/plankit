@@ -12,7 +12,8 @@ pk changelog --dry-run            # preview without writing, committing, or tagg
 
 ## How it works
 
-1. Reads the latest version tag (git tags are the single version source)
+1. Checks if the current branch is protected by `guard.protectedBranches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
+2. Reads the latest version tag (git tags are the single version source)
 2. Scans commits since that tag for conventional commit messages
 3. Groups commits by type into changelog sections
 4. Writes or updates CHANGELOG.md with the new version section

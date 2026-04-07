@@ -1,8 +1,11 @@
 // Package release implements the pk release command.
-// It validates pre-flight checks and pushes the release tag to origin.
+// It validates pre-flight checks and pushes the release to origin.
+// When release.branch is configured in .pk.json, it merges the current
+// branch into the release branch before pushing.
 package release
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -20,9 +23,7 @@ type Config struct {
 	ReadFile  func(name string) ([]byte, error)
 	RunScript func(command string) error
 
-	// Branch is the expected branch for release (default: "main").
-	Branch string
-	// DryRun validates without pushing.
+	// DryRun validates without merging or pushing.
 	DryRun bool
 }
 
@@ -41,7 +42,6 @@ func DefaultConfig() Config {
 			cmd.Stderr = os.Stderr
 			return cmd.Run()
 		},
-		Branch: "main",
 	}
 }
 
@@ -50,29 +50,54 @@ var semverRegex = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
-	// 1. Find version tag at HEAD.
+	// 1. Get current branch (implicit source).
+	sourceBranch, err := cfg.GitExec("branch", "--show-current")
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git branch failed: %v\n", err)
+		return 1
+	}
+	sourceBranch = strings.TrimSpace(sourceBranch)
+
+	// 2. Load release branch from config.
+	releaseBranch := loadReleaseBranch(cfg.ReadFile)
+	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
+
+	// 3. If releaseBranch is configured and we're already on it, refuse.
+	if releaseBranch != "" && sourceBranch == releaseBranch {
+		fmt.Fprintf(cfg.Stderr, "Error: you're on the release branch %q — switch to your development branch first\n", releaseBranch)
+		return 1
+	}
+
+	// 4. Find version tag at HEAD (optional in merge flow).
 	tagOutput, err := cfg.GitExec("tag", "--points-at", "HEAD")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
 		return 1
 	}
-
 	tag := findVersionTag(tagOutput)
-	if tag == "" {
+
+	// In legacy flow (no releaseBranch), tag is required.
+	if !needsMerge && tag == "" {
 		fmt.Fprintln(cfg.Stderr, "Error: no version tag at HEAD — run 'pk changelog' first")
 		return 1
 	}
 
-	// 2. Validate semver format.
-	if !semverRegex.MatchString(tag) {
+	// Validate semver if tag exists.
+	if tag != "" && !semverRegex.MatchString(tag) {
 		fmt.Fprintf(cfg.Stderr, "Error: tag %s is not valid semver\n", tag)
 		return 1
 	}
 
-	fmt.Fprintf(cfg.Stderr, "=== Release %s ===\n\n", tag)
+	// 5. Print header.
+	if tag != "" {
+		fmt.Fprintf(cfg.Stderr, "=== Release %s ===\n\n", tag)
+	} else {
+		fmt.Fprintf(cfg.Stderr, "=== Release %s → %s ===\n\n", sourceBranch, releaseBranch)
+	}
+
 	fmt.Fprintln(cfg.Stderr, "--- Pre-flight checks ---")
 
-	// 3. Pre-flight: clean working tree.
+	// 6. Pre-flight: clean working tree.
 	status, err := cfg.GitExec("status", "--porcelain")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
@@ -84,46 +109,87 @@ func Run(cfg Config) int {
 	}
 	fmt.Fprintln(cfg.Stderr, "  Clean working tree")
 
-	// 4. Pre-flight: on expected branch.
-	branch, err := cfg.GitExec("branch", "--show-current")
-	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git branch failed: %v\n", err)
-		return 1
-	}
-	if branch != cfg.Branch {
-		fmt.Fprintf(cfg.Stderr, "Error: not on %s branch (on: %s)\n", cfg.Branch, branch)
-		return 1
-	}
-	fmt.Fprintf(cfg.Stderr, "  On %s branch\n", cfg.Branch)
-
-	// 5. Pre-flight: not behind remote.
-	_, err = cfg.GitExec("fetch", "origin", cfg.Branch, "--quiet")
+	// 7. Pre-flight: source branch not behind remote.
+	_, err = cfg.GitExec("fetch", "origin", sourceBranch, "--quiet")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git fetch failed: %v\n", err)
 		return 1
 	}
 
-	mergeBase, err := cfg.GitExec("merge-base", "HEAD", "origin/"+cfg.Branch)
+	mergeBase, err := cfg.GitExec("merge-base", "HEAD", "origin/"+sourceBranch)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git merge-base failed: %v\n", err)
 		return 1
 	}
 
-	remote, err := cfg.GitExec("rev-parse", "origin/" + cfg.Branch)
+	remote, err := cfg.GitExec("rev-parse", "origin/"+sourceBranch)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git rev-parse failed: %v\n", err)
 		return 1
 	}
 
 	if mergeBase != remote {
-		fmt.Fprintf(cfg.Stderr, "Error: local %s is behind origin/%s — pull first\n", cfg.Branch, cfg.Branch)
+		fmt.Fprintf(cfg.Stderr, "Error: local %s is behind origin/%s — pull first\n", sourceBranch, sourceBranch)
 		return 1
 	}
-	fmt.Fprintf(cfg.Stderr, "  Not behind origin/%s\n", cfg.Branch)
+	fmt.Fprintf(cfg.Stderr, "  Not behind origin/%s\n", sourceBranch)
 
-	fmt.Fprintf(cfg.Stderr, "  Tag %s exists at HEAD\n", tag)
+	if tag != "" {
+		fmt.Fprintf(cfg.Stderr, "  Tag %s exists at HEAD\n", tag)
+	}
 
-	// 6. Run preRelease hook if configured.
+	// 8. Merge flow.
+	switchedBack := true // default: no switch-back needed
+	if needsMerge {
+		if cfg.DryRun {
+			// Check fast-forward is possible without actually merging.
+			_, err := cfg.GitExec("merge-base", "--is-ancestor", releaseBranch, sourceBranch)
+			if err != nil {
+				fmt.Fprintf(cfg.Stderr, "Error: merge would not be fast-forward — %s has diverged from %s. Resolve on %s manually, then try again.\n", releaseBranch, sourceBranch, releaseBranch)
+				return 1
+			}
+			fmt.Fprintf(cfg.Stderr, "  Would merge %s into %s (fast-forward)\n", sourceBranch, releaseBranch)
+		} else {
+			// Fetch release branch.
+			cfg.GitExec("fetch", "origin", releaseBranch, "--quiet")
+
+			// Switch to release branch.
+			if _, err := cfg.GitExec("switch", releaseBranch); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Error: failed to switch to %s: %v\n", releaseBranch, err)
+				return 1
+			}
+
+			// Deferred switch-back on failure.
+			switchedBack = false
+			defer func() {
+				if !switchedBack {
+					cfg.GitExec("switch", sourceBranch)
+				}
+			}()
+
+			// Merge from source branch (fast-forward only).
+			if _, err := cfg.GitExec("merge", "--ff-only", sourceBranch); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Error: merge failed — %s has diverged from %s (not fast-forward). Resolve on %s manually, then try again.\n", releaseBranch, sourceBranch, releaseBranch)
+				return 1
+			}
+			fmt.Fprintf(cfg.Stderr, "  Merged %s into %s\n", sourceBranch, releaseBranch)
+
+			// Verify tag is still at HEAD after merge (if tag exists).
+			if tag != "" {
+				postMergeTagOutput, err := cfg.GitExec("tag", "--points-at", "HEAD")
+				if err != nil || !strings.Contains(postMergeTagOutput, tag) {
+					fmt.Fprintf(cfg.Stderr, "Error: tag %s is no longer at HEAD after merge\n", tag)
+					return 1
+				}
+			}
+		}
+	} else if releaseBranch == "" {
+		// Legacy flow: no releaseBranch configured.
+		// We already checked tag exists above. Just note the branch.
+		fmt.Fprintf(cfg.Stderr, "  On %s branch\n", sourceBranch)
+	}
+
+	// 9. Run preRelease hook if configured.
 	config := changelog.LoadConfig(cfg.ReadFile)
 	if config.Hooks.PreRelease != "" {
 		fmt.Fprintf(cfg.Stderr, "\n--- Running pre-release hook ---\n")
@@ -135,22 +201,56 @@ func Run(cfg Config) int {
 		fmt.Fprintln(cfg.Stderr, "  Hook passed")
 	}
 
-	// 7. Push or dry-run.
+	// 10. Dry run complete.
 	if cfg.DryRun {
 		fmt.Fprintf(cfg.Stderr, "\n--- Dry run complete ---\n")
 		fmt.Fprintf(cfg.Stderr, "  All checks passed. Run without --dry-run to push.\n")
 		return 0
 	}
 
+	// 11. Push.
 	fmt.Fprintf(cfg.Stderr, "\n--- Pushing to origin ---\n")
-	_, err = cfg.GitExec("push", "origin", cfg.Branch, tag)
+
+	pushBranch := sourceBranch
+	if needsMerge {
+		pushBranch = releaseBranch
+	}
+
+	if tag != "" {
+		_, err = cfg.GitExec("push", "origin", pushBranch, tag)
+	} else {
+		_, err = cfg.GitExec("push", "origin", pushBranch)
+	}
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", cfg.Branch, tag)
 
-	fmt.Fprintf(cfg.Stderr, "\n=== Release %s started ===\n", tag)
+	if tag != "" {
+		fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", pushBranch, tag)
+	} else {
+		fmt.Fprintf(cfg.Stderr, "  Pushed %s\n", pushBranch)
+	}
+
+	// 12. Switch back and push source branch.
+	if needsMerge {
+		if _, err := cfg.GitExec("switch", sourceBranch); err != nil {
+			fmt.Fprintf(cfg.Stderr, "Warning: failed to switch back to %s: %v\n", sourceBranch, err)
+		}
+		switchedBack = true
+
+		if _, err := cfg.GitExec("push", "origin", sourceBranch); err != nil {
+			fmt.Fprintf(cfg.Stderr, "Warning: failed to push %s: %v\n", sourceBranch, err)
+		} else {
+			fmt.Fprintf(cfg.Stderr, "  Pushed %s\n", sourceBranch)
+		}
+	}
+
+	if tag != "" {
+		fmt.Fprintf(cfg.Stderr, "\n=== Release %s complete ===\n", tag)
+	} else {
+		fmt.Fprintf(cfg.Stderr, "\n=== Release %s → %s complete ===\n", sourceBranch, releaseBranch)
+	}
 	return 0
 }
 
@@ -163,4 +263,24 @@ func findVersionTag(output string) string {
 		}
 	}
 	return ""
+}
+
+// releaseConfig reads the release section from .pk.json.
+type releaseConfig struct {
+	Release struct {
+		Branch string `json:"branch,omitempty"`
+	} `json:"release,omitempty"`
+}
+
+// loadReleaseBranch reads release.branch from .pk.json.
+func loadReleaseBranch(readFile func(string) ([]byte, error)) string {
+	data, err := readFile(".pk.json")
+	if err != nil {
+		return ""
+	}
+	var cfg releaseConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return ""
+	}
+	return cfg.Release.Branch
 }

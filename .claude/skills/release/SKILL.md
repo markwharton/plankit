@@ -1,10 +1,11 @@
 ---
 name: release
-description: Validate pre-flight checks and push the release to origin
-pk_sha256: 0f2914bb66e3c7159b49a6329f543a818ba0b42f34a743169eea7970489c6419
+description: Merge to release branch, validate, and push to origin
+pk_sha256: 2db494525cda78a487d7722db7c933af4d51ab6d14ce0c0705662b904fd3c325
 ---
 
-Push a release created by pk changelog.
+Push a release created by pk changelog. When `release.branch` is configured
+in `.pk.json`, this command merges to the release branch, pushes, and switches back.
 
 **Always use `pk release` to push — never run `git push` directly.** `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.
 

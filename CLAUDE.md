@@ -18,7 +18,7 @@ IMPORTANT: Follow these rules at all times.
 ### Branch & Workflow
 
 - All changes go through `dev` — never commit directly to `main`.
-- Release flow: `pk changelog` (on `dev`) → merge to `main` → `pk release`.
+- Release flow: `pk changelog` (on `dev`) → `pk release` (merges to `main`, pushes, switches back).
 - Conventional Commits required. Configured types: `feat`, `fix`, `deprecate`, `revert`, `security`, `refactor`, `perf`, `docs`, `chore`, `test`, `build`, `ci`, `style`, `plan` (hidden).
 
 ### Quick Commands
@@ -69,10 +69,11 @@ pk release          # Validate pre-flight checks and push to origin
 
 ### Configuration
 
-- `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`).
+- `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
 - `changelog.types` controls commit type → changelog section mapping.
 - `changelog.hooks` supports `preRelease`, `preCommit`, `postVersion` lifecycle hooks.
 - `guard.protectedBranches` lists branches where git mutations are blocked.
+- `release.branch` configures which branch `pk release` merges to and pushes from.
 
 ### Documentation
 

@@ -21,17 +21,21 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 4. Ask the user about branch conventions:
    - What is the default branch for development? (e.g., `dev`, `main`, `develop`)
    - Are there branches that should never receive direct commits? (e.g., `main`, `production`)
+   - Which branch should releases be pushed to? (e.g., `main`)
 5. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. If the user specified protected branches, include a branch convention (e.g., "All changes go through `dev` — never commit directly to `main`").
 6. Show the proposed section to the user and ask for confirmation before writing.
-7. If the user specified protected branches, create or update `.pk.json` with guard configuration:
+7. If the user specified protected branches or a release branch, create or update `.pk.json`:
    ```json
    {
      "guard": {
        "protectedBranches": ["main"]
+     },
+     "release": {
+       "branch": "main"
      }
    }
    ```
-   If `.pk.json` already exists, merge the guard key — do not overwrite existing config.
+   If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
 
 ## Rules
 

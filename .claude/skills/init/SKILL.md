@@ -1,7 +1,7 @@
 ---
 name: init
 description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
-pk_sha256: 4f3bcf92e91cc899a36d2f5315efa5e04fd855f25b7b2a900a9318ac8a7d9bbb
+pk_sha256: a3cefa2feec9c4a150ee0c25e199caa932a5bcc46f7bcc4e34549fad1f89eb91
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
@@ -22,17 +22,21 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 4. Ask the user about branch conventions:
    - What is the default branch for development? (e.g., `dev`, `main`, `develop`)
    - Are there branches that should never receive direct commits? (e.g., `main`, `production`)
+   - Which branch should releases be pushed to? (e.g., `main`)
 5. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. If the user specified protected branches, include a branch convention (e.g., "All changes go through `dev` — never commit directly to `main`").
 6. Show the proposed section to the user and ask for confirmation before writing.
-7. If the user specified protected branches, create or update `.pk.json` with guard configuration:
+7. If the user specified protected branches or a release branch, create or update `.pk.json`:
    ```json
    {
      "guard": {
        "protectedBranches": ["main"]
+     },
+     "release": {
+       "branch": "main"
      }
    }
    ```
-   If `.pk.json` already exists, merge the guard key — do not overwrite existing config.
+   If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
 
 ## Rules
 

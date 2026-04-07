@@ -18,18 +18,25 @@
 
 ### Release flow (independent developer)
 
-All changes go through `dev` — `main` is protected by `pk guard`. The release
-flow is the one time you touch `main`, and it's done manually:
+All changes go through `dev` — `main` is protected by `pk guard`. With
+`release.branch` configured in `.pk.json`, `pk release` handles the merge
+automatically:
 
 ```bash
 pk changelog                          # on dev: generate changelog, commit, and tag version
-git switch main && git merge dev      # merge to main (manual — guard blocks Claude Code)
+pk release                            # merge to main, validate, push, switch back, push dev
+```
+
+Without `release.branch` configured, the manual git flow:
+
+```bash
+pk changelog                          # on dev: generate changelog, commit, and tag version
+git switch main && git merge dev      # merge to main
 pk release                            # on main: validate and push
 git switch dev                        # switch back
 git push origin dev                   # sync dev with origin
 ```
 
-> `git switch` requires Git 2.23+. Use `git checkout` if `switch` is not available.
 
 ### Useful commands
 
