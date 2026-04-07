@@ -1,6 +1,6 @@
 # plankit
 
-Plan-driven development toolkit for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Designed for small teams and independent developers.
+Plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Designed for small teams and independent developers.
 
 LLMs are open-ended by nature; development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.
 
@@ -14,11 +14,13 @@ LLMs are open-ended by nature; development needs deterministic outcomes. plankit
 
 ## Install
 
+Requires [Go](https://go.dev/doc/install) (for `go install`) and [Claude Code](https://code.claude.com).
+
 ```bash
 go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
-Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases).
+Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases) (no Go required).
 
 After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below or [Getting Started](docs/getting-started.md) for details.
 
