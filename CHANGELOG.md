@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.6.0] - 2026-04-08
+
+### Added
+
+- pk release merges to release branch, bypassing guard (d408632)
+
+### Fixed
+
+- handle compound commands in pk guard (bd37130)
+
+### Documentation
+
+- add release flow and GitHub CLI commands to resources (c05588b)
+- add prerequisites and update introductory flow (af50f7a)
+- update site with stronger narrative and substance (60934c2)
+- fix stale terminology in methodology.md (2f5e243)
+
 ## [v0.5.0] - 2026-04-07
 
 ### Added
@@ -151,3 +168,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.3.0]: https://github.com/markwharton/plankit/compare/v0.2.0...v0.3.0
 [v0.4.0]: https://github.com/markwharton/plankit/compare/v0.3.0...v0.4.0
 [v0.5.0]: https://github.com/markwharton/plankit/compare/v0.4.0...v0.5.0
+[v0.6.0]: https://github.com/markwharton/plankit/compare/v0.5.0...v0.6.0
