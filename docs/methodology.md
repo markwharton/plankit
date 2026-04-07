@@ -40,14 +40,15 @@ The goal is a plan you're confident in before execution begins — discarding a 
 
 ## Guidelines
 
-`pk setup` installs a universal CLAUDE.md with guidelines split into two sections:
+`pk setup` installs a CLAUDE.md with critical rules and detailed guidelines as `.claude/rules/` files:
 
-- **Model Behavior** — instructions for how Claude should think and communicate (honesty, scope discipline, read before writing, testing discipline)
-- **Development Standards** — rules for the code itself (data-first, fail fast, all-or-nothing consistency, git discipline)
+- **Model Behavior** — how Claude should think and communicate (honesty, scope discipline, read before writing, testing discipline)
+- **Development Standards** — rules for the code itself (data-first, fail fast, all-or-nothing consistency, security, debugging)
+- **Git Discipline** — commit with purpose, commit and push are separate decisions, never force push
 
-This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The universal template makes both explicit.
+This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The critical rules in CLAUDE.md are the non-negotiable guardrails. The rules files provide the detailed guidance.
 
-Ask Claude to analyze your project and generate a `## Project Conventions` section for your CLAUDE.md — it will explore the codebase and propose conventions for your approval. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd) for details.
+After running `pk setup`, run `/init` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, and proposes a `## Project Conventions` section for your approval. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd) for details.
 
 ## Why guidelines matter
 
@@ -86,6 +87,6 @@ For frequent use, create a `/review` skill — see [Create your own skills](pk-s
 
 ## Use what you build
 
-plankit follows its own guidelines. The same CLAUDE.md that `pk setup` creates for your project is what plankit uses itself — universal base plus project conventions. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
+plankit follows its own guidelines. The same critical rules and `.claude/rules/` files that `pk setup` creates for your project are what plankit uses itself — plus project-specific conventions. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
 
 This is sometimes called "eating your own dog food", or dogfooding. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
