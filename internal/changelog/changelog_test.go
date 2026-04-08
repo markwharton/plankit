@@ -448,26 +448,6 @@ func TestParseLog(t *testing.T) {
 	})
 }
 
-func TestParseRepoURL(t *testing.T) {
-	tests := []struct {
-		name string
-		input string
-		want  string
-	}{
-		{"SSH", "git@github.com:markwharton/plankit.git", "https://github.com/markwharton/plankit"},
-		{"HTTPS with .git", "https://github.com/markwharton/plankit.git", "https://github.com/markwharton/plankit"},
-		{"HTTPS without .git", "https://github.com/markwharton/plankit", "https://github.com/markwharton/plankit"},
-		{"SSH with trailing newline", "git@github.com:owner/repo.git\n", "https://github.com/owner/repo"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := parseRepoURL(tt.input); got != tt.want {
-				t.Errorf("parseRepoURL(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestAppendRefLink(t *testing.T) {
 	t.Run("to content with trailing newline", func(t *testing.T) {
 		got := appendRefLink("# Changelog\n\n## [v0.1.0]\n", "[v0.1.0]: https://example.com")
@@ -1175,5 +1155,110 @@ func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
 	}
 	if strings.Contains(stderr.String(), "protected branch") {
 		t.Errorf("should not warn on unprotected branch")
+	}
+}
+
+func TestRun_push(t *testing.T) {
+	var stderr bytes.Buffer
+	var gitCalls []string
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			call := strings.Join(args, " ")
+			gitCalls = append(gitCalls, call)
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+		Push:      true,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+
+	// Verify push was called after tag.
+	lastCall := gitCalls[len(gitCalls)-1]
+	if lastCall != "push origin HEAD v0.1.0" {
+		t.Errorf("last git call = %q, want 'push origin HEAD v0.1.0'", lastCall)
+	}
+	if !strings.Contains(stderr.String(), "Pushed to origin") {
+		t.Errorf("stderr missing push confirmation: %s", stderr.String())
+	}
+}
+
+func TestRun_pushFailure(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			if args[0] == "push" {
+				return "", fmt.Errorf("permission denied")
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+		Push:      true,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "git push failed") {
+		t.Errorf("stderr = %q, want push failure message", stderr.String())
+	}
+}
+
+func TestRun_pushDryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	pushCalled := false
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "push" {
+				pushCalled = true
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: new feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:       fixedTime,
+		DryRun:    true,
+		Push:      true,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if pushCalled {
+		t.Error("push should not be called in dry run")
 	}
 }

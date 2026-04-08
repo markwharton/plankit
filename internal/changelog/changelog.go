@@ -30,6 +30,8 @@ type Config struct {
 	Bump string
 	// DryRun previews the changelog section without writing, committing, or tagging.
 	DryRun bool
+	// Push pushes commit and tag to origin after tagging.
+	Push bool
 }
 
 // DefaultConfig returns a Config wired to real implementations.
@@ -251,7 +253,7 @@ func Run(cfg Config) int {
 	// 12. Get repo URL for comparison links.
 	repoURL := ""
 	if remoteURL, err := cfg.GitExec("", "remote", "get-url", "origin"); err == nil {
-		repoURL = parseRepoURL(remoteURL)
+		repoURL = pkgit.ParseRepoURL(remoteURL)
 	}
 
 	// 13. Read existing CHANGELOG.md.
@@ -305,6 +307,16 @@ func Run(cfg Config) int {
 	}
 
 	fmt.Fprintf(cfg.Stderr, "Tagged %s\n", nextTag)
+
+	// 18. Push to origin (only when --push is set).
+	if cfg.Push {
+		if _, err := cfg.GitExec("", "push", "origin", "HEAD", nextTag); err != nil {
+			fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(cfg.Stderr, "Pushed to origin\n")
+	}
+
 	return 0
 }
 
@@ -590,20 +602,6 @@ func spliceJSONVersion(content []byte, newVersion string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("no version field found at root level")
-}
-
-// parseRepoURL converts a git remote URL to an HTTPS base URL.
-// Handles SSH (git@github.com:owner/repo.git) and HTTPS formats.
-func parseRepoURL(remoteURL string) string {
-	u := strings.TrimSpace(remoteURL)
-	// SSH format: git@github.com:owner/repo.git
-	if strings.HasPrefix(u, "git@") {
-		u = strings.TrimPrefix(u, "git@")
-		u = strings.Replace(u, ":", "/", 1)
-		u = "https://" + u
-	}
-	u = strings.TrimSuffix(u, ".git")
-	return u
 }
 
 // appendRefLink appends a markdown reference link definition to the content.
