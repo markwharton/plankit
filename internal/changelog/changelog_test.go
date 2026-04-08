@@ -89,10 +89,10 @@ func TestParseVersion(t *testing.T) {
 		want   version.Semver
 		wantOK bool
 	}{
-		{"v1.2.3", version.Semver{1, 2, 3}, true},
-		{"v0.0.0", version.Semver{0, 0, 0}, true},
-		{"1.2.3", version.Semver{1, 2, 3}, true},
-		{"v10.20.30", version.Semver{10, 20, 30}, true},
+		{"v1.2.3", version.Semver{Major: 1, Minor: 2, Patch: 3}, true},
+		{"v0.0.0", version.Semver{}, true},
+		{"1.2.3", version.Semver{Major: 1, Minor: 2, Patch: 3}, true},
+		{"v10.20.30", version.Semver{Major: 10, Minor: 20, Patch: 30}, true},
 		{"invalid", version.Semver{}, false},
 		{"v1.2", version.Semver{}, false},
 		{"v1.2.x", version.Semver{}, false},
@@ -113,9 +113,9 @@ func TestFormatVersion(t *testing.T) {
 		v    version.Semver
 		want string
 	}{
-		{version.Semver{1, 2, 3}, "v1.2.3"},
-		{version.Semver{0, 0, 0}, "v0.0.0"},
-		{version.Semver{10, 0, 0}, "v10.0.0"},
+		{version.Semver{Major: 1, Minor: 2, Patch: 3}, "v1.2.3"},
+		{version.Semver{}, "v0.0.0"},
+		{version.Semver{Major: 10}, "v10.0.0"},
 	}
 	for _, tt := range tests {
 		if got := tt.v.String(); got != tt.want {
@@ -131,14 +131,14 @@ func TestBumpVersion(t *testing.T) {
 		bump int
 		want version.Semver
 	}{
-		{"patch", version.Semver{1, 2, 3}, BumpPatch, version.Semver{1, 2, 4}},
-		{"minor", version.Semver{1, 2, 3}, BumpMinor, version.Semver{1, 3, 0}},
-		{"major", version.Semver{1, 2, 3}, BumpMajor, version.Semver{2, 0, 0}},
-		{"patch from zero", version.Semver{0, 0, 0}, BumpPatch, version.Semver{0, 0, 1}},
-		{"minor from zero", version.Semver{0, 0, 0}, BumpMinor, version.Semver{0, 1, 0}},
-		{"major from zero", version.Semver{0, 0, 0}, BumpMajor, version.Semver{1, 0, 0}},
-		{"minor resets patch", version.Semver{1, 2, 5}, BumpMinor, version.Semver{1, 3, 0}},
-		{"major resets minor and patch", version.Semver{1, 2, 5}, BumpMajor, version.Semver{2, 0, 0}},
+		{"patch", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpPatch, version.Semver{Major: 1, Minor: 2, Patch: 4}},
+		{"minor", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpMinor, version.Semver{Major: 1, Minor: 3}},
+		{"major", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpMajor, version.Semver{Major: 2}},
+		{"patch from zero", version.Semver{}, BumpPatch, version.Semver{Patch: 1}},
+		{"minor from zero", version.Semver{}, BumpMinor, version.Semver{Minor: 1}},
+		{"major from zero", version.Semver{}, BumpMajor, version.Semver{Major: 1}},
+		{"minor resets patch", version.Semver{Major: 1, Minor: 2, Patch: 5}, BumpMinor, version.Semver{Major: 1, Minor: 3}},
+		{"major resets minor and patch", version.Semver{Major: 1, Minor: 2, Patch: 5}, BumpMajor, version.Semver{Major: 2}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

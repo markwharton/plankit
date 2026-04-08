@@ -1,6 +1,7 @@
-// Package version provides build version information.
+// Package version provides build version information and semantic versioning
+// per the Semantic Versioning 2.0.0 specification (https://semver.org).
 //
-// The version is determined by the build path:
+// The build version is determined by the build path:
 //   - go install @latest: Go embeds the module version via debug.ReadBuildInfo()
 //   - make build VERSION=x.y.z: ldflags override sets a specific version
 //   - make build: ldflags sets "dev" for development builds
@@ -30,49 +31,226 @@ func Version() string {
 	return "dev"
 }
 
-// Semver holds the major, minor, and patch components of a semantic version.
+// Semver holds the components of a semantic version per semver.org/spec/v2.0.0.
+//
+// PreRelease and Build are stored as their original dot-separated strings.
+// Empty string means not present.
 type Semver struct {
 	Major, Minor, Patch int
+	PreRelease          string // dot-separated pre-release identifiers (e.g. "alpha.1")
+	Build               string // dot-separated build metadata identifiers (e.g. "build.123")
 }
 
-// ParseSemver parses "vX.Y.Z" or "X.Y.Z" into a Semver.
+// ParseSemver parses a semantic version string into a Semver.
+// Accepts an optional "v" prefix (common in Git tags).
 // Returns ok=false if the input is not a valid semver string.
 func ParseSemver(s string) (Semver, bool) {
 	s = strings.TrimPrefix(s, "v")
+
+	// Split off build metadata (after '+').
+	var build string
+	if idx := strings.IndexByte(s, '+'); idx >= 0 {
+		build = s[idx+1:]
+		s = s[:idx]
+		if !validBuildMetadata(build) {
+			return Semver{}, false
+		}
+	}
+
+	// Split off pre-release (after '-').
+	var preRelease string
+	if idx := strings.IndexByte(s, '-'); idx >= 0 {
+		preRelease = s[idx+1:]
+		s = s[:idx]
+		if !validPreRelease(preRelease) {
+			return Semver{}, false
+		}
+	}
+
+	// Parse core version X.Y.Z.
 	parts := strings.SplitN(s, ".", 3)
 	if len(parts) != 3 {
 		return Semver{}, false
 	}
-	maj, err1 := strconv.Atoi(parts[0])
-	min, err2 := strconv.Atoi(parts[1])
-	pat, err3 := strconv.Atoi(parts[2])
-	if err1 != nil || err2 != nil || err3 != nil {
+	maj, ok1 := parseNumericID(parts[0])
+	min, ok2 := parseNumericID(parts[1])
+	pat, ok3 := parseNumericID(parts[2])
+	if !ok1 || !ok2 || !ok3 {
 		return Semver{}, false
 	}
-	return Semver{Major: maj, Minor: min, Patch: pat}, true
+
+	return Semver{
+		Major: maj, Minor: min, Patch: pat,
+		PreRelease: preRelease,
+		Build:      build,
+	}, true
 }
 
-// String returns the "vX.Y.Z" representation.
+// String returns the version with a "v" prefix: "vX.Y.Z[-prerelease][+build]".
 func (v Semver) String() string {
-	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
+	s := fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
+	if v.PreRelease != "" {
+		s += "-" + v.PreRelease
+	}
+	if v.Build != "" {
+		s += "+" + v.Build
+	}
+	return s
 }
 
-// Compare returns -1, 0, or 1 if v is less than, equal to, or greater than other.
+// Compare returns -1, 0, or 1 per semver precedence rules (spec rule 11).
+// Build metadata is ignored (spec rule 10).
 func (v Semver) Compare(other Semver) int {
-	pairs := [3][2]int{
-		{v.Major, other.Major},
-		{v.Minor, other.Minor},
-		{v.Patch, other.Patch},
+	// 1. Compare core version numerically.
+	if c := intCmp(v.Major, other.Major); c != 0 {
+		return c
 	}
-	for _, p := range pairs {
-		if p[0] < p[1] {
+	if c := intCmp(v.Minor, other.Minor); c != 0 {
+		return c
+	}
+	if c := intCmp(v.Patch, other.Patch); c != 0 {
+		return c
+	}
+
+	// 2. Pre-release precedence.
+	// A version without pre-release has higher precedence.
+	vPre := v.PreRelease != ""
+	oPre := other.PreRelease != ""
+	if !vPre && !oPre {
+		return 0
+	}
+	if !vPre {
+		return 1 // v is release, other is pre-release
+	}
+	if !oPre {
+		return -1 // v is pre-release, other is release
+	}
+
+	// 3. Compare pre-release identifiers left to right.
+	vIDs := strings.Split(v.PreRelease, ".")
+	oIDs := strings.Split(other.PreRelease, ".")
+	n := len(vIDs)
+	if len(oIDs) < n {
+		n = len(oIDs)
+	}
+	for i := 0; i < n; i++ {
+		if c := comparePreReleaseID(vIDs[i], oIDs[i]); c != 0 {
+			return c
+		}
+	}
+
+	// 4. Larger set of identifiers has higher precedence.
+	return intCmp(len(vIDs), len(oIDs))
+}
+
+// parseNumericID parses a non-negative integer with no leading zeros (spec rule 2).
+func parseNumericID(s string) (int, bool) {
+	if s == "" {
+		return 0, false
+	}
+	if len(s) > 1 && s[0] == '0' {
+		return 0, false
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// validPreRelease validates a dot-separated pre-release string (spec rule 9).
+// Each identifier must be non-empty, contain only [0-9A-Za-z-], and
+// numeric-only identifiers must not have leading zeros.
+func validPreRelease(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, id := range strings.Split(s, ".") {
+		if id == "" {
+			return false
+		}
+		if !allAlphanumericHyphen(id) {
+			return false
+		}
+		if allDigits(id) && len(id) > 1 && id[0] == '0' {
+			return false
+		}
+	}
+	return true
+}
+
+// validBuildMetadata validates a dot-separated build metadata string (spec rule 10).
+// Each identifier must be non-empty and contain only [0-9A-Za-z-].
+// Leading zeros are allowed in build metadata (unlike pre-release).
+func validBuildMetadata(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, id := range strings.Split(s, ".") {
+		if id == "" {
+			return false
+		}
+		if !allAlphanumericHyphen(id) {
+			return false
+		}
+	}
+	return true
+}
+
+// comparePreReleaseID compares two pre-release identifiers per spec rule 11:
+//   - Both numeric: compare as integers
+//   - Both non-numeric: compare lexically (ASCII sort)
+//   - Numeric always sorts before non-numeric
+func comparePreReleaseID(a, b string) int {
+	aDigits := allDigits(a)
+	bDigits := allDigits(b)
+	switch {
+	case aDigits && bDigits:
+		ai, _ := strconv.Atoi(a)
+		bi, _ := strconv.Atoi(b)
+		return intCmp(ai, bi)
+	case aDigits:
+		return -1
+	case bDigits:
+		return 1
+	default:
+		if a < b {
 			return -1
 		}
-		if p[0] > p[1] {
+		if a > b {
 			return 1
 		}
+		return 0
+	}
+}
+
+func intCmp(a, b int) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
 	}
 	return 0
+}
+
+func allAlphanumericHyphen(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func allDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
 }
 
 // VerboseInfo returns additional build information (Go version and build date).
