@@ -4,6 +4,7 @@ package hooks
 import (
 	"encoding/json"
 	"io"
+	"os"
 )
 
 // Input represents the JSON payload received from Claude Code hooks via stdin.
@@ -20,7 +21,15 @@ type ToolInput struct {
 }
 
 // ReadInput reads and parses the Claude Code hook JSON payload from the given reader.
+// If stdin is a terminal (not a pipe), it returns an error immediately to avoid blocking.
 func ReadInput(r io.Reader) (Input, error) {
+	if f, ok := r.(*os.File); ok {
+		if stat, err := f.Stat(); err == nil {
+			if stat.Mode()&os.ModeCharDevice != 0 {
+				return Input{}, io.EOF
+			}
+		}
+	}
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return Input{}, err

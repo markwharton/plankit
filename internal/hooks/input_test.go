@@ -79,6 +79,14 @@ func TestReadInput(t *testing.T) {
 	}
 }
 
+func TestReadInput_emptyReader(t *testing.T) {
+	// Empty reader (EOF immediately) should return an error, not block.
+	_, err := ReadInput(strings.NewReader(""))
+	if err == nil {
+		t.Fatal("expected error for empty input, got nil")
+	}
+}
+
 func TestToolResponseString(t *testing.T) {
 	tests := []struct {
 		name string
