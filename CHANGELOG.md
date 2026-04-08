@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.6.1] - 2026-04-08
+
+### Fixed
+
+- prevent ReadInput from blocking when stdin is a terminal (cc5415a)
+
+### Documentation
+
+- add real-world example of guidelines being ignored (5f5d183)
+
 ## [v0.6.0] - 2026-04-08
 
 ### Added
@@ -169,3 +179,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.4.0]: https://github.com/markwharton/plankit/compare/v0.3.0...v0.4.0
 [v0.5.0]: https://github.com/markwharton/plankit/compare/v0.4.0...v0.5.0
 [v0.6.0]: https://github.com/markwharton/plankit/compare/v0.5.0...v0.6.0
+[v0.6.1]: https://github.com/markwharton/plankit/compare/v0.6.0...v0.6.1
