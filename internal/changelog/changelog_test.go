@@ -13,13 +13,16 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	t.Run("full config", func(t *testing.T) {
-		cfg := LoadConfig(func(name string) ([]byte, error) {
+		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"changelog":{
 				"types": [{"type":"feat","section":"Features"}],
 				"versionFiles": [{"path":"package.json","type":"json"}],
 				"hooks": {"postVersion":"echo done","preCommit":"echo pre"}
 			}}`), nil
 		})
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
 		if len(cfg.Types) != 1 || cfg.Types[0].Section != "Features" {
 			t.Errorf("types = %v, want Features", cfg.Types)
 		}
@@ -35,36 +38,45 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("types only", func(t *testing.T) {
-		cfg := LoadConfig(func(name string) ([]byte, error) {
+		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"changelog":{"types":[{"type":"fix","section":"Fixed"}]}}`), nil
 		})
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
 		if len(cfg.Types) != 1 || cfg.Types[0].Type != "fix" {
 			t.Errorf("types = %v, want fix", cfg.Types)
 		}
 	})
 
 	t.Run("missing file returns defaults", func(t *testing.T) {
-		cfg := LoadConfig(func(name string) ([]byte, error) {
+		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return nil, os.ErrNotExist
 		})
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
 		if len(cfg.Types) != len(defaultTypes) {
 			t.Errorf("types count = %d, want %d", len(cfg.Types), len(defaultTypes))
 		}
 	})
 
-	t.Run("malformed JSON returns defaults", func(t *testing.T) {
-		cfg := LoadConfig(func(name string) ([]byte, error) {
+	t.Run("malformed JSON returns error", func(t *testing.T) {
+		_, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{not json}`), nil
 		})
-		if len(cfg.Types) != len(defaultTypes) {
-			t.Errorf("types count = %d, want %d", len(cfg.Types), len(defaultTypes))
+		if err == nil {
+			t.Error("expected error for malformed JSON")
 		}
 	})
 
 	t.Run("empty types uses defaults", func(t *testing.T) {
-		cfg := LoadConfig(func(name string) ([]byte, error) {
+		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"changelog":{"types":[]}}`), nil
 		})
+		if err != nil {
+			t.Fatalf("LoadConfig() error = %v", err)
+		}
 		if len(cfg.Types) != len(defaultTypes) {
 			t.Errorf("types count = %d, want %d", len(cfg.Types), len(defaultTypes))
 		}

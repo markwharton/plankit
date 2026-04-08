@@ -75,7 +75,11 @@ func Run(cfg Config) int {
 	}
 
 	// Load guard config.
-	config := loadGuardConfig(cfg.ReadFile, projectDir)
+	config, err := loadGuardConfig(cfg.ReadFile, projectDir)
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk guard: %v\n", err)
+		return 0
+	}
 	if len(config.ProtectedBranches) == 0 {
 		return 0
 	}
@@ -153,14 +157,15 @@ func isGitMutationSingle(cmd string) bool {
 }
 
 // loadGuardConfig reads .pk.json from the project directory and returns the guard config.
-func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) GuardConfig {
+// Returns an error if the file exists but contains malformed JSON.
+func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (GuardConfig, error) {
 	data, err := readFile(projectDir + "/.pk.json")
 	if err != nil {
-		return GuardConfig{}
+		return GuardConfig{}, nil
 	}
 	var pk PkConfig
 	if err := json.Unmarshal(data, &pk); err != nil {
-		return GuardConfig{}
+		return GuardConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
 	}
-	return pk.Guard
+	return pk.Guard, nil
 }

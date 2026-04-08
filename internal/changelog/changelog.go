@@ -151,7 +151,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 1. Load config.
-	fullConfig := LoadFullConfig(cfg.ReadFile)
+	fullConfig, err := LoadFullConfig(cfg.ReadFile)
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		return 1
+	}
 	config := fullConfig.ChangelogConfig
 
 	// 1a. Check if on a guarded branch.
@@ -311,26 +315,29 @@ type FullConfig struct {
 }
 
 // LoadFullConfig reads .pk.json and returns changelog + guard config.
-// Falls back to defaults if the file is missing or malformed.
-func LoadFullConfig(readFile func(string) ([]byte, error)) FullConfig {
+// Falls back to defaults if the file is missing. Returns an error if the
+// file exists but contains malformed JSON.
+func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 	data, err := readFile(".pk.json")
 	if err != nil {
-		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}
+		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}, nil
 	}
 	var pk PkConfig
 	if err := json.Unmarshal(data, &pk); err != nil {
-		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}
+		return FullConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
 	}
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
-	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}
+	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
 }
 
 // LoadConfig reads .pk.json and returns the changelog config.
-// Falls back to defaults if the file is missing or malformed.
-func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
-	return LoadFullConfig(readFile).ChangelogConfig
+// Falls back to defaults if the file is missing. Returns an error if
+// the file exists but contains malformed JSON.
+func LoadConfig(readFile func(string) ([]byte, error)) (ChangelogConfig, error) {
+	full, err := LoadFullConfig(readFile)
+	return full.ChangelogConfig, err
 }
 
 // bumpVersion increments a Semver by the given bump type.

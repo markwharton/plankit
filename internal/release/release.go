@@ -65,7 +65,11 @@ func Run(cfg Config) int {
 	sourceBranch = strings.TrimSpace(sourceBranch)
 
 	// 2. Load release config.
-	releaseConf := loadReleaseConfig(cfg.ReadFile)
+	releaseConf, err := loadReleaseConfig(cfg.ReadFile)
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		return 1
+	}
 	releaseBranch := releaseConf.Branch
 	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
 
@@ -290,14 +294,15 @@ type pkReleaseConfig struct {
 }
 
 // loadReleaseConfig reads the release section from .pk.json.
-func loadReleaseConfig(readFile func(string) ([]byte, error)) ReleaseSection {
+// Returns an error if the file exists but contains malformed JSON.
+func loadReleaseConfig(readFile func(string) ([]byte, error)) (ReleaseSection, error) {
 	data, err := readFile(".pk.json")
 	if err != nil {
-		return ReleaseSection{}
+		return ReleaseSection{}, nil
 	}
 	var cfg pkReleaseConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return ReleaseSection{}
+		return ReleaseSection{}, fmt.Errorf("failed to parse .pk.json: %w", err)
 	}
-	return cfg.Release
+	return cfg.Release, nil
 }

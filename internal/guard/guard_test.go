@@ -252,6 +252,33 @@ func TestIsGitMutation(t *testing.T) {
 	}
 }
 
+func TestRun_malformedPkJsonLogsError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cfg := Config{
+		Stdin:  strings.NewReader(`{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/project"}`),
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{not json}`), nil
+		},
+		GitExec: func(dir string, args ...string) (string, error) {
+			return "main\n", nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0 (hooks always exit 0)", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to parse .pk.json") {
+		t.Errorf("stderr = %q, want parse error message", stderr.String())
+	}
+	if stdout.Len() > 0 {
+		t.Errorf("stdout = %q, want empty (no block on parse error)", stdout.String())
+	}
+}
+
 type testError struct {
 	msg string
 }

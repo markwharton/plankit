@@ -15,7 +15,7 @@
       {"type": "ci", "section": "Maintenance"},
       {"type": "style", "section": "Maintenance"},
       {"type": "plan", "section": "Plans", "hidden": true}
-    ],
+    ]
   },
   "guard": {
     "protectedBranches": ["main"]
