@@ -10,18 +10,20 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
+
+	pkgit "github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // Config holds injectable dependencies for testing.
 type Config struct {
 	Stderr    io.Writer
-	GitExec   func(args ...string) (string, error)
+	GitExec   func(dir string, args ...string) (string, error)
 	ReadFile  func(name string) ([]byte, error)
 	WriteFile func(name string, data []byte, perm os.FileMode) error
-	RunScript func(command string) error
+	RunScript func(command string, env map[string]string) error
 	Now       func() time.Time
 
 	// Bump overrides auto-detected version bump: "major", "minor", or "patch".
@@ -33,26 +35,27 @@ type Config struct {
 // DefaultConfig returns a Config wired to real implementations.
 func DefaultConfig() Config {
 	return Config{
-		Stderr: os.Stderr,
-		GitExec: func(args ...string) (string, error) {
-			out, err := exec.Command("git", args...).CombinedOutput()
-			return strings.TrimRight(string(out), "\n"), err
-		},
+		Stderr:    os.Stderr,
+		GitExec:   pkgit.Exec,
 		ReadFile:  os.ReadFile,
 		WriteFile: os.WriteFile,
-		RunScript: func(command string) error {
-			cmd := exec.Command("sh", "-c", command)
-			cmd.Stdout = os.Stderr
-			cmd.Stderr = os.Stderr
-			return cmd.Run()
-		},
-		Now: time.Now,
+		RunScript: defaultRunScript,
+		Now:       time.Now,
 	}
 }
 
-// Version holds semver components.
-type Version struct {
-	Major, Minor, Patch int
+// defaultRunScript runs a shell command with optional environment variables.
+func defaultRunScript(command string, env map[string]string) error {
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	if len(env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+	return cmd.Run()
 }
 
 // Commit represents a parsed conventional commit.
@@ -152,7 +155,7 @@ func Run(cfg Config) int {
 	config := fullConfig.ChangelogConfig
 
 	// 1a. Check if on a guarded branch.
-	if branch, err := cfg.GitExec("branch", "--show-current"); err == nil {
+	if branch, err := cfg.GitExec("", "branch", "--show-current"); err == nil {
 		branch = strings.TrimSpace(branch)
 		for _, protected := range fullConfig.Guard.ProtectedBranches {
 			if branch == protected {
@@ -163,7 +166,7 @@ func Run(cfg Config) int {
 	}
 
 	// 2. Get latest tag.
-	tagOutput, err := cfg.GitExec("tag", "--list", "v*", "--sort=-v:refname")
+	tagOutput, err := cfg.GitExec("", "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to list tags: %v\n", err)
 		return 1
@@ -175,14 +178,14 @@ func Run(cfg Config) int {
 		fmt.Fprintln(cfg.Stderr, "  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)")
 		return 1
 	}
-	baseVersion, ok := parseVersion(latestTag)
+	baseVersion, ok := version.ParseSemver(latestTag)
 	if !ok {
 		fmt.Fprintf(cfg.Stderr, "Error: invalid version tag %q\n", latestTag)
 		return 1
 	}
 
 	// 3. Get commits since tag.
-	logOutput, err := cfg.GitExec("log", "--format=%h%x00%s%x00%b%x00", latestTag+"..HEAD", "--reverse")
+	logOutput, err := cfg.GitExec("", "log", "--format=%h%x00%s%x00%b%x00", latestTag+"..HEAD", "--reverse")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to read git log: %v\n", err)
 		return 1
@@ -205,7 +208,7 @@ func Run(cfg Config) int {
 
 	// 6. Compute next version.
 	next := bumpVersion(baseVersion, bump)
-	nextTag := formatVersion(next)
+	nextTag := next.String()
 	fmt.Fprintf(cfg.Stderr, "Generating %s\n", nextTag)
 
 	// 7. Generate section.
@@ -235,7 +238,7 @@ func Run(cfg Config) int {
 	// 11. Run postVersion hook.
 	if config.Hooks.PostVersion != "" {
 		fmt.Fprintf(cfg.Stderr, "Running postVersion hook...\n")
-		if err := cfg.RunScript("VERSION=" + ver + " " + config.Hooks.PostVersion); err != nil {
+		if err := cfg.RunScript(config.Hooks.PostVersion, map[string]string{"VERSION": ver}); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: postVersion hook failed: %v\n", err)
 			return 1
 		}
@@ -243,7 +246,7 @@ func Run(cfg Config) int {
 
 	// 12. Get repo URL for comparison links.
 	repoURL := ""
-	if remoteURL, err := cfg.GitExec("remote", "get-url", "origin"); err == nil {
+	if remoteURL, err := cfg.GitExec("", "remote", "get-url", "origin"); err == nil {
 		repoURL = parseRepoURL(remoteURL)
 	}
 
@@ -266,7 +269,7 @@ func Run(cfg Config) int {
 	// 16. Run preCommit hook.
 	if config.Hooks.PreCommit != "" {
 		fmt.Fprintf(cfg.Stderr, "Running preCommit hook...\n")
-		if err := cfg.RunScript("VERSION=" + ver + " " + config.Hooks.PreCommit); err != nil {
+		if err := cfg.RunScript(config.Hooks.PreCommit, map[string]string{"VERSION": ver}); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: preCommit hook failed: %v\n", err)
 			return 1
 		}
@@ -278,21 +281,21 @@ func Run(cfg Config) int {
 	for _, vf := range config.VersionFiles {
 		addFiles = append(addFiles, vf.Path)
 	}
-	if _, err := cfg.GitExec(addFiles...); err != nil {
+	if _, err := cfg.GitExec("", addFiles...); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git add failed: %v\n", err)
 		return 1
 	}
 	// Also stage any tracked files modified by hooks.
-	if _, err := cfg.GitExec("add", "-u"); err != nil {
+	if _, err := cfg.GitExec("", "add", "-u"); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git add failed: %v\n", err)
 		return 1
 	}
 	commitMsg := fmt.Sprintf("chore: release %s", nextTag)
-	if _, err := cfg.GitExec("commit", "-m", commitMsg); err != nil {
+	if _, err := cfg.GitExec("", "commit", "-m", commitMsg); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git commit failed: %v\n", err)
 		return 1
 	}
-	if _, err := cfg.GitExec("tag", nextTag); err != nil {
+	if _, err := cfg.GitExec("", "tag", nextTag); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
 		return 1
 	}
@@ -330,36 +333,15 @@ func LoadConfig(readFile func(string) ([]byte, error)) ChangelogConfig {
 	return LoadFullConfig(readFile).ChangelogConfig
 }
 
-// parseVersion parses "vX.Y.Z" into a Version.
-func parseVersion(tag string) (Version, bool) {
-	s := strings.TrimPrefix(tag, "v")
-	parts := strings.SplitN(s, ".", 3)
-	if len(parts) != 3 {
-		return Version{}, false
-	}
-	major, err1 := strconv.Atoi(parts[0])
-	minor, err2 := strconv.Atoi(parts[1])
-	patch, err3 := strconv.Atoi(parts[2])
-	if err1 != nil || err2 != nil || err3 != nil {
-		return Version{}, false
-	}
-	return Version{Major: major, Minor: minor, Patch: patch}, true
-}
-
-// formatVersion produces "vX.Y.Z" from a Version.
-func formatVersion(v Version) string {
-	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
-}
-
-// bumpVersion increments a Version by the given bump type.
-func bumpVersion(v Version, bump int) Version {
+// bumpVersion increments a Semver by the given bump type.
+func bumpVersion(v version.Semver, bump int) version.Semver {
 	switch bump {
 	case BumpMajor:
-		return Version{Major: v.Major + 1}
+		return version.Semver{Major: v.Major + 1}
 	case BumpMinor:
-		return Version{Major: v.Major, Minor: v.Minor + 1}
+		return version.Semver{Major: v.Major, Minor: v.Minor + 1}
 	case BumpPatch:
-		return Version{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}
+		return version.Semver{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}
 	default:
 		return v
 	}

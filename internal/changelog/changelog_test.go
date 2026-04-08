@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/markwharton/plankit/internal/version"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -71,24 +73,24 @@ func TestLoadConfig(t *testing.T) {
 
 func TestParseVersion(t *testing.T) {
 	tests := []struct {
-		tag     string
-		want    Version
-		wantOK  bool
+		tag    string
+		want   version.Semver
+		wantOK bool
 	}{
-		{"v1.2.3", Version{1, 2, 3}, true},
-		{"v0.0.0", Version{0, 0, 0}, true},
-		{"1.2.3", Version{1, 2, 3}, true},
-		{"v10.20.30", Version{10, 20, 30}, true},
-		{"invalid", Version{}, false},
-		{"v1.2", Version{}, false},
-		{"v1.2.x", Version{}, false},
-		{"", Version{}, false},
+		{"v1.2.3", version.Semver{1, 2, 3}, true},
+		{"v0.0.0", version.Semver{0, 0, 0}, true},
+		{"1.2.3", version.Semver{1, 2, 3}, true},
+		{"v10.20.30", version.Semver{10, 20, 30}, true},
+		{"invalid", version.Semver{}, false},
+		{"v1.2", version.Semver{}, false},
+		{"v1.2.x", version.Semver{}, false},
+		{"", version.Semver{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.tag, func(t *testing.T) {
-			got, ok := parseVersion(tt.tag)
+			got, ok := version.ParseSemver(tt.tag)
 			if ok != tt.wantOK || got != tt.want {
-				t.Errorf("parseVersion(%q) = %v, %v; want %v, %v", tt.tag, got, ok, tt.want, tt.wantOK)
+				t.Errorf("ParseSemver(%q) = %v, %v; want %v, %v", tt.tag, got, ok, tt.want, tt.wantOK)
 			}
 		})
 	}
@@ -96,16 +98,16 @@ func TestParseVersion(t *testing.T) {
 
 func TestFormatVersion(t *testing.T) {
 	tests := []struct {
-		v    Version
+		v    version.Semver
 		want string
 	}{
-		{Version{1, 2, 3}, "v1.2.3"},
-		{Version{0, 0, 0}, "v0.0.0"},
-		{Version{10, 0, 0}, "v10.0.0"},
+		{version.Semver{1, 2, 3}, "v1.2.3"},
+		{version.Semver{0, 0, 0}, "v0.0.0"},
+		{version.Semver{10, 0, 0}, "v10.0.0"},
 	}
 	for _, tt := range tests {
-		if got := formatVersion(tt.v); got != tt.want {
-			t.Errorf("formatVersion(%v) = %q, want %q", tt.v, got, tt.want)
+		if got := tt.v.String(); got != tt.want {
+			t.Errorf("Semver%v.String() = %q, want %q", tt.v, got, tt.want)
 		}
 	}
 }
@@ -113,18 +115,18 @@ func TestFormatVersion(t *testing.T) {
 func TestBumpVersion(t *testing.T) {
 	tests := []struct {
 		name string
-		v    Version
+		v    version.Semver
 		bump int
-		want Version
+		want version.Semver
 	}{
-		{"patch", Version{1, 2, 3}, BumpPatch, Version{1, 2, 4}},
-		{"minor", Version{1, 2, 3}, BumpMinor, Version{1, 3, 0}},
-		{"major", Version{1, 2, 3}, BumpMajor, Version{2, 0, 0}},
-		{"patch from zero", Version{0, 0, 0}, BumpPatch, Version{0, 0, 1}},
-		{"minor from zero", Version{0, 0, 0}, BumpMinor, Version{0, 1, 0}},
-		{"major from zero", Version{0, 0, 0}, BumpMajor, Version{1, 0, 0}},
-		{"minor resets patch", Version{1, 2, 5}, BumpMinor, Version{1, 3, 0}},
-		{"major resets minor and patch", Version{1, 2, 5}, BumpMajor, Version{2, 0, 0}},
+		{"patch", version.Semver{1, 2, 3}, BumpPatch, version.Semver{1, 2, 4}},
+		{"minor", version.Semver{1, 2, 3}, BumpMinor, version.Semver{1, 3, 0}},
+		{"major", version.Semver{1, 2, 3}, BumpMajor, version.Semver{2, 0, 0}},
+		{"patch from zero", version.Semver{0, 0, 0}, BumpPatch, version.Semver{0, 0, 1}},
+		{"minor from zero", version.Semver{0, 0, 0}, BumpMinor, version.Semver{0, 1, 0}},
+		{"major from zero", version.Semver{0, 0, 0}, BumpMajor, version.Semver{1, 0, 0}},
+		{"minor resets patch", version.Semver{1, 2, 5}, BumpMinor, version.Semver{1, 3, 0}},
+		{"major resets minor and patch", version.Semver{1, 2, 5}, BumpMajor, version.Semver{2, 0, 0}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -566,7 +568,7 @@ func TestRun_noTags(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" {
 				return "", nil // no tags
 			}
@@ -592,7 +594,7 @@ func TestRun_firstRelease(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			call := strings.Join(args, " ")
 			gitCalls = append(gitCalls, call)
 			if args[0] == "tag" && args[1] == "--list" {
@@ -617,7 +619,7 @@ func TestRun_firstRelease(t *testing.T) {
 			writtenContent = data
 			return nil
 		},
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -672,7 +674,7 @@ func TestRun_noNewCommits(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v1.0.0", nil
 			}
@@ -700,7 +702,7 @@ func TestRun_dryRun(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v1.0.0", nil
 			}
@@ -714,7 +716,7 @@ func TestRun_dryRun(t *testing.T) {
 			writeFileCalled = true
 			return nil
 		},
-		RunScript: func(command string) error {
+		RunScript: func(command string, env map[string]string) error {
 			t.Error("RunScript should not be called in dry run")
 			return nil
 		},
@@ -740,7 +742,7 @@ func TestRun_bumpOverride(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			gitCalls = append(gitCalls, strings.Join(args, " "))
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v1.0.0", nil
@@ -752,7 +754,7 @@ func TestRun_bumpOverride(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 		Bump:      "major",
 	}
@@ -779,7 +781,7 @@ func TestRun_breakingViaBang(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			gitCalls = append(gitCalls, strings.Join(args, " "))
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v1.0.0", nil
@@ -791,7 +793,7 @@ func TestRun_breakingViaBang(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -817,7 +819,7 @@ func TestRun_breakingViaTrailer(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			gitCalls = append(gitCalls, strings.Join(args, " "))
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v1.0.0", nil
@@ -829,7 +831,7 @@ func TestRun_breakingViaTrailer(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -855,7 +857,7 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
 			}
@@ -874,7 +876,7 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 			writtenContent = data
 			return nil
 		},
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -902,7 +904,7 @@ func TestRun_versionFiles(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
 			}
@@ -923,7 +925,7 @@ func TestRun_versionFiles(t *testing.T) {
 			}
 			return nil
 		},
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -939,11 +941,15 @@ func TestRun_versionFiles(t *testing.T) {
 
 func TestRun_hooks(t *testing.T) {
 	var stderr bytes.Buffer
-	var hookCalls []string
+	type hookCall struct {
+		command string
+		env     map[string]string
+	}
+	var hookCalls []hookCall
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
 			}
@@ -959,8 +965,8 @@ func TestRun_hooks(t *testing.T) {
 			return nil, os.ErrNotExist
 		},
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error {
-			hookCalls = append(hookCalls, command)
+		RunScript: func(command string, env map[string]string) error {
+			hookCalls = append(hookCalls, hookCall{command, env})
 			return nil
 		},
 		Now: fixedTime,
@@ -974,11 +980,17 @@ func TestRun_hooks(t *testing.T) {
 	if len(hookCalls) != 2 {
 		t.Fatalf("hook calls = %d, want 2: %v", len(hookCalls), hookCalls)
 	}
-	if !strings.Contains(hookCalls[0], "VERSION=0.1.0") || !strings.Contains(hookCalls[0], "echo post") {
-		t.Errorf("postVersion hook = %q", hookCalls[0])
+	if hookCalls[0].command != "echo post" {
+		t.Errorf("postVersion hook command = %q, want 'echo post'", hookCalls[0].command)
 	}
-	if !strings.Contains(hookCalls[1], "VERSION=0.1.0") || !strings.Contains(hookCalls[1], "echo pre") {
-		t.Errorf("preCommit hook = %q", hookCalls[1])
+	if hookCalls[0].env["VERSION"] != "0.1.0" {
+		t.Errorf("postVersion hook VERSION = %q, want '0.1.0'", hookCalls[0].env["VERSION"])
+	}
+	if hookCalls[1].command != "echo pre" {
+		t.Errorf("preCommit hook command = %q, want 'echo pre'", hookCalls[1].command)
+	}
+	if hookCalls[1].env["VERSION"] != "0.1.0" {
+		t.Errorf("preCommit hook VERSION = %q, want '0.1.0'", hookCalls[1].env["VERSION"])
 	}
 }
 
@@ -987,7 +999,7 @@ func TestRun_hookFailure(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
 			}
@@ -1003,7 +1015,7 @@ func TestRun_hookFailure(t *testing.T) {
 			return nil, os.ErrNotExist
 		},
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error {
+		RunScript: func(command string, env map[string]string) error {
 			return fmt.Errorf("hook failed")
 		},
 		Now: fixedTime,
@@ -1023,7 +1035,7 @@ func TestRun_gitCommitFailure(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
 			}
@@ -1037,7 +1049,7 @@ func TestRun_gitCommitFailure(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1054,7 +1066,7 @@ func TestRun_subsequentRelease(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &bytes.Buffer{},
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.1.0", nil
 			}
@@ -1075,7 +1087,7 @@ func TestRun_subsequentRelease(t *testing.T) {
 			}
 			return nil
 		},
-		RunScript: func(command string) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1103,7 +1115,7 @@ func TestRun_guardedBranch(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "branch" {
 				return "main\n", nil
 			}
@@ -1127,7 +1139,7 @@ func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
 		Stderr: &stderr,
-		GitExec: func(args ...string) (string, error) {
+		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "branch" {
 				return "dev\n", nil
 			}

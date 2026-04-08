@@ -53,13 +53,14 @@ func Run(cfg Config) int {
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, projectDir) {
-		fmt.Fprint(cfg.Stdout, `{"decision":"block","reason":"docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation."}`)
+		hooks.WriteBlockDecision(cfg.Stdout, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation.")
 	}
 
 	return 0
 }
 
 // isUnderPlansDir checks whether filePath is under projectDir/docs/plans/.
+// Resolves symlinks to prevent bypass via symbolic links.
 func isUnderPlansDir(filePath, projectDir string) bool {
 	plansDir := filepath.Join(projectDir, "docs", "plans")
 
@@ -69,6 +70,14 @@ func isUnderPlansDir(filePath, projectDir string) bool {
 
 	cleanFile := filepath.Clean(filePath)
 	cleanPlans := filepath.Clean(plansDir)
+
+	// Resolve symlinks if possible (best-effort; fall back to cleaned paths).
+	if resolved, err := filepath.EvalSymlinks(cleanFile); err == nil {
+		cleanFile = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(cleanPlans); err == nil {
+		cleanPlans = resolved
+	}
 
 	if runtime.GOOS == "windows" {
 		cleanFile = strings.ToLower(cleanFile)

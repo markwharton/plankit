@@ -9,6 +9,8 @@ package version
 import (
 	"fmt"
 	"runtime/debug"
+	"strconv"
+	"strings"
 )
 
 // version is set at build time via -ldflags for development and release builds.
@@ -26,6 +28,51 @@ func Version() string {
 		return info.Main.Version
 	}
 	return "dev"
+}
+
+// Semver holds the major, minor, and patch components of a semantic version.
+type Semver struct {
+	Major, Minor, Patch int
+}
+
+// ParseSemver parses "vX.Y.Z" or "X.Y.Z" into a Semver.
+// Returns ok=false if the input is not a valid semver string.
+func ParseSemver(s string) (Semver, bool) {
+	s = strings.TrimPrefix(s, "v")
+	parts := strings.SplitN(s, ".", 3)
+	if len(parts) != 3 {
+		return Semver{}, false
+	}
+	maj, err1 := strconv.Atoi(parts[0])
+	min, err2 := strconv.Atoi(parts[1])
+	pat, err3 := strconv.Atoi(parts[2])
+	if err1 != nil || err2 != nil || err3 != nil {
+		return Semver{}, false
+	}
+	return Semver{Major: maj, Minor: min, Patch: pat}, true
+}
+
+// String returns the "vX.Y.Z" representation.
+func (v Semver) String() string {
+	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
+}
+
+// Compare returns -1, 0, or 1 if v is less than, equal to, or greater than other.
+func (v Semver) Compare(other Semver) int {
+	pairs := [3][2]int{
+		{v.Major, other.Major},
+		{v.Minor, other.Minor},
+		{v.Patch, other.Patch},
+	}
+	for _, p := range pairs {
+		if p[0] < p[1] {
+			return -1
+		}
+		if p[0] > p[1] {
+			return 1
+		}
+	}
+	return 0
 }
 
 // VerboseInfo returns additional build information (Go version and build date).

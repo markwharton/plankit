@@ -13,7 +13,7 @@ func TestRun_freshProject(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(projectDir, &stderr, "auto", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestRun_createsClaudeMD(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(projectDir, &stderr, "manual", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestRun_skipsUnmanagedClaudeMD(t *testing.T) {
 	os.WriteFile(claudeFile, []byte("# My Custom CLAUDE.md\n"), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(projectDir, &stderr, "manual", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -170,7 +170,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md with marker.
-	Run(projectDir, &stderr, "manual", false)
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
 
 	// User modifies it but keeps the marker line at the top.
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
@@ -183,7 +183,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 
 	// Re-run — should skip.
 	stderr.Reset()
-	Run(projectDir, &stderr, "manual", false)
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
 
 	final, _ := os.ReadFile(claudeFile)
 	if !strings.Contains(string(final), "User's custom content") {
@@ -196,14 +196,14 @@ func TestRun_updatesUnmodifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md.
-	Run(projectDir, &stderr, "manual", false)
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
 
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
 	original, _ := os.ReadFile(claudeFile)
 
 	// Re-run — should update (content unchanged, SHA matches).
 	stderr.Reset()
-	Run(projectDir, &stderr, "manual", false)
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
 
 	updated, _ := os.ReadFile(claudeFile)
 	// Content should be identical (same template, same SHA).
@@ -222,7 +222,7 @@ func TestRun_existingSettings(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(projectDir, &stderr, "auto", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -259,7 +259,7 @@ func TestRun_existingPermissions(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(projectDir, &stderr, "auto", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestRun_duplicatePermission(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(projectDir, &stderr, "auto", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -327,7 +327,7 @@ func TestRun_invalidJSON(t *testing.T) {
 	os.WriteFile(settingsFile, []byte("not json"), 0644)
 
 	var stderr bytes.Buffer
-	err := Run(projectDir, &stderr, "auto", false)
+	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"})
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -337,7 +337,7 @@ func TestRun_manualMode(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(projectDir, &stderr, "manual", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -487,7 +487,7 @@ func TestRun_existingHooks(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(projectDir, &stderr, "manual", false); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 

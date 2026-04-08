@@ -295,8 +295,27 @@ func displayName(path string) string {
 	return base
 }
 
+// Config holds the dependencies for the setup command.
+type Config struct {
+	Stderr       io.Writer
+	ProjectDir   string
+	PreserveMode string
+	Force        bool
+}
+
+// DefaultConfig returns a Config wired to real OS resources.
+func DefaultConfig() Config {
+	return Config{
+		Stderr: os.Stderr,
+	}
+}
+
 // Run configures the project's .claude/settings.json to use plankit.
-func Run(projectDir string, stderr io.Writer, preserveMode string, force bool) error {
+func Run(cfg Config) error {
+	projectDir := cfg.ProjectDir
+	stderr := cfg.Stderr
+	preserveMode := cfg.PreserveMode
+	force := cfg.Force
 	settingsDir := filepath.Join(projectDir, ".claude")
 	settingsFile := filepath.Join(settingsDir, "settings.json")
 

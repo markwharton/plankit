@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// stubGitExec returns a GitExec function that dispatches based on the first arg.
-func stubGitExec(handlers map[string]func(args ...string) (string, error)) func(args ...string) (string, error) {
-	return func(args ...string) (string, error) {
+// stubGitExec returns a GitExec function that dispatches based on the first non-dir arg.
+func stubGitExec(handlers map[string]func(args ...string) (string, error)) func(dir string, args ...string) (string, error) {
+	return func(dir string, args ...string) (string, error) {
 		if h, ok := handlers[args[0]]; ok {
 			return h(args...)
 		}
@@ -254,7 +254,7 @@ func TestRun_preReleaseHook(t *testing.T) {
 			}
 			return nil, os.ErrNotExist
 		},
-		RunScript: func(command string) error {
+		RunScript: func(command string, env map[string]string) error {
 			hookCommand = command
 			return nil
 		},
@@ -281,7 +281,7 @@ func TestRun_preReleaseHookFailure(t *testing.T) {
 			}
 			return nil, os.ErrNotExist
 		},
-		RunScript: func(command string) error {
+		RunScript: func(command string, env map[string]string) error {
 			return fmt.Errorf("exit status 1")
 		},
 	}

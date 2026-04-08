@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
 
+	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
 )
 
@@ -50,10 +50,16 @@ func DefaultConfig() Config {
 		Env:     os.Getenv,
 		HomeDir: os.UserHomeDir,
 		Now:     time.Now,
-		GitExec: defaultGitExec,
+		GitExec: pkgit.Exec,
 		Getwd:   os.Getwd,
 	}
 }
+
+// minPlanSize is the minimum byte length for a plan to be preserved.
+// Real plans have a title, context section, and at least a few lines of
+// substance. Plans below this threshold are typically empty templates
+// or aborted drafts.
+const minPlanSize = 50
 
 // Run reads a PostToolUse hook payload from stdin and preserves the approved plan.
 // Returns the process exit code (always 0 for hook commands).
@@ -85,10 +91,8 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Skip trivially short plans (< 50 bytes). Real plans have a title,
-	// context section, and at least a few lines of substance. Plans below
-	// this threshold are typically empty templates or aborted drafts.
-	if len(content) < 50 {
+	// Skip trivially short plans.
+	if len(content) < minPlanSize {
 		return 0
 	}
 
@@ -113,11 +117,13 @@ func Run(cfg Config) int {
 		}
 	}
 	if projectDir == "" {
+		fmt.Fprintf(cfg.Stderr, "pk preserve: could not determine project directory\n")
 		return 0
 	}
 
 	// Verify git repo.
 	if _, err := cfg.GitExec(projectDir, "rev-parse", "--is-inside-work-tree"); err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk preserve: not a git repository: %s\n", projectDir)
 		return 0
 	}
 
@@ -351,12 +357,7 @@ func (cfg Config) writeHookResponse(msg, context string) {
 	if context != "" {
 		resp.HookSpecificOutput = &hookSpecificOutput{AdditionalContext: context}
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprint(cfg.Stdout, string(data))
-}
-
-func defaultGitExec(projectDir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", projectDir}, args...)...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	if data, err := json.Marshal(resp); err == nil {
+		fmt.Fprint(cfg.Stdout, string(data))
+	}
 }

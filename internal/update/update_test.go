@@ -39,35 +39,6 @@ func TestIsNewer(t *testing.T) {
 	}
 }
 
-func TestParseVersion(t *testing.T) {
-	tests := []struct {
-		input string
-		want  []int
-	}{
-		{"v1.2.3", []int{1, 2, 3}},
-		{"1.2.3", []int{1, 2, 3}},
-		{"v0.0.0", []int{0, 0, 0}},
-		{"invalid", nil},
-		{"v1.2", nil},
-		{"v1.2.abc", nil},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := parseVersion(tt.input)
-			if tt.want == nil {
-				if got != nil {
-					t.Errorf("parseVersion(%q) = %v, want nil", tt.input, got)
-				}
-				return
-			}
-			if got == nil || got[0] != tt.want[0] || got[1] != tt.want[1] || got[2] != tt.want[2] {
-				t.Errorf("parseVersion(%q) = %v, want %v", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestCheck_devVersion(t *testing.T) {
 	cfg := Config{CurrentVersion: "dev"}
 	latest, available := Check(cfg)

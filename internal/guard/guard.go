@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
+	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
 )
 
@@ -41,7 +41,7 @@ func DefaultConfig() Config {
 		Stderr:   os.Stderr,
 		Env:      os.Getenv,
 		ReadFile: os.ReadFile,
-		GitExec:  defaultGitExec,
+		GitExec:  pkgit.Exec,
 	}
 }
 
@@ -91,7 +91,7 @@ func Run(cfg Config) int {
 	for _, protected := range config.ProtectedBranches {
 		if branch == protected {
 			reason := fmt.Sprintf("Branch %q is protected. Switch to a development branch before committing.", branch)
-			fmt.Fprintf(cfg.Stdout, `{"decision":"block","reason":%q}`, reason)
+			hooks.WriteBlockDecision(cfg.Stdout, reason)
 			return 0
 		}
 	}
@@ -163,10 +163,4 @@ func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) G
 		return GuardConfig{}
 	}
 	return pk.Guard
-}
-
-func defaultGitExec(projectDir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", projectDir}, args...)...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
 }

@@ -131,7 +131,11 @@ func runSetup(args []string) {
 		os.Exit(1)
 	}
 
-	if err := setup.Run(dir, os.Stderr, *preserveMode, *force); err != nil {
+	cfg := setup.DefaultConfig()
+	cfg.ProjectDir = dir
+	cfg.PreserveMode = *preserveMode
+	cfg.Force = *force
+	if err := setup.Run(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}

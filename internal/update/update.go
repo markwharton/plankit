@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // CacheEntry stores the result of a version check.
@@ -131,36 +131,10 @@ func fetchLatest(httpGet func(string) (*http.Response, error)) string {
 
 // isNewer returns true if latest is a newer semver than current.
 func isNewer(latest, current string) bool {
-	latestParts := parseVersion(latest)
-	currentParts := parseVersion(current)
-	if latestParts == nil || currentParts == nil {
+	latestVer, lok := version.ParseSemver(latest)
+	currentVer, cok := version.ParseSemver(current)
+	if !lok || !cok {
 		return false
 	}
-	for i := 0; i < 3; i++ {
-		if latestParts[i] > currentParts[i] {
-			return true
-		}
-		if latestParts[i] < currentParts[i] {
-			return false
-		}
-	}
-	return false
-}
-
-// parseVersion parses "vX.Y.Z" or "X.Y.Z" into [major, minor, patch].
-func parseVersion(v string) []int {
-	v = strings.TrimPrefix(v, "v")
-	parts := strings.SplitN(v, ".", 3)
-	if len(parts) != 3 {
-		return nil
-	}
-	result := make([]int, 3)
-	for i, p := range parts {
-		n, err := strconv.Atoi(p)
-		if err != nil {
-			return nil
-		}
-		result[i] = n
-	}
-	return result
+	return latestVer.Compare(currentVer) > 0
 }
