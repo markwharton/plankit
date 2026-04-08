@@ -7,6 +7,8 @@ Merge to the release branch, validate pre-flight checks, and push to origin.
 ```bash
 pk release                        # merge, validate, and push
 pk release --dry-run              # validate without merging or pushing
+pk release --pr                   # push branch and create a pull request
+pk release --pr --dry-run         # preview PR flow without pushing
 ```
 
 ## How it works
@@ -43,6 +45,24 @@ Add a `release` key to `.pk.json`:
 This tells `pk release` which branch to merge to and push from. The current branch is the implicit source — no hard-coded "dev" name.
 
 If `release.branch` is not set, `pk release` uses the legacy flow (validate current branch and push).
+
+When `--pr` is passed (requires `release.branch` in `.pk.json`):
+
+1. **Pre-flight checks** — same as merge flow (clean tree, not behind remote).
+2. **Run pre-release hook** if configured.
+3. **Push** source branch + tag (if present) to origin.
+4. **Create PR** via `gh pr create --base <release-branch> --head <source-branch>`.
+5. If `gh` is not available, prints a compare URL for manual PR creation.
+
+Use this for workflows where PRs trigger preview environments (Azure Static Web Apps, Netlify, Vercel) and you want to review before merging to production.
+
+## Workflows
+
+| Flow | Config | Command | What happens |
+|------|--------|---------|--------------|
+| Legacy | no `release.branch` | `pk release` | Push current branch + tag |
+| Merge | `release.branch` set | `pk release` | Merge to release branch, push both |
+| PR | `release.branch` set | `pk release --pr` | Push source branch, create PR |
 
 ## Guard interaction
 
@@ -81,7 +101,8 @@ If the hook fails, the release is aborted and nothing is pushed.
 
 ## Flags
 
-- **--dry-run** — Run all checks without merging or pushing. In the merge flow, verifies that a fast-forward merge is possible.
+- **--dry-run** — Run all checks without merging or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be pushed and created.
+- **--pr** — Push the source branch and tag to origin, then create a pull request targeting the release branch. Requires `release.branch` in `.pk.json`. Falls back to printing a compare URL if `gh` is not installed.
 
 ## Scope
 

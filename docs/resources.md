@@ -19,22 +19,22 @@
 ### Release flow (independent developer)
 
 All changes go through `dev` — `main` is protected by `pk guard`. With
-`release.branch` configured in `.pk.json`, `pk release` handles the merge
-automatically:
+`release.branch` configured in `.pk.json`:
 
 ```bash
+# Direct merge flow
 pk changelog                          # on dev: generate changelog, commit, and tag version
 pk release                            # merge to main, validate, push, switch back, push dev
+
+# PR flow (for preview environments)
+pk changelog                          # on dev: generate changelog, commit, and tag version
+pk release --pr                       # push dev branch, create PR targeting main
 ```
 
-Without `release.branch` configured, the manual git flow:
+Without `release.branch` configured (single-branch, no guard):
 
 ```bash
-pk changelog                          # on dev: generate changelog, commit, and tag version
-git switch main && git merge dev      # merge to main
-pk release                            # on main: validate and push
-git switch dev                        # switch back
-git push origin dev                   # sync dev with origin
+pk changelog --push                   # generate changelog, commit, tag, push
 ```
 
 

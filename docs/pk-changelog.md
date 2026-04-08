@@ -8,6 +8,7 @@ Generate CHANGELOG.md from conventional commits, commit, and tag.
 pk changelog                      # auto-detect version bump from commits
 pk changelog --bump minor         # override: major, minor, or patch
 pk changelog --dry-run            # preview without writing, committing, or tagging
+pk changelog --push               # push commit and tag to origin after tagging
 ```
 
 ## How it works
@@ -21,6 +22,7 @@ pk changelog --dry-run            # preview without writing, committing, or tagg
 6. Runs lifecycle hooks if configured
 7. Commits CHANGELOG.md and all modified files
 8. Tags the new version
+9. If `--push` is set, pushes commit and tag to origin
 
 ## Version source
 
@@ -119,6 +121,7 @@ If a hook fails, the release is aborted.
 
 - **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
 - **--dry-run** — Preview the changelog output without writing, committing, or tagging.
+- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful for single-branch workflows where `pk release` is not needed.
 
 ## Comparison links
 

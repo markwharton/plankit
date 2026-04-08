@@ -64,3 +64,19 @@ if (!secret || secret.length < 32) {
 - Prefer encrypted local config where available (Azure's `local.settings.json` supports encryption).
 - Ensure secret files are in `.gitignore` and not in directories the AI tool indexes.
 - For production: use secret managers (Azure Key Vault, AWS Secrets Manager, etc.) with runtime resolution.
+
+## Squash Merge and Release Tags
+
+**The pattern:** A developer runs `pk changelog` on a branch, creating a tag at commit C. The PR is squash-merged to main, creating a new commit S. The tag still points at C, which is now orphaned — it's not an ancestor of main.
+
+```
+Feature:  A → B → C (tag: v1.2.0)
+                    ↓ squash merge
+Main:     X → Y → S (new commit — tag is NOT here)
+```
+
+**The consequence:** `git log main` won't show the tagged commit. `git describe` on main finds nothing. CI/CD looking for tags on the release branch sees no release. The version history is detached from the branch it was released to.
+
+**The fix:** Use merge commits or rebase merge — not squash — for branches that carry release tags. Both preserve the original commits (and their tags) as ancestors of the target branch. Run `pk changelog` on the branch that receives the final commit, and use `pk release` or `pk release --pr` to move it to the release branch.
+
+**The principle:** Tags must point to commits that are ancestors of the release branch. Any merge strategy that rewrites commits between tagging and landing will orphan the tag.
