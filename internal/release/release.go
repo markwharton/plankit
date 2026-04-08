@@ -12,8 +12,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-
-	"github.com/markwharton/plankit/internal/changelog"
 )
 
 // Config holds injectable dependencies for testing.
@@ -58,8 +56,9 @@ func Run(cfg Config) int {
 	}
 	sourceBranch = strings.TrimSpace(sourceBranch)
 
-	// 2. Load release branch from config.
-	releaseBranch := loadReleaseBranch(cfg.ReadFile)
+	// 2. Load release config.
+	releaseConf := loadReleaseConfig(cfg.ReadFile)
+	releaseBranch := releaseConf.Branch
 	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
 
 	// 3. If releaseBranch is configured and we're already on it, refuse.
@@ -190,11 +189,10 @@ func Run(cfg Config) int {
 	}
 
 	// 9. Run preRelease hook if configured.
-	config := changelog.LoadConfig(cfg.ReadFile)
-	if config.Hooks.PreRelease != "" {
+	if releaseConf.Hooks.PreRelease != "" {
 		fmt.Fprintf(cfg.Stderr, "\n--- Running pre-release hook ---\n")
-		fmt.Fprintf(cfg.Stderr, "  %s\n", config.Hooks.PreRelease)
-		if err := cfg.RunScript(config.Hooks.PreRelease); err != nil {
+		fmt.Fprintf(cfg.Stderr, "  %s\n", releaseConf.Hooks.PreRelease)
+		if err := cfg.RunScript(releaseConf.Hooks.PreRelease); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: pre-release hook failed: %v\n", err)
 			return 1
 		}
@@ -265,22 +263,31 @@ func findVersionTag(output string) string {
 	return ""
 }
 
-// releaseConfig reads the release section from .pk.json.
-type releaseConfig struct {
-	Release struct {
-		Branch string `json:"branch,omitempty"`
-	} `json:"release,omitempty"`
+// ReleaseHooks holds lifecycle hook commands for the release process.
+type ReleaseHooks struct {
+	PreRelease string `json:"preRelease,omitempty"`
 }
 
-// loadReleaseBranch reads release.branch from .pk.json.
-func loadReleaseBranch(readFile func(string) ([]byte, error)) string {
+// ReleaseSection holds the release config from .pk.json.
+type ReleaseSection struct {
+	Branch string       `json:"branch,omitempty"`
+	Hooks  ReleaseHooks `json:"hooks,omitempty"`
+}
+
+// pkReleaseConfig reads the release section from .pk.json.
+type pkReleaseConfig struct {
+	Release ReleaseSection `json:"release,omitempty"`
+}
+
+// loadReleaseConfig reads the release section from .pk.json.
+func loadReleaseConfig(readFile func(string) ([]byte, error)) ReleaseSection {
 	data, err := readFile(".pk.json")
 	if err != nil {
-		return ""
+		return ReleaseSection{}
 	}
-	var cfg releaseConfig
+	var cfg pkReleaseConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return ""
+		return ReleaseSection{}
 	}
-	return cfg.Release.Branch
+	return cfg.Release
 }

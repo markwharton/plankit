@@ -65,11 +65,11 @@ If any step fails after switching to the release branch (merge, hook, push), `pk
 
 ## Pre-release hook
 
-The `changelog.hooks.preRelease` field in `.pk.json` runs a shell command before pushing:
+The `release.hooks.preRelease` field in `.pk.json` runs a shell command before pushing:
 
 ```json
 {
-  "changelog": {
+  "release": {
     "hooks": {
       "preRelease": "go test -race ./..."
     }

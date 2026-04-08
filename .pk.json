@@ -16,14 +16,14 @@
       {"type": "style", "section": "Maintenance"},
       {"type": "plan", "section": "Plans", "hidden": true}
     ],
-    "hooks": {
-      "preRelease": "go test -race ./..."
-    }
   },
   "guard": {
     "protectedBranches": ["main"]
   },
   "release": {
-    "branch": "main"
+    "branch": "main",
+    "hooks": {
+      "preRelease": "go test -race ./..."
+    }
   }
 }

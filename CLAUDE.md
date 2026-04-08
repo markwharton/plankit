@@ -71,7 +71,8 @@ pk release          # Validate pre-flight checks and push to origin
 
 - `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
 - `changelog.types` controls commit type → changelog section mapping.
-- `changelog.hooks` supports `preRelease`, `preCommit`, `postVersion` lifecycle hooks.
+- `changelog.hooks` supports `preCommit`, `postVersion` lifecycle hooks.
+- `release.hooks` supports `preRelease` lifecycle hook.
 - `guard.protectedBranches` lists branches where git mutations are blocked.
 - `release.branch` configures which branch `pk release` merges to and pushes from.
 

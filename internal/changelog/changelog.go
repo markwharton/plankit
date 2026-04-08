@@ -83,11 +83,10 @@ type VersionFile struct {
 	Type string `json:"type"` // "json"
 }
 
-// Hooks holds lifecycle hook commands.
+// Hooks holds lifecycle hook commands for the changelog process.
 type Hooks struct {
 	PostVersion string `json:"postVersion,omitempty"`
 	PreCommit   string `json:"preCommit,omitempty"`
-	PreRelease  string `json:"preRelease,omitempty"`
 }
 
 // GuardConfig holds the guard section of .pk.json (read-only, for branch checking).
