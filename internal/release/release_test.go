@@ -608,3 +608,191 @@ func TestFindVersionTag(t *testing.T) {
 		})
 	}
 }
+
+// --- PR flow tests ---
+
+func TestRun_pr_happyPath(t *testing.T) {
+	var stderr bytes.Buffer
+	var pushArgs []string
+	var ghArgs []string
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushArgs = args
+		return "", nil
+	}
+	git["remote"] = func(args ...string) (string, error) {
+		return "git@github.com:owner/repo.git", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		PR:       true,
+		ExecGh: func(args ...string) (string, error) {
+			ghArgs = args
+			return "https://github.com/owner/repo/pull/42", nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// Push should target source branch + tag, not release branch.
+	if pushArgs[1] != "origin" || pushArgs[2] != "dev" || pushArgs[3] != "v1.0.0" {
+		t.Errorf("push args = %v, want [push origin dev v1.0.0]", pushArgs)
+	}
+	// gh should be called with correct args.
+	if len(ghArgs) < 8 || ghArgs[0] != "pr" || ghArgs[3] != "main" || ghArgs[5] != "dev" {
+		t.Errorf("gh args = %v, want pr create --base main --head dev ...", ghArgs)
+	}
+	if !strings.Contains(stderr.String(), "github.com/owner/repo/pull/42") {
+		t.Errorf("stderr missing PR URL: %s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Release v1.0.0 pushed") {
+		t.Errorf("stderr missing release pushed message: %s", stderr.String())
+	}
+}
+
+func TestRun_pr_ghFails_compareURL(t *testing.T) {
+	var stderr bytes.Buffer
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["remote"] = func(args ...string) (string, error) {
+		return "git@github.com:owner/repo.git", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		PR:       true,
+		ExecGh: func(args ...string) (string, error) {
+			return "", fmt.Errorf("gh: command not found")
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (gh failure is not fatal); stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "github.com/owner/repo/compare/main...dev") {
+		t.Errorf("stderr missing compare URL: %s", stderr.String())
+	}
+}
+
+func TestRun_pr_noReleaseBranch(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(happyGit("v1.0.0", "dev")),
+		ReadFile: noConfig,
+		PR:       true,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "--pr requires release.branch") {
+		t.Errorf("stderr = %q, want release.branch required message", stderr.String())
+	}
+}
+
+func TestRun_pr_dryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	pushCalled := false
+	ghCalled := false
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushCalled = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		PR:       true,
+		DryRun:   true,
+		ExecGh: func(args ...string) (string, error) {
+			ghCalled = true
+			return "", nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if pushCalled {
+		t.Error("push should not be called in dry run")
+	}
+	if ghCalled {
+		t.Error("gh should not be called in dry run")
+	}
+	if !strings.Contains(stderr.String(), "Would push dev and v1.0.0") {
+		t.Errorf("stderr missing push preview: %s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Would create PR: dev → main") {
+		t.Errorf("stderr missing PR preview: %s", stderr.String())
+	}
+}
+
+func TestRun_pr_noTag(t *testing.T) {
+	var stderr bytes.Buffer
+	var pushArgs []string
+
+	git := happyGitMerge("", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		pushArgs = args
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		PR:       true,
+		ExecGh: func(args ...string) (string, error) {
+			return "https://github.com/owner/repo/pull/43", nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// Push without tag.
+	if len(pushArgs) != 3 || pushArgs[2] != "dev" {
+		t.Errorf("push args = %v, want [push origin dev]", pushArgs)
+	}
+}
+
+func TestRun_pr_pushFails(t *testing.T) {
+	var stderr bytes.Buffer
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("permission denied")
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+		PR:       true,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "git push failed") {
+		t.Errorf("stderr = %q, want push failure message", stderr.String())
+	}
+}

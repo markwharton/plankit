@@ -63,11 +63,13 @@ func runChangelog(args []string) {
 	fs := flag.NewFlagSet("changelog", flag.ExitOnError)
 	bump := fs.String("bump", "", "Override version bump: major, minor, or patch")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing, committing, or tagging")
+	push := fs.Bool("push", false, "Push commit and tag to origin after tagging")
 	fs.Parse(args)
 
 	cfg := changelog.DefaultConfig()
 	cfg.Bump = *bump
 	cfg.DryRun = *dryRun
+	cfg.Push = *push
 
 	os.Exit(changelog.Run(cfg))
 }
@@ -97,10 +99,12 @@ func runPreserve(args []string) {
 func runRelease(args []string) {
 	fs := flag.NewFlagSet("release", flag.ExitOnError)
 	dryRun := fs.Bool("dry-run", false, "Validate without merging or pushing")
+	pr := fs.Bool("pr", false, "Create a pull request instead of merging directly")
 	fs.Parse(args)
 
 	cfg := release.DefaultConfig()
 	cfg.DryRun = *dryRun
+	cfg.PR = *pr
 
 	os.Exit(release.Run(cfg))
 }
@@ -173,9 +177,9 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
-	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
+	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--push]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
-	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Merge to release branch, validate, and push")
+	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--pr]       Merge to release branch, validate, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
