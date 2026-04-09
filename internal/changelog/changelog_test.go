@@ -1305,6 +1305,57 @@ func TestRun_pushDryRun(t *testing.T) {
 	}
 }
 
+func TestRun_dirtyWorkingTree(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "status" && args[1] == "--porcelain" {
+				return " M dirty.go", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "working tree is not clean") {
+		t.Errorf("stderr = %q, want dirty tree message", stderr.String())
+	}
+}
+
+func TestRun_dirtyWorkingTreeAllowedInDryRun(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "status" && args[1] == "--porcelain" {
+				t.Error("status --porcelain should not be called in dry run")
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: new feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+		DryRun:   true,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+}
+
 func TestRun_showScope(t *testing.T) {
 	var stderr bytes.Buffer
 	var writtenContent []byte

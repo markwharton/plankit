@@ -172,6 +172,19 @@ func Run(cfg Config) int {
 		}
 	}
 
+	// 1b. Check for clean working tree (skip in dry-run mode).
+	if !cfg.DryRun {
+		status, err := cfg.GitExec("", "status", "--porcelain")
+		if err != nil {
+			fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
+			return 1
+		}
+		if status != "" {
+			fmt.Fprintln(cfg.Stderr, "Error: working tree is not clean — commit or stash changes first")
+			return 1
+		}
+	}
+
 	// 2. Get latest tag.
 	tagOutput, err := cfg.GitExec("", "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {

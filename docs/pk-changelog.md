@@ -14,15 +14,16 @@ pk changelog --push               # push commit and tag to origin after tagging
 ## How it works
 
 1. Checks if the current branch is protected by `guard.protectedBranches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
-2. Reads the latest version tag (git tags are the single version source)
-2. Scans commits since that tag for conventional commit messages
-3. Groups commits by type into changelog sections
-4. Writes or updates CHANGELOG.md with the new version section
-5. Updates version files if configured
-6. Runs lifecycle hooks if configured
-7. Commits CHANGELOG.md and all modified files
-8. Tags the new version
-9. If `--push` is set, pushes commit and tag to origin
+2. Verifies the working tree is clean (skipped in `--dry-run` mode). Exits with an error if there are uncommitted changes.
+3. Reads the latest version tag (git tags are the single version source)
+4. Scans commits since that tag for conventional commit messages
+5. Groups commits by type into changelog sections
+6. Writes or updates CHANGELOG.md with the new version section
+7. Updates version files if configured
+8. Runs lifecycle hooks if configured
+9. Commits CHANGELOG.md and all modified files
+10. Tags the new version
+11. If `--push` is set, pushes commit and tag to origin
 
 ## Version source
 
