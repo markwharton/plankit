@@ -387,6 +387,50 @@ func TestRun_mergeFlow_noTag(t *testing.T) {
 	}
 }
 
+func TestRun_mergeFlow_tagLostAfterMerge(t *testing.T) {
+	var stderr bytes.Buffer
+	switchedBack := false
+	merged := false
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["tag"] = func(args ...string) (string, error) {
+		// Before merge: tag exists at HEAD.
+		// After merge: tag is no longer at HEAD.
+		if merged {
+			return "", nil
+		}
+		return "v1.0.0", nil
+	}
+	git["merge"] = func(args ...string) (string, error) {
+		merged = true
+		return "", nil
+	}
+	originalSwitch := git["switch"]
+	git["switch"] = func(args ...string) (string, error) {
+		if args[1] == "dev" {
+			switchedBack = true
+		}
+		return originalSwitch(args...)
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "tag v1.0.0 is no longer at HEAD after merge") {
+		t.Errorf("stderr = %q, want tag-lost message", stderr.String())
+	}
+	if !switchedBack {
+		t.Error("should switch back to source branch after tag-lost failure")
+	}
+}
+
 func TestRun_mergeFlow_dryRun(t *testing.T) {
 	var stderr bytes.Buffer
 	pushCalled := false

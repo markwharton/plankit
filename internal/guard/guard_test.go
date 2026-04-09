@@ -2,6 +2,7 @@ package guard
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -276,6 +277,30 @@ func TestRun_malformedPkJsonLogsError(t *testing.T) {
 	}
 	if stdout.Len() > 0 {
 		t.Errorf("stdout = %q, want empty (no block on parse error)", stdout.String())
+	}
+}
+
+func TestRun_revParseFailureAllowsThrough(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cfg := Config{
+		Stdin:  strings.NewReader(`{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/project"}`),
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+		},
+		GitExec: func(dir string, args ...string) (string, error) {
+			return "", fmt.Errorf("fatal: not a git repository")
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if stdout.Len() > 0 {
+		t.Errorf("stdout = %q, want empty (should not block when rev-parse fails)", stdout.String())
 	}
 }
 
