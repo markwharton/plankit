@@ -18,7 +18,7 @@ func TestSlugify(t *testing.T) {
 	}{
 		{"My Plan Title", 60, "my-plan-title"},
 		{"Fix: bug #123 & improve UX!", 60, "fix-bug-123-improve-ux"},
-		{"Caching Report: helimods-api", 60, "caching-report-helimods-api"},
+		{"Caching Report: weather-data", 60, "caching-report-weather-data"},
 		{"  Leading and trailing spaces  ", 60, "leading-and-trailing-spaces"},
 		{"ALL CAPS TITLE", 60, "all-caps-title"},
 		{"a-b-c", 60, "a-b-c"},
@@ -838,6 +838,148 @@ func TestRun(t *testing.T) {
 		wantPath := "docs/plans/2026-03-11-001-json-response-plan.md"
 		if addPath != wantPath {
 			t.Errorf("git add path = %q, want %q", addPath, wantPath)
+		}
+	})
+
+	t.Run("push failure reports local commit", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Push Fail Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "push-fail.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				if args[0] == "push" {
+					return "", fmt.Errorf("permission denied")
+				}
+				return "", nil
+			},
+			Push: true,
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		out := stdout.String()
+		if !strings.Contains(out, "committed locally but push failed") {
+			t.Errorf("stdout = %q, want push failure message", out)
+		}
+	})
+
+	t.Run("dry-run with push shows push preview", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Dry Push Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "dry-push.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) {
+				return "", nil
+			},
+			DryRun: true,
+			Push:   true,
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		output := stderr.String()
+		if !strings.Contains(output, "Push:") {
+			t.Errorf("stderr = %q, want push preview line", output)
+		}
+		if !strings.Contains(output, "git push origin HEAD") {
+			t.Errorf("stderr = %q, want push command preview", output)
+		}
+	})
+
+	t.Run("getwd fallback for project directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Getwd Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "getwd-test.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		// No cwd in input, no CLAUDE_PROJECT_DIR — forces Getwd fallback.
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s"}`, planFile)
+
+		var stdout, stderr bytes.Buffer
+		var addPath string
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env:    func(string) string { return "" },
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			Getwd:   func() (string, error) { return projectDir, nil },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "add" {
+					addPath = args[1]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		wantPath := "docs/plans/2026-03-11-001-getwd-plan.md"
+		if addPath != wantPath {
+			t.Errorf("git add path = %q, want %q", addPath, wantPath)
+		}
+
+		destFile := filepath.Join(projectDir, wantPath)
+		if _, err := os.Stat(destFile); err != nil {
+			t.Errorf("plan file not written at expected path: %v", err)
 		}
 	})
 
