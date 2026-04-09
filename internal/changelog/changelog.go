@@ -109,6 +109,7 @@ type PkConfig struct {
 type ChangelogConfig struct {
 	Types        []TypeConfig  `json:"types,omitempty"`
 	VersionFiles []VersionFile `json:"versionFiles,omitempty"`
+	ShowScope    bool          `json:"showScope,omitempty"`
 	Hooks        Hooks         `json:"hooks,omitempty"`
 }
 
@@ -220,7 +221,7 @@ func Run(cfg Config) int {
 	// 7. Generate section.
 	groups := groupCommits(commits, config.Types)
 	date := cfg.Now().Format("2006-01-02")
-	section := formatSection(nextTag, date, groups)
+	section := formatSection(nextTag, date, groups, config.ShowScope)
 
 	// 8. Dry run.
 	if cfg.DryRun {
@@ -493,7 +494,7 @@ func groupCommits(commits []Commit, types []TypeConfig) []CommitGroup {
 }
 
 // formatSection renders a version's changelog section as markdown.
-func formatSection(ver, date string, groups []CommitGroup) string {
+func formatSection(ver, date string, groups []CommitGroup, showScope bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "## [%s] - %s\n", ver, date)
 	for _, g := range groups {
@@ -502,6 +503,9 @@ func formatSection(ver, date string, groups []CommitGroup) string {
 			prefix := ""
 			if c.Breaking {
 				prefix = "**BREAKING:** "
+			}
+			if showScope && c.Scope != "" {
+				prefix += "**" + c.Scope + ":** "
 			}
 			fmt.Fprintf(&b, "- %s%s (%s)\n", prefix, c.Message, c.Hash)
 		}

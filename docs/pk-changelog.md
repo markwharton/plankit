@@ -60,6 +60,7 @@ Changelog configuration lives under the `changelog` key in `.pk.json`. All field
       {"path": "package.json", "type": "json"},
       {"path": "package-lock.json", "type": "json"}
     ],
+    "showScope": true,
     "hooks": {
       "postVersion": "node -e \"...propagate version...\"",
       "preCommit": "npm install --package-lock-only"
@@ -107,6 +108,17 @@ Files containing a version string to update when a new version is released. Each
 For JSON files, `pk changelog` updates the root-level `version` field using proper JSON parsing (no regex). Formatting, key order, and indentation are preserved.
 
 Version files are output-only — `pk changelog` writes to them but never reads from them. The git tag is always the version source.
+
+### showScope
+
+When `true`, the conventional commit scope is included in changelog entries as a bold prefix:
+
+```markdown
+- **flow:** resolve Object-in-String-Context pattern (dab3f6d)
+- **BREAKING:** **api:** remove endpoint (abc1234)
+```
+
+Defaults to `false` — scope is parsed but omitted from the output.
 
 ### hooks
 

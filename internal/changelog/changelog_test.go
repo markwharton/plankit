@@ -362,7 +362,7 @@ func TestFormatSection(t *testing.T) {
 		}},
 	}
 
-	got := formatSection("v1.0.0", "2026-04-03", groups)
+	got := formatSection("v1.0.0", "2026-04-03", groups, false)
 
 	if !strings.Contains(got, "## [v1.0.0] - 2026-04-03") {
 		t.Error("missing version header")
@@ -379,6 +379,48 @@ func TestFormatSection(t *testing.T) {
 	if !strings.Contains(got, "- **BREAKING:** breaking change (ghi9012)") {
 		t.Error("missing breaking change entry")
 	}
+}
+
+func TestFormatSection_scopedCommits(t *testing.T) {
+	groups := []CommitGroup{
+		{Heading: "Fixed", Items: []Commit{
+			{Hash: "dab3f6d", Scope: "flow", Message: "resolve Object-in-String-Context pattern"},
+			{Hash: "abc1234", Scope: "auth", Message: "handle nil token", Breaking: true},
+			{Hash: "def5678", Message: "typo in error message"},
+		}},
+	}
+
+	t.Run("showScope false omits scope", func(t *testing.T) {
+		got := formatSection("v1.1.0", "2026-04-09", groups, false)
+
+		if !strings.Contains(got, "- resolve Object-in-String-Context pattern (dab3f6d)") {
+			t.Errorf("scoped commit missing or malformed: %s", got)
+		}
+		if !strings.Contains(got, "- **BREAKING:** handle nil token (abc1234)") {
+			t.Errorf("scoped breaking commit missing or malformed: %s", got)
+		}
+		if !strings.Contains(got, "- typo in error message (def5678)") {
+			t.Errorf("unscoped commit missing: %s", got)
+		}
+		if strings.Contains(got, "**flow:**") || strings.Contains(got, "**auth:**") {
+			t.Errorf("scope should not appear when showScope is false: %s", got)
+		}
+	})
+
+	t.Run("showScope true includes scope prefix", func(t *testing.T) {
+		got := formatSection("v1.1.0", "2026-04-09", groups, true)
+
+		if !strings.Contains(got, "- **flow:** resolve Object-in-String-Context pattern (dab3f6d)") {
+			t.Errorf("scoped commit missing scope prefix: %s", got)
+		}
+		if !strings.Contains(got, "- **BREAKING:** **auth:** handle nil token (abc1234)") {
+			t.Errorf("breaking+scoped commit wrong format: %s", got)
+		}
+		// Unscoped commit should not get a scope prefix.
+		if !strings.Contains(got, "- typo in error message (def5678)") {
+			t.Errorf("unscoped commit missing: %s", got)
+		}
+	})
 }
 
 func TestInsertSection(t *testing.T) {
@@ -1260,5 +1302,48 @@ func TestRun_pushDryRun(t *testing.T) {
 	}
 	if pushCalled {
 		t.Error("push should not be called in dry run")
+	}
+}
+
+func TestRun_showScope(t *testing.T) {
+	var stderr bytes.Buffer
+	var writtenContent []byte
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				return "dab3f6d\x00fix(flow): resolve pattern\x00\x00abc1234\x00feat: plain feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"showScope":true}}`), nil
+			}
+			return nil, os.ErrNotExist
+		},
+		WriteFile: func(name string, data []byte, perm os.FileMode) error {
+			writtenContent = data
+			return nil
+		},
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+
+	content := string(writtenContent)
+	if !strings.Contains(content, "**flow:** resolve pattern") {
+		t.Errorf("scoped commit should have scope prefix, got: %s", content)
+	}
+	if strings.Contains(content, "**plain feature**") {
+		t.Errorf("unscoped commit should not have scope prefix, got: %s", content)
 	}
 }
