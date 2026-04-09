@@ -1,6 +1,7 @@
 package hooks
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -84,6 +85,25 @@ func TestReadInput_emptyReader(t *testing.T) {
 	_, err := ReadInput(strings.NewReader(""))
 	if err == nil {
 		t.Fatal("expected error for empty input, got nil")
+	}
+}
+
+func TestReadInput_largePayload(t *testing.T) {
+	// Claude Code can send large tool_response payloads (plan content, file diffs).
+	// Verify ReadInput handles them without truncation.
+	largeContent := strings.Repeat("x", 1<<20) // 1 MB
+	payload := fmt.Sprintf(`{"tool_response":%q,"cwd":"/projects/foo"}`, largeContent)
+
+	input, err := ReadInput(strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := input.ToolResponseString()
+	if len(got) != 1<<20 {
+		t.Errorf("tool_response length = %d, want %d", len(got), 1<<20)
+	}
+	if input.CWD != "/projects/foo" {
+		t.Errorf("CWD = %q, want %q", input.CWD, "/projects/foo")
 	}
 }
 
