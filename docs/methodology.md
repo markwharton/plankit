@@ -32,11 +32,23 @@ Plan-driven development uses Claude Code's plan mode as the foundation for AI-as
 - Quick fixes, typos, single-file changes
 - Exploratory work where you're still figuring out the question
 
-## Directing the plan
+## Reviewing the plan
 
-Plan review is where the developer directs the outcome. Sometimes the plan isn't going in the right direction and that's frustrating. Frustration is a signal that the way you're directing needs to change. You can keep iterating — context windows are large enough now. You can stop and come back later with fresh perspective. Or you can discard the plan entirely.
+Review the plan, not the code. Traditional code reviews focus on syntax, style, and correctness line by line. Plan review is different — you're evaluating approach, scope, and whether the plan solves the right problem. The first draft is a starting point. Reacting to it surfaces what you actually want, not just what you asked for. Context windows are large enough to keep iterating until you're confident.
 
-The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
+Developers should still read the code in the plan — even new builders can follow the shape of what's happening without getting caught up on syntax. Reading code is easier than writing it. You're looking for intent: does this change do what the plan said it would? Are there pieces missing? Does the structure make sense?
+
+We needed a quote about planning for the plankit site. The obvious choice — a well-known Benjamin Franklin line — couldn't be traced back to him. But each cycle of questioning led somewhere better: from a misattributed proverb to Alan Lakein, whose 1973 book — *How to Get Control of Your Time and Your Life* — described the project's philosophy more precisely than the original ever did. The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
+
+## Chaining sessions
+
+Long sessions accumulate context that no prompt can fully transfer. When a session suggests starting fresh — or you notice it's still helpful but less sharp — don't close it immediately. Start the new session alongside it.
+
+The pattern: ask the old session to write a handoff prompt. Start a new session with that prompt and let it build a plan. Before approving, copy the plan back to the old session and ask it to review for gaps. The old session has the context to catch what the new session missed — edge cases it discovered, decisions it made, constraints it learned the hard way. Pass the feedback back to the new session, iterate until the old session is satisfied, then approve the plan.
+
+This works because it mirrors the plan review cycle across session boundaries. The old session becomes a reviewer with deep context. The new session has fresh capacity and a validated plan. Even during execution, the old session can answer questions about decisions it made earlier.
+
+Sessions are disposable. Context is not. Chaining preserves the context while refreshing the capacity.
 
 ## Guidelines
 
@@ -66,7 +78,11 @@ Guidelines work — when they're read. A real example: a project's CLAUDE.md exp
 
 The more common a pattern is in training data, the more likely it is to override project-specific instructions. Less common conventions — the ones that most need documenting — are the ones most at risk.
 
-This is why CLAUDE.md should be trimmed to essentials. Fewer rules means each rule is more likely to be read and followed. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention in the main file.
+A second example — different failure mode. In a project without plankit's guidelines, the developer had previously taught Claude that "commit and push are separate decisions." Claude saved this as a memory and acknowledged the rule. During a stretch of documentation edits, Claude started committing *and pushing* autonomously — without being asked to do either. Three commits went to the remote that could have been squashed into one. An unwanted push is hard to undo on any branch.
+
+The underlying issue: memory alone wasn't enough. A rule learned in one conversation and recalled from memory doesn't carry the same weight as a rule in the project's CLAUDE.md that is read every session. When the project had no explicit git discipline guidelines, Claude defaulted to autonomous behavior despite having the rule saved. This is a strong argument for running `pk setup` on every project — guidelines need to be present, not just remembered.
+
+Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention in the main file.
 
 ## Testing loop
 
@@ -77,7 +93,7 @@ Testing is not just verification — it's a collaboration accelerator.
 3. **Claude runs tests itself** — closes the feedback loop. When Claude can see test results directly, iteration accelerates significantly. No copying output back and forth.
 4. **Use tools like Playwright for UI** — Claude can see what's happening in the browser without having to ask.
 
-The compounding effect: plan mode + guidelines + tests + self-testing creates a workflow where Claude operates with high confidence and the developer stays in control of direction.
+The compounding effect: plan mode + guidelines + tests + documentation — each one builds on the last. Claude operates with high confidence and the developer stays in control of direction.
 
 ## Code review
 
