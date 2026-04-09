@@ -983,6 +983,91 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("not a git repo", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Not Git Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "not-git.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "rev-parse" {
+					return "", fmt.Errorf("not a git repository")
+				}
+				t.Fatal("unexpected git call after rev-parse failure")
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if !strings.Contains(stderr.String(), "not a git repository") {
+			t.Errorf("stderr = %q, want git repo error", stderr.String())
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+
+	t.Run("no project directory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# No Dir Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "no-dir.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		// No cwd in input, no CLAUDE_PROJECT_DIR, Getwd fails.
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s"}`, planFile)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:   strings.NewReader(inputJSON),
+			Stdout:  &stdout,
+			Stderr:  &stderr,
+			Env:     func(string) string { return "" },
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			Getwd:   func() (string, error) { return "", fmt.Errorf("no working directory") },
+			GitExec: func(string, ...string) (string, error) {
+				t.Fatal("unexpected git call when no project directory")
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if !strings.Contains(stderr.String(), "could not determine project directory") {
+			t.Errorf("stderr = %q, want project directory error", stderr.String())
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+
 	t.Run("json object tool_response falls back to latest plan", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		plansDir := filepath.Join(tmpDir, ".claude", "plans")
