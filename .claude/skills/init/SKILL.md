@@ -1,6 +1,7 @@
 ---
 name: init
 description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
+disable-model-invocation: true
 pk_sha256: a3cefa2feec9c4a150ee0c25e199caa932a5bcc46f7bcc4e34549fad1f89eb91
 ---
 

@@ -1,6 +1,8 @@
 ---
 name: preserve
 description: Preserve the most recently approved plan to docs/plans/
+disable-model-invocation: true
+allowed-tools: Bash(pk:*)
 pk_sha256: f532434f2bace0307a64197c1b0cee9b5a890c5e5858e83b14ceb547bd71183d
 ---
 

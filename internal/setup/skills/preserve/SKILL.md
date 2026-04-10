@@ -1,6 +1,8 @@
 ---
 name: preserve
 description: Preserve the most recently approved plan to docs/plans/
+disable-model-invocation: true
+allowed-tools: Bash(pk:*)
 ---
 
 Preserve the most recently approved plan to docs/plans/ and commit it.

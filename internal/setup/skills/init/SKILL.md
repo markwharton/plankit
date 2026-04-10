@@ -1,6 +1,7 @@
 ---
 name: init
 description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
+disable-model-invocation: true
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.

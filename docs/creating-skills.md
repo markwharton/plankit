@@ -33,7 +33,7 @@ Common fields worth knowing:
 - **disable-model-invocation: true** — block Claude from invoking the skill on its own. Use this for high-stakes workflows that the user must trigger explicitly (releases, deployments, anything destructive).
 - **user-invocable: false** — hide the skill from user menus. Use this for background knowledge Claude consults but you don't invoke directly.
 - **argument-hint** — hint shown in the `/` autocomplete menu.
-- **allowed-tools** — list of tools the skill can use without asking for permission while it's active.
+- **allowed-tools** — list of tools the skill can use without asking for permission while it's active. For example, `allowed-tools: Bash(pk:*)` lets a `pk`-wrapping skill run without prompting on each `pk` command. Use this to make skills self-contained — they work even in projects where `settings.json` doesn't have a matching permission entry. plankit's installed skills (`/changelog`, `/preserve`, `/release`) use this pattern.
 
 See the [official Skills reference](https://code.claude.com/docs/en/skills.md) for the full schema (paths, hooks, model, subagent forking, and more).
 

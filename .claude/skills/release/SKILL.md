@@ -1,6 +1,8 @@
 ---
 name: release
 description: Merge to release branch, validate, and push to origin
+disable-model-invocation: true
+allowed-tools: Bash(pk:*)
 pk_sha256: 2db494525cda78a487d7722db7c933af4d51ab6d14ce0c0705662b904fd3c325
 ---
 

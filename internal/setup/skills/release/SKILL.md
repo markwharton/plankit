@@ -1,6 +1,8 @@
 ---
 name: release
 description: Merge to release branch, validate, and push to origin
+disable-model-invocation: true
+allowed-tools: Bash(pk:*)
 ---
 
 Push a release created by pk changelog. When `release.branch` is configured

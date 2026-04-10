@@ -1,6 +1,8 @@
 ---
 name: changelog
 description: Update CHANGELOG.md from git history, commit, and tag version
+disable-model-invocation: true
+allowed-tools: Bash(pk:*)
 ---
 
 Generate a changelog release using pk.
