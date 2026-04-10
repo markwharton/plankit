@@ -30,6 +30,11 @@ When `release.branch` is NOT configured (legacy flow):
 3. Run pre-release hook if configured.
 4. Push current branch + tag to origin.
 
+## Flags
+
+- **--dry-run** — Run all checks without merging or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be pushed and created.
+- **--pr** — Push the source branch and tag to origin, then create a pull request targeting the release branch. Requires `release.branch` in `.pk.json`. Falls back to printing a compare URL if `gh` is not installed.
+
 ## Configuration
 
 Add a `release` key to `.pk.json`:
@@ -37,14 +42,28 @@ Add a `release` key to `.pk.json`:
 ```json
 {
   "release": {
-    "branch": "main"
+    "branch": "main",
+    "hooks": {
+      "preRelease": "go test -race ./..."
+    }
   }
 }
 ```
 
-This tells `pk release` which branch to merge to and push from. The current branch is the implicit source — no hard-coded "dev" name.
+- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the legacy flow (validate current branch and push).
+- **hooks.preRelease** — Shell command that runs before pushing. If the hook fails, the release is aborted and nothing is pushed.
 
-If `release.branch` is not set, `pk release` uses the legacy flow (validate current branch and push).
+## Details
+
+### Workflows
+
+| Flow | Config | Command | What happens |
+|------|--------|---------|--------------|
+| Legacy | no `release.branch` | `pk release` | Push current branch + tag |
+| Merge | `release.branch` set | `pk release` | Merge to release branch, push both |
+| PR | `release.branch` set | `pk release --pr` | Push source branch, create PR |
+
+### PR flow
 
 When `--pr` is passed (requires `release.branch` in `.pk.json`):
 
@@ -56,21 +75,7 @@ When `--pr` is passed (requires `release.branch` in `.pk.json`):
 
 Use this for workflows where PRs trigger preview environments (Azure Static Web Apps, Netlify, Vercel) and you want to review before merging to production.
 
-## Workflows
-
-| Flow | Config | Command | What happens |
-|------|--------|---------|--------------|
-| Legacy | no `release.branch` | `pk release` | Push current branch + tag |
-| Merge | `release.branch` set | `pk release` | Merge to release branch, push both |
-| PR | `release.branch` set | `pk release --pr` | Push source branch, create PR |
-
-## Guard interaction
-
-`pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. This means `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks everything else on protected branches — `pk release` is the single command that legitimately touches the release branch.
-
-If you are already on the release branch when you run `pk release`, it refuses with an error: "switch to your development branch first." This prevents accidental pushes without a merge.
-
-## Merge behavior
+### Merge behavior
 
 The merge uses `git merge --ff-only`. If the release branch has diverged (e.g., someone committed directly to it from the terminal), the merge fails with:
 
@@ -79,31 +84,16 @@ Error: merge failed — main has diverged from dev (not fast-forward).
 Resolve on main manually, then try again.
 ```
 
-## Error recovery
+### Error recovery
 
 If any step fails after switching to the release branch (merge, hook, push), `pk release` automatically switches back to the source branch before exiting.
 
-## Pre-release hook
+### Guard interaction
 
-The `release.hooks.preRelease` field in `.pk.json` runs a shell command before pushing:
+`pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. This means `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks everything else on protected branches — `pk release` is the single command that legitimately touches the release branch.
 
-```json
-{
-  "release": {
-    "hooks": {
-      "preRelease": "go test -race ./..."
-    }
-  }
-}
-```
+If you are already on the release branch when you run `pk release`, it refuses with an error: "switch to your development branch first." This prevents accidental pushes without a merge.
 
-If the hook fails, the release is aborted and nothing is pushed.
-
-## Flags
-
-- **--dry-run** — Run all checks without merging or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be pushed and created.
-- **--pr** — Push the source branch and tag to origin, then create a pull request targeting the release branch. Requires `release.branch` in `.pk.json`. Falls back to printing a compare URL if `gh` is not installed.
-
-## Scope
+### Scope
 
 Guard and `release.branch` are for multi-branch workflows (e.g., dev/main). Single-branch developers working directly on `main` don't need guard or `release.branch` — they run `pk changelog` and `pk release` with the legacy flow. No configuration needed.

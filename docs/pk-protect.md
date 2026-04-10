@@ -4,11 +4,7 @@ Block Claude Code from editing or overwriting files in `docs/plans/`.
 
 ## Usage
 
-```bash
-pk protect    # reads PreToolUse hook payload from stdin
-```
-
-This command runs as a **PreToolUse hook** on `Edit` and `Write` tool calls. It is not intended to be run manually.
+`pk protect` runs as a **PreToolUse hook** on `Edit` and `Write` tool calls. It is not intended to be run manually.
 
 ## How it works
 
@@ -19,8 +15,7 @@ This command runs as a **PreToolUse hook** on `Edit` and `Write` tool calls. It 
 ## Hook protocol
 
 - **Input:** PreToolUse JSON on stdin (includes `tool_input.file_path`).
-- **Output (blocked):** `{"decision": "block", "reason": "docs/plans/ files are immutable historical records..."}` on stdout.
-- **Output (allowed):** No stdout output.
+- **Output:** `{"decision": "block", "reason": "..."}` on stdout to block. No output to allow.
 - **Exit code:** Always 0.
 
 ## Environment

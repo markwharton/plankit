@@ -79,7 +79,7 @@ pk release          # Validate pre-flight checks and push to origin
 ### Documentation
 
 - Convention format: bold principle, then concise context — plain statement when the rule speaks for itself.
-- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). Higher-level docs (README, getting-started, methodology) link to command docs and only change when concepts change.
+- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). New command docs follow `docs/command-doc-template.md`. Higher-level docs (README, getting-started, methodology) link to command docs and only change when concepts change.
 - Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally).
 
 ### Commits and Releases

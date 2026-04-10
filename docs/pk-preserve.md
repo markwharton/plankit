@@ -22,10 +22,6 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 5. Writes to `docs/plans/`, runs `git add` and `git commit`. If `--push` is set, also runs `git push origin HEAD`.
 6. Outputs a `{"systemMessage": "..."}` JSON response on stdout.
 
-## Team usage
-
-The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based on what exists in `docs/plans/` at the time of preservation. In a team setting, developers working in parallel may generate duplicate sequence numbers because each developer's local directory is a different snapshot. This is harmless — the slug portion ensures filenames are unique, and git will merge them without conflict. The sequence number provides useful ordering for a single developer; across a team, the date is the primary sort key.
-
 ## Flags
 
 - **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. Used by the `/preserve` skill for confirmation before proceeding.
@@ -41,3 +37,9 @@ The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based
 ## Environment
 
 - **CLAUDE_PROJECT_DIR** — Used to resolve the project root. Falls back to `cwd` from the hook payload.
+
+## Details
+
+### Team usage
+
+The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based on what exists in `docs/plans/` at the time of preservation. In a team setting, developers working in parallel may generate duplicate sequence numbers because each developer's local directory is a different snapshot. This is harmless — the slug portion ensures filenames are unique, and git will merge them without conflict. The sequence number provides useful ordering for a single developer; across a team, the date is the primary sort key.

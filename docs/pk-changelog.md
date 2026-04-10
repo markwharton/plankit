@@ -25,27 +25,13 @@ pk changelog --push               # push commit and tag to origin after tagging
 10. Tags the new version
 11. If `--push` is set, pushes commit and tag to origin
 
-## Version source
+## Flags
 
-Git tags are the single version source. If no tags exist, `pk changelog` exits with a helpful message:
+- **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
+- **--dry-run** — Preview the changelog output without writing, committing, or tagging.
+- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful for single-branch workflows where `pk release` is not needed.
 
-```
-Error: no version tags found
-  To start from scratch: git tag v0.0.0 && git push origin v0.0.0
-  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)
-```
-
-## Version bump
-
-The bump is auto-detected from conventional commits:
-
-- Any commit with `!` or `BREAKING CHANGE:` trailer → **major**
-- Any `feat:` commit → **minor**
-- Everything else → **patch**
-
-Override with `--bump major|minor|patch`.
-
-## .pk.json
+## Configuration
 
 Changelog configuration lives under the `changelog` key in `.pk.json`. All fields are optional.
 
@@ -130,29 +116,19 @@ Lifecycle hooks that run as shell commands during the release process. The `VERS
 
 If a hook fails, the release is aborted.
 
-## Flags
+## Details
 
-- **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
-- **--dry-run** — Preview the changelog output without writing, committing, or tagging.
-- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful for single-branch workflows where `pk release` is not needed.
+### Version source
 
-## Comparison links
+Git tags are the single version source. If no tags exist, `pk changelog` exits with a helpful message:
 
-`pk changelog` appends markdown reference-style links at the bottom of CHANGELOG.md, linking each version heading to its GitHub comparison page:
-
-```markdown
-## [v0.2.0] - 2026-04-05
-
-### Added
-
-- new feature (abc1234)
-
-[v0.2.0]: https://github.com/owner/repo/compare/v0.1.0...v0.2.0
+```
+Error: no version tags found
+  To start from scratch: git tag v0.0.0 && git push origin v0.0.0
+  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)
 ```
 
-The repository URL is auto-detected from `git remote get-url origin`. Both SSH and HTTPS remote formats are supported.
-
-## Conventional commits
+### Conventional commits
 
 `pk changelog` parses the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:
 
@@ -167,3 +143,29 @@ BREAKING CHANGE: explanation
 Breaking changes are detected from both the `!` suffix and `BREAKING CHANGE:` / `BREAKING-CHANGE:` trailers in the commit body.
 
 Non-conventional commits are silently skipped.
+
+### Version bump
+
+The bump is auto-detected from conventional commits:
+
+- Any commit with `!` or `BREAKING CHANGE:` trailer → **major**
+- Any `feat:` commit → **minor**
+- Everything else → **patch**
+
+Override with `--bump major|minor|patch`.
+
+### Comparison links
+
+`pk changelog` appends markdown reference-style links at the bottom of CHANGELOG.md, linking each version heading to its GitHub comparison page:
+
+```markdown
+## [v0.2.0] - 2026-04-05
+
+### Added
+
+- new feature (abc1234)
+
+[v0.2.0]: https://github.com/owner/repo/compare/v0.1.0...v0.2.0
+```
+
+The repository URL is auto-detected from `git remote get-url origin`. Both SSH and HTTPS remote formats are supported.
