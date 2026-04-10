@@ -21,7 +21,15 @@ pk setup --force                      # overwrite all managed skills
 
 After setup, restart Claude Code to apply changes.
 
-## CLAUDE.md
+## Flags
+
+- **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
+- **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
+- **--project-dir** — Project directory (default: current directory).
+
+## Details
+
+### CLAUDE.md
 
 The CLAUDE.md installed by `pk setup` contains critical rules — the non-negotiable behaviors that prevent the most common issues. Detailed guidelines for model behavior, development standards, and git discipline are installed as `.claude/rules/` files, which Claude Code loads automatically alongside CLAUDE.md.
 
@@ -31,33 +39,18 @@ Add a `## Project Conventions` section to make Claude productive from the first 
 
 After running `pk setup`, run `/init` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, asks about branch protection, and proposes a `## Project Conventions` section for your approval.
 
-### Create your own skills
+### Add your own skills
 
-Skills are markdown files in `.claude/skills/` that Claude Code discovers automatically. You can create skills for any workflow your project needs.
+`pk setup` installs four managed skills (`/changelog`, `/init`, `/preserve`, `/release`). You can add your own — see [Creating skills](creating-skills.md).
 
-A skill file uses YAML frontmatter for metadata and markdown for instructions:
-
-```markdown
----
-name: my-skill
-description: What this skill does
----
-
-Instructions for Claude to follow when the user invokes /my-skill.
-```
-
-Place the file at `.claude/skills/my-skill/SKILL.md` and restart Claude Code. Users invoke it with `/my-skill`.
-
-Skills work well for repeatable workflows — code review checklists, smoke tests, deployment procedures, project initialization. Keep the prompt focused: Claude understands broad terms like "DRY violations" and "anti-patterns" without needing exhaustive checklists.
-
-## Preserve modes
+### Preserve modes
 
 - **manual** (default) — Use the `/preserve` skill when you're ready to save a plan.
 - **auto** — Plans are automatically preserved when you exit plan mode.
 
 Re-run setup anytime to switch modes.
 
-## Managed file protection
+### Managed file protection
 
 Files installed by `pk setup` include a SHA256 integrity marker. The format depends on the file type:
 
@@ -71,9 +64,3 @@ On re-run, `pk setup` checks the marker:
 - **File has no marker** (not managed by pk) — skipped.
 
 `--force` overrides this for skills only. CLAUDE.md is never force-overwritten.
-
-## Flags
-
-- **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
-- **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
-- **--project-dir** — Project directory (default: current directory).

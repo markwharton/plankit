@@ -109,7 +109,7 @@ This prompt is intentionally short and unbounded. Claude understands each term, 
 
 Use it iteratively — after generating code, after refactoring, or at the start of a session to improve an existing codebase.
 
-For frequent use, create a `/review` skill — see [Create your own skills](pk-setup.md#create-your-own-skills).
+For frequent use, create a `/review` skill — see [Creating skills](creating-skills.md).
 
 ## Use what you build
 
