@@ -67,6 +67,16 @@ pk release          # Validate pre-flight checks and push to origin
 - **Managed files** embed a SHA marker (HTML comment for CLAUDE.md, YAML frontmatter `pk_sha256` for skills) so `pk setup` can detect user modifications.
 - **Embedded assets** via `//go:embed` — templates, skills, and rules are compiled into the binary.
 
+### Updating pk-managed files
+
+When editing a file that has `pk_sha256` in its frontmatter (skills, rules), update both the embedded source in `internal/setup/` and the local copy in `.claude/`, then recompute the body hash with:
+
+```bash
+sed -n '/^---$/,/^---$/!p' <embedded-source> | shasum -a 256
+```
+
+Replace the `pk_sha256` line in the local copy with the new value. The sed pattern excludes the frontmatter `---`...`---` block, matching Go's body hash calculation byte-for-byte. This avoids running `pk setup`, which would also touch other managed files.
+
 ### Configuration
 
 - `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
