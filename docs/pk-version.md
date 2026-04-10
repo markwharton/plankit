@@ -6,7 +6,7 @@ Print the current version and check for updates.
 
 ```bash
 pk version              # print version
-pk version --verbose    # include build details (Go version, commit, time)
+pk version --verbose    # include Go version, build time, and commit SHA
 ```
 
 ## How it works
@@ -17,4 +17,4 @@ pk version --verbose    # include build details (Go version, commit, time)
 
 ## Flags
 
-- **--verbose** — Include Go version, VCS revision, and build time from build info.
+- **--verbose** — Include Go version, build time, and commit SHA from build info. Dev builds show `(dirty)` when the working tree was modified at build time.

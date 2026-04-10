@@ -253,7 +253,7 @@ func allDigits(s string) bool {
 	return len(s) > 0
 }
 
-// VerboseInfo returns additional build information (Go version and build date).
+// VerboseInfo returns additional build information (Go version, build date, and commit).
 // Returns empty string if build info is unavailable.
 func VerboseInfo() string {
 	info, ok := debug.ReadBuildInfo()
@@ -262,11 +262,23 @@ func VerboseInfo() string {
 	}
 	goVer := info.GoVersion
 	buildDate := "unknown"
+	commitSHA := "unknown"
+	dirty := false
 	for _, s := range info.Settings {
-		if s.Key == "vcs.time" {
+		switch s.Key {
+		case "vcs.time":
 			buildDate = s.Value
-			break
+		case "vcs.revision":
+			commitSHA = s.Value
+		case "vcs.modified":
+			dirty = s.Value == "true"
 		}
 	}
-	return fmt.Sprintf("  go: %s\n  build: %s", goVer, buildDate)
+	if len(commitSHA) > 7 {
+		commitSHA = commitSHA[:7]
+	}
+	if dirty && Version() == "dev" {
+		commitSHA += " (dirty)"
+	}
+	return fmt.Sprintf("  go: %s\n  build: %s\n  commit: %s", goVer, buildDate, commitSHA)
 }
