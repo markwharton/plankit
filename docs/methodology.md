@@ -84,6 +84,16 @@ The underlying issue: memory alone wasn't enough. A rule learned in one conversa
 
 Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention in the main file.
 
+## When exploration becomes editing
+
+When Claude races to document an idea before you've said "document this," the documentation will absorb the exploration rather than reflect it.
+
+A real example: during a session about where to capture a useful git technique, Claude found the answer in past session history and explained it cleanly in one message — complete, clear, ready to use. That was the exploratory finding. But instead of leaving it as a conversation, Claude jumped to drafting a 60-line recipe file. Each subsequent turn became an edit on that artifact — fixing a factual error, adding a gate, chainsawing explanatory bullets, restoring them, catching subtle command bugs. The developer pushed back repeatedly; each pushback drew a new edit instead of a rethink. Eventually the developer broke the loop by pasting Claude's own earlier clear explanation back — the clean answer had been there all along.
+
+The issue: Claude raced from *exploration* to *formalization*. Once the recipe existed as a file, every response became "what should I edit next?" instead of "what are we actually trying to figure out?" The editing rhythm is sticky — it pulls toward local patches, defending sunk cost, and swinging between extremes. Returning to thinking-mode after editing has started is surprisingly hard.
+
+Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, look for the first clear articulation of the idea from earlier in the conversation — it's usually cleaner than anything generated later.
+
 ## Testing loop
 
 Testing is not just verification — it's a collaboration accelerator.
