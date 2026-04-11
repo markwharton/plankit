@@ -84,7 +84,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 - `changelog.types` controls commit type → changelog section mapping.
 - `changelog.hooks` supports `preCommit`, `postVersion` lifecycle hooks.
 - `release.hooks` supports `preRelease` lifecycle hook.
-- `guard.protectedBranches` lists branches where git mutations are blocked.
+- `guard.branches` lists branches where git mutations are blocked.
 - `release.branch` configures which branch `pk release` merges to and pushes from.
 
 ### Documentation

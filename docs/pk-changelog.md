@@ -13,7 +13,7 @@ pk changelog --undo               # unwind an unpushed release commit
 
 ## How it works
 
-1. Checks if the current branch is protected by `guard.protectedBranches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
+1. Checks if the current branch is protected by `guard.branches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
 2. Verifies the working tree is clean (skipped in `--dry-run` mode). Exits with an error if there are uncommitted changes.
 3. Reads the latest version tag (git tags are the single version source)
 4. Scans commits since that tag for conventional commit messages

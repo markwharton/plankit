@@ -2,16 +2,8 @@ package hooks
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 )
-
-// WriteBlockDecision writes a legacy PreToolUse block response to w.
-// Kept for callers that haven't migrated to WritePermissionDecision yet.
-// The reason is Go-quoted which produces valid JSON string escaping.
-func WriteBlockDecision(w io.Writer, reason string) {
-	fmt.Fprintf(w, `{"decision":"block","reason":%q}`, reason)
-}
 
 // PermissionDecision values accepted by the Claude Code hook schema inside
 // hookSpecificOutput for PreToolUse events.

@@ -29,7 +29,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    ```json
    {
      "guard": {
-       "protectedBranches": ["main"]
+       "branches": ["main"]
      },
      "release": {
        "branch": "main"

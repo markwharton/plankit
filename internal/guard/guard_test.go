@@ -15,7 +15,7 @@ func TestRun_blocksCommitOnProtectedBranch(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "main\n", nil
@@ -26,8 +26,11 @@ func TestRun_blocksCommitOnProtectedBranch(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"decision":"block"`) {
-		t.Errorf("stdout = %q, want block decision", stdout.String())
+	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
+		t.Errorf("stdout = %q, want hookEventName=PreToolUse", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), "protected") {
 		t.Errorf("stdout = %q, want reason mentioning protected", stdout.String())
@@ -42,7 +45,7 @@ func TestRun_allowsCommitOnUnprotectedBranch(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "dev\n", nil
@@ -66,7 +69,7 @@ func TestRun_blocksPushOnProtectedBranch(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "main\n", nil
@@ -77,8 +80,11 @@ func TestRun_blocksPushOnProtectedBranch(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"decision":"block"`) {
-		t.Errorf("stdout = %q, want block decision", stdout.String())
+	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
+		t.Errorf("stdout = %q, want hookEventName=PreToolUse", stdout.String())
 	}
 }
 
@@ -103,7 +109,7 @@ func TestRun_allowsReadOnlyGitCommands(t *testing.T) {
 				Stderr: &stderr,
 				Env:    func(string) string { return "" },
 				ReadFile: func(name string) ([]byte, error) {
-					return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+					return []byte(`{"guard":{"branches":["main"]}}`), nil
 				},
 				GitExec: func(dir string, args ...string) (string, error) {
 					return "main\n", nil
@@ -150,7 +156,7 @@ func TestRun_emptyGuardConfigIsNoOp(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":[]}}`), nil
+			return []byte(`{"guard":{"branches":[]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "main\n", nil
@@ -198,7 +204,7 @@ func TestRun_multipleProtectedBranches(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main","production"]}}`), nil
+			return []byte(`{"guard":{"branches":["main","production"]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "production\n", nil
@@ -209,8 +215,35 @@ func TestRun_multipleProtectedBranches(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"decision":"block"`) {
-		t.Errorf("stdout = %q, want block for production branch", stdout.String())
+	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+		t.Errorf("stdout = %q, want permissionDecision=ask for production branch", stdout.String())
+	}
+}
+
+// TestRun_legacyProtectedBranchesKey verifies that .pk.json using the
+// legacy "protectedBranches" key still works. The key is accepted on read
+// and promoted into Branches by GuardConfig.normalize().
+func TestRun_legacyProtectedBranchesKey(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cfg := Config{
+		Stdin:  strings.NewReader(`{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/project"}`),
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+		},
+		GitExec: func(dir string, args ...string) (string, error) {
+			return "main\n", nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+		t.Errorf("stdout = %q, want ask decision from legacy key", stdout.String())
 	}
 }
 
@@ -288,7 +321,7 @@ func TestRun_revParseFailureAllowsThrough(t *testing.T) {
 		Stderr: &stderr,
 		Env:    func(string) string { return "" },
 		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
 		},
 		GitExec: func(dir string, args ...string) (string, error) {
 			return "", fmt.Errorf("fatal: not a git repository")

@@ -2,7 +2,7 @@
 name: init
 description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
 disable-model-invocation: true
-pk_sha256: a3cefa2feec9c4a150ee0c25e199caa932a5bcc46f7bcc4e34549fad1f89eb91
+pk_sha256: b645464c6bec22da3f8ace97bf8294b0c0e6e713de183c8ff60ec7dba386b2c0
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
@@ -30,7 +30,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    ```json
    {
      "guard": {
-       "protectedBranches": ["main"]
+       "branches": ["main"]
      },
      "release": {
        "branch": "main"

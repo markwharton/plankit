@@ -95,8 +95,20 @@ type Hooks struct {
 }
 
 // GuardConfig holds the guard section of .pk.json (read-only, for branch checking).
+// The legacy protectedBranches key is accepted and promoted into Branches
+// after unmarshal, so existing configs keep working.
 type GuardConfig struct {
+	Branches          []string `json:"branches,omitempty"`
 	ProtectedBranches []string `json:"protectedBranches,omitempty"`
+}
+
+// normalize promotes the legacy protectedBranches value into Branches if
+// Branches is empty. New key wins if both are present.
+func (g *GuardConfig) normalize() {
+	if len(g.Branches) == 0 && len(g.ProtectedBranches) > 0 {
+		g.Branches = g.ProtectedBranches
+	}
+	g.ProtectedBranches = nil
 }
 
 // PkConfig is the top-level .pk.json schema. Each key maps to a pk command.
@@ -164,7 +176,7 @@ func Run(cfg Config) int {
 	// 1a. Check if on a guarded branch.
 	if branch, err := cfg.GitExec("", "branch", "--show-current"); err == nil {
 		branch = strings.TrimSpace(branch)
-		for _, protected := range fullConfig.Guard.ProtectedBranches {
+		for _, protected := range fullConfig.Guard.Branches {
 			if branch == protected {
 				fmt.Fprintf(cfg.Stderr, "Error: you're on %q which is a protected branch — switch to your development branch first\n", branch)
 				return 1
@@ -407,6 +419,7 @@ func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
+	pk.Guard.normalize()
 	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
 }
 

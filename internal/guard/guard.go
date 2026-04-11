@@ -14,8 +14,20 @@ import (
 )
 
 // GuardConfig holds the guard section of .pk.json.
+// The legacy protectedBranches key is still accepted and promoted into
+// Branches after unmarshal, so existing configs keep working.
 type GuardConfig struct {
+	Branches          []string `json:"branches,omitempty"`
 	ProtectedBranches []string `json:"protectedBranches,omitempty"`
+}
+
+// normalize promotes the legacy protectedBranches value into Branches if
+// Branches is empty. New key wins if both are present.
+func (g *GuardConfig) normalize() {
+	if len(g.Branches) == 0 && len(g.ProtectedBranches) > 0 {
+		g.Branches = g.ProtectedBranches
+	}
+	g.ProtectedBranches = nil
 }
 
 // PkConfig reads just the guard portion of .pk.json.
@@ -80,7 +92,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "pk guard: %v\n", err)
 		return 0
 	}
-	if len(config.ProtectedBranches) == 0 {
+	if len(config.Branches) == 0 {
 		return 0
 	}
 
@@ -91,11 +103,15 @@ func Run(cfg Config) int {
 	}
 	branch = strings.TrimSpace(branch)
 
-	// Check if current branch is protected.
-	for _, protected := range config.ProtectedBranches {
+	// Check if current branch is protected. Emit an "ask" permission
+	// decision so the user can consciously confirm a legitimate override
+	// (emergency hotfix, manual recovery) instead of having to disable the
+	// hook. The primary advice is to switch back to the development branch —
+	// pk release is run from there, not from the protected branch.
+	for _, protected := range config.Branches {
 		if branch == protected {
-			reason := fmt.Sprintf("Branch %q is protected. Switch to a development branch before committing.", branch)
-			hooks.WriteBlockDecision(cfg.Stdout, reason)
+			reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", branch)
+			hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason)
 			return 0
 		}
 	}
@@ -167,5 +183,6 @@ func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (
 	if err := json.Unmarshal(data, &pk); err != nil {
 		return GuardConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
 	}
+	pk.Guard.normalize()
 	return pk.Guard, nil
 }
