@@ -63,12 +63,16 @@ func runChangelog(args []string) {
 	fs := flag.NewFlagSet("changelog", flag.ExitOnError)
 	bump := fs.String("bump", "", "Override version bump: major, minor, or patch")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing or committing")
+	undo := fs.Bool("undo", false, "Unwind the last pk changelog commit (must be unpushed)")
 	fs.Parse(args)
 
 	cfg := changelog.DefaultConfig()
 	cfg.Bump = *bump
 	cfg.DryRun = *dryRun
 
+	if *undo {
+		os.Exit(changelog.Undo(cfg))
+	}
 	os.Exit(changelog.Run(cfg))
 }
 
@@ -175,7 +179,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
-	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run]")
+	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run] [--pr]       Merge to release branch, validate, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")

@@ -1297,3 +1297,168 @@ func TestRun_showScope(t *testing.T) {
 		t.Errorf("unscoped commit should not have scope prefix, got: %s", content)
 	}
 }
+
+// --- Undo tests ---
+
+// undoGit returns a base stub for Undo() tests. trailer is the Release-Tag
+// value returned by git log; empty means the trailer is absent.
+func undoGit(trailer string) func(dir string, args ...string) (string, error) {
+	return func(dir string, args ...string) (string, error) {
+		switch args[0] {
+		case "log":
+			// log -1 --format=%(trailers:...) HEAD
+			if len(args) >= 3 && strings.HasPrefix(args[2], "--format=%(trailers") {
+				return trailer, nil
+			}
+			// log @{u}..HEAD --oneline — HEAD is ahead of upstream (unpushed).
+			return "abc1234 chore: release " + trailer, nil
+		case "status":
+			return "", nil
+		case "rev-parse":
+			// Upstream exists.
+			return "origin/dev", nil
+		case "reset":
+			return "", nil
+		}
+		return "", nil
+	}
+}
+
+func TestUndo_happyPath(t *testing.T) {
+	var stderr bytes.Buffer
+	var resetCalled bool
+
+	base := undoGit("v0.6.2")
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "reset" {
+				resetCalled = true
+				if args[1] != "--hard" || args[2] != "HEAD~1" {
+					t.Errorf("reset args = %v, want [reset --hard HEAD~1]", args)
+				}
+			}
+			return base(dir, args...)
+		},
+	}
+
+	code := Undo(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !resetCalled {
+		t.Error("git reset --hard HEAD~1 was not called")
+	}
+	if !strings.Contains(stderr.String(), "Undid release commit v0.6.2") {
+		t.Errorf("stderr = %q, want undo confirmation", stderr.String())
+	}
+}
+
+func TestUndo_noTrailer(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr:  &stderr,
+		GitExec: undoGit(""),
+	}
+
+	code := Undo(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "HEAD is not a pk changelog commit") {
+		t.Errorf("stderr = %q, want no-trailer message", stderr.String())
+	}
+}
+
+func TestUndo_invalidTrailerValue(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr:  &stderr,
+		GitExec: undoGit("v0.6"),
+	}
+
+	code := Undo(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "not valid semver") {
+		t.Errorf("stderr = %q, want invalid-semver message", stderr.String())
+	}
+}
+
+func TestUndo_dirtyTree(t *testing.T) {
+	var stderr bytes.Buffer
+
+	base := undoGit("v0.6.2")
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "status" {
+				return " M CHANGELOG.md", nil
+			}
+			return base(dir, args...)
+		},
+	}
+
+	code := Undo(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "working tree is not clean") {
+		t.Errorf("stderr = %q, want dirty-tree message", stderr.String())
+	}
+}
+
+func TestUndo_alreadyPushed(t *testing.T) {
+	var stderr bytes.Buffer
+
+	base := undoGit("v0.6.2")
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			// log @{u}..HEAD returns empty — HEAD is at or behind upstream.
+			if args[0] == "log" && len(args) >= 2 && args[1] == "@{u}..HEAD" {
+				return "", nil
+			}
+			return base(dir, args...)
+		},
+	}
+
+	code := Undo(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "already on the remote") {
+		t.Errorf("stderr = %q, want pushed-commit message", stderr.String())
+	}
+}
+
+func TestUndo_noUpstream(t *testing.T) {
+	var stderr bytes.Buffer
+	var resetCalled bool
+
+	base := undoGit("v0.6.2")
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			// rev-parse --abbrev-ref HEAD@{upstream} errors: no upstream.
+			if args[0] == "rev-parse" {
+				return "", fmt.Errorf("no upstream configured for branch")
+			}
+			if args[0] == "reset" {
+				resetCalled = true
+			}
+			return base(dir, args...)
+		},
+	}
+
+	code := Undo(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !resetCalled {
+		t.Error("reset should run when branch has no upstream")
+	}
+}

@@ -323,6 +323,69 @@ func Run(cfg Config) int {
 	return 0
 }
 
+// Undo unwinds an unpushed pk changelog commit. It refuses unless:
+//   - HEAD carries a Release-Tag trailer (i.e., HEAD is a pk changelog commit)
+//   - the trailer value is valid semver (round-trip via version.ParseSemver)
+//   - the working tree is clean
+//   - HEAD has not been pushed (or the branch has no upstream)
+//
+// On success, HEAD is reset one commit back via git reset --hard, which
+// discards the CHANGELOG.md and version-file changes from the release commit.
+func Undo(cfg Config) int {
+	// 1. Read Release-Tag trailer from HEAD.
+	trailerOut, err := cfg.GitExec("", "log", "-1", "--format=%(trailers:key=Release-Tag,valueonly)", "HEAD")
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git log failed: %v\n", err)
+		return 1
+	}
+	trailerValue := strings.TrimSpace(trailerOut)
+	if trailerValue == "" {
+		fmt.Fprintln(cfg.Stderr, "Error: HEAD is not a pk changelog commit (no Release-Tag trailer)")
+		return 1
+	}
+	parsed, ok := version.ParseSemver(trailerValue)
+	if !ok || parsed.String() != trailerValue {
+		fmt.Fprintf(cfg.Stderr, "Error: Release-Tag trailer value %q is not valid semver\n", trailerValue)
+		return 1
+	}
+
+	// 2. Working tree must be clean.
+	status, err := cfg.GitExec("", "status", "--porcelain")
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
+		return 1
+	}
+	if strings.TrimSpace(status) != "" {
+		fmt.Fprintln(cfg.Stderr, "Error: working tree is not clean — commit or stash changes first")
+		return 1
+	}
+
+	// 3. HEAD must be unpushed. If the branch has no upstream, the commit
+	// cannot possibly be on the remote, so undo is safe.
+	upstream, err := cfg.GitExec("", "rev-parse", "--abbrev-ref", "HEAD@{upstream}")
+	if err == nil && strings.TrimSpace(upstream) != "" {
+		// Upstream exists — check HEAD is strictly ahead of it.
+		ahead, err := cfg.GitExec("", "log", "@{u}..HEAD", "--oneline")
+		if err != nil {
+			fmt.Fprintf(cfg.Stderr, "Error: git log @{u}..HEAD failed: %v\n", err)
+			return 1
+		}
+		if strings.TrimSpace(ahead) == "" {
+			fmt.Fprintln(cfg.Stderr, "Error: HEAD is already on the remote — cannot undo a pushed commit")
+			return 1
+		}
+	}
+
+	// 4. Reset.
+	if _, err := cfg.GitExec("", "reset", "--hard", "HEAD~1"); err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git reset failed: %v\n", err)
+		return 1
+	}
+
+	fmt.Fprintf(cfg.Stderr, "Undid release commit %s; CHANGELOG.md and version files restored\n", trailerValue)
+	return 0
+}
+
 // FullConfig holds both changelog and guard config from .pk.json.
 type FullConfig struct {
 	ChangelogConfig
