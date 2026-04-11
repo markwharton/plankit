@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.7.0] - 2026-04-11
+
+### Added
+
+- implement Semver 2.0.0 spec for version parsing and comparison (7db188e)
+- add showScope option to include conventional commit scope in changelog (72e2609)
+- harden managed skill permissions (4bca4c6)
+- add soft-reset rule for rewriting unpushed commits (149661b)
+- show commit SHA and dirty state in verbose output (5da2af9)
+- add --undo to unwind an unpushed release commit (1ada6cc)
+- add --exclude to drop commits from the release section (677b92f)
+
+### Fixed
+
+- reject dirty working tree in pk changelog (faaa8a1)
+- include required hookEventName in hookSpecificOutput (dee71c6)
+
+### Changed
+
+- extract parseRepoURL to internal/git package (283423b)
+- move tag creation from pk changelog to pk release via Release-Tag trailer (6098ca6)
+- migrate to hookSpecificOutput.permissionDecision (4f0b631)
+- migrate to hookSpecificOutput.permissionDecision (ask) (7a5f2d6)
+
+### Documentation
+
+- document release workflows, squash merge warning, new flags (b51fc7e)
+- rewrite plan review section, add session chaining and failure examples (c05ebc3)
+- replace Franklin quote with Lakein and add HBR and Horowitz quotes (dc1afb4)
+- add site/humans.txt (7d28c38)
+- add command doc template and normalize command docs (b6059ea)
+- add Creating skills guide (23f38a5)
+- add managed-files update guidance (7157362)
+- add exploration-becomes-editing example to methodology (5446a3e)
+- restructure Release workflows and clarify --push scope (73847ea)
+- refine site, README, and methodology (review refresh) (5829dc9)
+- update command docs, skills, and README for trailer-driven release flow (0753f12)
+- add two-tier verification standard to development-standards (e1fbdca)
+- add /preview tutorial example to creating-skills (a64a02f)
+
+### Maintenance
+
+- add preserve tests for push failure, dry-run push, and Getwd fallback (dcc0e08)
+- add preserve error path tests for git and directory fallback (0702042)
+- add coverage for git URL formats, large hook payloads, and cache TTL boundary (0edac81)
+- add guard rev-parse failure and release tag-lost-after-merge tests (687a7dc)
+
 ## [v0.6.2] - 2026-04-08
 
 ### Fixed
@@ -196,3 +243,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.6.0]: https://github.com/markwharton/plankit/compare/v0.5.0...v0.6.0
 [v0.6.1]: https://github.com/markwharton/plankit/compare/v0.6.0...v0.6.1
 [v0.6.2]: https://github.com/markwharton/plankit/compare/v0.6.1...v0.6.2
+[v0.7.0]: https://github.com/markwharton/plankit/compare/v0.6.2...v0.7.0
