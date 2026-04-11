@@ -114,6 +114,90 @@ Skills work less well for one-off questions or exploratory tasks where the right
 - **Trust supporting files.** SKILL.md doesn't have to contain everything. Reference larger templates or examples in sibling files; Claude will read them when relevant.
 - **Iterate with real use.** Write a draft, use the skill in a session, notice where Claude gets stuck or asks the wrong questions, refine the prompt.
 
+## Tutorial: Build a /preview skill
+
+This walks through building a `/preview` skill that pushes the current branch and opens a pull request for preview-environment workflows. It pulls together everything in this doc: composing `git` and `gh`, preview-and-confirm, ask-then-act, the `gh`-with-fallback pattern, and `disable-model-invocation: true`.
+
+### What it does
+
+Preview-environment workflows — Azure Static Web Apps, Netlify, Vercel, GitHub Pages preview actions — fire CI/CD when a pull request opens, build a preview site, and post a URL to the PR. Production deploys fire when the PR merges to the default branch. Nothing about tags or version numbers — this is a different mental model from `pk release`, which is local-merge-and-tag.
+
+The flow that `/preview` automates:
+
+1. Verify the working tree is clean.
+2. Find the current source branch and the repo's default target branch.
+3. Show the user what will happen and ask to proceed.
+4. Push the source branch.
+5. Open a PR via `gh pr create --fill`.
+6. If `gh` is missing, print a compare URL for manual creation.
+
+plankit doesn't ship a `pk preview` command because the whole thing is about fifteen lines of SKILL.md — a thin composition of `git push` and `gh pr create`. Turning it into a binary would add ceremony without adding capability. A skill is the right level.
+
+### The skill
+
+Save this as `.claude/skills/preview/SKILL.md`:
+
+````markdown
+---
+name: preview
+description: Push the current branch and open a pull request for preview environments
+disable-model-invocation: true
+allowed-tools: Bash(git:*), Bash(gh:*)
+---
+
+This is a high-stakes workflow that pushes code and creates a pull request. The user must trigger this explicitly — never invoke automatically.
+
+## Steps
+
+1. **Check working tree.** Run:
+
+   git status --porcelain
+
+   If the output is non-empty, stop and report: "working tree is not clean — commit or stash changes first."
+
+2. **Find source and target branches.** Source is the current branch:
+
+   git branch --show-current
+
+   Target is the repo's default branch:
+
+   gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
+
+   If `gh` is not available, ask the user for the target branch name.
+
+3. **Preview.** Tell the user: "I'm about to push <source> to origin and open a PR targeting <target>. Proceed?" Wait for an explicit yes before continuing. If the user declines, stop and report.
+
+4. **Push.** Run:
+
+   git push origin <source>
+
+   If the push fails, stop and report the error. Do not force.
+
+5. **Create the PR.** Run:
+
+   gh pr create --base <target> --head <source> --fill
+
+   On success, report the PR URL from the command output.
+
+   If `gh` fails: get the remote URL via `git remote get-url origin`, derive `owner/repo`, and print a compare URL like `https://github.com/<owner>/<repo>/compare/<target>...<source>` so the user can create the PR in a browser.
+
+## Notes
+
+- Step 1 is a hard gate — never push a dirty tree.
+- Step 3 is a confirmation gate — never push and open a PR without explicit user OK.
+- `gh pr create --fill` uses the commit messages as the PR title and body. For a richer description, layer a second skill on top that reads the diff and drafts a summary.
+````
+
+### Why disable-model-invocation: true
+
+Without this flag, Claude could invoke `/preview` on its own — for example, if the user says "I'm ready to share this." Pushing code and opening a PR is something the user should always trigger explicitly; `/preview` touches the remote and creates a visible artifact. The flag forces `/preview` to be typed by the user; Claude can still suggest running it.
+
+### Variations to consider
+
+- **Rich PR description** — layer a second skill on top that runs `git log <target>..<source>` and `git diff <target>...<source>`, drafts a summary, and uses `gh pr edit --body-file` to replace the placeholder body. Keep the two concerns separated: `/preview` creates the PR, the other skill fills it in.
+- **Target a non-default branch** — some teams preview against `staging` rather than the repo default. Hard-code the target in the skill file or accept it via `argument-hint: [target-branch]`.
+- **Preview a specific commit** — accept an argument and push that ref instead of `HEAD`.
+
 ## References
 
 - [Claude Code Skills](https://code.claude.com/docs/en/skills.md) — full schema, frontmatter fields, advanced features.
