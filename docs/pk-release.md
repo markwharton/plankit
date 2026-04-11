@@ -7,8 +7,6 @@ Read the `Release-Tag` trailer from HEAD, create the git tag, merge to the relea
 ```bash
 pk release                        # tag, merge, validate, and push
 pk release --dry-run              # validate without tagging, merging, or pushing
-pk release --pr                   # push branch and create a pull request
-pk release --pr --dry-run         # preview PR flow without pushing
 ```
 
 ## How it works
@@ -38,8 +36,7 @@ On any failure after the tag is created but before the push completes, `pk relea
 
 ## Flags
 
-- **--dry-run** — Run all checks without tagging, merging, or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be created and pushed.
-- **--pr** — Push the source branch and tag to origin, then create a pull request targeting the release branch. Requires `release.branch` in `.pk.json`. Falls back to printing a compare URL if `gh` is not installed.
+- **--dry-run** — Run all checks without tagging, merging, or pushing. In the merge flow, verifies that a fast-forward merge is possible.
 
 ## Requirements
 
@@ -69,21 +66,8 @@ Add a `release` key to `.pk.json`:
 
 | Flow | Config | Command | What happens |
 |------|--------|---------|--------------|
-| Legacy | no `release.branch` | `pk release` | Push current branch + tag |
-| Merge | `release.branch` set | `pk release` | Merge to release branch, push both |
-| PR | `release.branch` set | `pk release --pr` | Push source branch, create PR |
-
-### PR flow
-
-When `--pr` is passed (requires `release.branch` in `.pk.json`):
-
-1. **Pre-flight checks** — same as merge flow (clean tree, not behind remote).
-2. **Run pre-release hook** if configured.
-3. **Push** source branch + tag (if present) to origin.
-4. **Create PR** via `gh pr create --base <release-branch> --head <source-branch>`.
-5. If `gh` is not available, prints a compare URL for manual PR creation.
-
-Use this for workflows where PRs trigger preview environments (Azure Static Web Apps, Netlify, Vercel) and you want to review before merging to production.
+| Legacy | no `release.branch` | `pk release` | Tag HEAD, push current branch + tag |
+| Merge | `release.branch` set | `pk release` | Tag, merge to release branch, push both |
 
 ### Release-Tag trailer
 
