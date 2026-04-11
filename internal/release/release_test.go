@@ -18,11 +18,22 @@ func stubGitExec(handlers map[string]func(args ...string) (string, error)) func(
 	}
 }
 
+// trailerFormat matches the git log --format used to extract Release-Tag.
+const trailerFormat = "--format=%(trailers:key=Release-Tag,valueonly)"
+
 // happyGit returns git stubs for a clean, valid legacy release state.
+// tag is the value that will be returned for the Release-Tag trailer lookup.
+// An empty tag means "no trailer present" (missing trailer error).
 func happyGit(tag, branch string) map[string]func(args ...string) (string, error) {
 	return map[string]func(args ...string) (string, error){
-		"tag": func(args ...string) (string, error) {
+		"log": func(args ...string) (string, error) {
+			// Expect: log -1 --format=%(trailers:key=Release-Tag,valueonly) HEAD
 			return tag, nil
+		},
+		"tag": func(args ...string) (string, error) {
+			// Expect: tag --list <tag>, tag <tag>, tag -d <tag>
+			// Default: tag doesn't already exist, create/delete succeed.
+			return "", nil
 		},
 		"status": func(args ...string) (string, error) {
 			return "", nil
@@ -49,8 +60,11 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 func happyGitMerge(tag, sourceBranch, releaseBranch string) map[string]func(args ...string) (string, error) {
 	currentBranch := sourceBranch
 	return map[string]func(args ...string) (string, error){
-		"tag": func(args ...string) (string, error) {
+		"log": func(args ...string) (string, error) {
 			return tag, nil
+		},
+		"tag": func(args ...string) (string, error) {
+			return "", nil
 		},
 		"status": func(args ...string) (string, error) {
 			return "", nil
@@ -156,7 +170,7 @@ func TestRun_dryRun(t *testing.T) {
 	}
 }
 
-func TestRun_noTagAtHead(t *testing.T) {
+func TestRun_missingTrailer(t *testing.T) {
 	var stderr bytes.Buffer
 	git := happyGit("", "main")
 
@@ -170,14 +184,14 @@ func TestRun_noTagAtHead(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if !strings.Contains(stderr.String(), "no version tag at HEAD") {
-		t.Errorf("stderr = %q, want no version tag message", stderr.String())
+	if !strings.Contains(stderr.String(), "no Release-Tag trailer on HEAD") {
+		t.Errorf("stderr = %q, want missing trailer message", stderr.String())
 	}
 }
 
-func TestRun_invalidSemver(t *testing.T) {
+func TestRun_invalidTrailerValue(t *testing.T) {
 	var stderr bytes.Buffer
-	git := happyGit("v1.2", "main")
+	git := happyGit("v1.2", "main") // not valid semver
 
 	cfg := Config{
 		Stderr:   &stderr,
@@ -190,7 +204,33 @@ func TestRun_invalidSemver(t *testing.T) {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
 	if !strings.Contains(stderr.String(), "not valid semver") {
-		t.Errorf("stderr = %q, want semver error", stderr.String())
+		t.Errorf("stderr = %q, want invalid trailer message", stderr.String())
+	}
+}
+
+func TestRun_tagAlreadyExists(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGit("v1.2.3", "main")
+	git["tag"] = func(args ...string) (string, error) {
+		// tag --list v1.2.3 returns the existing tag.
+		if len(args) >= 2 && args[1] == "--list" {
+			return "v1.2.3", nil
+		}
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "already exists locally") {
+		t.Errorf("stderr = %q, want already-exists message", stderr.String())
 	}
 }
 
@@ -355,63 +395,10 @@ func TestRun_mergeFlow_happyPath(t *testing.T) {
 	}
 }
 
-func TestRun_mergeFlow_noTag(t *testing.T) {
+func TestRun_mergeFlow_missingTrailer(t *testing.T) {
 	var stderr bytes.Buffer
-	var pushCalls [][]string
 
 	git := happyGitMerge("", "dev", "main")
-	git["push"] = func(args ...string) (string, error) {
-		pushCalls = append(pushCalls, args)
-		return "", nil
-	}
-
-	cfg := Config{
-		Stderr:   &stderr,
-		GitExec:  stubGitExec(git),
-		ReadFile: mergeConfig("main"),
-	}
-
-	code := Run(cfg)
-	if code != 0 {
-		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
-	}
-	if len(pushCalls) != 2 {
-		t.Fatalf("push called %d times, want 2", len(pushCalls))
-	}
-	// First push: release branch only (no tag)
-	if pushCalls[0][2] != "main" || len(pushCalls[0]) != 3 {
-		t.Errorf("first push = %v, want [push origin main]", pushCalls[0])
-	}
-	if !strings.Contains(stderr.String(), "Release dev → main") {
-		t.Errorf("stderr missing release header: %s", stderr.String())
-	}
-}
-
-func TestRun_mergeFlow_tagLostAfterMerge(t *testing.T) {
-	var stderr bytes.Buffer
-	switchedBack := false
-	merged := false
-
-	git := happyGitMerge("v1.0.0", "dev", "main")
-	git["tag"] = func(args ...string) (string, error) {
-		// Before merge: tag exists at HEAD.
-		// After merge: tag is no longer at HEAD.
-		if merged {
-			return "", nil
-		}
-		return "v1.0.0", nil
-	}
-	git["merge"] = func(args ...string) (string, error) {
-		merged = true
-		return "", nil
-	}
-	originalSwitch := git["switch"]
-	git["switch"] = func(args ...string) (string, error) {
-		if args[1] == "dev" {
-			switchedBack = true
-		}
-		return originalSwitch(args...)
-	}
 
 	cfg := Config{
 		Stderr:   &stderr,
@@ -423,11 +410,54 @@ func TestRun_mergeFlow_tagLostAfterMerge(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "tag v1.0.0 is no longer at HEAD after merge") {
-		t.Errorf("stderr = %q, want tag-lost message", stderr.String())
+	if !strings.Contains(stderr.String(), "no Release-Tag trailer on HEAD") {
+		t.Errorf("stderr = %q, want missing-trailer message", stderr.String())
 	}
-	if !switchedBack {
-		t.Error("should switch back to source branch after tag-lost failure")
+}
+
+func TestRun_tagCleanupOnPushFailure(t *testing.T) {
+	var stderr bytes.Buffer
+	var tagCalls [][]string
+
+	git := happyGit("v1.2.3", "main")
+	git["tag"] = func(args ...string) (string, error) {
+		tagCalls = append(tagCalls, args)
+		// tag --list v1.2.3: return empty (not yet created).
+		if len(args) >= 2 && args[1] == "--list" {
+			return "", nil
+		}
+		return "", nil
+	}
+	git["push"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("permission denied")
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+
+	// Verify: tag v1.2.3 was created, then tag -d v1.2.3 was called for cleanup.
+	var created, deleted bool
+	for _, call := range tagCalls {
+		if len(call) == 2 && call[0] == "tag" && call[1] == "v1.2.3" {
+			created = true
+		}
+		if len(call) == 3 && call[0] == "tag" && call[1] == "-d" && call[2] == "v1.2.3" {
+			deleted = true
+		}
+	}
+	if !created {
+		t.Error("expected tag v1.2.3 to be created")
+	}
+	if !deleted {
+		t.Error("expected tag v1.2.3 to be cleaned up on push failure")
 	}
 }
 
@@ -631,28 +661,6 @@ func TestRun_legacyFlow_noReleaseBranch(t *testing.T) {
 	}
 }
 
-func TestFindVersionTag(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		want   string
-	}{
-		{"single tag", "v1.0.0", "v1.0.0"},
-		{"multiple tags", "v1.0.0\nv0.9.0", "v1.0.0"},
-		{"no version tag", "some-tag", ""},
-		{"empty", "", ""},
-		{"mixed tags", "release-1\nv2.0.0\nother", "v2.0.0"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := findVersionTag(tt.output)
-			if got != tt.want {
-				t.Errorf("findVersionTag(%q) = %q, want %q", tt.output, got, tt.want)
-			}
-		})
-	}
-}
-
 // --- PR flow tests ---
 
 func TestRun_pr_happyPath(t *testing.T) {
@@ -787,33 +795,24 @@ func TestRun_pr_dryRun(t *testing.T) {
 	}
 }
 
-func TestRun_pr_noTag(t *testing.T) {
+func TestRun_pr_missingTrailer(t *testing.T) {
 	var stderr bytes.Buffer
-	var pushArgs []string
 
 	git := happyGitMerge("", "dev", "main")
-	git["push"] = func(args ...string) (string, error) {
-		pushArgs = args
-		return "", nil
-	}
 
 	cfg := Config{
 		Stderr:   &stderr,
 		GitExec:  stubGitExec(git),
 		ReadFile: mergeConfig("main"),
 		PR:       true,
-		ExecGh: func(args ...string) (string, error) {
-			return "https://github.com/owner/repo/pull/43", nil
-		},
 	}
 
 	code := Run(cfg)
-	if code != 0 {
-		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
 	}
-	// Push without tag.
-	if len(pushArgs) != 3 || pushArgs[2] != "dev" {
-		t.Errorf("push args = %v, want [push origin dev]", pushArgs)
+	if !strings.Contains(stderr.String(), "no Release-Tag trailer on HEAD") {
+		t.Errorf("stderr = %q, want missing-trailer message", stderr.String())
 	}
 }
 

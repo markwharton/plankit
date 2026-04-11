@@ -1,5 +1,7 @@
 // Package changelog implements the pk changelog command.
-// It generates CHANGELOG.md from conventional commits, commits, and tags.
+// It generates CHANGELOG.md from conventional commits and commits the result.
+// The commit body carries a Release-Tag trailer so pk release can create the
+// git tag at the right moment.
 package changelog
 
 import (
@@ -28,10 +30,8 @@ type Config struct {
 
 	// Bump overrides auto-detected version bump: "major", "minor", or "patch".
 	Bump string
-	// DryRun previews the changelog section without writing, committing, or tagging.
+	// DryRun previews the changelog section without writing or committing.
 	DryRun bool
-	// Push pushes commit and tag to origin after tagging.
-	Push bool
 }
 
 // DefaultConfig returns a Config wired to real implementations.
@@ -295,8 +295,9 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 17. Git add, commit, tag.
-	// Explicitly add CHANGELOG.md (may be new/untracked) and version files.
+	// 17. Git add and commit. The commit body carries a Release-Tag trailer
+	// so pk release can read the pending version and create the real git tag.
+	// No git tag is created here — that happens in pk release.
 	addFiles := []string{"add", "CHANGELOG.md"}
 	for _, vf := range config.VersionFiles {
 		addFiles = append(addFiles, vf.Path)
@@ -311,25 +312,13 @@ func Run(cfg Config) int {
 		return 1
 	}
 	commitMsg := fmt.Sprintf("chore: release %s", nextTag)
-	if _, err := cfg.GitExec("", "commit", "-m", commitMsg); err != nil {
+	trailer := fmt.Sprintf("Release-Tag: %s", nextTag)
+	if _, err := cfg.GitExec("", "commit", "-m", commitMsg, "--trailer", trailer); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git commit failed: %v\n", err)
 		return 1
 	}
-	if _, err := cfg.GitExec("", "tag", nextTag); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
-		return 1
-	}
 
-	fmt.Fprintf(cfg.Stderr, "Tagged %s\n", nextTag)
-
-	// 18. Push to origin (only when --push is set).
-	if cfg.Push {
-		if _, err := cfg.GitExec("", "push", "origin", "HEAD", nextTag); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
-			return 1
-		}
-		fmt.Fprintf(cfg.Stderr, "Pushed to origin\n")
-	}
+	fmt.Fprintf(cfg.Stderr, "Committed %s (run 'pk release' to tag and push)\n", nextTag)
 
 	return 0
 }

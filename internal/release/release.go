@@ -1,7 +1,8 @@
 // Package release implements the pk release command.
-// It validates pre-flight checks and pushes the release to origin.
-// When release.branch is configured in .pk.json, it merges the current
-// branch into the release branch before pushing.
+// It reads the Release-Tag trailer from the HEAD commit (written by pk
+// changelog), creates the git tag, validates pre-flight checks, and pushes
+// the release to origin. When release.branch is configured in .pk.json, it
+// merges the current branch into the release branch before pushing.
 package release
 
 import (
@@ -10,10 +11,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 
 	pkgit "github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // Config holds injectable dependencies for testing.
@@ -61,9 +62,6 @@ func defaultRunScript(command string, env map[string]string) error {
 	return cmd.Run()
 }
 
-// semverRegex validates vX.Y.Z format.
-var semverRegex = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
-
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 1. Get current branch (implicit source).
@@ -96,32 +94,39 @@ func Run(cfg Config) int {
 		return 1
 	}
 
-	// 4. Find version tag at HEAD (optional in merge flow).
-	tagOutput, err := cfg.GitExec("", "tag", "--points-at", "HEAD")
+	// 4. Read Release-Tag trailer from HEAD.
+	trailerOut, err := cfg.GitExec("", "log", "-1", "--format=%(trailers:key=Release-Tag,valueonly)", "HEAD")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
+		fmt.Fprintf(cfg.Stderr, "Error: git log failed: %v\n", err)
 		return 1
 	}
-	tag := findVersionTag(tagOutput)
-
-	// In legacy flow (no releaseBranch), tag is required.
-	if !needsMerge && !needsPR && tag == "" {
-		fmt.Fprintln(cfg.Stderr, "Error: no version tag at HEAD — run 'pk changelog' first")
-		return 1
-	}
-
-	// Validate semver if tag exists.
-	if tag != "" && !semverRegex.MatchString(tag) {
-		fmt.Fprintf(cfg.Stderr, "Error: tag %s is not valid semver\n", tag)
+	trailerValue := strings.TrimSpace(trailerOut)
+	if trailerValue == "" {
+		fmt.Fprintln(cfg.Stderr, "Error: no Release-Tag trailer on HEAD — run 'pk changelog' first")
 		return 1
 	}
 
-	// 5. Print header.
-	if tag != "" {
-		fmt.Fprintf(cfg.Stderr, "=== Release %s ===\n\n", tag)
-	} else {
-		fmt.Fprintf(cfg.Stderr, "=== Release %s → %s ===\n\n", sourceBranch, releaseBranch)
+	// Validate: must parse as semver and round-trip exactly (no trailing garbage).
+	parsed, ok := version.ParseSemver(trailerValue)
+	if !ok || parsed.String() != trailerValue {
+		fmt.Fprintf(cfg.Stderr, "Error: Release-Tag trailer value %q is not valid semver\n", trailerValue)
+		return 1
 	}
+	tag := trailerValue
+
+	// 5. Refuse if the tag already exists locally.
+	existingTag, err := cfg.GitExec("", "tag", "--list", tag)
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git tag --list failed: %v\n", err)
+		return 1
+	}
+	if strings.TrimSpace(existingTag) != "" {
+		fmt.Fprintf(cfg.Stderr, "Error: tag %s already exists locally — nothing to release\n", tag)
+		return 1
+	}
+
+	// 6. Print header.
+	fmt.Fprintf(cfg.Stderr, "=== Release %s ===\n\n", tag)
 
 	fmt.Fprintln(cfg.Stderr, "--- Pre-flight checks ---")
 
@@ -161,13 +166,26 @@ func Run(cfg Config) int {
 		return 1
 	}
 	fmt.Fprintf(cfg.Stderr, "  Not behind origin/%s\n", sourceBranch)
-
-	if tag != "" {
-		fmt.Fprintf(cfg.Stderr, "  Tag %s exists at HEAD\n", tag)
-	}
+	fmt.Fprintf(cfg.Stderr, "  Release-Tag trailer: %s\n", tag)
 
 	// 8. Merge flow.
+	tagCreated := false
+	released := false
 	switchedBack := true // default: no switch-back needed
+	defer func() {
+		if tagCreated && !released {
+			if _, err := cfg.GitExec("", "tag", "-d", tag); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Warning: failed to delete local tag %s: %v\n", tag, err)
+			} else {
+				fmt.Fprintf(cfg.Stderr, "Cleaned up local tag %s\n", tag)
+			}
+		}
+		if !switchedBack {
+			if _, err := cfg.GitExec("", "switch", sourceBranch); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Warning: failed to switch back to %s: %v\n", sourceBranch, err)
+			}
+		}
+	}()
 	if needsMerge {
 		if cfg.DryRun {
 			// Check fast-forward is possible without actually merging.
@@ -181,21 +199,13 @@ func Run(cfg Config) int {
 			// Fetch release branch.
 			cfg.GitExec("", "fetch", "origin", releaseBranch, "--quiet")
 
-			// Switch to release branch.
+			// Switch to release branch. Mark switchedBack=false so the
+			// top-level defer switches back on any subsequent failure.
 			if _, err := cfg.GitExec("", "switch", releaseBranch); err != nil {
 				fmt.Fprintf(cfg.Stderr, "Error: failed to switch to %s: %v\n", releaseBranch, err)
 				return 1
 			}
-
-			// Deferred switch-back on failure.
 			switchedBack = false
-			defer func() {
-				if !switchedBack {
-					if _, err := cfg.GitExec("", "switch", sourceBranch); err != nil {
-						fmt.Fprintf(cfg.Stderr, "Warning: failed to switch back to %s: %v\n", sourceBranch, err)
-					}
-				}
-			}()
 
 			// Merge from source branch (fast-forward only).
 			if _, err := cfg.GitExec("", "merge", "--ff-only", sourceBranch); err != nil {
@@ -203,15 +213,6 @@ func Run(cfg Config) int {
 				return 1
 			}
 			fmt.Fprintf(cfg.Stderr, "  Merged %s into %s\n", sourceBranch, releaseBranch)
-
-			// Verify tag is still at HEAD after merge (if tag exists).
-			if tag != "" {
-				postMergeTagOutput, err := cfg.GitExec("", "tag", "--points-at", "HEAD")
-				if err != nil || !strings.Contains(postMergeTagOutput, tag) {
-					fmt.Fprintf(cfg.Stderr, "Error: tag %s is no longer at HEAD after merge\n", tag)
-					return 1
-				}
-			}
 		}
 	} else if releaseBranch == "" {
 		// Legacy flow: no releaseBranch configured.
@@ -234,37 +235,31 @@ func Run(cfg Config) int {
 	if needsPR {
 		if cfg.DryRun {
 			fmt.Fprintf(cfg.Stderr, "\n--- Dry run complete ---\n")
-			fmt.Fprintf(cfg.Stderr, "  Would push %s", sourceBranch)
-			if tag != "" {
-				fmt.Fprintf(cfg.Stderr, " and %s", tag)
-			}
-			fmt.Fprintln(cfg.Stderr)
+			fmt.Fprintf(cfg.Stderr, "  Would create tag %s\n", tag)
+			fmt.Fprintf(cfg.Stderr, "  Would push %s and %s\n", sourceBranch, tag)
 			fmt.Fprintf(cfg.Stderr, "  Would create PR: %s → %s\n", sourceBranch, releaseBranch)
 			return 0
 		}
 
-		fmt.Fprintf(cfg.Stderr, "\n--- Pushing to origin ---\n")
-		if tag != "" {
-			_, err = cfg.GitExec("", "push", "origin", sourceBranch, tag)
-		} else {
-			_, err = cfg.GitExec("", "push", "origin", sourceBranch)
+		// Create local tag before pushing. Cleanup is handled by the top-level defer.
+		if _, err := cfg.GitExec("", "tag", tag); err != nil {
+			fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
+			return 1
 		}
-		if err != nil {
+		tagCreated = true
+		fmt.Fprintf(cfg.Stderr, "\n--- Created local tag %s ---\n", tag)
+
+		fmt.Fprintf(cfg.Stderr, "\n--- Pushing to origin ---\n")
+		if _, err = cfg.GitExec("", "push", "origin", sourceBranch, tag); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
 			return 1
 		}
-		if tag != "" {
-			fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", sourceBranch, tag)
-		} else {
-			fmt.Fprintf(cfg.Stderr, "  Pushed %s\n", sourceBranch)
-		}
+		fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", sourceBranch, tag)
+		released = true
 
 		// Create PR via gh CLI.
 		fmt.Fprintf(cfg.Stderr, "\n--- Creating pull request ---\n")
-		title := fmt.Sprintf("Release %s", sourceBranch)
-		if tag != "" {
-			title = fmt.Sprintf("Release %s", tag)
-		}
+		title := fmt.Sprintf("Release %s", tag)
 		prOutput, ghErr := cfg.ExecGh("pr", "create",
 			"--base", releaseBranch,
 			"--head", sourceBranch,
@@ -287,22 +282,29 @@ func Run(cfg Config) int {
 			}
 		}
 
-		if tag != "" {
-			fmt.Fprintf(cfg.Stderr, "\n=== Release %s pushed ===\n", tag)
-		} else {
-			fmt.Fprintf(cfg.Stderr, "\n=== Release %s → %s pushed ===\n", sourceBranch, releaseBranch)
-		}
+		fmt.Fprintf(cfg.Stderr, "\n=== Release %s pushed ===\n", tag)
 		return 0
 	}
 
 	// 10a. Dry run complete (merge/legacy flows).
 	if cfg.DryRun {
 		fmt.Fprintf(cfg.Stderr, "\n--- Dry run complete ---\n")
-		fmt.Fprintf(cfg.Stderr, "  All checks passed. Run without --dry-run to push.\n")
+		fmt.Fprintf(cfg.Stderr, "  Would create tag %s\n", tag)
+		fmt.Fprintf(cfg.Stderr, "  All checks passed. Run without --dry-run to release.\n")
 		return 0
 	}
 
-	// 11. Push.
+	// 11. Create the local tag on HEAD (which is either source HEAD in legacy
+	// flow or release-branch HEAD after the fast-forward merge — same commit).
+	// Cleanup on subsequent failure is handled by the top-level defer.
+	if _, err := cfg.GitExec("", "tag", tag); err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: git tag failed: %v\n", err)
+		return 1
+	}
+	tagCreated = true
+	fmt.Fprintf(cfg.Stderr, "\n--- Created local tag %s ---\n", tag)
+
+	// 12. Push.
 	fmt.Fprintf(cfg.Stderr, "\n--- Pushing to origin ---\n")
 
 	pushBranch := sourceBranch
@@ -310,23 +312,14 @@ func Run(cfg Config) int {
 		pushBranch = releaseBranch
 	}
 
-	if tag != "" {
-		_, err = cfg.GitExec("", "push", "origin", pushBranch, tag)
-	} else {
-		_, err = cfg.GitExec("", "push", "origin", pushBranch)
-	}
-	if err != nil {
+	if _, err := cfg.GitExec("", "push", "origin", pushBranch, tag); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git push failed: %v\n", err)
 		return 1
 	}
+	released = true
+	fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", pushBranch, tag)
 
-	if tag != "" {
-		fmt.Fprintf(cfg.Stderr, "  Pushed %s and %s\n", pushBranch, tag)
-	} else {
-		fmt.Fprintf(cfg.Stderr, "  Pushed %s\n", pushBranch)
-	}
-
-	// 12. Switch back and push source branch.
+	// 13. Switch back and push source branch.
 	if needsMerge {
 		if _, err := cfg.GitExec("", "switch", sourceBranch); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Warning: failed to switch back to %s: %v\n", sourceBranch, err)
@@ -340,23 +333,8 @@ func Run(cfg Config) int {
 		}
 	}
 
-	if tag != "" {
-		fmt.Fprintf(cfg.Stderr, "\n=== Release %s complete ===\n", tag)
-	} else {
-		fmt.Fprintf(cfg.Stderr, "\n=== Release %s → %s complete ===\n", sourceBranch, releaseBranch)
-	}
+	fmt.Fprintf(cfg.Stderr, "\n=== Release %s complete ===\n", tag)
 	return 0
-}
-
-// findVersionTag returns the first v-prefixed tag from git output.
-func findVersionTag(output string) string {
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "v") {
-			return line
-		}
-	}
-	return ""
 }
 
 // ReleaseHooks holds lifecycle hook commands for the release process.

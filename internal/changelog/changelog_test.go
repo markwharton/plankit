@@ -682,11 +682,12 @@ func TestRun_firstRelease(t *testing.T) {
 		t.Error("missing comparison link")
 	}
 
-	// Verify git operations.
+	// Verify git operations: commit carries Release-Tag trailer, no git tag created.
 	hasCommit := false
 	hasTag := false
 	for _, call := range gitCalls {
-		if strings.HasPrefix(call, "commit -m chore: release v0.1.0") {
+		if strings.HasPrefix(call, "commit -m chore: release v0.1.0") &&
+			strings.Contains(call, "--trailer Release-Tag: v0.1.0") {
 			hasCommit = true
 		}
 		if call == "tag v0.1.0" {
@@ -694,13 +695,13 @@ func TestRun_firstRelease(t *testing.T) {
 		}
 	}
 	if !hasCommit {
-		t.Error("missing git commit")
+		t.Errorf("missing git commit with Release-Tag trailer; calls: %v", gitCalls)
 	}
-	if !hasTag {
-		t.Error("missing git tag")
+	if hasTag {
+		t.Error("pk changelog should not create a git tag (that's pk release's job)")
 	}
-	if !strings.Contains(stderr.String(), "Tagged v0.1.0") {
-		t.Error("missing tagged message")
+	if !strings.Contains(stderr.String(), "Committed v0.1.0") {
+		t.Errorf("missing committed message; stderr: %s", stderr.String())
 	}
 }
 
@@ -798,14 +799,15 @@ func TestRun_bumpOverride(t *testing.T) {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 
-	hasTag := false
+	hasCommit := false
 	for _, call := range gitCalls {
-		if call == "tag v2.0.0" {
-			hasTag = true
+		if strings.Contains(call, "commit -m chore: release v2.0.0") &&
+			strings.Contains(call, "--trailer Release-Tag: v2.0.0") {
+			hasCommit = true
 		}
 	}
-	if !hasTag {
-		t.Errorf("expected tag v2.0.0, git calls: %v", gitCalls)
+	if !hasCommit {
+		t.Errorf("expected commit with Release-Tag: v2.0.0 trailer, git calls: %v", gitCalls)
 	}
 }
 
@@ -836,13 +838,14 @@ func TestRun_breakingViaBang(t *testing.T) {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 
-	hasTag := false
+	hasCommit := false
 	for _, call := range gitCalls {
-		if call == "tag v2.0.0" {
-			hasTag = true
+		if strings.Contains(call, "commit -m chore: release v2.0.0") &&
+			strings.Contains(call, "--trailer Release-Tag: v2.0.0") {
+			hasCommit = true
 		}
 	}
-	if !hasTag {
+	if !hasCommit {
 		t.Errorf("expected major bump to v2.0.0, git calls: %v", gitCalls)
 	}
 }
@@ -874,13 +877,14 @@ func TestRun_breakingViaTrailer(t *testing.T) {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 
-	hasTag := false
+	hasCommit := false
 	for _, call := range gitCalls {
-		if call == "tag v2.0.0" {
-			hasTag = true
+		if strings.Contains(call, "commit -m chore: release v2.0.0") &&
+			strings.Contains(call, "--trailer Release-Tag: v2.0.0") {
+			hasCommit = true
 		}
 	}
-	if !hasTag {
+	if !hasCommit {
 		t.Errorf("expected major bump from BREAKING CHANGE trailer, git calls: %v", gitCalls)
 	}
 }
@@ -1197,111 +1201,6 @@ func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
 	}
 	if strings.Contains(stderr.String(), "protected branch") {
 		t.Errorf("should not warn on unprotected branch")
-	}
-}
-
-func TestRun_push(t *testing.T) {
-	var stderr bytes.Buffer
-	var gitCalls []string
-
-	cfg := Config{
-		Stderr: &stderr,
-		GitExec: func(dir string, args ...string) (string, error) {
-			call := strings.Join(args, " ")
-			gitCalls = append(gitCalls, call)
-			if args[0] == "tag" && args[1] == "--list" {
-				return "v0.0.0", nil
-			}
-			if args[0] == "log" {
-				return "abc1234\x00feat: add feature\x00\x00", nil
-			}
-			return "", nil
-		},
-		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
-		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
-		Now:       fixedTime,
-		Push:      true,
-	}
-
-	code := Run(cfg)
-	if code != 0 {
-		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
-	}
-
-	// Verify push was called after tag.
-	lastCall := gitCalls[len(gitCalls)-1]
-	if lastCall != "push origin HEAD v0.1.0" {
-		t.Errorf("last git call = %q, want 'push origin HEAD v0.1.0'", lastCall)
-	}
-	if !strings.Contains(stderr.String(), "Pushed to origin") {
-		t.Errorf("stderr missing push confirmation: %s", stderr.String())
-	}
-}
-
-func TestRun_pushFailure(t *testing.T) {
-	var stderr bytes.Buffer
-
-	cfg := Config{
-		Stderr: &stderr,
-		GitExec: func(dir string, args ...string) (string, error) {
-			if args[0] == "tag" && args[1] == "--list" {
-				return "v0.0.0", nil
-			}
-			if args[0] == "log" {
-				return "abc1234\x00feat: add feature\x00\x00", nil
-			}
-			if args[0] == "push" {
-				return "", fmt.Errorf("permission denied")
-			}
-			return "", nil
-		},
-		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
-		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
-		Now:       fixedTime,
-		Push:      true,
-	}
-
-	code := Run(cfg)
-	if code != 1 {
-		t.Fatalf("exit code = %d, want 1", code)
-	}
-	if !strings.Contains(stderr.String(), "git push failed") {
-		t.Errorf("stderr = %q, want push failure message", stderr.String())
-	}
-}
-
-func TestRun_pushDryRun(t *testing.T) {
-	var stderr bytes.Buffer
-	pushCalled := false
-
-	cfg := Config{
-		Stderr: &stderr,
-		GitExec: func(dir string, args ...string) (string, error) {
-			if args[0] == "push" {
-				pushCalled = true
-			}
-			if args[0] == "tag" && args[1] == "--list" {
-				return "v1.0.0", nil
-			}
-			if args[0] == "log" {
-				return "abc1234\x00feat: new feature\x00\x00", nil
-			}
-			return "", nil
-		},
-		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
-		Now:       fixedTime,
-		DryRun:    true,
-		Push:      true,
-	}
-
-	code := Run(cfg)
-	if code != 0 {
-		t.Errorf("exit code = %d, want 0", code)
-	}
-	if pushCalled {
-		t.Error("push should not be called in dry run")
 	}
 }
 
