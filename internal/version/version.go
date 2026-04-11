@@ -86,6 +86,29 @@ func ParseSemver(s string) (Semver, bool) {
 	}, true
 }
 
+// Bump level constants for Semver.Bump.
+const (
+	BumpPatch = iota + 1
+	BumpMinor
+	BumpMajor
+)
+
+// Bump returns a new Semver with the given level incremented and lower
+// fields reset to zero. Pre-release and build metadata are dropped, since
+// the bumped version represents a fresh release of that level.
+func (v Semver) Bump(level int) Semver {
+	switch level {
+	case BumpMajor:
+		return Semver{Major: v.Major + 1}
+	case BumpMinor:
+		return Semver{Major: v.Major, Minor: v.Minor + 1}
+	case BumpPatch:
+		return Semver{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}
+	default:
+		return v
+	}
+}
+
 // String returns the version with a "v" prefix: "vX.Y.Z[-prerelease][+build]".
 func (v Semver) String() string {
 	s := fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)

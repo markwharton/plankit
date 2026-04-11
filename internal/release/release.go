@@ -7,14 +7,15 @@ package release
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/changelog"
 	pkgit "github.com/markwharton/plankit/internal/git"
-	"github.com/markwharton/plankit/internal/version"
+	"github.com/markwharton/plankit/internal/hooks"
 )
 
 // Config holds injectable dependencies for testing.
@@ -34,23 +35,10 @@ func DefaultConfig() Config {
 		Stderr:    os.Stderr,
 		GitExec:   pkgit.Exec,
 		ReadFile:  os.ReadFile,
-		RunScript: defaultRunScript,
+		RunScript: hooks.RunScript,
 	}
 }
 
-// defaultRunScript runs a shell command with optional environment variables.
-func defaultRunScript(command string, env map[string]string) error {
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	if len(env) > 0 {
-		cmd.Env = os.Environ()
-		for k, v := range env {
-			cmd.Env = append(cmd.Env, k+"="+v)
-		}
-	}
-	return cmd.Run()
-}
 
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
@@ -78,24 +66,15 @@ func Run(cfg Config) int {
 	}
 
 	// 4. Read Release-Tag trailer from HEAD.
-	trailerOut, err := cfg.GitExec("", "log", "-1", "--format=%(trailers:key=Release-Tag,valueonly)", "HEAD")
+	_, tag, err := changelog.ReadReleaseTagTrailer(cfg.GitExec)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git log failed: %v\n", err)
+		if errors.Is(err, changelog.ErrNoTrailer) {
+			fmt.Fprintln(cfg.Stderr, "Error: no Release-Tag trailer on HEAD — run 'pk changelog' first")
+		} else {
+			fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		}
 		return 1
 	}
-	trailerValue := strings.TrimSpace(trailerOut)
-	if trailerValue == "" {
-		fmt.Fprintln(cfg.Stderr, "Error: no Release-Tag trailer on HEAD — run 'pk changelog' first")
-		return 1
-	}
-
-	// Validate: must parse as semver and round-trip exactly (no trailing garbage).
-	parsed, ok := version.ParseSemver(trailerValue)
-	if !ok || parsed.String() != trailerValue {
-		fmt.Fprintf(cfg.Stderr, "Error: Release-Tag trailer value %q is not valid semver\n", trailerValue)
-		return 1
-	}
-	tag := trailerValue
 
 	// 5. Refuse if the tag already exists locally.
 	existingTag, err := cfg.GitExec("", "tag", "--list", tag)
@@ -114,13 +93,8 @@ func Run(cfg Config) int {
 	fmt.Fprintln(cfg.Stderr, "--- Pre-flight checks ---")
 
 	// 6. Pre-flight: clean working tree.
-	status, err := cfg.GitExec("", "status", "--porcelain")
-	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
-		return 1
-	}
-	if status != "" {
-		fmt.Fprintln(cfg.Stderr, "Error: working tree is not clean")
+	if err := pkgit.CheckCleanTree(cfg.GitExec, ""); err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
 	}
 	fmt.Fprintln(cfg.Stderr, "  Clean working tree")

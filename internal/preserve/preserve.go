@@ -5,7 +5,6 @@ package preserve
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -329,19 +328,6 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-// hookResponse represents the JSON output for PostToolUse hooks.
-type hookResponse struct {
-	SystemMessage      string              `json:"systemMessage,omitempty"`
-	HookSpecificOutput *hookSpecificOutput `json:"hookSpecificOutput,omitempty"`
-}
-
-// hookSpecificOutput carries PostToolUse-specific fields. The Claude Code
-// hook schema requires hookEventName whenever hookSpecificOutput is present.
-type hookSpecificOutput struct {
-	HookEventName     string `json:"hookEventName"`
-	AdditionalContext string `json:"additionalContext,omitempty"`
-}
-
 // writeSystemMessage outputs a hook systemMessage JSON to stdout.
 // If CheckUpdate is configured and returns a notice, it is appended.
 func (cfg Config) writeSystemMessage(msg string) {
@@ -356,14 +342,5 @@ func (cfg Config) writeHookResponse(msg, context string) {
 			msg += " | " + notice
 		}
 	}
-	resp := hookResponse{SystemMessage: msg}
-	if context != "" {
-		resp.HookSpecificOutput = &hookSpecificOutput{
-			HookEventName:     "PostToolUse",
-			AdditionalContext: context,
-		}
-	}
-	if data, err := json.Marshal(resp); err == nil {
-		fmt.Fprint(cfg.Stdout, string(data))
-	}
+	hooks.WritePostToolUse(cfg.Stdout, msg, context)
 }

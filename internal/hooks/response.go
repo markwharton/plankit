@@ -5,6 +5,38 @@ import (
 	"io"
 )
 
+// WritePostToolUse writes a PostToolUse hook response with a systemMessage
+// (shown to the user) and an optional additionalContext (injected into
+// Claude's next turn). When additionalContext is empty, only the
+// systemMessage is emitted; hookSpecificOutput is omitted entirely.
+//
+// The Claude Code hook schema requires hookEventName whenever
+// hookSpecificOutput is present, so this helper sets it to "PostToolUse"
+// automatically — callers don't have to remember.
+func WritePostToolUse(w io.Writer, systemMessage, additionalContext string) {
+	resp := struct {
+		SystemMessage      string `json:"systemMessage,omitempty"`
+		HookSpecificOutput *struct {
+			HookEventName     string `json:"hookEventName"`
+			AdditionalContext string `json:"additionalContext,omitempty"`
+		} `json:"hookSpecificOutput,omitempty"`
+	}{
+		SystemMessage: systemMessage,
+	}
+	if additionalContext != "" {
+		resp.HookSpecificOutput = &struct {
+			HookEventName     string `json:"hookEventName"`
+			AdditionalContext string `json:"additionalContext,omitempty"`
+		}{
+			HookEventName:     "PostToolUse",
+			AdditionalContext: additionalContext,
+		}
+	}
+	if data, err := json.Marshal(resp); err == nil {
+		w.Write(data)
+	}
+}
+
 // PermissionDecision values accepted by the Claude Code hook schema inside
 // hookSpecificOutput for PreToolUse events.
 const (

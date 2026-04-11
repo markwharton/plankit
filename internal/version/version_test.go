@@ -118,6 +118,32 @@ func TestSemver_String_roundTrip(t *testing.T) {
 	}
 }
 
+func TestSemver_Bump(t *testing.T) {
+	tests := []struct {
+		name string
+		v    Semver
+		bump int
+		want Semver
+	}{
+		{"patch", Semver{Major: 1, Minor: 2, Patch: 3}, BumpPatch, Semver{Major: 1, Minor: 2, Patch: 4}},
+		{"minor", Semver{Major: 1, Minor: 2, Patch: 3}, BumpMinor, Semver{Major: 1, Minor: 3}},
+		{"major", Semver{Major: 1, Minor: 2, Patch: 3}, BumpMajor, Semver{Major: 2}},
+		{"patch from zero", Semver{}, BumpPatch, Semver{Patch: 1}},
+		{"minor from zero", Semver{}, BumpMinor, Semver{Minor: 1}},
+		{"major from zero", Semver{}, BumpMajor, Semver{Major: 1}},
+		{"minor resets patch", Semver{Major: 1, Minor: 2, Patch: 5}, BumpMinor, Semver{Major: 1, Minor: 3}},
+		{"major resets minor and patch", Semver{Major: 1, Minor: 2, Patch: 5}, BumpMajor, Semver{Major: 2}},
+		{"unknown level returns input", Semver{Major: 1, Minor: 2, Patch: 3}, 999, Semver{Major: 1, Minor: 2, Patch: 3}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.v.Bump(tt.bump); got != tt.want {
+				t.Errorf("(%v).Bump(%d) = %v, want %v", tt.v, tt.bump, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSemver_Compare(t *testing.T) {
 	tests := []struct {
 		name string

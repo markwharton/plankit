@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
 	pkgit "github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/guard"
+	"github.com/markwharton/plankit/internal/hooks"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -45,24 +46,11 @@ func DefaultConfig() Config {
 		GitExec:   pkgit.Exec,
 		ReadFile:  os.ReadFile,
 		WriteFile: os.WriteFile,
-		RunScript: defaultRunScript,
+		RunScript: hooks.RunScript,
 		Now:       time.Now,
 	}
 }
 
-// defaultRunScript runs a shell command with optional environment variables.
-func defaultRunScript(command string, env map[string]string) error {
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	if len(env) > 0 {
-		cmd.Env = os.Environ()
-		for k, v := range env {
-			cmd.Env = append(cmd.Env, k+"="+v)
-		}
-	}
-	return cmd.Run()
-}
 
 // Commit represents a parsed conventional commit.
 type Commit struct {
@@ -98,27 +86,13 @@ type Hooks struct {
 	PreCommit   string `json:"preCommit,omitempty"`
 }
 
-// GuardConfig holds the guard section of .pk.json (read-only, for branch checking).
-// The legacy protectedBranches key is accepted and promoted into Branches
-// after unmarshal, so existing configs keep working.
-type GuardConfig struct {
-	Branches          []string `json:"branches,omitempty"`
-	ProtectedBranches []string `json:"protectedBranches,omitempty"`
-}
-
-// normalize promotes the legacy protectedBranches value into Branches if
-// Branches is empty. New key wins if both are present.
-func (g *GuardConfig) normalize() {
-	if len(g.Branches) == 0 && len(g.ProtectedBranches) > 0 {
-		g.Branches = g.ProtectedBranches
-	}
-	g.ProtectedBranches = nil
-}
-
 // PkConfig is the top-level .pk.json schema. Each key maps to a pk command.
+// Guard config lives in internal/guard so that pk changelog (which reads it
+// for the on-protected-branch refusal) and pk guard (which enforces it as a
+// hook) share a single schema definition.
 type PkConfig struct {
-	Changelog ChangelogConfig `json:"changelog,omitempty"`
-	Guard     GuardConfig     `json:"guard,omitempty"`
+	Changelog ChangelogConfig   `json:"changelog,omitempty"`
+	Guard     guard.GuardConfig `json:"guard,omitempty"`
 }
 
 // ChangelogConfig holds configuration for pk changelog.
@@ -128,13 +102,6 @@ type ChangelogConfig struct {
 	ShowScope    bool          `json:"showScope,omitempty"`
 	Hooks        Hooks         `json:"hooks,omitempty"`
 }
-
-// Bump type constants.
-const (
-	BumpPatch = iota + 1
-	BumpMinor
-	BumpMajor
-)
 
 var defaultTypes = []TypeConfig{
 	{Type: "feat", Section: "Added"},
@@ -177,7 +144,17 @@ func Run(cfg Config) int {
 	}
 	config := fullConfig.ChangelogConfig
 
-	// 1a. Check if on a guarded branch.
+	// 2. Check for clean working tree (skip in dry-run mode). A dirty tree
+	// is a more general failure than the guard check, so it goes first —
+	// fix the tree before worrying about which branch you're on.
+	if !cfg.DryRun {
+		if err := pkgit.CheckCleanTree(cfg.GitExec, ""); err != nil {
+			fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+			return 1
+		}
+	}
+
+	// 3. Check if on a guarded branch.
 	if branch, err := cfg.GitExec("", "branch", "--show-current"); err == nil {
 		branch = strings.TrimSpace(branch)
 		for _, protected := range fullConfig.Guard.Branches {
@@ -188,20 +165,7 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 1b. Check for clean working tree (skip in dry-run mode).
-	if !cfg.DryRun {
-		status, err := cfg.GitExec("", "status", "--porcelain")
-		if err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
-			return 1
-		}
-		if status != "" {
-			fmt.Fprintln(cfg.Stderr, "Error: working tree is not clean — commit or stash changes first")
-			return 1
-		}
-	}
-
-	// 2. Get latest tag.
+	// 4. Get latest tag.
 	tagOutput, err := cfg.GitExec("", "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to list tags: %v\n", err)
@@ -220,21 +184,21 @@ func Run(cfg Config) int {
 		return 1
 	}
 
-	// 3. Get commits since tag.
+	// 5. Get commits since tag.
 	logOutput, err := cfg.GitExec("", "log", "--format=%h%x00%s%x00%b%x00", latestTag+"..HEAD", "--reverse")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to read git log: %v\n", err)
 		return 1
 	}
 
-	// 4. Parse conventional commits.
+	// 6. Parse conventional commits.
 	commits := parseLog(logOutput)
 	if len(commits) == 0 {
 		fmt.Fprintln(cfg.Stderr, "No new conventional commits found.")
 		return 0
 	}
 
-	// 5. Apply --exclude filter. Runs before bump resolution so the
+	// 7. Apply --exclude filter. Runs before bump resolution so the
 	// bump reflects the commits that will actually appear in the changelog.
 	if len(cfg.Exclude) > 0 {
 		commits = applyExclude(cfg.Stderr, commits, cfg.Exclude)
@@ -245,34 +209,34 @@ func Run(cfg Config) int {
 	}
 	fmt.Fprintf(cfg.Stderr, "Found %d conventional commit(s)\n", len(commits))
 
-	// 6. Determine bump.
+	// 8. Determine bump.
 	bump, err := resolveBump(cfg.Bump, commits)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	// 7. Compute next version.
-	next := bumpVersion(baseVersion, bump)
+	// 9. Compute next version.
+	next := baseVersion.Bump(bump)
 	nextTag := next.String()
 	fmt.Fprintf(cfg.Stderr, "Generating %s\n", nextTag)
 
-	// 8. Generate section.
+	// 10. Generate section.
 	groups := groupCommits(commits, config.Types)
 	date := cfg.Now().Format("2006-01-02")
 	section := formatSection(nextTag, date, groups, config.ShowScope)
 
-	// 9. Dry run.
+	// 11. Dry run.
 	if cfg.DryRun {
 		fmt.Fprintln(cfg.Stderr, "")
 		fmt.Fprint(cfg.Stderr, section)
 		return 0
 	}
 
-	// 10. Version without v prefix for files and hooks.
+	// 12. Version without v prefix for files and hooks.
 	ver := strings.TrimPrefix(nextTag, "v")
 
-	// 11. Update version files.
+	// 13. Update version files.
 	for _, vf := range config.VersionFiles {
 		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, vf.Path, ver); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: failed to update %s: %v\n", vf.Path, err)
@@ -281,7 +245,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "Updated %s\n", vf.Path)
 	}
 
-	// 12. Run postVersion hook.
+	// 14. Run postVersion hook.
 	if config.Hooks.PostVersion != "" {
 		fmt.Fprintf(cfg.Stderr, "Running postVersion hook...\n")
 		if err := cfg.RunScript(config.Hooks.PostVersion, map[string]string{"VERSION": ver}); err != nil {
@@ -290,29 +254,29 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 13. Get repo URL for comparison links.
+	// 15. Get repo URL for comparison links.
 	repoURL := ""
 	if remoteURL, err := cfg.GitExec("", "remote", "get-url", "origin"); err == nil {
 		repoURL = pkgit.ParseRepoURL(remoteURL)
 	}
 
-	// 14. Read existing CHANGELOG.md.
+	// 16. Read existing CHANGELOG.md.
 	existing, _ := cfg.ReadFile("CHANGELOG.md")
 
-	// 15. Insert section and comparison link.
+	// 17. Insert section and comparison link.
 	updated := insertSection(string(existing), section)
 	if repoURL != "" {
 		refLink := fmt.Sprintf("[%s]: %s/compare/%s...%s", nextTag, repoURL, latestTag, nextTag)
 		updated = appendRefLink(updated, refLink)
 	}
 
-	// 16. Write CHANGELOG.md.
+	// 18. Write CHANGELOG.md.
 	if err := cfg.WriteFile("CHANGELOG.md", []byte(updated), 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to write CHANGELOG.md: %v\n", err)
 		return 1
 	}
 
-	// 17. Run preCommit hook.
+	// 19. Run preCommit hook.
 	if config.Hooks.PreCommit != "" {
 		fmt.Fprintf(cfg.Stderr, "Running preCommit hook...\n")
 		if err := cfg.RunScript(config.Hooks.PreCommit, map[string]string{"VERSION": ver}); err != nil {
@@ -321,7 +285,7 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 18. Git add and commit. The commit body carries a Release-Tag trailer
+	// 20. Git add and commit. The commit body carries a Release-Tag trailer
 	// so pk release can read the pending version and create the real git tag.
 	// No git tag is created here — that happens in pk release.
 	addFiles := []string{"add", "CHANGELOG.md"}
@@ -359,30 +323,15 @@ func Run(cfg Config) int {
 // discards the CHANGELOG.md and version-file changes from the release commit.
 func Undo(cfg Config) int {
 	// 1. Read Release-Tag trailer from HEAD.
-	trailerOut, err := cfg.GitExec("", "log", "-1", "--format=%(trailers:key=Release-Tag,valueonly)", "HEAD")
+	_, trailerValue, err := ReadReleaseTagTrailer(cfg.GitExec)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git log failed: %v\n", err)
-		return 1
-	}
-	trailerValue := strings.TrimSpace(trailerOut)
-	if trailerValue == "" {
-		fmt.Fprintln(cfg.Stderr, "Error: HEAD is not a pk changelog commit (no Release-Tag trailer)")
-		return 1
-	}
-	parsed, ok := version.ParseSemver(trailerValue)
-	if !ok || parsed.String() != trailerValue {
-		fmt.Fprintf(cfg.Stderr, "Error: Release-Tag trailer value %q is not valid semver\n", trailerValue)
+		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
 	// 2. Working tree must be clean.
-	status, err := cfg.GitExec("", "status", "--porcelain")
-	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git status failed: %v\n", err)
-		return 1
-	}
-	if strings.TrimSpace(status) != "" {
-		fmt.Fprintln(cfg.Stderr, "Error: working tree is not clean — commit or stash changes first")
+	if err := pkgit.CheckCleanTree(cfg.GitExec, ""); err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
@@ -415,7 +364,7 @@ func Undo(cfg Config) int {
 // FullConfig holds both changelog and guard config from .pk.json.
 type FullConfig struct {
 	ChangelogConfig
-	Guard GuardConfig
+	Guard guard.GuardConfig
 }
 
 // LoadFullConfig reads .pk.json and returns changelog + guard config.
@@ -433,7 +382,7 @@ func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
-	pk.Guard.normalize()
+	pk.Guard.Normalize()
 	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
 }
 
@@ -443,20 +392,6 @@ func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 func LoadConfig(readFile func(string) ([]byte, error)) (ChangelogConfig, error) {
 	full, err := LoadFullConfig(readFile)
 	return full.ChangelogConfig, err
-}
-
-// bumpVersion increments a Semver by the given bump type.
-func bumpVersion(v version.Semver, bump int) version.Semver {
-	switch bump {
-	case BumpMajor:
-		return version.Semver{Major: v.Major + 1}
-	case BumpMinor:
-		return version.Semver{Major: v.Major, Minor: v.Minor + 1}
-	case BumpPatch:
-		return version.Semver{Major: v.Major, Minor: v.Minor, Patch: v.Patch + 1}
-	default:
-		return v
-	}
 }
 
 // parseCommit parses a conventional commit from hash, subject, and body.
@@ -546,13 +481,13 @@ func parseLog(output string) []Commit {
 
 // detectBump returns the highest bump type from commits.
 func detectBump(commits []Commit) int {
-	bump := BumpPatch
+	bump := version.BumpPatch
 	for _, c := range commits {
 		if c.Breaking {
-			return BumpMajor
+			return version.BumpMajor
 		}
-		if c.Type == "feat" && bump < BumpMinor {
-			bump = BumpMinor
+		if c.Type == "feat" && bump < version.BumpMinor {
+			bump = version.BumpMinor
 		}
 	}
 	return bump
@@ -565,11 +500,11 @@ func resolveBump(flag string, commits []Commit) (int, error) {
 	}
 	switch flag {
 	case "major":
-		return BumpMajor, nil
+		return version.BumpMajor, nil
 	case "minor":
-		return BumpMinor, nil
+		return version.BumpMinor, nil
 	case "patch":
-		return BumpPatch, nil
+		return version.BumpPatch, nil
 	default:
 		return 0, fmt.Errorf("invalid --bump value %q (must be major, minor, or patch)", flag)
 	}

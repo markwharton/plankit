@@ -124,31 +124,6 @@ func TestFormatVersion(t *testing.T) {
 	}
 }
 
-func TestBumpVersion(t *testing.T) {
-	tests := []struct {
-		name string
-		v    version.Semver
-		bump int
-		want version.Semver
-	}{
-		{"patch", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpPatch, version.Semver{Major: 1, Minor: 2, Patch: 4}},
-		{"minor", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpMinor, version.Semver{Major: 1, Minor: 3}},
-		{"major", version.Semver{Major: 1, Minor: 2, Patch: 3}, BumpMajor, version.Semver{Major: 2}},
-		{"patch from zero", version.Semver{}, BumpPatch, version.Semver{Patch: 1}},
-		{"minor from zero", version.Semver{}, BumpMinor, version.Semver{Minor: 1}},
-		{"major from zero", version.Semver{}, BumpMajor, version.Semver{Major: 1}},
-		{"minor resets patch", version.Semver{Major: 1, Minor: 2, Patch: 5}, BumpMinor, version.Semver{Major: 1, Minor: 3}},
-		{"major resets minor and patch", version.Semver{Major: 1, Minor: 2, Patch: 5}, BumpMajor, version.Semver{Major: 2}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := bumpVersion(tt.v, tt.bump); got != tt.want {
-				t.Errorf("bumpVersion(%v, %d) = %v, want %v", tt.v, tt.bump, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestParseCommit(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -239,12 +214,12 @@ func TestDetectBump(t *testing.T) {
 		commits []Commit
 		want    int
 	}{
-		{"all fix", []Commit{{Type: "fix"}, {Type: "fix"}}, BumpPatch},
-		{"has feat", []Commit{{Type: "fix"}, {Type: "feat"}}, BumpMinor},
-		{"has breaking", []Commit{{Type: "fix"}, {Type: "feat", Breaking: true}}, BumpMajor},
-		{"docs and chore", []Commit{{Type: "docs"}, {Type: "chore"}}, BumpPatch},
-		{"single feat", []Commit{{Type: "feat"}}, BumpMinor},
-		{"empty", []Commit{}, BumpPatch},
+		{"all fix", []Commit{{Type: "fix"}, {Type: "fix"}}, version.BumpPatch},
+		{"has feat", []Commit{{Type: "fix"}, {Type: "feat"}}, version.BumpMinor},
+		{"has breaking", []Commit{{Type: "fix"}, {Type: "feat", Breaking: true}}, version.BumpMajor},
+		{"docs and chore", []Commit{{Type: "docs"}, {Type: "chore"}}, version.BumpPatch},
+		{"single feat", []Commit{{Type: "feat"}}, version.BumpMinor},
+		{"empty", []Commit{}, version.BumpPatch},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -260,28 +235,28 @@ func TestResolveBump(t *testing.T) {
 
 	t.Run("auto detect", func(t *testing.T) {
 		got, err := resolveBump("", commits)
-		if err != nil || got != BumpMinor {
+		if err != nil || got != version.BumpMinor {
 			t.Errorf("resolveBump empty = %d, %v; want minor", got, err)
 		}
 	})
 
 	t.Run("override major", func(t *testing.T) {
 		got, err := resolveBump("major", commits)
-		if err != nil || got != BumpMajor {
+		if err != nil || got != version.BumpMajor {
 			t.Errorf("resolveBump major = %d, %v", got, err)
 		}
 	})
 
 	t.Run("override minor", func(t *testing.T) {
 		got, err := resolveBump("minor", commits)
-		if err != nil || got != BumpMinor {
+		if err != nil || got != version.BumpMinor {
 			t.Errorf("resolveBump minor = %d, %v", got, err)
 		}
 	})
 
 	t.Run("override patch", func(t *testing.T) {
 		got, err := resolveBump("patch", commits)
-		if err != nil || got != BumpPatch {
+		if err != nil || got != version.BumpPatch {
 			t.Errorf("resolveBump patch = %d, %v", got, err)
 		}
 	})
@@ -1392,7 +1367,7 @@ func TestUndo_noTrailer(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if !strings.Contains(stderr.String(), "HEAD is not a pk changelog commit") {
+	if !strings.Contains(stderr.String(), "no Release-Tag trailer on HEAD") {
 		t.Errorf("stderr = %q, want no-trailer message", stderr.String())
 	}
 }
