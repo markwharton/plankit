@@ -1,8 +1,12 @@
 # Methodology
 
+This is a methodology for AI-assisted development with Claude Code. It covers plan-driven development, guidelines that constrain non-deterministic behavior, failure modes worth recognizing, and a testing loop that accelerates iteration. Every section captures patterns that have worked in practice — and a few that haven't.
+
 ## Plan-driven development
 
-Plan-driven development uses Claude Code's plan mode as the foundation for AI-assisted development. Think first, agree on approach, then execute.
+Plan-driven development uses Claude Code's plan mode as the foundation for AI-assisted development. The plan is a stable reference — the baseline you control outcomes against. Explore the idea, agree on approach, then execute.
+
+Plans are the preserved specification: why the feature exists, what problem it solves, what scenarios it was designed for. Protected from modification once approved, they're an active tool in development, debugging, and answering questions about what we built. When anything feels wrong, the plan is where you ground yourself.
 
 **The workflow:**
 
@@ -15,9 +19,9 @@ Plan-driven development uses Claude Code's plan mode as the foundation for AI-as
 
 **Why plans have value beyond the current session:**
 
-- Plans capture the *thinking* behind changes, not just the changes themselves
+- Plans capture the *reasoning* behind changes, not just the changes themselves
 - The commit history shows *what* changed; preserved plans show *why*
-- For teams: a searchable record of what developers were working on and the reasoning behind decisions
+- Plans preserve the feature's intent — called up to stay aligned, not enforced
 - Plans become documentation artifacts — timestamped, titled, committed
 
 **When to use plan mode:**
@@ -93,6 +97,18 @@ A real example: during a session about where to capture a useful git technique, 
 The issue: Claude raced from *exploration* to *formalization*. Once the recipe existed as a file, every response became "what should I edit next?" instead of "what are we actually trying to figure out?" The editing rhythm is sticky — it pulls toward local patches, defending sunk cost, and swinging between extremes. Returning to thinking-mode after editing has started is surprisingly hard.
 
 Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, look for the first clear articulation of the idea from earlier in the conversation — it's usually cleaner than anything generated later.
+
+## Breaking the loop
+
+The failure mode above is sticky — polite iteration won't pull Claude out. The editing rhythm defends itself; each correction becomes another edit. Direct intervention is what breaks it. A few moves that work:
+
+- **Say "stop" with authority.** When Claude is flailing, a firm interruption is valid and effective. You aren't being rude — you're breaking a loop the model can't break from the inside.
+- **Ask "what is the value?"** instead of "how do we word this?" The loop survives on rephrasing. Substance breaks it. Forcing Claude back to purpose is a shorter path than editing the current draft.
+- **Paste Claude's earlier clear statement back into the conversation.** The cleanest version of an idea is often the first unforced articulation, before formalization drained it. Pasting it back resets the frame.
+- **Mark the mode: "this is a discussion, not a command to change things."** Claude's default is action. Saying so slows it down enough to think.
+- **After three pushbacks that each draw more pushback, stop correcting.** The premise is wrong, not the current draft. Reset the conversation or start over — iterating on a broken foundation just deepens the hole.
+
+These moves pair with the failure mode above. The first section names what goes wrong; this one names what to do about it.
 
 ## Testing loop
 

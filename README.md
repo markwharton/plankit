@@ -1,16 +1,19 @@
 # plankit
 
-Plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Designed for small teams and independent developers.
+**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
 
-LLMs are open-ended by nature; development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.
+A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Designed for small teams and independent developers.
 
 ## What it does
 
-- **Creates CLAUDE.md** with critical rules, and installs detailed guidelines as `.claude/rules/`
-- **Guards protected branches** — blocks git mutations on configured branches via hooks
-- **Preserves approved plans** as timestamped documentation in `docs/plans/`, committed to git
-- **Protects preserved plans** from accidental edits by Claude Code
-- **Installs Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`
+`pk setup` installs the pieces that make plan-driven development work with Claude Code:
+
+- **Installs rules and guidelines** — CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
+- **Adds Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`
+- **Preserves approved plans** — saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
+- **Guards protected branches** — git mutations blocked via hooks, locally, before the damage happens
+
+After setup, `/changelog` and `/release` become your daily driver — each previews, confirms, then runs.
 
 ## Install
 
