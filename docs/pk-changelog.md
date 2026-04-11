@@ -29,7 +29,7 @@ pk changelog --push               # push commit and tag to origin after tagging
 
 - **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
 - **--dry-run** — Preview the changelog output without writing, committing, or tagging.
-- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful for single-branch workflows where `pk release` is not needed.
+- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful when merges happen in GitHub (feature branch → PR → merge) and you want to cut a release on `main` in one command, without `pk release`. Also works for single-branch repos — same commands, no feature branches needed.
 
 ## Configuration
 
