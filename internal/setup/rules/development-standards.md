@@ -24,6 +24,15 @@ description: Data-first, fail fast, consistency, two-pass, security, and debuggi
 - **Second pass:** Review — look for DRY violations, missing abstractions, magic numbers, and unnecessary complexity. Refactor what you find.
 - **Resist premature abstraction.** Three similar lines is better than the wrong abstraction. ([The Wrong Abstraction](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction))
 
+## Verification: Automated and Smoke
+
+Work isn't done until both tiers pass:
+
+- **Automated** — build, tests, and linter all pass. CI should enforce this.
+- **Smoke** — a manual end-to-end check of the change, with specific commands and observable outcomes (file contents, stdout strings, exit codes, hook behavior). Include at least one negative case. Required whenever the change alters observable behavior — CLI output, scripts, tool integrations, file writes, or anything a user or downstream consumer can see. Skip for pure internal refactors.
+
+Unit tests verify isolated behavior in mocks; smoke tests verify the wiring. The goal is "I actually ran this and saw the right thing" — not "the tests might catch it."
+
 ## Security
 
 - **Never commit secrets** to version control. Use `.env` files in `.gitignore`.

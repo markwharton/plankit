@@ -1,6 +1,6 @@
 ---
-description: Data-first, fail fast, consistency, two-pass, security, and debugging
-pk_sha256: 9277291427da7dfd6e01857a5d80bb372060eb0feca7bd2424672ef7255fabe3
+description: Data-first, fail fast, consistency, two-pass, verification, security, and debugging
+pk_sha256: caa4c93bfe8f51a8f276807ec57e36d4b23c3992b746019aa9f784535d437a02
 ---
 
 # Development Standards
@@ -24,6 +24,15 @@ pk_sha256: 9277291427da7dfd6e01857a5d80bb372060eb0feca7bd2424672ef7255fabe3
 - **First pass:** Get it working — focus on correctness and completeness.
 - **Second pass:** Review — look for DRY violations, missing abstractions, magic numbers, and unnecessary complexity. Refactor what you find.
 - **Resist premature abstraction.** Three similar lines is better than the wrong abstraction. ([The Wrong Abstraction](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction))
+
+## Verification: Automated and Smoke
+
+Work isn't done until both tiers pass:
+
+- **Automated** — build, tests, and linter all pass. CI should enforce this.
+- **Smoke** — a manual end-to-end check of the change, with specific commands and observable outcomes (file contents, stdout strings, exit codes, hook behavior). Include at least one negative case. Required whenever the change alters observable behavior — CLI output, scripts, tool integrations, file writes, or anything a user or downstream consumer can see. Skip for pure internal refactors.
+
+Unit tests verify isolated behavior in mocks; smoke tests verify the wiring. The goal is "I actually ran this and saw the right thing" — not "the tests might catch it."
 
 ## Security
 
