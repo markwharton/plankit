@@ -331,11 +331,14 @@ func fileExists(path string) bool {
 
 // hookResponse represents the JSON output for PostToolUse hooks.
 type hookResponse struct {
-	SystemMessage     string              `json:"systemMessage,omitempty"`
+	SystemMessage      string              `json:"systemMessage,omitempty"`
 	HookSpecificOutput *hookSpecificOutput `json:"hookSpecificOutput,omitempty"`
 }
 
+// hookSpecificOutput carries PostToolUse-specific fields. The Claude Code
+// hook schema requires hookEventName whenever hookSpecificOutput is present.
 type hookSpecificOutput struct {
+	HookEventName     string `json:"hookEventName"`
 	AdditionalContext string `json:"additionalContext,omitempty"`
 }
 
@@ -355,7 +358,10 @@ func (cfg Config) writeHookResponse(msg, context string) {
 	}
 	resp := hookResponse{SystemMessage: msg}
 	if context != "" {
-		resp.HookSpecificOutput = &hookSpecificOutput{AdditionalContext: context}
+		resp.HookSpecificOutput = &hookSpecificOutput{
+			HookEventName:     "PostToolUse",
+			AdditionalContext: context,
+		}
 	}
 	if data, err := json.Marshal(resp); err == nil {
 		fmt.Fprint(cfg.Stdout, string(data))

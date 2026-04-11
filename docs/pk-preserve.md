@@ -31,7 +31,7 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 ## Hook protocol
 
 - **Input:** PostToolUse JSON on stdin (includes `tool_response` with the plan path).
-- **Output:** `{"systemMessage": "..."}` on stdout (shown to user). In notify mode, also includes `{"hookSpecificOutput": {"additionalContext": "..."}}` to inject context into Claude's next turn.
+- **Output:** `{"systemMessage": "..."}` on stdout (shown to user). In notify mode, also includes `{"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "..."}}` to inject context into Claude's next turn. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
 - **Exit code:** Always 0. Errors are reported via stderr or systemMessage.
 
 ## Environment

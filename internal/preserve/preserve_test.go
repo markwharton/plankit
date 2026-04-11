@@ -621,6 +621,11 @@ func TestRun(t *testing.T) {
 		if !strings.Contains(stdout.String(), "additionalContext") {
 			t.Errorf("stdout = %q, want additionalContext for Claude", stdout.String())
 		}
+		// hookEventName is required by the Claude Code hook schema whenever
+		// hookSpecificOutput is present.
+		if !strings.Contains(stdout.String(), `"hookEventName":"PostToolUse"`) {
+			t.Errorf("stdout = %q, want hookEventName=PostToolUse in hookSpecificOutput", stdout.String())
+		}
 	})
 
 	t.Run("dry-run previews without writing or committing", func(t *testing.T) {
