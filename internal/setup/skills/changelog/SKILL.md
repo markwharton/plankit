@@ -1,6 +1,6 @@
 ---
 name: changelog
-description: Update CHANGELOG.md from git history, commit, and tag version
+description: Update CHANGELOG.md from git history and commit (tag is created by pk release)
 disable-model-invocation: true
 allowed-tools: Bash(pk:*)
 ---
@@ -18,4 +18,6 @@ If confirmed, run:
 
 pk changelog
 
-Report the result to the user. Follow with `/release` to merge and push.
+The commit carries a Release-Tag trailer; no git tag is created yet.
+
+Report the result to the user. Follow with `/release` to tag, merge, and push.

@@ -1,14 +1,14 @@
 # pk changelog
 
-Generate CHANGELOG.md from conventional commits, commit, and tag.
+Generate CHANGELOG.md from conventional commits and commit the result. Leaves the tag to `pk release`.
 
 ## Usage
 
 ```bash
 pk changelog                      # auto-detect version bump from commits
 pk changelog --bump minor         # override: major, minor, or patch
-pk changelog --dry-run            # preview without writing, committing, or tagging
-pk changelog --push               # push commit and tag to origin after tagging
+pk changelog --dry-run            # preview without writing or committing
+pk changelog --undo               # unwind an unpushed release commit
 ```
 
 ## How it works
@@ -21,15 +21,19 @@ pk changelog --push               # push commit and tag to origin after tagging
 6. Writes or updates CHANGELOG.md with the new version section
 7. Updates version files if configured
 8. Runs lifecycle hooks if configured
-9. Commits CHANGELOG.md and all modified files
-10. Tags the new version
-11. If `--push` is set, pushes commit and tag to origin
+9. Commits CHANGELOG.md and all modified files, adding a `Release-Tag: vX.Y.Z` trailer to the commit body via `git commit --trailer`
+
+No git tag is created by `pk changelog`. The tag is the responsibility of `pk release`, which reads the trailer from HEAD and creates the tag just before pushing.
 
 ## Flags
 
 - **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
-- **--dry-run** — Preview the changelog output without writing, committing, or tagging.
-- **--push** — Push the release commit and tag to origin after tagging. Without this flag, the commit and tag remain local. Useful when merges happen in GitHub (feature branch → PR → merge) and you want to cut a release on `main` in one command, without `pk release`. Also works for single-branch repos — same commands, no feature branches needed.
+- **--dry-run** — Preview the changelog output without writing or committing.
+- **--undo** — Unwind the most recent `pk changelog` commit. Refuses unless HEAD carries a `Release-Tag:` trailer, the working tree is clean, and HEAD has not been pushed (or the branch has no upstream). On success, HEAD is reset one commit back via `git reset --hard`, which restores CHANGELOG.md and version files to their prior state.
+
+## Requirements
+
+- **git 2.32 or newer** for `git commit --trailer` (June 2021).
 
 ## Configuration
 
@@ -153,6 +157,23 @@ The bump is auto-detected from conventional commits:
 - Everything else → **patch**
 
 Override with `--bump major|minor|patch`.
+
+### Release-Tag trailer
+
+Every `pk changelog` commit carries a git trailer in its body:
+
+```
+chore: release v0.6.2
+
+Release-Tag: v0.6.2
+```
+
+The trailer is a git-native mechanism for structured commit metadata (see also `Signed-off-by:`, `Co-authored-by:`). It's written via `git commit --trailer` and read via `git log --format=%(trailers:key=Release-Tag,valueonly)`. Two pk commands consume it:
+
+- **`pk release`** reads the trailer to know which version to tag. Without the trailer, `pk release` refuses with "no Release-Tag trailer on HEAD — run 'pk changelog' first."
+- **`pk changelog --undo`** checks for the trailer before touching history, so it only unwinds pk-created commits.
+
+The trailer value is validated as strict semver: the value must parse via plankit's semver parser and round-trip back to the same string. Anything else (typos, non-semver strings, extra characters) is rejected.
 
 ### Comparison links
 

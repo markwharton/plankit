@@ -1,12 +1,14 @@
 ---
 name: release
-description: Merge to release branch, validate, and push to origin
+description: Tag and push a release created by pk changelog
 disable-model-invocation: true
 allowed-tools: Bash(pk:*)
 ---
 
-Push a release created by pk changelog. When `release.branch` is configured
-in `.pk.json`, this command merges to the release branch, pushes, and switches back.
+Tag and push a release created by pk changelog. Reads the Release-Tag trailer
+from the HEAD commit, creates the git tag, and pushes. When `release.branch`
+is configured in `.pk.json`, this command also merges to the release branch
+and switches back.
 
 **Always use `pk release` to push — never run `git push` directly.** `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.
 

@@ -29,8 +29,9 @@ make test           # Run tests with race detector
 make build-all      # Cross-compile for 5 platforms
 make install        # Install to GOPATH/bin
 make lint           # Run go vet
-pk changelog        # Generate CHANGELOG.md, commit, and tag
-pk release          # Validate pre-flight checks and push to origin
+pk changelog        # Generate CHANGELOG.md and commit (no tag)
+pk changelog --undo # Unwind an unpushed release commit
+pk release          # Read Release-Tag trailer, create tag, merge, and push
 ```
 
 - **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` drops a binary in the working directory; the Makefile routes output to `dist/`.

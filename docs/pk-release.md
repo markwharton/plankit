@@ -1,12 +1,12 @@
 # pk release
 
-Merge to the release branch, validate pre-flight checks, and push to origin.
+Read the `Release-Tag` trailer from HEAD, create the git tag, merge to the release branch, validate, and push.
 
 ## Usage
 
 ```bash
-pk release                        # merge, validate, and push
-pk release --dry-run              # validate without merging or pushing
+pk release                        # tag, merge, validate, and push
+pk release --dry-run              # validate without tagging, merging, or pushing
 pk release --pr                   # push branch and create a pull request
 pk release --pr --dry-run         # preview PR flow without pushing
 ```
@@ -16,24 +16,34 @@ pk release --pr --dry-run         # preview PR flow without pushing
 When `release.branch` is configured in `.pk.json`:
 
 1. **Note current branch** — this is the source branch (no hard-coded name).
-2. **Pre-flight checks** — clean working tree, source branch not behind remote.
-3. **Find version tag** at HEAD (optional — no tag is OK for CI/CD workflows without changelog).
-4. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
-5. **Run pre-release hook** if configured.
-6. **Push** release branch + tag (if tag exists) to origin.
-7. **Switch back** to source branch and push it to sync origin.
+2. **Read `Release-Tag:` trailer from HEAD** (written by `pk changelog`) and validate it as semver. Refuses if the trailer is missing or invalid.
+3. **Check the tag doesn't already exist locally** — refuses if it does.
+4. **Pre-flight checks** — clean working tree, source branch not behind remote.
+5. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
+6. **Run pre-release hook** if configured.
+7. **Create the git tag** on HEAD (the fast-forwarded release branch points at the same commit as the source branch).
+8. **Push** release branch + tag to origin.
+9. **Switch back** to source branch and push it to sync origin.
 
 When `release.branch` is NOT configured (legacy flow):
 
-1. Find version tag at HEAD (required).
-2. Pre-flight checks — clean working tree, not behind remote.
-3. Run pre-release hook if configured.
-4. Push current branch + tag to origin.
+1. Read `Release-Tag:` trailer from HEAD and validate it as semver.
+2. Check the tag doesn't already exist locally.
+3. Pre-flight checks — clean working tree, not behind remote.
+4. Run pre-release hook if configured.
+5. Create the git tag on HEAD.
+6. Push current branch + tag to origin.
+
+On any failure after the tag is created but before the push completes, `pk release` deletes the local tag automatically so the next run starts from a clean state.
 
 ## Flags
 
-- **--dry-run** — Run all checks without merging or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be pushed and created.
+- **--dry-run** — Run all checks without tagging, merging, or pushing. In the merge flow, verifies that a fast-forward merge is possible. In the PR flow, shows what would be created and pushed.
 - **--pr** — Push the source branch and tag to origin, then create a pull request targeting the release branch. Requires `release.branch` in `.pk.json`. Falls back to printing a compare URL if `gh` is not installed.
+
+## Requirements
+
+- **git 2.32 or newer** for `git log --format=%(trailers:...)` and `git commit --trailer`.
 
 ## Configuration
 
@@ -74,6 +84,12 @@ When `--pr` is passed (requires `release.branch` in `.pk.json`):
 5. If `gh` is not available, prints a compare URL for manual PR creation.
 
 Use this for workflows where PRs trigger preview environments (Azure Static Web Apps, Netlify, Vercel) and you want to review before merging to production.
+
+### Release-Tag trailer
+
+`pk release` reads the pending version from the `Release-Tag:` trailer on HEAD, which `pk changelog` wrote when it generated the release commit. See [pk changelog — Release-Tag trailer](pk-changelog.md#release-tag-trailer) for the format and rationale.
+
+The trailer value is validated as strict semver: it must parse via plankit's semver parser and round-trip back to the same string. Missing, malformed, or non-semver values are refused with a clear error.
 
 ### Merge behavior
 

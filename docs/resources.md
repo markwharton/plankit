@@ -21,19 +21,15 @@ All changes go through `dev` — `main` is protected by `pk guard`. With
 
 ```bash
 # Direct merge flow
-pk changelog                          # on dev: generate changelog, commit, and tag version
-pk release                            # merge to main, validate, push, switch back, push dev
+pk changelog                          # on dev: generate changelog and commit (no tag yet)
+pk release                            # tag, merge to main, validate, push, switch back, push dev
 
 # PR flow (for preview environments)
-pk changelog                          # on dev: generate changelog, commit, and tag version
-pk release --pr                       # push dev branch, create PR targeting main
+pk changelog                          # on dev: generate changelog and commit (no tag yet)
+pk release --pr                       # tag, push dev branch + tag, create PR targeting main
 ```
 
-After a GitHub-managed merge (or on a single-branch repo), cut a release in one command:
-
-```bash
-pk changelog --push                   # generate changelog, commit, tag, push
-```
+`pk changelog` adds a `Release-Tag:` trailer to the commit message body. `pk release` reads that trailer to know which version to tag, then creates the tag just before pushing. If something goes wrong between `pk changelog` and `pk release`, run `pk changelog --undo` to cleanly unwind the release commit (refuses if HEAD has already been pushed).
 
 ## GitHub CLI
 

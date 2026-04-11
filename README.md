@@ -50,8 +50,8 @@ Re-run setup anytime to switch.
 | Command | Description |
 |---------|-------------|
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md — [details](docs/pk-setup.md) |
-| `pk changelog` | Generate changelog, commit, and tag — [details](docs/pk-changelog.md) |
-| `pk release` | Merge to release branch, validate, and push — [details](docs/pk-release.md) |
+| `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`) — [details](docs/pk-changelog.md) |
+| `pk release` | Tag, merge to release branch, validate, and push — [details](docs/pk-release.md) |
 | `pk guard` | Block git mutations on protected branches — [details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |

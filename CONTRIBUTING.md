@@ -36,9 +36,9 @@ With `release.branch` configured in `.pk.json`, the full release flow runs from 
 
 ```bash
 pk changelog --dry-run            # preview changelog and version bump
-pk changelog                      # on dev: generate CHANGELOG.md, commit, and tag version
+pk changelog                      # on dev: generate CHANGELOG.md and commit (no tag)
 pk release --dry-run              # preview the release flow
-pk release                        # merge to main, validate, push main + tag, push dev
+pk release                        # read Release-Tag trailer, tag, merge to main, push main + tag, push dev
 ```
 
 `pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
