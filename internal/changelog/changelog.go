@@ -32,6 +32,10 @@ type Config struct {
 	Bump string
 	// DryRun previews the changelog section without writing or committing.
 	DryRun bool
+	// Exclude holds commit SHAs (as they appear in CHANGELOG.md parentheses)
+	// to drop from the generated section. The filter runs before bump
+	// detection, so excluding all feat commits falls back to a patch bump.
+	Exclude []string
 }
 
 // DefaultConfig returns a Config wired to real implementations.
@@ -229,36 +233,46 @@ func Run(cfg Config) int {
 		fmt.Fprintln(cfg.Stderr, "No new conventional commits found.")
 		return 0
 	}
+
+	// 5. Apply --exclude filter. Runs before bump resolution so the
+	// bump reflects the commits that will actually appear in the changelog.
+	if len(cfg.Exclude) > 0 {
+		commits = applyExclude(cfg.Stderr, commits, cfg.Exclude)
+		if len(commits) == 0 {
+			fmt.Fprintln(cfg.Stderr, "No conventional commits remain after --exclude.")
+			return 0
+		}
+	}
 	fmt.Fprintf(cfg.Stderr, "Found %d conventional commit(s)\n", len(commits))
 
-	// 5. Determine bump.
+	// 6. Determine bump.
 	bump, err := resolveBump(cfg.Bump, commits)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	// 6. Compute next version.
+	// 7. Compute next version.
 	next := bumpVersion(baseVersion, bump)
 	nextTag := next.String()
 	fmt.Fprintf(cfg.Stderr, "Generating %s\n", nextTag)
 
-	// 7. Generate section.
+	// 8. Generate section.
 	groups := groupCommits(commits, config.Types)
 	date := cfg.Now().Format("2006-01-02")
 	section := formatSection(nextTag, date, groups, config.ShowScope)
 
-	// 8. Dry run.
+	// 9. Dry run.
 	if cfg.DryRun {
 		fmt.Fprintln(cfg.Stderr, "")
 		fmt.Fprint(cfg.Stderr, section)
 		return 0
 	}
 
-	// 9. Version without v prefix for files and hooks.
+	// 10. Version without v prefix for files and hooks.
 	ver := strings.TrimPrefix(nextTag, "v")
 
-	// 10. Update version files.
+	// 11. Update version files.
 	for _, vf := range config.VersionFiles {
 		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, vf.Path, ver); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: failed to update %s: %v\n", vf.Path, err)
@@ -267,7 +281,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "Updated %s\n", vf.Path)
 	}
 
-	// 11. Run postVersion hook.
+	// 12. Run postVersion hook.
 	if config.Hooks.PostVersion != "" {
 		fmt.Fprintf(cfg.Stderr, "Running postVersion hook...\n")
 		if err := cfg.RunScript(config.Hooks.PostVersion, map[string]string{"VERSION": ver}); err != nil {
@@ -276,29 +290,29 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 12. Get repo URL for comparison links.
+	// 13. Get repo URL for comparison links.
 	repoURL := ""
 	if remoteURL, err := cfg.GitExec("", "remote", "get-url", "origin"); err == nil {
 		repoURL = pkgit.ParseRepoURL(remoteURL)
 	}
 
-	// 13. Read existing CHANGELOG.md.
+	// 14. Read existing CHANGELOG.md.
 	existing, _ := cfg.ReadFile("CHANGELOG.md")
 
-	// 14. Insert section and comparison link.
+	// 15. Insert section and comparison link.
 	updated := insertSection(string(existing), section)
 	if repoURL != "" {
 		refLink := fmt.Sprintf("[%s]: %s/compare/%s...%s", nextTag, repoURL, latestTag, nextTag)
 		updated = appendRefLink(updated, refLink)
 	}
 
-	// 15. Write CHANGELOG.md.
+	// 16. Write CHANGELOG.md.
 	if err := cfg.WriteFile("CHANGELOG.md", []byte(updated), 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to write CHANGELOG.md: %v\n", err)
 		return 1
 	}
 
-	// 16. Run preCommit hook.
+	// 17. Run preCommit hook.
 	if config.Hooks.PreCommit != "" {
 		fmt.Fprintf(cfg.Stderr, "Running preCommit hook...\n")
 		if err := cfg.RunScript(config.Hooks.PreCommit, map[string]string{"VERSION": ver}); err != nil {
@@ -307,7 +321,7 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 17. Git add and commit. The commit body carries a Release-Tag trailer
+	// 18. Git add and commit. The commit body carries a Release-Tag trailer
 	// so pk release can read the pending version and create the real git tag.
 	// No git tag is created here — that happens in pk release.
 	addFiles := []string{"add", "CHANGELOG.md"}
@@ -473,6 +487,38 @@ func hasBreakingTrailer(body string) bool {
 		}
 	}
 	return false
+}
+
+// applyExclude drops commits whose short hash matches any entry in excludes.
+// Matching is exact string equality against the abbreviated hash (as it appears
+// in CHANGELOG.md parentheses). Each exclude value is whitespace-trimmed.
+// Unmatched exclude values emit a warning to stderr but do not fail the run.
+func applyExclude(stderr io.Writer, commits []Commit, excludes []string) []Commit {
+	// Build a set of trimmed exclude values and track which ones match a commit.
+	wanted := make(map[string]bool, len(excludes))
+	for _, e := range excludes {
+		e = strings.TrimSpace(e)
+		if e != "" {
+			wanted[e] = false
+		}
+	}
+	if len(wanted) == 0 {
+		return commits
+	}
+	kept := commits[:0]
+	for _, c := range commits {
+		if _, ok := wanted[c.Hash]; ok {
+			wanted[c.Hash] = true
+			continue
+		}
+		kept = append(kept, c)
+	}
+	for sha, matched := range wanted {
+		if !matched {
+			fmt.Fprintf(stderr, "warning: --exclude %s did not match any commit\n", sha)
+		}
+	}
+	return kept
 }
 
 // parseLog splits NUL-delimited git log output into Commits.

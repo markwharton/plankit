@@ -5,10 +5,11 @@ Generate CHANGELOG.md from conventional commits and commit the result. Leaves th
 ## Usage
 
 ```bash
-pk changelog                      # auto-detect version bump from commits
-pk changelog --bump minor         # override: major, minor, or patch
-pk changelog --dry-run            # preview without writing or committing
-pk changelog --undo               # unwind an unpushed release commit
+pk changelog                                # auto-detect version bump from commits
+pk changelog --bump minor                   # override: major, minor, or patch
+pk changelog --dry-run                      # preview without writing or committing
+pk changelog --undo                         # unwind an unpushed release commit
+pk changelog --exclude abc1234,def5678      # drop commits from the section by short SHA
 ```
 
 ## How it works
@@ -30,6 +31,7 @@ No git tag is created by `pk changelog`. The tag is the responsibility of `pk re
 - **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
 - **--dry-run** — Preview the changelog output without writing or committing.
 - **--undo** — Unwind the most recent `pk changelog` commit. Refuses unless HEAD carries a `Release-Tag:` trailer, the working tree is clean, and HEAD has not been pushed (or the branch has no upstream). On success, HEAD is reset one commit back via `git reset --hard`, which restores CHANGELOG.md and version files to their prior state.
+- **--exclude** — Comma-separated list of commit SHAs to drop from the generated section. Each SHA must match exactly as it appears in `CHANGELOG.md` parentheses (the abbreviated short hash). The filter runs before version-bump detection, so excluding all `feat:` commits falls back to a patch bump, and excluding a breaking change removes its contribution to the bump too. Unmatched exclude values emit a warning but don't fail the release.
 
 ## Requirements
 
@@ -157,6 +159,21 @@ The bump is auto-detected from conventional commits:
 - Everything else → **patch**
 
 Override with `--bump major|minor|patch`.
+
+### Excluding commits from a release
+
+Sometimes a commit that lives in git history shouldn't appear in the release notes — usually because it was added and later removed within the same release window, so the net effect is zero and mentioning it would confuse a reader. `--exclude` is the tool for that.
+
+The intended workflow:
+
+1. Run `pk changelog` normally. It generates the section and commits it.
+2. Read `CHANGELOG.md`. If there's an entry you don't want, copy the short SHA from inside its parentheses — for example, `abc1234` from `- add feature (abc1234)`.
+3. Run `pk changelog --undo` to unwind the release commit.
+4. Run `pk changelog --exclude abc1234` (or a comma-separated list for multiple) to regenerate without that commit.
+
+The matcher is exact string equality against the short hash as it appears in `CHANGELOG.md`. No prefix matching, no full-SHA input, no clever resolution — copy what you see, paste it back. The filter also runs *before* version-bump detection, so excluded commits don't influence the version number.
+
+`CHANGELOG.md` remains the long-lived record of release notes; `--exclude` is just a tool for producing it with surgical omissions.
 
 ### Release-Tag trailer
 

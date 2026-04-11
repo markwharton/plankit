@@ -1488,3 +1488,196 @@ func TestUndo_noUpstream(t *testing.T) {
 		t.Error("reset should run when branch has no upstream")
 	}
 }
+
+// --- Exclude tests ---
+
+// excludeLog builds a synthetic git log output containing the given commits
+// in the NUL-delimited format pk changelog expects. Each entry becomes
+// "<hash>\x00<subject>\x00\x00" (no body).
+func excludeLog(entries ...[2]string) string {
+	var b strings.Builder
+	for _, e := range entries {
+		b.WriteString(e[0])
+		b.WriteByte(0)
+		b.WriteString(e[1])
+		b.WriteByte(0)
+		b.WriteByte(0)
+	}
+	return b.String()
+}
+
+// excludeConfig wires a Config with a log that returns the given commits
+// and captures all git commit calls into the returned slice pointer.
+func excludeConfig(t *testing.T, log string, exclude []string) (Config, *[]string, *bytes.Buffer) {
+	t.Helper()
+	var stderr bytes.Buffer
+	gitCalls := make([]string, 0)
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			gitCalls = append(gitCalls, strings.Join(args, " "))
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				return log, nil
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+		Exclude:   exclude,
+	}
+	return cfg, &gitCalls, &stderr
+}
+
+// commitMatch returns true if gitCalls contains a "commit -m ... --trailer Release-Tag: <tag>" call.
+func commitMatch(gitCalls []string, tag string) bool {
+	for _, c := range gitCalls {
+		if strings.Contains(c, "commit -m chore: release "+tag) &&
+			strings.Contains(c, "--trailer Release-Tag: "+tag) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestRun_excludeByShortSHA(t *testing.T) {
+	log := excludeLog(
+		[2]string{"aaa1111", "fix: real fix"},
+		[2]string{"bbb2222", "fix: should be excluded"},
+	)
+	cfg, gitCalls, stderr := excludeConfig(t, log, []string{"bbb2222"})
+
+	var writtenContent []byte
+	cfg.WriteFile = func(name string, data []byte, perm os.FileMode) error {
+		writtenContent = data
+		return nil
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(string(writtenContent), "should be excluded") {
+		t.Errorf("excluded commit should not appear in CHANGELOG.md, got: %s", writtenContent)
+	}
+	if !strings.Contains(string(writtenContent), "real fix") {
+		t.Errorf("non-excluded commit should appear in CHANGELOG.md, got: %s", writtenContent)
+	}
+	if !commitMatch(*gitCalls, "v1.0.1") {
+		t.Errorf("expected patch bump (v1.0.1), git calls: %v", *gitCalls)
+	}
+}
+
+func TestRun_excludeMultiple(t *testing.T) {
+	log := excludeLog(
+		[2]string{"aaa1111", "fix: keep this"},
+		[2]string{"bbb2222", "fix: drop this"},
+		[2]string{"ccc3333", "fix: drop that"},
+	)
+	cfg, _, stderr := excludeConfig(t, log, []string{"bbb2222", "ccc3333"})
+
+	var writtenContent []byte
+	cfg.WriteFile = func(name string, data []byte, perm os.FileMode) error {
+		writtenContent = data
+		return nil
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	content := string(writtenContent)
+	if !strings.Contains(content, "keep this") {
+		t.Errorf("kept commit missing from changelog: %s", content)
+	}
+	if strings.Contains(content, "drop this") {
+		t.Errorf("first excluded commit present in changelog: %s", content)
+	}
+	if strings.Contains(content, "drop that") {
+		t.Errorf("second excluded commit present in changelog: %s", content)
+	}
+}
+
+func TestRun_excludeUnknownSHA(t *testing.T) {
+	log := excludeLog(
+		[2]string{"aaa1111", "fix: one real fix"},
+	)
+	cfg, gitCalls, stderr := excludeConfig(t, log, []string{"deadbee"})
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "warning: --exclude deadbee did not match any commit") {
+		t.Errorf("stderr missing unknown-sha warning: %s", stderr.String())
+	}
+	// Unknown SHA should not block the release.
+	if !commitMatch(*gitCalls, "v1.0.1") {
+		t.Errorf("expected release to proceed despite unknown exclude, git calls: %v", *gitCalls)
+	}
+}
+
+func TestRun_excludeAllFeats_fallsToPatch(t *testing.T) {
+	log := excludeLog(
+		[2]string{"aaa1111", "feat: new thing"},
+		[2]string{"bbb2222", "feat: another thing"},
+		[2]string{"ccc3333", "fix: a fix"},
+	)
+	cfg, gitCalls, stderr := excludeConfig(t, log, []string{"aaa1111", "bbb2222"})
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// Only a fix remains. Bump should be patch (v1.0.0 → v1.0.1), not minor.
+	if !commitMatch(*gitCalls, "v1.0.1") {
+		t.Errorf("expected patch bump v1.0.1 after excluding all feats, git calls: %v", *gitCalls)
+	}
+	if commitMatch(*gitCalls, "v1.1.0") {
+		t.Errorf("bump should not have stayed at minor v1.1.0")
+	}
+}
+
+func TestRun_excludeSomeFeats_staysMinor(t *testing.T) {
+	log := excludeLog(
+		[2]string{"aaa1111", "feat: keeper"},
+		[2]string{"bbb2222", "feat: to drop"},
+		[2]string{"ccc3333", "fix: a fix"},
+	)
+	cfg, gitCalls, stderr := excludeConfig(t, log, []string{"bbb2222"})
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// One feat remains. Bump should stay minor (v1.0.0 → v1.1.0).
+	if !commitMatch(*gitCalls, "v1.1.0") {
+		t.Errorf("expected minor bump v1.1.0 with one feat remaining, git calls: %v", *gitCalls)
+	}
+}
+
+func TestRun_excludeBreaking_fallsFromMajor(t *testing.T) {
+	// Breaking change via "!" suffix. Also include a regular feat so the
+	// bump has somewhere to fall (minor) instead of collapsing to patch.
+	log := excludeLog(
+		[2]string{"aaa1111", "feat!: breaking change"},
+		[2]string{"bbb2222", "feat: normal feat"},
+	)
+	cfg, gitCalls, stderr := excludeConfig(t, log, []string{"aaa1111"})
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// Breaking change excluded, one feat remains. Bump should be minor (v1.0.0 → v1.1.0).
+	if !commitMatch(*gitCalls, "v1.1.0") {
+		t.Errorf("expected bump to fall from major to minor v1.1.0, git calls: %v", *gitCalls)
+	}
+	if commitMatch(*gitCalls, "v2.0.0") {
+		t.Errorf("bump should not have stayed at major v2.0.0")
+	}
+}

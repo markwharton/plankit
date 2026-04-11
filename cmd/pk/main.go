@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/guard"
@@ -64,11 +65,15 @@ func runChangelog(args []string) {
 	bump := fs.String("bump", "", "Override version bump: major, minor, or patch")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing or committing")
 	undo := fs.Bool("undo", false, "Unwind the last pk changelog commit (must be unpushed)")
+	exclude := fs.String("exclude", "", "Comma-separated commit SHAs to drop from the section (as they appear in CHANGELOG.md parentheses)")
 	fs.Parse(args)
 
 	cfg := changelog.DefaultConfig()
 	cfg.Bump = *bump
 	cfg.DryRun = *dryRun
+	if *exclude != "" {
+		cfg.Exclude = strings.Split(*exclude, ",")
+	}
 
 	if *undo {
 		os.Exit(changelog.Undo(cfg))
@@ -177,7 +182,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
-	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo]")
+	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")
