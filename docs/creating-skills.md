@@ -49,7 +49,9 @@ description: Review staged git changes for bugs, security issues, and style viol
 
 Review the changes currently staged for commit:
 
-git diff --cached
+`git diff --cached`
+
+If the diff is empty, report that no changes are staged and stop.
 
 Look for:
 - Bugs and logic errors
@@ -202,4 +204,4 @@ Without this flag, Claude could invoke `/preview` on its own — for example, if
 
 - [Claude Code Skills](https://code.claude.com/docs/en/skills.md) — full schema, frontmatter fields, advanced features.
 - [Claude Code .claude directory](https://code.claude.com/docs/en/claude-directory.md) — file location and discovery rules.
-- plankit's installed skills (`.claude/skills/`) — `changelog`, `init`, `preserve`, `release`, `review` as live examples.
+- plankit's installed skills (`.claude/skills/`) — `changelog`, `init`, `preserve`, `release` as live examples.

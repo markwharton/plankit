@@ -1,5 +1,5 @@
 ---
-name: review
+name: review-code
 description: Comprehensive code review across all dimensions
 ---
 
