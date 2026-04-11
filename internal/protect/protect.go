@@ -53,7 +53,7 @@ func Run(cfg Config) int {
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, projectDir) {
-		hooks.WriteBlockDecision(cfg.Stdout, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation.")
+		hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation.")
 	}
 
 	return 0

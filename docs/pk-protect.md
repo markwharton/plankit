@@ -15,7 +15,7 @@ Block Claude Code from editing or overwriting files in `docs/plans/`.
 ## Hook protocol
 
 - **Input:** PreToolUse JSON on stdin (includes `tool_input.file_path`).
-- **Output:** `{"decision": "block", "reason": "..."}` on stdout to block. No output to allow.
+- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` on stdout to block. No output to allow. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
 - **Exit code:** Always 0.
 
 ## Environment

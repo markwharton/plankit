@@ -93,9 +93,12 @@ func TestRun(t *testing.T) {
 				t.Errorf("exit code = %d, want 0", exitCode)
 			}
 
-			hasBlock := strings.Contains(stdout.String(), `"decision":"block"`)
+			hasBlock := strings.Contains(stdout.String(), `"permissionDecision":"deny"`)
 			if hasBlock != tt.wantBlock {
 				t.Errorf("block = %v, want %v (stdout: %q)", hasBlock, tt.wantBlock, stdout.String())
+			}
+			if tt.wantBlock && !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
+				t.Errorf("blocking response missing hookEventName=PreToolUse (stdout: %q)", stdout.String())
 			}
 		})
 	}
