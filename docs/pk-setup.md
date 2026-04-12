@@ -13,11 +13,12 @@ pk setup --force                      # overwrite all managed skills
 
 ## How it works
 
-1. **Configures `.claude/settings.json`** with PreToolUse and PostToolUse hooks (guard, protect, preserve), and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
+1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** with critical rules if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
 3. **Installs rules** to `.claude/rules/`: model-behavior, development-standards, git-discipline. These contain the detailed guidelines that Claude Code loads automatically.
 4. **Installs skills** to `.claude/skills/`: `/init`, `/changelog`, `/preserve`, `/release`. User-modified skills are skipped unless `--force` is used.
-5. **Checks PATH** and warns if `pk` is not found.
+5. **Writes `.claude/install-pk.sh`** — a bootstrap script that downloads `pk` into cloud sandboxes (Claude Code on the web). The script is pinned to the running `pk` version and is a no-op when `pk` is already on PATH. Skipped for development builds.
+6. **Checks PATH** and warns if `pk` is not found.
 
 After setup, restart Claude Code to apply changes.
 
@@ -64,3 +65,11 @@ On re-run, `pk setup` checks the marker:
 - **File has no marker** (not managed by pk) — skipped.
 
 `--force` overrides this for skills only. CLAUDE.md is never force-overwritten.
+
+### Cloud sandbox bootstrap
+
+`pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start.
+
+On local surfaces (CLI, Desktop, VS Code), the script detects the existing `pk` install and exits immediately — no download, no PATH change.
+
+The script is pinned to the version of `pk` that ran `pk setup`. After upgrading plankit, re-run `pk setup` to update the pinned version. `pk version` warns when the pinned version falls behind the running version.

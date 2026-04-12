@@ -12,8 +12,9 @@ pk version --verbose    # include Go version, build time, and commit SHA
 ## How it works
 
 1. Prints the current version (set via `-ldflags` at build time, or read from `debug.ReadBuildInfo()`).
-2. Checks GitHub releases for a newer version (cached daily in `~/.pk/update-check`).
-3. If a newer version is available, prints an update notice to stderr.
+2. Checks `.claude/install-pk.sh` for a pinned version. If the pinned version differs from the running version, prints a note to re-run `pk setup`.
+3. Checks GitHub releases for a newer version (cached daily in `~/.pk/update-check`).
+4. If a newer version is available, prints an update notice to stderr.
 
 ## Flags
 

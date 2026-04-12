@@ -756,6 +756,168 @@ func TestWriteManaged_frontmatter(t *testing.T) {
 	}
 }
 
+func TestScriptVersion_found(t *testing.T) {
+	projectDir := t.TempDir()
+	scriptDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(scriptDir, 0755)
+	os.WriteFile(filepath.Join(scriptDir, "install-pk.sh"), []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
+
+	ver, found := ScriptVersion(projectDir)
+	if !found {
+		t.Fatal("ScriptVersion did not find PK_VERSION")
+	}
+	if ver != "v0.8.0" {
+		t.Errorf("ScriptVersion = %q, want %q", ver, "v0.8.0")
+	}
+}
+
+func TestScriptVersion_notFound(t *testing.T) {
+	projectDir := t.TempDir()
+	_, found := ScriptVersion(projectDir)
+	if found {
+		t.Error("ScriptVersion should return false when script does not exist")
+	}
+}
+
+func TestScriptVersion_noPKVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	scriptDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(scriptDir, 0755)
+	os.WriteFile(filepath.Join(scriptDir, "install-pk.sh"), []byte("#!/usr/bin/env bash\necho hello\n"), 0755)
+
+	_, found := ScriptVersion(projectDir)
+	if found {
+		t.Error("ScriptVersion should return false when no PK_VERSION line")
+	}
+}
+
+func TestWriteInstallScript_releaseVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if err := writeInstallScript(projectDir, "0.7.1", &stderr); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("install-pk.sh not created: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, `PK_VERSION="v0.7.1"`) {
+		t.Errorf("script should contain PK_VERSION=\"v0.7.1\", got: %s", content)
+	}
+	if strings.Contains(content, "{{VERSION}}") {
+		t.Error("script still contains template placeholder")
+	}
+
+	// Verify executable permissions.
+	info, _ := os.Stat(scriptPath)
+	if info.Mode().Perm()&0111 == 0 {
+		t.Error("install-pk.sh should be executable")
+	}
+
+	if !strings.Contains(stderr.String(), "pinned v0.7.1") {
+		t.Errorf("stderr = %q, want pinned version mentioned", stderr.String())
+	}
+}
+
+func TestWriteInstallScript_vPrefixedVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if err := writeInstallScript(projectDir, "v0.8.0", &stderr); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	data, _ := os.ReadFile(scriptPath)
+	if !strings.Contains(string(data), `PK_VERSION="v0.8.0"`) {
+		t.Errorf("script should not double-prefix v, got: %s", string(data))
+	}
+}
+
+func TestWriteInstallScript_devBuild(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if err := writeInstallScript(projectDir, "dev", &stderr); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
+		t.Error("install-pk.sh should not be created for dev builds")
+	}
+
+	if !strings.Contains(stderr.String(), "skipped") {
+		t.Errorf("stderr = %q, want 'skipped' message for dev build", stderr.String())
+	}
+}
+
+func TestWriteInstallScript_emptyVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if err := writeInstallScript(projectDir, "", &stderr); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
+		t.Error("install-pk.sh should not be created for empty version")
+	}
+}
+
+func TestWriteInstallScript_idempotent(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	writeInstallScript(projectDir, "0.7.0", &stderr)
+	stderr.Reset()
+	writeInstallScript(projectDir, "0.7.1", &stderr)
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	data, _ := os.ReadFile(scriptPath)
+	if !strings.Contains(string(data), `PK_VERSION="v0.7.1"`) {
+		t.Error("re-run should update pinned version to v0.7.1")
+	}
+}
+
+func TestRun_sessionStartHook(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", Version: "0.7.1"}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	settingsFile := filepath.Join(projectDir, ".claude", "settings.json")
+	data, _ := os.ReadFile(settingsFile)
+	var settings map[string]json.RawMessage
+	json.Unmarshal(data, &settings)
+
+	var hooks map[string]interface{}
+	json.Unmarshal(settings["hooks"], &hooks)
+
+	sessionStart, ok := hooks["SessionStart"].([]interface{})
+	if !ok || len(sessionStart) != 1 {
+		t.Fatalf("SessionStart = %v, want 1 entry", hooks["SessionStart"])
+	}
+
+	// Verify install script was created.
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("install-pk.sh not created: %v", err)
+	}
+	if !strings.Contains(string(data), `PK_VERSION="v0.7.1"`) {
+		t.Errorf("install-pk.sh missing correct version, got: %s", string(data))
+	}
+}
+
 func TestWriteManaged_skipsModified(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")

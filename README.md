@@ -67,7 +67,7 @@ Re-run setup anytime to switch.
 ## Known Limitations
 
 - **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline — no local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
-- **Claude Code on web/mobile**: plankit's protective hooks (`pk guard`, `pk preserve`, `pk protect`) require the `pk` binary on PATH. The web sandbox doesn't ship `pk`, and mobile has no shell environment — hooks degrade to no-ops rather than failing loudly. Skills, rules, and CLAUDE.md still load from `.claude/`.
+- **Claude Code on the web**: `pk setup` installs a SessionStart hook that fetches the matching `pk` binary into the cloud sandbox at session start. Protective hooks (`pk guard`, `pk preserve`, `pk protect`) then work normally. Mobile has no shell environment — hooks degrade to no-ops there.
 
 ## Cross-platform
 

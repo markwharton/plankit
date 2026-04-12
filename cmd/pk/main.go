@@ -144,6 +144,7 @@ func runSetup(args []string) {
 	cfg.ProjectDir = dir
 	cfg.PreserveMode = *preserveMode
 	cfg.Force = *force
+	cfg.Version = version.Version()
 	if err := setup.Run(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
@@ -163,6 +164,15 @@ func runVersion(args []string) {
 			fmt.Fprintln(os.Stderr, info)
 		}
 	}
+
+	if scriptVer, found := setup.ScriptVersion("."); found {
+		running := strings.TrimPrefix(version.Version(), "v")
+		pinned := strings.TrimPrefix(scriptVer, "v")
+		if running != "dev" && pinned != running {
+			fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — re-run 'pk setup' to update\n", scriptVer, running)
+		}
+	}
+
 	printUpdateNotice()
 }
 

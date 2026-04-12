@@ -25,6 +25,9 @@ var rulesFS embed.FS
 //go:embed template/CLAUDE.md
 var templateFS embed.FS
 
+//go:embed template/install-pk.sh
+var installScriptTemplate string
+
 // Hook represents a single hook command entry.
 // Field order determines JSON output order.
 type Hook struct {
@@ -41,11 +44,12 @@ type HookEntry struct {
 	Hooks   []Hook `json:"hooks"`
 }
 
-// HooksConfig defines the PreToolUse and PostToolUse hook arrays.
+// HooksConfig defines the hook arrays for each Claude Code event.
 // Field order determines JSON output order.
 type HooksConfig struct {
-	PreToolUse  []HookEntry `json:"PreToolUse"`
-	PostToolUse []HookEntry `json:"PostToolUse,omitempty"`
+	PreToolUse   []HookEntry `json:"PreToolUse"`
+	PostToolUse  []HookEntry `json:"PostToolUse,omitempty"`
+	SessionStart []HookEntry `json:"SessionStart,omitempty"`
 }
 
 // buildHookConfig returns the hook configuration for the given preserve mode.
@@ -72,6 +76,13 @@ func buildHookConfig(preserveMode string) HooksConfig {
 		config.PostToolUse = preserveHookEntry("pk preserve", "Preserving approved plan...", true, 60)
 	case "manual":
 		config.PostToolUse = preserveHookEntry("pk preserve --notify", "Checking plan...", false, 10)
+	}
+
+	config.SessionStart = []HookEntry{
+		{
+			Matcher: "*",
+			Hooks:   []Hook{{Type: "command", Command: ".claude/install-pk.sh", Timeout: 30}},
+		},
 	}
 
 	return config
@@ -301,6 +312,7 @@ type Config struct {
 	ProjectDir   string
 	PreserveMode string
 	Force        bool
+	Version      string
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -308,6 +320,46 @@ func DefaultConfig() Config {
 	return Config{
 		Stderr: os.Stderr,
 	}
+}
+
+// ScriptVersion reads the pinned PK_VERSION from .claude/install-pk.sh.
+// Returns the version string and true if found, or ("", false) if the script
+// does not exist or has no PK_VERSION line.
+func ScriptVersion(projectDir string) (string, bool) {
+	data, err := os.ReadFile(filepath.Join(projectDir, ".claude", "install-pk.sh"))
+	if err != nil {
+		return "", false
+	}
+	prefix := `PK_VERSION="`
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, prefix) && strings.HasSuffix(line, `"`) {
+			return line[len(prefix) : len(line)-1], true
+		}
+	}
+	return "", false
+}
+
+// writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.
+// The script is template-substituted with the running pk version and written with 0755
+// permissions. For development builds (version "dev"), the script is skipped.
+func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) error {
+	if pkVersion == "" || pkVersion == "dev" {
+		fmt.Fprintln(stderr, "  install-pk.sh: skipped (development build)")
+		return nil
+	}
+	if !strings.HasPrefix(pkVersion, "v") {
+		pkVersion = "v" + pkVersion
+	}
+	content := strings.Replace(installScriptTemplate, "{{VERSION}}", pkVersion, 1)
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	if err := os.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
+		return fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
+	}
+	if err := os.WriteFile(scriptPath, []byte(content), 0755); err != nil {
+		return fmt.Errorf("failed to write %s: %w", scriptPath, err)
+	}
+	fmt.Fprintf(stderr, "  install-pk.sh: updated (pinned %s)\n", pkVersion)
+	return nil
 }
 
 // Run configures the project's .claude/settings.json to use plankit.
@@ -404,6 +456,12 @@ func Run(cfg Config) error {
 		}
 	}
 
+	// Install bootstrap script for cloud sandboxes.
+	fmt.Fprintln(stderr, "Bootstrap:")
+	if err := writeInstallScript(projectDir, cfg.Version, stderr); err != nil {
+		return err
+	}
+
 	// Check if pk is in PATH.
 	if _, err := exec.LookPath("pk"); err != nil {
 		fmt.Fprintln(stderr, "Warning: pk is not in your PATH. Hooks will silently skip until it is installed.")
@@ -469,8 +527,9 @@ func mergeHooks(settings map[string]json.RawMessage, newHooks HooksConfig) error
 	}
 
 	merged := HooksConfig{
-		PreToolUse:  mergeHookCategory(existing.PreToolUse, newHooks.PreToolUse),
-		PostToolUse: mergeHookCategory(existing.PostToolUse, newHooks.PostToolUse),
+		PreToolUse:   mergeHookCategory(existing.PreToolUse, newHooks.PreToolUse),
+		PostToolUse:  mergeHookCategory(existing.PostToolUse, newHooks.PostToolUse),
+		SessionStart: mergeHookCategory(existing.SessionStart, newHooks.SessionStart),
 	}
 
 	hooksJSON, err := json.Marshal(merged)
