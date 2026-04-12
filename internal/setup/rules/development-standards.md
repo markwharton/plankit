@@ -1,5 +1,5 @@
 ---
-description: Data-first, fail fast, consistency, two-pass, security, and debugging
+description: Data-first, fail fast, consistency, two-pass, verification, security, and debugging
 ---
 
 # Development Standards
