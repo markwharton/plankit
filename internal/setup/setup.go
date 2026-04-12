@@ -553,13 +553,17 @@ func mergeHookCategory(existing, plankit []HookEntry) []HookEntry {
 	return append(result, plankit...)
 }
 
-// filterNonPlankitHooks returns hooks whose command does not start with "pk ".
+// filterNonPlankitHooks returns hooks whose command is not managed by plankit.
 func filterNonPlankitHooks(hooks []Hook) []Hook {
 	var result []Hook
 	for _, h := range hooks {
-		if !strings.HasPrefix(h.Command, "pk ") {
+		if !isPlankitHook(h.Command) {
 			result = append(result, h)
 		}
 	}
 	return result
+}
+
+func isPlankitHook(command string) bool {
+	return strings.HasPrefix(command, "pk ") || command == ".claude/install-pk.sh"
 }

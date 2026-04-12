@@ -918,6 +918,25 @@ func TestRun_sessionStartHook(t *testing.T) {
 	}
 }
 
+func TestMergeHooks_existingSessionStart(t *testing.T) {
+	existing := `{"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":".claude/install-pk.sh","timeout":30}]}]}`
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(existing),
+	}
+	hooks := buildHookConfig("manual")
+
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var result HooksConfig
+	json.Unmarshal(settings["hooks"], &result)
+
+	if len(result.SessionStart) != 1 {
+		t.Errorf("SessionStart = %d entries, want 1 (no duplicate)", len(result.SessionStart))
+	}
+}
+
 func TestWriteManaged_skipsModified(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")

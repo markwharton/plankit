@@ -44,6 +44,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/install-pk.sh",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   },
   "permissions": {
