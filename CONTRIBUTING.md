@@ -30,6 +30,15 @@ All changes go through `develop` — never commit directly to `main`.
 
 In Claude Code, `pk guard` enforces this automatically by blocking git mutations on `main`. In the terminal, this is a convention — there are no branch rules preventing direct commits to `main`, so discipline is on you.
 
+Dependabot PRs target `develop` via `.github/dependabot.yml`. If a hotfix or emergency PR lands directly on `main`, merge main into develop before releasing:
+
+```bash
+git switch develop
+git merge main
+```
+
+This ensures the changelog includes everything in the release and maintains the ancestry that `pk release` needs for fast-forward merges to main.
+
 ## Release
 
 With `release.branch` configured in `.pk.json`, the full release flow runs from Claude Code or terminal:
