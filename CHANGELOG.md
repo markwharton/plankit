@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.8.0] - 2026-04-13
+
+### Added
+
+- bootstrap pk into cloud sandboxes via SessionStart hook (5f3bc4f)
+
+### Documentation
+
+- add /start and /guide pages, link from landing page (d2be5e1)
+- update branch references from dev to develop (a12e318)
+- target dependabot at develop, merge main for releases (dae5dc2)
+- add git mental model and PR merge guidance (4c0e365)
+
+### Maintenance
+
+- bump actions/upload-artifact from 7.0.0 to 7.0.1 (4488d0c)
+- bump actions/upload-pages-artifact from 4.0.0 to 5.0.0 (183348f)
+- add SessionStart hook and bootstrap script (e2c53c1)
+- add CI workflow with test, lint, and Codecov coverage (878fb89)
+
 ## [v0.7.1] - 2026-04-12
 
 ### Changed
@@ -262,3 +282,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.6.2]: https://github.com/markwharton/plankit/compare/v0.6.1...v0.6.2
 [v0.7.0]: https://github.com/markwharton/plankit/compare/v0.6.2...v0.7.0
 [v0.7.1]: https://github.com/markwharton/plankit/compare/v0.7.0...v0.7.1
+[v0.8.0]: https://github.com/markwharton/plankit/compare/v0.7.1...v0.8.0
