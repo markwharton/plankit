@@ -17,8 +17,8 @@ IMPORTANT: Follow these rules at all times.
 
 ### Branch & Workflow
 
-- All changes go through `dev` — never commit directly to `main`.
-- Release flow: `pk changelog` (on `dev`) → `pk release` (merges to `main`, pushes, switches back).
+- All changes go through `develop` — never commit directly to `main`.
+- Release flow: `pk changelog` (on `develop`) → `pk release` (merges to `main`, pushes, switches back).
 - Conventional Commits required. Configured types: `feat`, `fix`, `deprecate`, `revert`, `security`, `refactor`, `perf`, `docs`, `chore`, `test`, `build`, `ci`, `style`, `plan` (hidden).
 
 ### Quick Commands

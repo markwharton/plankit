@@ -16,13 +16,13 @@
 
 See [pk release — Workflows](pk-release.md#workflows) for the reference table. The examples below show the actual command sequences.
 
-All changes go through `dev` — `main` is protected by `pk guard`. With
+All changes go through `develop` — `main` is protected by `pk guard`. With
 `release.branch` configured in `.pk.json`:
 
 ```bash
 # Direct merge flow
-pk changelog                          # on dev: generate changelog and commit (no tag yet)
-pk release                            # tag, merge to main, validate, push, switch back, push dev
+pk changelog                          # on develop: generate changelog and commit (no tag yet)
+pk release                            # tag, merge to main, validate, push, switch back, push develop
 ```
 
 `pk changelog` adds a `Release-Tag:` trailer to the commit message body. `pk release` reads that trailer to know which version to tag, then creates the tag just before pushing. If something goes wrong between `pk changelog` and `pk release`, run `pk changelog --undo` to cleanly unwind the release commit (refuses if HEAD has already been pushed).

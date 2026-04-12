@@ -26,7 +26,7 @@ make fmt      # Format code
 
 ## Workflow
 
-All changes go through `dev` — never commit directly to `main`.
+All changes go through `develop` — never commit directly to `main`.
 
 In Claude Code, `pk guard` enforces this automatically by blocking git mutations on `main`. In the terminal, this is a convention — there are no branch rules preventing direct commits to `main`, so discipline is on you.
 
@@ -36,9 +36,9 @@ With `release.branch` configured in `.pk.json`, the full release flow runs from 
 
 ```bash
 pk changelog --dry-run            # preview changelog and version bump
-pk changelog                      # on dev: generate CHANGELOG.md and commit (no tag)
+pk changelog                      # on develop: generate CHANGELOG.md and commit (no tag)
 pk release --dry-run              # preview the release flow
-pk release                        # read Release-Tag trailer, tag, merge to main, push main + tag, push dev
+pk release                        # read Release-Tag trailer, tag, merge to main, push main + tag, push develop
 ```
 
 `pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
