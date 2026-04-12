@@ -1,5 +1,10 @@
 # plankit
 
+[![CI](https://github.com/markwharton/plankit/actions/workflows/ci.yml/badge.svg)](https://github.com/markwharton/plankit/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/markwharton/plankit/graph/badge.svg?token=y1SS0kyj3v)](https://codecov.io/gh/markwharton/plankit)
+[![Go](https://img.shields.io/badge/Go-1.21-00ADD8.svg)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
 
 A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Designed for small teams and independent developers.
