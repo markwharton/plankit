@@ -39,6 +39,14 @@ git merge main
 
 This ensures the changelog includes everything in the release and maintains the ancestry that `pk release` needs for fast-forward merges to main.
 
+After merging PRs on GitHub, sync your local branch with rebase to avoid unnecessary merge commits:
+
+```bash
+git pull --rebase
+```
+
+This replays your unpushed local commits on top of the remote, keeping history linear. Only safe when your local commits haven't been pushed yet — which is exactly when you need it.
+
 ## Pull requests
 
 When merging PRs through GitHub, choose the merge method based on the branch:
