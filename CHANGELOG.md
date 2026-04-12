@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.7.1] - 2026-04-12
+
+### Changed
+
+- deduplicate trailer reading, clean-tree, hooks, and config types (7c5db28)
+
+### Documentation
+
+- tighten review-staged example, rename review→review-code (b63c80e)
+- note hook degradation on web/mobile (6455a0c)
+- use human-readable URL form for Claude Code docs (764167a)
+- restore verification in development-standards description (dbc3307)
+
+### Maintenance
+
+- enforce CGO_ENABLED=0 for pure-Go static binaries (0dc3243)
+
 ## [v0.7.0] - 2026-04-11
 
 ### Added
@@ -244,3 +261,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.6.1]: https://github.com/markwharton/plankit/compare/v0.6.0...v0.6.1
 [v0.6.2]: https://github.com/markwharton/plankit/compare/v0.6.1...v0.6.2
 [v0.7.0]: https://github.com/markwharton/plankit/compare/v0.6.2...v0.7.0
+[v0.7.1]: https://github.com/markwharton/plankit/compare/v0.7.0...v0.7.1
