@@ -29,9 +29,9 @@ build-all: clean
 clean:
 	rm -rf $(BUILD_DIR)
 
-# Run tests
+# Run tests (race detector requires cgo)
 test:
-	go test -v -race ./...
+	CGO_ENABLED=1 go test -v -race ./...
 
 # Install to GOPATH/bin
 install:
