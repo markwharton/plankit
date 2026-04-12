@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Started — plankit</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500&display=swap');
+
+  :root {
+    --bg: #faf8f5;
+    --text: #2c2825;
+    --muted: #7a726a;
+    --accent: #b8510d;
+    --rule: #e0dbd5;
+    --code-bg: #f0ece7;
+    --max-width: 640px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 80px 24px 120px;
+  }
+
+  .mark {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 48px;
+  }
+
+  .mark a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--muted);
+    margin-bottom: 64px;
+    font-style: italic;
+  }
+
+  h2 {
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  p { margin-bottom: 20px; }
+
+  .section { margin-bottom: 56px; }
+
+  .features {
+    list-style: none;
+    margin: 24px 0;
+  }
+
+  .features li {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .features li:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .features strong {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .features span {
+    font-size: 16px;
+    color: var(--muted);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 56px 0;
+  }
+
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 14px;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  pre {
+    background: var(--text);
+    color: var(--bg);
+    padding: 20px 24px;
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  a:hover {
+    border-bottom-color: var(--accent);
+  }
+
+  .tree {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--muted);
+    margin: 24px 0;
+    padding-left: 8px;
+  }
+
+  .footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="mark"><a href="/">plankit</a></div>
+
+  <h1>Get started</h1>
+  <p class="subtitle">From zero to your first release in five minutes.</p>
+
+  <div class="section">
+    <h2>Prerequisites</h2>
+    <p><a href="https://git-scm.com/">Git</a>, <a href="https://code.claude.com">Claude Code</a>, and <a href="https://go.dev/doc/install">Go</a> (or download a binary from the <a href="https://github.com/markwharton/plankit/releases">releases page</a>).</p>
+  </div>
+
+  <div class="section">
+    <h2>Install</h2>
+    <pre>go install github.com/markwharton/plankit/cmd/pk@latest</pre>
+  </div>
+
+  <div class="section">
+    <h2>Setup your project</h2>
+    <pre>cd your-project
+pk setup</pre>
+    <p>This creates a <code>CLAUDE.md</code> with critical rules, installs guidelines as <code>.claude/rules/</code> files, and adds skills for changelog, release, plan preservation, and project initialization. Restart Claude Code to apply changes.</p>
+
+    <div class="tree">
+      your-project/<br>
+      &ensp;&ensp;CLAUDE.md<br>
+      &ensp;&ensp;.claude/<br>
+      &ensp;&ensp;&ensp;&ensp;settings.json<br>
+      &ensp;&ensp;&ensp;&ensp;rules/<br>
+      &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;development-standards.md<br>
+      &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;git-discipline.md<br>
+      &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;model-behavior.md<br>
+      &ensp;&ensp;&ensp;&ensp;skills/<br>
+      &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;changelog/ &middot; init/ &middot; preserve/ &middot; release/
+    </div>
+
+    <p>Then run <code>/init</code> in Claude Code to add project-specific conventions. It analyzes your codebase, asks about branch protection, and proposes a <code>## Project Conventions</code> section for your CLAUDE.md.</p>
+  </div>
+
+  <div class="section">
+    <h2>Try it</h2>
+    <p>Start Claude Code in your project and try the core loop:</p>
+
+    <ul class="features">
+      <li>
+        <strong>/plan</strong>
+        <span>Enter plan mode. Claude explores the codebase, proposes an approach. You review and approve. The plan is preserved to <code>docs/plans/</code> &mdash; timestamped, committed, protected.</span>
+      </li>
+      <li>
+        <strong>/changelog</strong>
+        <span>Generate a changelog from conventional commits. Preview with <code>--dry-run</code>, confirm, then commit. The version is carried as a <code>Release-Tag:</code> trailer &mdash; no git tag yet.</span>
+      </li>
+      <li>
+        <strong>/release</strong>
+        <span>Read the trailer, create the git tag, merge to the release branch, push. Pre-flight checks run first. One command, fully validated.</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Commands</h2>
+    <ul class="features">
+      <li>
+        <strong>pk setup</strong>
+        <span>Configure hooks, skills, rules, and CLAUDE.md for your project.</span>
+      </li>
+      <li>
+        <strong>pk changelog</strong>
+        <span>Generate CHANGELOG.md from conventional commits and commit the result.</span>
+      </li>
+      <li>
+        <strong>pk release</strong>
+        <span>Tag, merge to the release branch, validate, and push.</span>
+      </li>
+      <li>
+        <strong>pk guard</strong>
+        <span>Prompt before git mutations on protected branches (runs as a hook).</span>
+      </li>
+      <li>
+        <strong>pk preserve</strong>
+        <span>Save an approved plan to <code>docs/plans/</code> and commit it.</span>
+      </li>
+      <li>
+        <strong>pk version</strong>
+        <span>Print version and check for updates.</span>
+      </li>
+    </ul>
+    <p>Full command documentation is on <a href="https://github.com/markwharton/plankit">GitHub</a>.</p>
+  </div>
+
+  <hr>
+
+  <p>New to AI-assisted development? Read the <a href="/guide">methodology guide</a> for the principles behind plankit's approach.</p>
+
+  <div class="footer">
+    <a href="/">plankit.life</a> &middot; <a href="/start">start</a> &middot; <a href="/guide">guide</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
+  </div>
+
+</main>
+</body>
+</html>

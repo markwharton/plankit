@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#8b5e3c"/>
+  <text x="256" y="274" text-anchor="middle" dominant-baseline="central"
+        font-family="Inter, -apple-system, Helvetica, Arial, sans-serif"
+        font-weight="700" font-size="260" letter-spacing="-8"
+        fill="#faf8f5">pk</text>
+  <rect x="156" y="393" width="200" height="8" rx="4" fill="#faf8f5"/>
+</svg>

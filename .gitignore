@@ -1,3 +1,7 @@
-*.bak
+# Build output
 dist/
 /pk
+
+# Editor and OS
+*.bak
+.DS_Store
