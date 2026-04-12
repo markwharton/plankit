@@ -43,7 +43,7 @@ This ensures the changelog includes everything in the release and maintains the 
 
 When merging PRs through GitHub, choose the merge method based on the branch:
 
-- **Rebase and merge** for most PRs — replays commits on top of the target branch. Linear history, and each conventional commit is preserved individually for `pk changelog`.
+- **Rebase and merge** for most PRs (e.g., dependabot bumps) — replays commits on top of the target branch. Linear history, and each conventional commit is preserved individually for `pk changelog`.
 - **Merge commit** when the PR branch has tags — rebase creates new SHAs which would orphan tags pointing at the originals.
 - **Squash is disabled** — it collapses all commits into one, losing the conventional commit messages that `pk changelog` depends on. See [Squash Merge and Release Tags](docs/anti-patterns.md#squash-merge-and-release-tags).
 

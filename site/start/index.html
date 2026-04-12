@@ -185,7 +185,7 @@
     <h2>Setup your project</h2>
     <pre>cd your-project
 pk setup</pre>
-    <p>This creates a <code>CLAUDE.md</code> with critical rules, installs guidelines as <code>.claude/rules/</code> files, and adds skills for changelog, release, plan preservation, and project initialization. Restart Claude Code to apply changes.</p>
+    <p>This creates a <code>CLAUDE.md</code> with critical rules, installs guidelines as <code>.claude/rules/</code> files, adds skills for changelog, release, plan preservation, and project initialization, and writes a bootstrap script that fetches <code>pk</code> into cloud sandboxes. Restart Claude Code to apply changes.</p>
 
     <div class="tree">
       your-project/<br>
@@ -196,6 +196,7 @@ pk setup</pre>
       &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;development-standards.md<br>
       &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;git-discipline.md<br>
       &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;model-behavior.md<br>
+      &ensp;&ensp;&ensp;&ensp;install-pk.sh<br>
       &ensp;&ensp;&ensp;&ensp;skills/<br>
       &ensp;&ensp;&ensp;&ensp;&ensp;&ensp;changelog/ &middot; init/ &middot; preserve/ &middot; release/
     </div>

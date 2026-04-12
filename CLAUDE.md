@@ -104,3 +104,4 @@ Claude Code hooks receive JSON on stdin and produce JSON on stdout:
 
 - **PreToolUse**: Output `{"decision":"block","reason":"..."}` + exit 0 to block. Exit 0 with no output to allow. Any non-zero exit (including command-not-found 127) is non-blocking.
 - **PostToolUse**: Output `{"systemMessage":"..."}` + exit 0 for user-visible feedback. Use `{"hookSpecificOutput":{"additionalContext":"..."}}` to inject context into Claude's next turn. Both fields can be combined in one response. Non-zero exit is a non-blocking error.
+- **SessionStart**: `.claude/install-pk.sh` bootstraps `pk` into cloud sandboxes. No action needed — if `pk` is on PATH, the script exits immediately.
