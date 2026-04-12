@@ -2,6 +2,9 @@ BINARY_NAME=pk
 VERSION?=dev
 BUILD_DIR=dist
 
+# Force pure-Go static binaries; prevents implicit glibc dependency on linux.
+export CGO_ENABLED := 0
+
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 

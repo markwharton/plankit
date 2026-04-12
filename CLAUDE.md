@@ -45,6 +45,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - Cross-compile: `make build-all` (darwin/linux amd64+arm64, windows amd64).
 - Version injected via ldflags (`-X .../version.version=$(VERSION)`).
 - All user messages to stderr, stdout reserved for hook protocol JSON.
+- `CGO_ENABLED=0` enforced via Makefile — pure-Go static binaries, no implicit glibc dependency on linux.
 - CLI flags use `--kebab-case` (e.g., `--dry-run`, `--project-dir`).
 
 ### Directory Structure
