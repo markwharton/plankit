@@ -757,12 +757,11 @@ func TestWriteManaged_frontmatter(t *testing.T) {
 }
 
 func TestScriptVersion_found(t *testing.T) {
-	projectDir := t.TempDir()
-	scriptDir := filepath.Join(projectDir, ".claude")
-	os.MkdirAll(scriptDir, 0755)
-	os.WriteFile(filepath.Join(scriptDir, "install-pk.sh"), []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install-pk.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
 
-	ver, found := ScriptVersion(projectDir)
+	ver, found := ScriptVersion(path)
 	if !found {
 		t.Fatal("ScriptVersion did not find PK_VERSION")
 	}
@@ -771,23 +770,95 @@ func TestScriptVersion_found(t *testing.T) {
 	}
 }
 
-func TestScriptVersion_notFound(t *testing.T) {
-	projectDir := t.TempDir()
-	_, found := ScriptVersion(projectDir)
-	if found {
-		t.Error("ScriptVersion should return false when script does not exist")
+func TestScriptVersion_customName(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\nMY_APP_VERSION=\"v1.2.3\"\n"), 0755)
+
+	ver, found := ScriptVersion(path)
+	if !found {
+		t.Fatal("ScriptVersion did not find MY_APP_VERSION")
+	}
+	if ver != "v1.2.3" {
+		t.Errorf("ScriptVersion = %q, want %q", ver, "v1.2.3")
 	}
 }
 
-func TestScriptVersion_noPKVersion(t *testing.T) {
-	projectDir := t.TempDir()
-	scriptDir := filepath.Join(projectDir, ".claude")
-	os.MkdirAll(scriptDir, 0755)
-	os.WriteFile(filepath.Join(scriptDir, "install-pk.sh"), []byte("#!/usr/bin/env bash\necho hello\n"), 0755)
-
-	_, found := ScriptVersion(projectDir)
+func TestScriptVersion_notFound(t *testing.T) {
+	_, found := ScriptVersion(filepath.Join(t.TempDir(), "missing.sh"))
 	if found {
-		t.Error("ScriptVersion should return false when no PK_VERSION line")
+		t.Error("ScriptVersion should return false when file does not exist")
+	}
+}
+
+func TestScriptVersion_noVersionLine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "script.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\necho hello\n"), 0755)
+
+	_, found := ScriptVersion(path)
+	if found {
+		t.Error("ScriptVersion should return false when no VERSION line")
+	}
+}
+
+func TestPinVersion_updatesVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install-pk.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\ninstall_dir=\"$HOME/.local/bin\"\n"), 0755)
+
+	updated, err := PinVersion(path, "0.8.1")
+	if err != nil {
+		t.Fatalf("PinVersion() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("PinVersion should return updated=true")
+	}
+
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `PK_VERSION="v0.8.1"`) {
+		t.Errorf("script should contain v0.8.1, got: %s", string(data))
+	}
+}
+
+func TestPinVersion_customName(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\nMY_APP_VERSION=\"v1.0.0\"\n"), 0755)
+
+	updated, err := PinVersion(path, "1.1.0")
+	if err != nil {
+		t.Fatalf("PinVersion() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("PinVersion should return updated=true")
+	}
+
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `MY_APP_VERSION="v1.1.0"`) {
+		t.Errorf("script should contain v1.1.0, got: %s", string(data))
+	}
+}
+
+func TestPinVersion_noFile(t *testing.T) {
+	updated, err := PinVersion(filepath.Join(t.TempDir(), "missing.sh"), "0.8.1")
+	if err != nil {
+		t.Fatalf("PinVersion should not error when file doesn't exist, got: %v", err)
+	}
+	if updated {
+		t.Error("PinVersion should return updated=false when file doesn't exist")
+	}
+}
+
+func TestPinVersion_vPrefix(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "install-pk.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
+
+	PinVersion(path, "v0.8.1")
+	data, _ := os.ReadFile(path)
+	if strings.Contains(string(data), `"vv0.8.1"`) {
+		t.Error("PinVersion should not double-prefix v")
 	}
 }
 

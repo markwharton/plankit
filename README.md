@@ -60,6 +60,7 @@ Re-run setup anytime to switch.
 | `pk guard` | Block git mutations on protected branches — [details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |
+| `pk pin` | Update pinned version in a script file — [details](docs/pk-pin.md) |
 | `pk version` | Print version and check for updates — [details](docs/pk-version.md) |
 
 ## Documentation

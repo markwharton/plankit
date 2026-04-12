@@ -15,7 +15,10 @@
       {"type": "ci", "section": "Maintenance"},
       {"type": "style", "section": "Maintenance"},
       {"type": "plan", "section": "Plans", "hidden": true}
-    ]
+    ],
+    "hooks": {
+      "preCommit": "pk pin --file .claude/install-pk.sh $VERSION"
+    }
   },
   "guard": {
     "branches": ["main"]

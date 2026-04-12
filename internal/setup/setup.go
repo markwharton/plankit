@@ -322,21 +322,72 @@ func DefaultConfig() Config {
 	}
 }
 
-// ScriptVersion reads the pinned PK_VERSION from .claude/install-pk.sh.
-// Returns the version string and true if found, or ("", false) if the script
-// does not exist or has no PK_VERSION line.
-func ScriptVersion(projectDir string) (string, bool) {
-	data, err := os.ReadFile(filepath.Join(projectDir, ".claude", "install-pk.sh"))
+// ScriptVersion reads the pinned version from a file.
+// Returns the version string and true if found, or ("", false) if the file
+// does not exist or has no VERSION pin.
+func ScriptVersion(filePath string) (string, bool) {
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", false
 	}
-	prefix := `PK_VERSION="`
 	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, prefix) && strings.HasSuffix(line, `"`) {
-			return line[len(prefix) : len(line)-1], true
+		if _, ok := versionPinName(line); ok {
+			idx := strings.Index(line, `="`)
+			if idx >= 0 && strings.HasSuffix(line, `"`) {
+				return line[idx+2 : len(line)-1], true
+			}
 		}
 	}
 	return "", false
+}
+
+// PinVersion updates a version pin in a script file. It finds the first line
+// matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in VERSION)
+// and replaces the version. Returns (true, nil) if updated, (false, nil) if the
+// file does not exist (no-op), or (false, error) on failure.
+func PinVersion(filePath string, ver string) (bool, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, nil
+	}
+	if !strings.HasPrefix(ver, "v") {
+		ver = "v" + ver
+	}
+	lines := strings.Split(string(data), "\n")
+	found := false
+	for i, line := range lines {
+		if name, ok := versionPinName(line); ok {
+			lines[i] = fmt.Sprintf(`%s="v%s"`, name, strings.TrimPrefix(ver, "v"))
+			found = true
+			break
+		}
+	}
+	if !found {
+		return false, fmt.Errorf("%s has no VERSION pin", filepath.Base(filePath))
+	}
+	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0755); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// versionPinName checks if a line matches the pattern SOMETHING_VERSION="v..."
+// and returns the variable name. Returns ("", false) if no match.
+func versionPinName(line string) (string, bool) {
+	idx := strings.Index(line, `VERSION="v`)
+	if idx < 0 {
+		return "", false
+	}
+	name := line[:idx+len("VERSION")]
+	for _, c := range name {
+		if !((c >= 'A' && c <= 'Z') || c == '_') {
+			return "", false
+		}
+	}
+	if !strings.HasSuffix(line, `"`) {
+		return "", false
+	}
+	return name, true
 }
 
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.

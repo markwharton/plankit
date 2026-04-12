@@ -7,6 +7,7 @@
 //
 //	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag version
 //	pk guard       PreToolUse hook: block git mutations on protected branches
+//	pk pin         Update pinned version in .claude/install-pk.sh
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
@@ -49,6 +50,8 @@ func main() {
 		os.Exit(protect.Run(protect.DefaultConfig()))
 	case "setup":
 		runSetup(os.Args[2:])
+	case "pin":
+		runPin(os.Args[2:])
 	case "version", "--version", "-v":
 		runVersion(os.Args[2:])
 	case "help", "--help", "-h":
@@ -153,6 +156,24 @@ func runSetup(args []string) {
 	printUpdateNotice()
 }
 
+func runPin(args []string) {
+	fs := flag.NewFlagSet("pin", flag.ExitOnError)
+	file := fs.String("file", "", "File containing the version pin (required)")
+	fs.Parse(args)
+	if *file == "" || fs.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: pk pin --file <path> <version>")
+		os.Exit(1)
+	}
+	updated, err := setup.PinVersion(*file, fs.Arg(0))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+	if updated {
+		fmt.Fprintf(os.Stderr, "Pinned %s to %s\n", *file, fs.Arg(0))
+	}
+}
+
 func runVersion(args []string) {
 	fs := flag.NewFlagSet("version", flag.ExitOnError)
 	verbose := fs.Bool("verbose", false, "Show build date and Go version")
@@ -165,7 +186,7 @@ func runVersion(args []string) {
 		}
 	}
 
-	if scriptVer, found := setup.ScriptVersion("."); found {
+	if scriptVer, found := setup.ScriptVersion(".claude/install-pk.sh"); found {
 		running := strings.TrimPrefix(version.Version(), "v")
 		pinned := strings.TrimPrefix(scriptVer, "v")
 		if running != "dev" && pinned != running {
@@ -190,6 +211,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
 	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
+	fmt.Fprintln(os.Stderr, "  pk pin --file <path> <version>      Update pinned version in a script file (preCommit hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
