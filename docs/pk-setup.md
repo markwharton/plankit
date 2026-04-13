@@ -46,6 +46,11 @@ After running `pk setup`, run `/init` to add project-specific conventions. The s
 
 `pk setup` installs four managed skills (`/changelog`, `/init`, `/preserve`, `/release`). You can add your own — see [Creating skills](creating-skills.md).
 
+### Guard modes
+
+- **block** (default) — Git mutations on protected branches are denied outright.
+- **ask** — The user is prompted to confirm or reject, allowing emergency overrides.
+
 ### Preserve modes
 
 - **manual** (default) — Use the `/preserve` skill when you're ready to save a plan.
@@ -55,18 +60,11 @@ Re-run setup anytime to switch modes.
 
 ### Managed file protection
 
-Files installed by `pk setup` include a SHA256 integrity marker. The format depends on the file type:
+`pk setup` manages files with three update strategies:
 
-- **CLAUDE.md** — HTML comment on the first line: `<!-- pk:sha256:... -->`
-- **Skills** — `pk_sha256` field in the YAML frontmatter
-
-On re-run, `pk setup` checks the marker:
-
-- **File is pristine** (SHA matches) — updated to the latest version.
-- **File was modified by user** (SHA mismatch) — skipped with a warning.
-- **File has no marker** (not managed by pk) — skipped.
-
-`--force` overrides this for skills only. CLAUDE.md is never force-overwritten.
+- **CLAUDE.md** — starts managed, becomes user-owned once customized. Protected by a SHA256 marker (`<!-- pk:sha256:... -->`). Updated when pristine, skipped when modified. Never force-overwritten — once you add project conventions, it's yours.
+- **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them.
+- **install-pk.sh** — always overwritten with the latest template. No SHA protection. Users have no reason to customize it — it's infrastructure, not content. Script fixes ship to every project on the next `pk setup` run.
 
 ### Cloud sandbox bootstrap
 
