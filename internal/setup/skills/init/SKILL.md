@@ -19,6 +19,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    - Existing conventions visible in code (naming, patterns, configuration)
    - Business and domain rules embedded in application logic, if applicable (default values, calculation rules, workflow states, status transitions, business logic, UI behavior conventions, data safety constraints)
    - Domain model relationships and creation flows, if applicable (which entities relate to which, what entry points exist, what gets pre-filled)
+   - CI/CD workflow files (`.github/workflows/`) — whether GitHub Actions are pinned to commit SHAs or use mutable tags, and whether Dependabot is configured for GitHub Actions updates
 4. Ask the user about branch conventions:
    - What is the default branch for development? (e.g., `dev`, `main`, `develop`)
    - Are there branches that should never receive direct commits? (e.g., `main`, `production`)
@@ -47,3 +48,4 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 - Include the project's test command, build command, and any deployment patterns you discover.
 - If the project uses `.pk.json`, include the configured commit types.
 - For business rules, read into services, components, and pages — do not stop at file structure. Extract actual values, defaults, and logic constraints.
+- If GitHub Actions use mutable tags (e.g., `@v4`), report this to the user as a security finding — mutable tags are vulnerable to supply chain attacks. If `.github/dependabot.yml` is missing or does not cover GitHub Actions, mention it as a way to keep pinned SHAs current. Include relevant conventions in the draft if the project has workflow files.
