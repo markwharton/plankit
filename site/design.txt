@@ -1,0 +1,98 @@
+What is plankit, really? Is the name too tied to the planning idea?
+
+plankit = everything plans need to succeed, not just the plans themselves.
+The rules, the testing discipline, the branch protection, the CLAUDE.md
+conventions — those aren't extras alongside plan preservation, they're
+prerequisites for plan preservation to be worth anything. A preserved
+plan that was built without discipline is just preserved garbage.
+
+And the changelog/release commands are the dogfooding layer — plankit
+building plankit. Users might adopt those too, but the core offering is
+the foundation: set up a project so that when you enter plan mode, the
+AI behaves predictably, tests before and after, respects boundaries,
+and the resulting plan is worth keeping.
+
+So "plankit" reads correctly: it's a kit for plans, where "for" means
+"to make them work," not just "to store them."
+
+---
+
+What happens when AI agents do more and more — does the discipline go away?
+
+The discipline doesn't go away — it moves.
+
+Infrastructure as code is the perfect analogy. We didn't eliminate ops
+discipline, we relocated it. Someone still thinks about availability,
+security, blast radius — they just express it in Terraform instead of
+racking servers. The discipline got encoded, not eliminated.
+
+The same thing is happening with AI-assisted development right now, and
+plankit sits at that transition point. The discipline that used to live
+in a developer's head (test before you ship, don't commit to main, plan
+before you code) is getting encoded into rules, hooks, and conventions
+that an AI agent follows. The human still supplies the why — the idea,
+the need, the judgment call — but the how gets progressively delegated.
+
+Where things are heading, in layers:
+
+Near term (1-2 years) — agents get longer leashes. Claude Code today
+operates within a session, directed by a developer. The trend is toward
+agents that run longer, more autonomously — background tasks, scheduled
+work, multi-step pipelines. The developer becomes more like a tech lead:
+setting direction, reviewing output, intervening on judgment calls.
+Discipline matters more here, not less, because the feedback loop is
+longer. A mistake in a 5-minute session is cheap; a mistake in an
+overnight autonomous run compounds.
+
+Medium term (2-4 years) — agents compose with agents. One agent plans,
+another implements, another reviews. The "plan" becomes a contract
+between agents, not just a document for a human to read. Git becomes
+the coordination layer — branches as workspaces, commits as checkpoints,
+PRs as review gates. GitHub (or whatever replaces it) becomes the
+orchestration platform. The ingredients — Claude, Claude Code, Git,
+GitHub, cloud providers — these become the stack, not just tools.
+Discipline at this layer looks like: which agent has authority to merge,
+what constitutes a sufficient review, how do you audit what an agent
+decided and why.
+
+Longer term (4+ years, approaching AGI) — the human contribution
+narrows and deepens. If agents can reliably go from idea to deployed
+product, the human role concentrates on: what should exist, who is it
+for, what tradeoffs are acceptable, and is this good. Product vision,
+ethics, taste. The "discipline" at this layer is about constraints on
+what gets built, not how it gets built. Plans become less about
+implementation steps and more about intent, boundaries, and success
+criteria.
+
+What stays constant across all of this:
+
+Ideas and needs remain human. Even with AGI, someone has to want
+something. The originating impulse — "my users need X," "this process
+is broken," "what if we tried Y" — that's human. AI can generate
+options, but choosing which problem matters is a values question.
+
+Git (or something like it) remains the ledger. Immutable history,
+branching, merging — these are fundamental to coordination, whether
+between humans, between agents, or both. The data structure is too
+elegant to replace; it'll get wrapped in higher abstractions.
+
+The trust boundary moves but never disappears. Today: you review code
+before committing. Tomorrow: you review plans before authorizing.
+Further out: you review outcomes before endorsing. There's always a
+point where a human says "yes, this is what I wanted." Discipline
+lives at that boundary.
+
+Where plankit fits:
+
+Right now, plankit encodes the discipline that makes AI-assisted
+development reliable — for a human directing an AI agent. That's the
+immediate value. But the shape of what it does — encoding intent before
+execution, preserving decisions, protecting boundaries, enforcing
+conventions — that pattern scales up. If agents start directing other
+agents, something still needs to say: here's the plan, here are the
+rules, here's what you can't touch, here's the proof it worked.
+
+The question for plankit isn't whether the discipline goes away. It's
+whether the toolkit evolves to encode discipline at each new layer as
+the stack grows — or whether it stays focused on the human-to-agent
+layer where it works today.

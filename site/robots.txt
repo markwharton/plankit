@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://plankit.life/sitemap.xml

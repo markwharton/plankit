@@ -7,7 +7,7 @@
 
 **LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
 
-A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Designed for small teams and independent developers.
+A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). The rules, testing discipline, and branch protection aren't extras — they're what make plans worth keeping. Designed for small teams and independent developers.
 
 ## What it does
 
