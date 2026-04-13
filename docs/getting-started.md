@@ -60,9 +60,9 @@ Re-run setup anytime to switch modes.
 ## Try it
 
 1. Start Claude Code in your project
-2. Enter plan mode (`/plan`)
-3. Describe a task, let Claude create a plan
-4. Approve the plan and exit plan mode
+2. Enter plan mode (`/plan`) and describe what you need
+3. Review the plan, adjust, iterate, approve
+4. Claude executes against the approved plan
 5. Type `/preserve` to save the plan to `docs/plans/` (or automatic in auto mode)
 
 ## What happens

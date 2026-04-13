@@ -10,12 +10,11 @@ Plans are the preserved specification: why the feature exists, what problem it s
 
 **The workflow:**
 
-1. Enter plan mode (`/plan`)
+1. Enter plan mode (`/plan`) and describe what you need
 2. Claude explores the codebase, asks questions, proposes an approach
-3. Developer reviews, adjusts, approves
-4. Claude executes against the approved plan
-5. Plan is preserved to `docs/plans/` (auto or manual)
-6. Plan is protected from accidental modification
+3. Review the plan — adjust scope, push back on assumptions, iterate
+4. Approve the plan — Claude executes against it
+5. Plan is preserved to `docs/plans/` and protected from modification
 
 **Why plans have value beyond the current session:**
 
