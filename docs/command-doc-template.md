@@ -110,7 +110,7 @@ Add a `<command>` key to `.pk.json`:
 ## Hook protocol
 
 - **Input:** PreToolUse JSON on stdin.
-- **Output:** `{"decision": "block", "reason": "..."}` to block. No output to allow.
+- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` on stdout to block. No output to allow. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
 - **Exit code:** Always 0.
 
 ## Environment

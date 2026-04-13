@@ -52,13 +52,18 @@ type HooksConfig struct {
 	SessionStart []HookEntry `json:"SessionStart,omitempty"`
 }
 
-// buildHookConfig returns the hook configuration for the given preserve mode.
-func buildHookConfig(preserveMode string) HooksConfig {
+// buildHookConfig returns the hook configuration for the given modes.
+func buildHookConfig(preserveMode, guardMode string) HooksConfig {
+	guardCommand := "pk guard"
+	if guardMode == "ask" {
+		guardCommand = "pk guard --ask"
+	}
+
 	config := HooksConfig{
 		PreToolUse: []HookEntry{
 			{
 				Matcher: "Bash",
-				Hooks:   []Hook{{Type: "command", Command: "pk guard", Timeout: 5}},
+				Hooks:   []Hook{{Type: "command", Command: guardCommand, Timeout: 5}},
 			},
 			{
 				Matcher: "Edit",
@@ -311,6 +316,7 @@ type Config struct {
 	Stderr       io.Writer
 	ProjectDir   string
 	PreserveMode string
+	GuardMode    string
 	Force        bool
 	Version      string
 }
@@ -434,7 +440,8 @@ func Run(cfg Config) error {
 	}
 
 	// Merge plankit hooks with any existing user hooks.
-	hookConfig := buildHookConfig(preserveMode)
+	guardMode := cfg.GuardMode
+	hookConfig := buildHookConfig(preserveMode, guardMode)
 	if err := mergeHooks(settings, hookConfig); err != nil {
 		return fmt.Errorf("failed to merge hooks: %w", err)
 	}
@@ -469,7 +476,7 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to write %s: %w", settingsFile, err)
 	}
 
-	fmt.Fprintf(stderr, "Configured plankit in %s (preserve mode: %s)\n", settingsFile, preserveMode)
+	fmt.Fprintf(stderr, "Configured plankit in %s (guard mode: %s, preserve mode: %s)\n", settingsFile, guardMode, preserveMode)
 
 	// Install CLAUDE.md if none exists or if pristine (never forced — CLAUDE.md is user-owned once customized).
 	claudeTemplate, err := fs.ReadFile(templateFS, "template/CLAUDE.md")

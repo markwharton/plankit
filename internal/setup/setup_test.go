@@ -13,7 +13,7 @@ func TestRun_freshProject(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -82,7 +82,7 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify rules were created with SHA markers.
-	for _, name := range []string{"model-behavior", "development-standards", "git-discipline"} {
+	for _, name := range []string{"model-behavior", "development-standards", "git-discipline", "plankit-tooling"} {
 		ruleFile := filepath.Join(projectDir, ".claude", "rules", name+".md")
 		data, err := os.ReadFile(ruleFile)
 		if err != nil {
@@ -107,8 +107,8 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify stderr output.
-	if !strings.Contains(stderr.String(), "preserve mode: auto") {
-		t.Errorf("stderr = %q, want preserve mode mentioned", stderr.String())
+	if !strings.Contains(stderr.String(), "guard mode: block, preserve mode: auto") {
+		t.Errorf("stderr = %q, want guard and preserve modes mentioned", stderr.String())
 	}
 }
 
@@ -116,7 +116,7 @@ func TestRun_createsClaudeMD(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestRun_skipsUnmanagedClaudeMD(t *testing.T) {
 	os.WriteFile(claudeFile, []byte("# My Custom CLAUDE.md\n"), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -170,7 +170,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md with marker.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
 
 	// User modifies it but keeps the marker line at the top.
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
@@ -183,7 +183,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 
 	// Re-run — should skip.
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
 
 	final, _ := os.ReadFile(claudeFile)
 	if !strings.Contains(string(final), "User's custom content") {
@@ -196,14 +196,14 @@ func TestRun_updatesUnmodifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
 
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
 	original, _ := os.ReadFile(claudeFile)
 
 	// Re-run — should update (content unchanged, SHA matches).
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
 
 	updated, _ := os.ReadFile(claudeFile)
 	// Content should be identical (same template, same SHA).
@@ -222,7 +222,7 @@ func TestRun_existingSettings(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -259,7 +259,7 @@ func TestRun_existingPermissions(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestRun_duplicatePermission(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -327,7 +327,7 @@ func TestRun_invalidJSON(t *testing.T) {
 	os.WriteFile(settingsFile, []byte("not json"), 0644)
 
 	var stderr bytes.Buffer
-	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto"})
+	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"})
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -337,7 +337,7 @@ func TestRun_manualMode(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -363,14 +363,14 @@ func TestRun_manualMode(t *testing.T) {
 		t.Errorf("PostToolUse hook = %s, manual mode should not be async", string(hookData))
 	}
 
-	if !strings.Contains(stderr.String(), "preserve mode: manual") {
-		t.Errorf("stderr = %q, want preserve mode mentioned", stderr.String())
+	if !strings.Contains(stderr.String(), "guard mode: block, preserve mode: manual") {
+		t.Errorf("stderr = %q, want guard and preserve modes mentioned", stderr.String())
 	}
 }
 
 func TestMergeHooks_freshSettings(t *testing.T) {
 	settings := make(map[string]json.RawMessage)
-	hooks := buildHookConfig("manual")
+	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -392,7 +392,7 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 	settings := map[string]json.RawMessage{
 		"hooks": json.RawMessage(existing),
 	}
-	hooks := buildHookConfig("manual")
+	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -422,7 +422,7 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 		"hooks": json.RawMessage(existing),
 	}
 	// Re-setup with manual mode — should replace old plankit hooks.
-	hooks := buildHookConfig("manual")
+	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -451,7 +451,7 @@ func TestMergeHooks_mixedHooks(t *testing.T) {
 	settings := map[string]json.RawMessage{
 		"hooks": json.RawMessage(existing),
 	}
-	hooks := buildHookConfig("manual")
+	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -487,7 +487,7 @@ func TestRun_existingHooks(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -961,7 +961,7 @@ func TestRun_sessionStartHook(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", Version: "0.7.1"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", Version: "0.7.1"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -994,7 +994,7 @@ func TestMergeHooks_existingSessionStart(t *testing.T) {
 	settings := map[string]json.RawMessage{
 		"hooks": json.RawMessage(existing),
 	}
-	hooks := buildHookConfig("manual")
+	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)

@@ -5,7 +5,8 @@ Configure a project's hooks, skills, and CLAUDE.md for use with plankit.
 ## Usage
 
 ```bash
-pk setup                              # default: manual preserve mode
+pk setup                              # default: block guard, manual preserve
+pk setup --guard ask                  # prompt user instead of blocking on protected branches
 pk setup --preserve auto              # auto-preserve plans on ExitPlanMode
 pk setup --project-dir /path/to/dir   # specify project directory
 pk setup --force                      # overwrite all managed skills
@@ -24,6 +25,7 @@ After setup, restart Claude Code to apply changes.
 
 ## Flags
 
+- **--guard** — Guard mode: `block` or `ask` (default: `block`). Controls whether `pk guard` blocks git mutations outright or prompts the user to confirm.
 - **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--project-dir** — Project directory (default: current directory).

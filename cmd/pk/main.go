@@ -45,9 +45,9 @@ func main() {
 	case "release":
 		runRelease(os.Args[2:])
 	case "guard":
-		os.Exit(guard.Run(guard.DefaultConfig()))
+		runGuard(os.Args[2:])
 	case "protect":
-		os.Exit(protect.Run(protect.DefaultConfig()))
+		runProtect(os.Args[2:])
 	case "setup":
 		runSetup(os.Args[2:])
 	case "pin":
@@ -61,6 +61,23 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+func runProtect(args []string) {
+	fs := flag.NewFlagSet("protect", flag.ExitOnError)
+	fs.Parse(args)
+
+	os.Exit(protect.Run(protect.DefaultConfig()))
+}
+
+func runGuard(args []string) {
+	fs := flag.NewFlagSet("guard", flag.ExitOnError)
+	ask := fs.Bool("ask", false, "Prompt user instead of blocking")
+	fs.Parse(args)
+
+	cfg := guard.DefaultConfig()
+	cfg.Ask = *ask
+	os.Exit(guard.Run(cfg))
 }
 
 func runChangelog(args []string) {
@@ -121,6 +138,7 @@ func runSetup(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual or auto")
+	guardMode := fs.String("guard", "block", "Guard mode: block or ask")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	fs.Parse(args)
 
@@ -143,9 +161,19 @@ func runSetup(args []string) {
 		os.Exit(1)
 	}
 
+	// Validate guard mode.
+	switch *guardMode {
+	case "block", "ask":
+		// Valid.
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --guard mode %q (must be block or ask)\n", *guardMode)
+		os.Exit(1)
+	}
+
 	cfg := setup.DefaultConfig()
 	cfg.ProjectDir = dir
 	cfg.PreserveMode = *preserveMode
+	cfg.GuardMode = *guardMode
 	cfg.Force = *force
 	cfg.Version = version.Version()
 	if err := setup.Run(cfg); err != nil {
@@ -211,7 +239,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "pk - Plan-driven development toolkit for Claude Code")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands (called by Claude Code, not directly):")
-	fmt.Fprintln(os.Stderr, "  pk guard                            Block git mutations on protected branches (PreToolUse hook)")
+	fmt.Fprintln(os.Stderr, "  pk guard [--ask]                    Block git mutations on protected branches (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
 	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
@@ -221,7 +249,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
-	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--preserve auto|manual]")
+	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
 	fmt.Fprintln(os.Stderr, "")

@@ -45,6 +45,9 @@ type Config struct {
 	Env      func(string) string
 	ReadFile func(string) ([]byte, error)
 	GitExec  func(projectDir string, args ...string) (string, error)
+
+	// Ask prompts the user instead of blocking outright.
+	Ask bool
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -105,15 +108,16 @@ func Run(cfg Config) int {
 	}
 	branch = strings.TrimSpace(branch)
 
-	// Check if current branch is protected. Emit an "ask" permission
-	// decision so the user can consciously confirm a legitimate override
-	// (emergency hotfix, manual recovery) instead of having to disable the
-	// hook. The primary advice is to switch back to the development branch —
-	// pk release is run from there, not from the protected branch.
+	// Check if current branch is protected.
 	for _, protected := range config.Branches {
 		if branch == protected {
-			reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", branch)
-			hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason)
+			if cfg.Ask {
+				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", branch)
+				hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason)
+			} else {
+				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", branch)
+				hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, reason)
+			}
 			return 0
 		}
 	}

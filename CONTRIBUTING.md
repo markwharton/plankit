@@ -28,7 +28,7 @@ make fmt      # Format code
 
 All changes go through `develop` — never commit directly to `main`.
 
-In Claude Code, `pk guard` enforces this automatically by blocking git mutations on `main`. In the terminal, this is a convention — there are no branch rules preventing direct commits to `main`, so discipline is on you.
+In Claude Code, `pk guard` enforces this automatically — it blocks git mutations on `main`. In the terminal, branch protection rules may exist but should not be the only safety net — discipline is on you.
 
 Dependabot PRs target `develop` via `.github/dependabot.yml`. If a hotfix or emergency PR lands directly on `main`, merge main into develop before releasing:
 

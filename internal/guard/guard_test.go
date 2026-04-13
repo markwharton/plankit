@@ -26,7 +26,7 @@ func TestRun_blocksCommitOnProtectedBranch(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
 		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
@@ -80,7 +80,7 @@ func TestRun_blocksPushOnProtectedBranch(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
 		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
@@ -215,7 +215,7 @@ func TestRun_multipleProtectedBranches(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
 		t.Errorf("stdout = %q, want permissionDecision=ask for production branch", stdout.String())
 	}
 }
@@ -242,8 +242,36 @@ func TestRun_legacyProtectedBranchesKey(t *testing.T) {
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0", code)
 	}
-	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
 		t.Errorf("stdout = %q, want ask decision from legacy key", stdout.String())
+	}
+}
+
+func TestRun_askModePromptsUser(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	cfg := Config{
+		Stdin:  strings.NewReader(`{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/project"}`),
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
+		},
+		GitExec: func(dir string, args ...string) (string, error) {
+			return "main\n", nil
+		},
+		Ask: true,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stdout.String(), `"permissionDecision":"ask"`) {
+		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "emergency hotfix") {
+		t.Errorf("stdout = %q, want reason mentioning emergency hotfix", stdout.String())
 	}
 }
 
