@@ -122,7 +122,7 @@ This walks through building a `/preview` skill that pushes the current branch an
 
 ### What it does
 
-Preview-environment workflows — Azure Static Web Apps, Netlify, Vercel, GitHub Pages preview actions — fire CI/CD when a pull request opens, build a preview site, and post a URL to the PR. Production deploys fire when the PR merges to the default branch. Nothing about tags or version numbers — this is a different mental model from `pk release`, which is local-merge-and-tag.
+Preview-environment workflows — [Azure Static Web Apps](https://learn.microsoft.com/en-us/azure/static-web-apps/preview-environments), [Netlify](https://docs.netlify.com/site-deploys/deploy-previews/), [Vercel](https://vercel.com/docs/deployments/preview-deployments), GitHub Pages preview actions — fire CI/CD when a pull request opens, build a preview site, and post a URL to the PR. Production deploys fire when the PR merges to the default branch. Nothing about tags or version numbers — this is a different mental model from `pk release`, which is local-merge-and-tag.
 
 The flow that `/preview` automates:
 
@@ -167,15 +167,23 @@ This is a high-stakes workflow that pushes code and creates a pull request. The 
 
    If `gh` is not available, ask the user for the target branch name.
 
-3. **Preview.** Tell the user: "I'm about to push <source> to origin and open a PR targeting <target>. Proceed?" Wait for an explicit yes before continuing. If the user declines, stop and report.
+   If source and target are the same branch, stop and report: "you're on the default branch — create a feature branch first."
 
-4. **Push.** Run:
+3. **Check for existing PR.** Run:
 
-   git push origin <source>
+   gh pr view --json url 2>/dev/null
+
+   If a PR already exists for this branch, report the URL and stop — no need to create another.
+
+4. **Preview.** Tell the user: "I'm about to push <source> to origin and open a PR targeting <target>. Proceed?" Wait for an explicit yes before continuing. If the user declines, stop and report.
+
+5. **Push.** Run:
+
+   git push -u origin <source>
 
    If the push fails, stop and report the error. Do not force.
 
-5. **Create the PR.** Run:
+6. **Create the PR.** Run:
 
    gh pr create --base <target> --head <source> --fill
 
@@ -185,8 +193,10 @@ This is a high-stakes workflow that pushes code and creates a pull request. The 
 
 ## Notes
 
-- Step 1 is a hard gate — never push a dirty tree.
-- Step 3 is a confirmation gate — never push and open a PR without explicit user OK.
+- Never push a dirty tree.
+- Running `/preview` on the default branch is caught early — create a feature branch first.
+- Running `/preview` twice doesn't create duplicate PRs.
+- Never push and open a PR without explicit user confirmation.
 - `gh pr create --fill` uses the commit messages as the PR title and body. For a richer description, layer a second skill on top that reads the diff and drafts a summary.
 ````
 
@@ -199,6 +209,125 @@ Without this flag, Claude could invoke `/preview` on its own — for example, if
 - **Rich PR description** — layer a second skill on top that runs `git log <target>..<source>` and `git diff <target>...<source>`, drafts a summary, and uses `gh pr edit --body-file` to replace the placeholder body. Keep the two concerns separated: `/preview` creates the PR, the other skill fills it in.
 - **Target a non-default branch** — some teams preview against `staging` rather than the repo default. Hard-code the target in the skill file or accept it via `argument-hint: [target-branch]`.
 - **Preview a specific commit** — accept an argument and push that ref instead of `HEAD`.
+
+## Tutorial: Build a /rollback skill
+
+This walks through building a `/rollback` skill that reverts a bad commit via a pull request. It complements `/preview` for trunk-based workflows where the recovery path matters as much as the deploy path.
+
+### What it does
+
+Trunk-based teams push directly to the default branch and rely on rollback when something breaks. The flow that `/rollback` automates:
+
+1. Show recent commits so the user can identify the bad one.
+2. Preview the revert without committing — abort on conflicts.
+3. Show the user what will change and ask to proceed.
+4. Create a rollback branch, commit the revert, push, and open a PR.
+
+The PR-based approach is the safe default: CI validates the revert before it hits production, and the change is visible to the team. Like `/preview`, this is a thin composition of git commands — a skill is the right level.
+
+### The skill
+
+Save this as `.claude/skills/rollback/SKILL.md`:
+
+````markdown
+---
+name: rollback
+description: Revert a bad commit via a branch and pull request for trunk-based recovery
+disable-model-invocation: true
+allowed-tools: Bash(git:*), Bash(gh:*)
+---
+
+This is a high-stakes workflow that reverts a commit and opens a pull request. The user must trigger this explicitly — never invoke automatically.
+
+## Steps
+
+1. **Check working tree.** Run:
+
+   git status --porcelain
+
+   If the output is non-empty, stop and report: "working tree is not clean — commit or stash changes first."
+
+2. **Show recent commits.** Run:
+
+   git log --oneline -10
+
+   Ask the user which commit to revert. Default to HEAD if they confirm the most recent commit is the problem.
+
+3. **Check for existing rollback.** Check if a branch named `rollback/<short-sha>` already exists:
+
+   git branch --list rollback/<short-sha>
+
+   If it exists, check for an open PR:
+
+   gh pr view rollback/<short-sha> --json url 2>/dev/null
+
+   If a PR exists, report the URL and stop. If the branch exists without a PR, report it and ask the user how to proceed.
+
+4. **Check for merge commit.** Run:
+
+   git show --no-patch --pretty=%P <commit>
+
+   If multiple parents are returned, inform the user this is a merge commit and ask: "Revert relative to parent 1 (mainline)?" If confirmed, use `-m 1` in subsequent revert commands. If not confirmed, stop.
+
+5. **Preview the revert.** Run:
+
+   git revert --no-commit <commit>
+
+   If this produces conflicts:
+   - Run `git status` and report the conflicts.
+   - Run `git revert --abort` to clean up.
+   - Stop — do not continue to confirmation.
+
+   Show the impact:
+
+   git diff --stat
+
+   Then clean up the preview without `reset --hard`:
+
+   git restore --staged .
+   git restore .
+
+6. **Confirm.** Tell the user: "This will create a rollback branch, revert <commit> (<subject>), push it, and open a PR. Proceed?" Wait for an explicit yes. If the user declines, stop.
+
+7. **Create rollback branch and revert.** Run:
+
+   git checkout -b rollback/<short-sha>
+   git revert <commit>
+
+   If conflicts occur during the real revert, report them and stop — do not auto-resolve.
+
+8. **Push and open PR.** Run:
+
+   git push -u origin rollback/<short-sha>
+   gh pr create --base <source-branch> --head rollback/<short-sha> --fill
+
+   On success, report the PR URL.
+
+   If `gh` fails: derive `owner/repo` from `git remote get-url origin` and print a compare URL so the user can create the PR in a browser.
+
+   Switch back to the source branch:
+
+   git checkout <source-branch>
+
+## Notes
+
+- Never revert on a dirty tree.
+- Running `/rollback` twice for the same commit doesn't create duplicate branches or PRs.
+- The preview shows impact without committing. Conflicts abort cleanly.
+- Never push a revert without explicit user confirmation.
+- Never auto-resolve conflicts — stop and report.
+- Reverts add new commits — they do not rewrite history.
+````
+
+### Why this complements /preview
+
+`/preview` and `/rollback` are two sides of the same workflow: preview gets code into production via PR, rollback gets it out via PR. Together they cover the trunk-based cycle — deploy forward, recover backward. Both go through CI before reaching production. Neither requires branch protection, changelogs, or release tags.
+
+### Variations to consider
+
+- **Direct push for emergencies** — when production is completely down and CI latency is unacceptable, skip the branch and PR: `git revert <commit> && git push`. This trades visibility for speed. Use only when the outage cost exceeds the risk of an unvalidated revert.
+- **Revert a range** — for cascading failures, accept a range like `<good>..<bad>` and revert each commit in reverse order.
+- **CI status check** — before reverting, run `gh run list --limit 5` to show recent CI status. This helps confirm which commit broke the build.
 
 ## References
 
