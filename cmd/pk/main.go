@@ -164,6 +164,10 @@ func runPin(args []string) {
 		fmt.Fprintln(os.Stderr, "Usage: pk pin --file <path> <version>")
 		os.Exit(1)
 	}
+	if _, ok := version.ParseSemver(fs.Arg(0)); !ok {
+		fmt.Fprintf(os.Stderr, "Error: %q is not valid semver\n", fs.Arg(0))
+		os.Exit(1)
+	}
 	updated, err := setup.PinVersion(*file, fs.Arg(0))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
