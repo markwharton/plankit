@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.9.0] - 2026-04-13
+
+### Added
+
+- add pk pin command for automated version pinning (3073f0a)
+
+### Fixed
+
+- enable cgo for race detector in test target (4803a9b)
+
+### Documentation
+
+- add SessionStart note, PR merge example, site bootstrap tree (2670df6)
+- add git pull --rebase guidance for local sync (07b1b76)
+
+### Maintenance
+
+- bump codecov/codecov-action (b71720b)
+- bump softprops/action-gh-release from 2.6.1 to 3.0.0 (1484d2f)
+
 ## [v0.8.0] - 2026-04-13
 
 ### Added
@@ -283,3 +303,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.7.0]: https://github.com/markwharton/plankit/compare/v0.6.2...v0.7.0
 [v0.7.1]: https://github.com/markwharton/plankit/compare/v0.7.0...v0.7.1
 [v0.8.0]: https://github.com/markwharton/plankit/compare/v0.7.1...v0.8.0
+[v0.9.0]: https://github.com/markwharton/plankit/compare/v0.8.0...v0.9.0
