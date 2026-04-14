@@ -44,7 +44,8 @@ This configures `.claude/settings.json` with hooks and installs skills. Restart 
 ### Modes
 
 ```bash
-pk setup                       # Manual: use /preserve when ready
+pk setup                       # Default: block guard, manual preserve
+pk setup --guard ask           # Prompt instead of blocking on protected branches
 pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
 ```
 
