@@ -2,6 +2,9 @@
 dist/
 /pk
 
+# Sketches
+_sketch/
+
 # Editor and OS
 *.bak
 .DS_Store

@@ -12,6 +12,7 @@
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
 //	pk setup       Configure a project's .claude/settings.json
+//	pk teardown    Remove plankit hooks, skills, and rules from a project
 //	pk version     Print version (--verbose for build details)
 package main
 
@@ -27,6 +28,7 @@ import (
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/setup"
+	"github.com/markwharton/plankit/internal/teardown"
 	"github.com/markwharton/plankit/internal/update"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -50,6 +52,8 @@ func main() {
 		runProtect(os.Args[2:])
 	case "setup":
 		runSetup(os.Args[2:])
+	case "teardown":
+		runTeardown(os.Args[2:])
 	case "pin":
 		runPin(os.Args[2:])
 	case "version", "--version", "-v":
@@ -184,6 +188,31 @@ func runSetup(args []string) {
 	printUpdateNotice()
 }
 
+func runTeardown(args []string) {
+	fs := flag.NewFlagSet("teardown", flag.ExitOnError)
+	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
+	confirm := fs.Bool("confirm", false, "Actually remove (default: preview only)")
+	fs.Parse(args)
+
+	dir := *projectDir
+	if dir == "." {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
+	}
+
+	cfg := teardown.DefaultConfig()
+	cfg.ProjectDir = dir
+	cfg.Confirm = *confirm
+	if err := teardown.Run(cfg); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+}
+
 func runPin(args []string) {
 	fs := flag.NewFlagSet("pin", flag.ExitOnError)
 	file := fs.String("file", "", "File containing the version pin (required)")
@@ -251,10 +280,10 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
+	fmt.Fprintln(os.Stderr, "  pk teardown [--confirm] [--project-dir <dir>]")
+	fmt.Fprintln(os.Stderr, "                                      Remove plankit hooks, skills, and rules")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands read JSON from stdin and write JSON to stdout.")
 	fmt.Fprintln(os.Stderr, "They are designed to be called by Claude Code, not directly.")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "To remove hooks, delete the \"hooks\" key from .claude/settings.json.")
 }

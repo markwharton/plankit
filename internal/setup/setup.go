@@ -174,19 +174,19 @@ const commentPrefix = "<!-- pk:sha256:"
 const commentSuffix = " -->"
 const frontmatterKey = "pk_sha256: "
 
-// contentSHA computes the SHA256 hash of content.
-func contentSHA(content string) string {
+// ContentSHA computes the SHA256 hash of content.
+func ContentSHA(content string) string {
 	h := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(h[:])
 }
 
-// extractSHA extracts a pk SHA and the hashed content from a file.
+// ExtractSHA extracts a pk SHA and the hashed content from a file.
 // Supports two formats:
 //   - HTML comment on first line: <!-- pk:sha256:... --> (for CLAUDE.md)
 //   - YAML frontmatter field: pk_sha256: ... (for skills with frontmatter)
 //
 // Returns (sha, hashedContent, found).
-func extractSHA(fileContent string) (string, string, bool) {
+func ExtractSHA(fileContent string) (string, string, bool) {
 	// Try HTML comment on first line.
 	firstNewline := strings.IndexByte(fileContent, '\n')
 	if firstNewline > 0 {
@@ -248,12 +248,12 @@ func shouldUpdate(path string, newContent string, force bool) (bool, string) {
 		return true, "updated (forced)"
 	}
 
-	storedSHA, hashedContent, found := extractSHA(string(data))
+	storedSHA, hashedContent, found := ExtractSHA(string(data))
 	if !found {
 		return false, "skipped (not managed by pk)"
 	}
 
-	if contentSHA(hashedContent) != storedSHA {
+	if ContentSHA(hashedContent) != storedSHA {
 		return false, "skipped (modified by user)"
 	}
 
@@ -272,20 +272,20 @@ func writeManaged(path string, content string, stderr io.Writer, force bool) err
 
 	// Compute SHA over the body that will be hashed (content after frontmatter for skills,
 	// content after the comment line for CLAUDE.md). Since embedSHA splits at the same
-	// boundaries as extractSHA, we hash the original content which becomes the body.
+	// boundaries as ExtractSHA, we hash the original content which becomes the body.
 	var sha string
 	if strings.HasPrefix(content, "---\n") {
 		// For skills: SHA covers the body after frontmatter.
 		closeIdx := strings.Index(content[4:], "\n---\n")
 		if closeIdx >= 0 {
 			body := content[4+closeIdx+5:]
-			sha = contentSHA(body)
+			sha = ContentSHA(body)
 		} else {
-			sha = contentSHA(content)
+			sha = ContentSHA(content)
 		}
 	} else {
 		// For non-frontmatter files: SHA covers the full content.
-		sha = contentSHA(content)
+		sha = ContentSHA(content)
 	}
 
 	managed := embedSHA(content, sha)
@@ -615,13 +615,14 @@ func mergeHookCategory(existing, plankit []HookEntry) []HookEntry {
 func filterNonPlankitHooks(hooks []Hook) []Hook {
 	var result []Hook
 	for _, h := range hooks {
-		if !isPlankitHook(h.Command) {
+		if !IsPlankitHook(h.Command) {
 			result = append(result, h)
 		}
 	}
 	return result
 }
 
-func isPlankitHook(command string) bool {
+// IsPlankitHook reports whether a hook command is managed by plankit.
+func IsPlankitHook(command string) bool {
 	return strings.HasPrefix(command, "pk ") || command == ".claude/install-pk.sh"
 }

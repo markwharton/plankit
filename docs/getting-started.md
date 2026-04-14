@@ -56,7 +56,7 @@ pk setup --preserve auto          # Auto: preserve plans on ExitPlanMode
 pk setup --project-dir /path/to   # Specify project directory
 ```
 
-Re-run setup anytime to switch modes.
+Re-run setup anytime to switch modes. To remove plankit from a project, run `pk teardown` ([details](pk-teardown.md)).
 
 ## Try it
 

@@ -529,14 +529,14 @@ func TestRun_existingHooks(t *testing.T) {
 
 func TestContentSHA(t *testing.T) {
 	content := "hello world\n"
-	sha := contentSHA(content)
+	sha := ContentSHA(content)
 	if len(sha) != 64 {
 		t.Fatalf("SHA length = %d, want 64", len(sha))
 	}
-	if sha != contentSHA(content) {
+	if sha != ContentSHA(content) {
 		t.Fatal("SHA is not deterministic")
 	}
-	if sha == contentSHA("different\n") {
+	if sha == ContentSHA("different\n") {
 		t.Fatal("different content produced the same SHA")
 	}
 }
@@ -544,9 +544,9 @@ func TestContentSHA(t *testing.T) {
 func TestExtractSHA_htmlComment(t *testing.T) {
 	sha := "abc123"
 	file := "<!-- pk:sha256:abc123 -->\n# CLAUDE.md\nContent.\n"
-	got, body, found := extractSHA(file)
+	got, body, found := ExtractSHA(file)
 	if !found {
-		t.Fatal("extractSHA did not find HTML comment marker")
+		t.Fatal("ExtractSHA did not find HTML comment marker")
 	}
 	if got != sha {
 		t.Errorf("SHA = %q, want %q", got, sha)
@@ -558,9 +558,9 @@ func TestExtractSHA_htmlComment(t *testing.T) {
 
 func TestExtractSHA_frontmatter(t *testing.T) {
 	file := "---\nname: test\ndescription: A test\npk_sha256: def456\n---\nBody content.\n"
-	got, body, found := extractSHA(file)
+	got, body, found := ExtractSHA(file)
 	if !found {
-		t.Fatal("extractSHA did not find frontmatter marker")
+		t.Fatal("ExtractSHA did not find frontmatter marker")
 	}
 	if got != "def456" {
 		t.Errorf("SHA = %q, want %q", got, "def456")
@@ -571,9 +571,9 @@ func TestExtractSHA_frontmatter(t *testing.T) {
 }
 
 func TestExtractSHA_noMarker(t *testing.T) {
-	_, _, found := extractSHA("# Just a file\nNo marker here.\n")
+	_, _, found := ExtractSHA("# Just a file\nNo marker here.\n")
 	if found {
-		t.Error("extractSHA found a marker in unmarked file")
+		t.Error("ExtractSHA found a marker in unmarked file")
 	}
 }
 
@@ -634,7 +634,7 @@ func TestShouldUpdate_pristineHTMLComment(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
 	content := "# CLAUDE.md\nContent.\n"
-	sha := contentSHA(content)
+	sha := ContentSHA(content)
 	managed := "<!-- pk:sha256:" + sha + " -->\n" + content
 	os.WriteFile(path, []byte(managed), 0644)
 
@@ -651,7 +651,7 @@ func TestShouldUpdate_pristineFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "SKILL.md")
 	body := "Skill body content.\n"
-	sha := contentSHA(body)
+	sha := ContentSHA(body)
 	managed := "---\nname: test\npk_sha256: " + sha + "\n---\n" + body
 	os.WriteFile(path, []byte(managed), 0644)
 
@@ -665,7 +665,7 @@ func TestShouldUpdate_modifiedFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
 	content := "original content\n"
-	sha := contentSHA(content)
+	sha := ContentSHA(content)
 	managed := "<!-- pk:sha256:" + sha + " -->\nuser modified this\n"
 	os.WriteFile(path, []byte(managed), 0644)
 
@@ -712,12 +712,12 @@ func TestWriteManaged_htmlComment(t *testing.T) {
 	if !strings.Contains(written, "# CLAUDE.md") {
 		t.Error("file does not contain original content")
 	}
-	// Round-trip: extractSHA should recover the SHA.
-	sha, body, found := extractSHA(written)
+	// Round-trip: ExtractSHA should recover the SHA.
+	sha, body, found := ExtractSHA(written)
 	if !found {
-		t.Fatal("extractSHA failed on written file")
+		t.Fatal("ExtractSHA failed on written file")
 	}
-	if contentSHA(body) != sha {
+	if ContentSHA(body) != sha {
 		t.Error("SHA does not match body content after round-trip")
 	}
 }
@@ -746,12 +746,12 @@ func TestWriteManaged_frontmatter(t *testing.T) {
 	if !strings.Contains(written, "name: test") {
 		t.Error("file lost original frontmatter fields")
 	}
-	// Round-trip: extractSHA should recover the SHA.
-	sha, body, found := extractSHA(written)
+	// Round-trip: ExtractSHA should recover the SHA.
+	sha, body, found := ExtractSHA(written)
 	if !found {
-		t.Fatal("extractSHA failed on written file")
+		t.Fatal("ExtractSHA failed on written file")
 	}
-	if contentSHA(body) != sha {
+	if ContentSHA(body) != sha {
 		t.Error("SHA does not match body content after round-trip")
 	}
 }
