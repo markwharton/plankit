@@ -60,6 +60,10 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 ### Design
 
 - **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
+- **Three command layers, three flag patterns.**
+  - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
+  - **Skill-managed commands** (changelog, preserve, release) — `/command` skills handle the preview/confirm cycle. `--dry-run` exists for the skill to preview before executing. Power users typing `pk command` in the terminal bypass the skill and execute directly.
+  - **User-only commands** (teardown) — no skill wrapping, destructive. Preview by default, `--confirm` to execute.
 
 ### Code Patterns
 
