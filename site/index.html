@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>plankit.life</title>
-<meta name="description" content="A plan-driven development toolkit for Claude Code. Rules, testing discipline, and branch protection that make AI plans worth keeping.">
-<meta property="og:title" content="Build better. Then close the laptop.">
-<meta property="og:description" content="A plan-driven development toolkit for Claude Code. Rules, testing discipline, and branch protection that make AI plans worth keeping.">
+<title>plankit</title>
+<meta name="description" content="A workshop for plans. Small tools, carefully made. Home of pk — the plan-driven development toolkit.">
+<meta property="og:title" content="plankit">
+<meta property="og:description" content="A workshop for plans. Small tools, carefully made.">
 <meta property="og:url" content="https://plankit.life">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://plankit.life">
@@ -85,40 +85,21 @@
     margin-bottom: 56px;
   }
 
-  .callout {
-    font-size: 22px;
-    font-weight: 300;
-    font-style: italic;
-    color: var(--text);
-    border-left: 2px solid var(--accent);
-    padding-left: 24px;
-    margin: 40px 0;
-    line-height: 1.6;
-  }
-
-  .callout cite {
-    display: block;
-    font-size: 15px;
-    font-style: normal;
-    color: var(--muted);
-    margin-top: 8px;
-  }
-
-  .features {
+  .links {
     list-style: none;
     margin: 24px 0;
   }
 
-  .features li {
-    padding: 16px 0;
+  .links li {
+    padding: 20px 0;
     border-bottom: 1px solid var(--rule);
   }
 
-  .features li:first-child {
+  .links li:first-child {
     border-top: 1px solid var(--rule);
   }
 
-  .features strong {
+  .links .name {
     font-family: 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 500;
@@ -126,45 +107,20 @@
     margin-bottom: 4px;
   }
 
-  .features span {
+  .links .name a {
+    color: var(--text);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .links .name a:hover {
+    color: var(--accent);
+  }
+
+  .links .desc {
     font-size: 16px;
     color: var(--muted);
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid var(--rule);
-    margin: 56px 0;
-  }
-
-  .closing {
-    font-size: 20px;
-    font-weight: 300;
-    line-height: 1.8;
-  }
-
-  .closing strong {
-    font-weight: 600;
-  }
-
-  code {
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 14px;
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 3px;
-  }
-
-  pre {
-    background: var(--text);
-    color: var(--bg);
-    padding: 20px 24px;
-    border-radius: 6px;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    overflow-x: auto;
-    margin: 24px 0;
   }
 
   a {
@@ -193,74 +149,20 @@
 
   <div class="mark">plankit</div>
 
-  <h1>Build better. Then close the laptop.</h1>
-  <p class="subtitle">A plan-driven toolkit for <a href="https://code.claude.com">Claude Code</a> &mdash; so the work finishes when you do.</p>
+  <h1>A workshop for plans.</h1>
+  <p class="subtitle">Small tools, carefully made, for people who want to finish what they start.</p>
 
   <div class="section">
-    <h2>The problem</h2>
-    <p>AI-assisted development is a superpower. It's also a radical transformation. The creative vision flows faster than ever. You can build things you couldn't before.</p>
-    <p>But without guardrails, the tools make decisions you didn't ask for &mdash; and you're left picking up the pieces.</p>
-  </div>
-
-  <blockquote class="callout">
-    AI doesn't reduce work &mdash; it intensifies it.
-    <cite>&mdash; <a href="https://hbr.org/2026/02/ai-doesnt-reduce-work-it-intensifies-it">Harvard Business Review</a>, 2026</cite>
-  </blockquote>
-
-  <div class="section">
-    <h2>What plankit does</h2>
-    <p>Plans that direct Claude toward predictable, correct results. Guidelines that prevent the nightmare sessions and keep Claude from rediscovering your project every conversation. Skills that turn your workflow into slash commands.</p>
-    <p>Each layer compounds on the last. Claude operates with confidence; you stay in control of direction.</p>
-
-    <ul class="features">
+    <ul class="links">
       <li>
-        <strong>Plan</strong>
-        <span>Review the plan, not the code. Claude proposes, you direct. Once approved, plans are preserved to <code>docs/plans/</code> &mdash; timestamped, committed, and protected from edits. The reasoning outlives the session.</span>
-      </li>
-      <li>
-        <strong>Guard</strong>
-        <span>Branch protection that runs locally, before the damage happens. Rules that prevent the common mistakes: force pushes, silent failures, scope creep, shortcuts without permission, untested changes.</span>
-      </li>
-      <li>
-        <strong>Ship</strong>
-        <span>Changelog generated from conventional commits. Git tags as the single source of truth. One command to tag, one to push &mdash; commit and push stay separate decisions. Pre-flight checks before anything leaves your machine.</span>
+        <span class="name"><a href="/pk/">pk</a></span>
+        <span class="desc">A plan-driven development toolkit for Claude Code. Free and open source.</span>
       </li>
     </ul>
   </div>
 
-  <blockquote class="callout">
-    Planning is bringing the future into the present so that you can do something about it now.
-    <cite>&mdash; <a href="https://www.amazon.com/Control-Your-Time-Life-Signet/dp/0451167724">Alan Lakein</a>, How to Get Control of Your Time and Your Life</cite>
-  </blockquote>
-
-  <div class="section">
-    <h2>The real value</h2>
-    <p>You're already more productive than you've ever been. You don't have to fill every recovered hour with more output.</p>
-    <p>Your kid wants to show you something. Your partner asked you a question. Your friend texted an hour ago.</p>
-    <p>plankit helps you finish the work &mdash; so you can do the thing that actually matters.</p>
-  </div>
-
-  <blockquote class="callout">
-    Flowers are cheap. Divorce is expensive.
-    <cite>&mdash; <a href="https://www.amazon.com/Hard-Thing-About-Things-Building/dp/0062273205">Ben Horowitz</a>, The Hard Thing About Hard Things</cite>
-  </blockquote>
-
-  <hr>
-
-  <div class="section">
-    <h2>Get started</h2>
-    <pre>go install github.com/markwharton/plankit/cmd/pk@latest
-pk setup</pre>
-    <p>Requires <a href="https://go.dev/doc/install">Go</a> and <a href="https://code.claude.com">Claude Code</a>. See the <a href="/start">full walkthrough</a> or read the <a href="https://github.com/markwharton/plankit">documentation</a>.</p>
-    <p>New to AI-assisted development? Start with the <a href="/guide">methodology guide</a> &mdash; the principles behind the tools.</p>
-  </div>
-
-  <div class="closing">
-    <p><strong>Build better.</strong> Then go be with the people who matter.</p>
-  </div>
-
   <div class="footer">
-    <a href="/">plankit.life</a> &middot; <a href="/start">start</a> &middot; <a href="/guide">guide</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
+    <a href="/">plankit.life</a> &middot; <a href="/pk/">pk</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
   </div>
 
 </main>

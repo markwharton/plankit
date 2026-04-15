@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Get Started — plankit</title>
-<meta name="description" content="Install plankit and set up your first project in five minutes. From zero to your first release with Claude Code.">
-<meta property="og:title" content="Get Started — plankit">
-<meta property="og:description" content="Install plankit and set up your first project in five minutes. From zero to your first release with Claude Code.">
-<meta property="og:url" content="https://plankit.life/start">
+<title>Get Started — pk — plankit</title>
+<meta name="description" content="Install pk and set up your first project in five minutes. From zero to your first release with Claude Code.">
+<meta property="og:title" content="Get Started — pk">
+<meta property="og:description" content="Install pk and set up your first project in five minutes. From zero to your first release with Claude Code.">
+<meta property="og:url" content="https://plankit.life/pk/start">
 <meta property="og:type" content="website">
-<link rel="canonical" href="https://plankit.life/start">
+<link rel="canonical" href="https://plankit.life/pk/start">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500&display=swap');
@@ -172,7 +172,7 @@
 <body>
 <main class="page">
 
-  <div class="mark"><a href="/">plankit</a></div>
+  <div class="mark"><a href="/">plankit</a> / <a href="/pk/">pk</a> / start</div>
 
   <h1>Get started</h1>
   <p class="subtitle">From zero to your first release in five minutes.</p>
@@ -238,6 +238,14 @@ pk setup</pre>
         <span>Configure hooks, skills, rules, and CLAUDE.md for your project.</span>
       </li>
       <li>
+        <strong>pk status</strong>
+        <span>Report what&rsquo;s installed &mdash; setup state, configured hooks, and modified files.</span>
+      </li>
+      <li>
+        <strong>pk teardown</strong>
+        <span>Remove plankit from a project (preview by default, <code>--confirm</code> to execute).</span>
+      </li>
+      <li>
         <strong>pk changelog</strong>
         <span>Generate CHANGELOG.md from conventional commits and commit the result.</span>
       </li>
@@ -246,27 +254,19 @@ pk setup</pre>
         <span>Tag, merge to the release branch, validate, and push.</span>
       </li>
       <li>
-        <strong>pk guard</strong>
-        <span>Block git mutations on protected branches (runs as a hook).</span>
-      </li>
-      <li>
-        <strong>pk preserve</strong>
-        <span>Save an approved plan to <code>docs/plans/</code> and commit it.</span>
-      </li>
-      <li>
         <strong>pk version</strong>
         <span>Print version and check for updates.</span>
       </li>
     </ul>
-    <p>Full command documentation is on <a href="https://github.com/markwharton/plankit">GitHub</a>.</p>
+    <p>Hook commands (<code>pk guard</code>, <code>pk pin</code>, <code>pk preserve</code>, <code>pk protect</code>) run automatically &mdash; triggered by Claude Code or by other pk commands. You don&rsquo;t invoke them directly. Full command documentation is on <a href="https://github.com/markwharton/plankit">GitHub</a>.</p>
   </div>
 
   <hr>
 
-  <p>New to AI-assisted development? Read the <a href="/guide">methodology guide</a> for the principles behind plankit's approach.</p>
+  <p>New to AI-assisted development? Read the <a href="/pk/guide/">methodology guide</a> for the principles behind pk's approach.</p>
 
   <div class="footer">
-    <a href="/">plankit.life</a> &middot; <a href="/start">start</a> &middot; <a href="/guide">guide</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
+    <a href="/">plankit.life</a> &middot; <a href="/pk/">pk</a> &middot; <a href="/pk/start/">start</a> &middot; <a href="/pk/guide/">guide</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
   </div>
 
 </main>

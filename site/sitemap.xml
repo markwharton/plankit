@@ -4,9 +4,12 @@
     <loc>https://plankit.life/</loc>
   </url>
   <url>
-    <loc>https://plankit.life/start</loc>
+    <loc>https://plankit.life/pk</loc>
   </url>
   <url>
-    <loc>https://plankit.life/guide</loc>
+    <loc>https://plankit.life/pk/start</loc>
+  </url>
+  <url>
+    <loc>https://plankit.life/pk/guide</loc>
   </url>
 </urlset>

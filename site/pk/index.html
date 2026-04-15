@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pk — plankit</title>
+<meta name="description" content="A plan-driven development toolkit for Claude Code. Rules, testing discipline, and branch protection that make AI plans worth keeping.">
+<meta property="og:title" content="pk — plan-driven development toolkit">
+<meta property="og:description" content="A plan-driven development toolkit for Claude Code. Rules, testing discipline, and branch protection that make AI plans worth keeping.">
+<meta property="og:url" content="https://plankit.life/pk">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://plankit.life/pk">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500&display=swap');
+
+  :root {
+    --bg: #faf8f5;
+    --text: #2c2825;
+    --muted: #7a726a;
+    --accent: #b8510d;
+    --rule: #e0dbd5;
+    --code-bg: #f0ece7;
+    --max-width: 720px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 80px 24px 120px;
+  }
+
+  .mark {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 48px;
+  }
+
+  .mark a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .mark a:hover {
+    border-bottom-color: var(--muted);
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--muted);
+    margin-bottom: 64px;
+    font-style: italic;
+  }
+
+  h2 {
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  p {
+    margin-bottom: 20px;
+  }
+
+  .section {
+    margin-bottom: 56px;
+  }
+
+  .features {
+    list-style: none;
+    margin: 24px 0;
+  }
+
+  .features li {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .features li:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .features strong {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .features span {
+    font-size: 16px;
+    color: var(--muted);
+  }
+
+  .commands {
+    list-style: none;
+    margin: 24px 0;
+  }
+
+  .commands li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    gap: 20px;
+  }
+
+  .commands li:first-child {
+    border-top: 1px solid var(--rule);
+  }
+
+  .commands .cmd {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+    color: var(--accent);
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .commands .desc {
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  pre {
+    background: var(--text);
+    color: var(--bg);
+    padding: 20px 24px;
+    border-radius: 6px;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+
+  code {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  a:hover {
+    border-bottom-color: var(--accent);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 56px 0;
+  }
+
+  .aside {
+    font-size: 17px;
+    font-style: italic;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="mark"><a href="/">plankit</a> / pk</div>
+
+  <h1>Plan-driven development toolkit</h1>
+  <p class="subtitle">LLMs are open-ended. Development needs determinism. pk bridges that gap.</p>
+
+  <div class="section">
+    <p>pk is a CLI for <a href="https://code.claude.com">Claude Code</a> that encodes the discipline AI-assisted development needs. Plans commit to an approach before code is written. Rules guide the AI away from common pitfalls. Tests protect what works. Guards block git mutations on protected branches before damage happens.</p>
+    <p>Designed for small teams and independent developers. Single Go binary, zero dependencies, MIT licensed.</p>
+  </div>
+
+  <div class="section">
+    <h2>Install</h2>
+    <p>Download the binary for your platform from the <a href="https://github.com/markwharton/plankit/releases">releases page</a>, put it on your PATH, and run:</p>
+    <pre>pk setup</pre>
+    <p>Or, if you have <a href="https://go.dev/doc/install">Go</a> installed:</p>
+    <pre>go install github.com/markwharton/plankit/cmd/pk@latest
+pk setup</pre>
+    <p><strong>Requirements:</strong> <a href="https://git-scm.com/">git</a> and <a href="https://code.claude.com">Claude Code</a>. The <code>pk</code> binary has no runtime dependencies &mdash; Go is only needed if you install from source.</p>
+  </div>
+
+  <div class="section">
+    <h2>What it does</h2>
+    <ul class="features">
+      <li>
+        <strong>Rules and guidelines</strong>
+        <span>CLAUDE.md with critical rules, plus detailed <code>.claude/rules/</code> for model behavior, development standards, and git discipline.</span>
+      </li>
+      <li>
+        <strong>Claude Code skills</strong>
+        <span><code>/init</code>, <code>/changelog</code>, <code>/release</code>, <code>/preserve</code> &mdash; slash commands for common workflows.</span>
+      </li>
+      <li>
+        <strong>Plan preservation</strong>
+        <span>Approved plans saved as timestamped docs in <code>docs/plans/</code>, committed to git, protected from accidental edits.</span>
+      </li>
+      <li>
+        <strong>Branch protection</strong>
+        <span>Git mutations blocked via hooks, locally, before damage happens.</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Commands</h2>
+    <ul class="commands">
+      <li><span class="cmd">pk setup</span><span class="desc">Configure project hooks, skills, and CLAUDE.md</span></li>
+      <li><span class="cmd">pk status</span><span class="desc">Show plankit setup state in this project</span></li>
+      <li><span class="cmd">pk teardown</span><span class="desc">Remove plankit from a project (preview by default)</span></li>
+      <li><span class="cmd">pk changelog</span><span class="desc">Generate CHANGELOG.md from conventional commits</span></li>
+      <li><span class="cmd">pk release</span><span class="desc">Tag, merge to release branch, validate, push</span></li>
+      <li><span class="cmd">pk version</span><span class="desc">Print version and check for updates</span></li>
+    </ul>
+    <p>Hook commands (<code>pk guard</code>, <code>pk pin</code>, <code>pk preserve</code>, <code>pk protect</code>) run automatically &mdash; triggered by Claude Code or by other pk commands. You don&rsquo;t invoke them directly.</p>
+  </div>
+
+  <div class="section">
+    <h2>Setup modes</h2>
+    <pre>pk setup                       # default: block guard, manual preserve
+pk setup --guard ask           # prompt instead of blocking
+pk setup --preserve auto       # preserve plans on ExitPlanMode</pre>
+  </div>
+
+  <div class="section">
+    <h2>Docs</h2>
+    <ul class="features">
+      <li>
+        <strong><a href="/pk/start/">Getting started</a></strong>
+        <span>Install, setup, first run.</span>
+      </li>
+      <li>
+        <strong><a href="/pk/guide/">Methodology</a></strong>
+        <span>Plan-driven development, guidelines, testing loop.</span>
+      </li>
+      <li>
+        <strong><a href="https://github.com/markwharton/plankit">Source</a></strong>
+        <span>github.com/markwharton/plankit &mdash; MIT licensed.</span>
+      </li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <div class="section">
+    <p class="aside">pk is the toolkit behind plankit. We use it to build everything. Free for you to use too.</p>
+  </div>
+
+  <div class="footer">
+    <a href="/">plankit</a> &middot; <a href="/pk/">pk</a> &middot; <a href="https://github.com/markwharton/plankit">github</a>
+  </div>
+
+</main>
+</body>
+</html>

@@ -3,7 +3,7 @@ dist/
 /pk
 
 # Sketches
-_sketch/
+_sketch*
 
 # Editor and OS
 *.bak
