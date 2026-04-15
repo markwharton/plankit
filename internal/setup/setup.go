@@ -36,7 +36,7 @@ type Hook struct {
 	Type          string `json:"type"`
 	Command       string `json:"command"`
 	Async         bool   `json:"async,omitempty"`
-	Timeout       int    `json:"timeout"`
+	Timeout       int    `json:"timeout,omitempty"`
 	StatusMessage string `json:"statusMessage,omitempty"`
 }
 
@@ -588,27 +588,56 @@ func addPermission(settings map[string]json.RawMessage, perm string) error {
 	return nil
 }
 
-// mergeHooks merges plankit hooks into existing settings, preserving user hooks.
+// mergeHooks merges plankit hooks into existing settings, preserving user hooks
+// and any unknown hook categories (e.g., SessionEnd, Stop, UserPromptSubmit).
 // Existing hooks with commands starting with "pk " are replaced; all others are kept.
 func mergeHooks(settings map[string]json.RawMessage, newHooks HooksConfig) error {
-	var existing HooksConfig
+	// Parse hooks as a generic map so unknown categories pass through untouched.
+	existing := map[string]json.RawMessage{}
 	if raw, ok := settings["hooks"]; ok {
 		if err := json.Unmarshal(raw, &existing); err != nil {
 			return err
 		}
 	}
 
-	merged := HooksConfig{
-		PreToolUse:   mergeHookCategory(existing.PreToolUse, newHooks.PreToolUse),
-		PostToolUse:  mergeHookCategory(existing.PostToolUse, newHooks.PostToolUse),
-		SessionStart: mergeHookCategory(existing.SessionStart, newHooks.SessionStart),
+	// Merge only the categories pk knows about.
+	if err := mergeCategory(existing, "PreToolUse", newHooks.PreToolUse); err != nil {
+		return err
+	}
+	if err := mergeCategory(existing, "PostToolUse", newHooks.PostToolUse); err != nil {
+		return err
+	}
+	if err := mergeCategory(existing, "SessionStart", newHooks.SessionStart); err != nil {
+		return err
 	}
 
-	hooksJSON, err := json.Marshal(merged)
+	hooksJSON, err := json.Marshal(existing)
 	if err != nil {
 		return err
 	}
 	settings["hooks"] = json.RawMessage(hooksJSON)
+	return nil
+}
+
+// mergeCategory merges plankit hooks into a single category, preserving user hooks.
+// Empty categories after merging are removed from the map.
+func mergeCategory(existing map[string]json.RawMessage, key string, newEntries []HookEntry) error {
+	var existingEntries []HookEntry
+	if raw, ok := existing[key]; ok {
+		if err := json.Unmarshal(raw, &existingEntries); err != nil {
+			return err
+		}
+	}
+	merged := mergeHookCategory(existingEntries, newEntries)
+	if len(merged) == 0 {
+		delete(existing, key)
+		return nil
+	}
+	mergedJSON, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	existing[key] = json.RawMessage(mergedJSON)
 	return nil
 }
 

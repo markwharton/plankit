@@ -544,6 +544,38 @@ func TestRun_directoryCleanup(t *testing.T) {
 	}
 }
 
+// TestRemoveHooks_preservesUnknownCategories verifies teardown doesn't drop
+// hook categories outside the three pk manages (PreToolUse/PostToolUse/SessionStart).
+func TestRemoveHooks_preservesUnknownCategories(t *testing.T) {
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(`{
+			"PreToolUse": [{"matcher":"Bash","hooks":[{"type":"command","command":"pk guard","timeout":5}]}],
+			"SessionEnd": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code session-end"}]}],
+			"Stop": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code stop"}]}]
+		}`),
+	}
+
+	removeHooks(settings)
+
+	raw, ok := settings["hooks"]
+	if !ok {
+		t.Fatal("hooks key removed but SessionEnd and Stop should have kept it alive")
+	}
+
+	var hooks map[string]json.RawMessage
+	json.Unmarshal(raw, &hooks)
+
+	if _, ok := hooks["PreToolUse"]; ok {
+		t.Error("PreToolUse should be removed (only had a pk hook)")
+	}
+	if _, ok := hooks["SessionEnd"]; !ok {
+		t.Error("SessionEnd was dropped by teardown — must be preserved")
+	}
+	if _, ok := hooks["Stop"]; !ok {
+		t.Error("Stop was dropped by teardown — must be preserved")
+	}
+}
+
 func TestRemoveHooks_emptyAfterRemoval(t *testing.T) {
 	settings := map[string]json.RawMessage{
 		"hooks": json.RawMessage(`{

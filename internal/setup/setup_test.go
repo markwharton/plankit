@@ -1070,3 +1070,70 @@ func TestWriteManaged_skipsModified(t *testing.T) {
 		t.Errorf("stderr = %q, want 'modified by user' message", stderr.String())
 	}
 }
+
+// TestMergeHooks_preservesUnknownCategories verifies that hook categories pk
+// doesn't manage (SessionEnd, Stop, UserPromptSubmit, etc.) pass through
+// untouched when pk hooks are merged.
+func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(`{
+			"SessionEnd": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code session-end"}]}],
+			"Stop": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code stop"}]}],
+			"UserPromptSubmit": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code user-prompt-submit"}]}]
+		}`),
+	}
+
+	hooks := buildHookConfig("manual", "block")
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	var merged map[string]json.RawMessage
+	json.Unmarshal(settings["hooks"], &merged)
+
+	for _, key := range []string{"SessionEnd", "Stop", "UserPromptSubmit"} {
+		raw, ok := merged[key]
+		if !ok {
+			t.Errorf("category %s was dropped — must be preserved", key)
+			continue
+		}
+		var entries []HookEntry
+		if err := json.Unmarshal(raw, &entries); err != nil {
+			t.Errorf("category %s malformed after merge: %v", key, err)
+			continue
+		}
+		if len(entries) != 1 {
+			t.Errorf("category %s: expected 1 entry, got %d", key, len(entries))
+			continue
+		}
+		cmd := entries[0].Hooks[0].Command
+		if !strings.Contains(cmd, "entire") {
+			t.Errorf("category %s: command mangled, got %q", key, cmd)
+		}
+	}
+}
+
+// TestMergeHooks_noTimeoutZero verifies that user hooks without a timeout
+// don't get "timeout": 0 stamped on them after merging.
+func TestMergeHooks_noTimeoutZero(t *testing.T) {
+	settings := map[string]json.RawMessage{
+		"hooks": json.RawMessage(`{
+			"PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}]
+		}`),
+	}
+
+	hooks := buildHookConfig("manual", "block")
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	// The user hook should NOT have "timeout": 0 in the serialized output.
+	hooksJSON := string(settings["hooks"])
+	if strings.Contains(hooksJSON, `"command":"user-hook","timeout":0`) {
+		t.Errorf("timeout: 0 was added to user hook; JSON:\n%s", hooksJSON)
+	}
+	// Sanity: pk hooks DO have timeouts set, those should remain.
+	if !strings.Contains(hooksJSON, `"timeout":5`) {
+		t.Errorf("pk hooks lost their timeout; JSON:\n%s", hooksJSON)
+	}
+}

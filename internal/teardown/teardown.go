@@ -156,18 +156,13 @@ func Run(cfg Config) error {
 	}
 
 	// Phase 3: Execute.
+	//
+	// Order matters: settings.json first, then files, then directories.
+	// If a later step fails (e.g., a file removal hits a permissions error),
+	// the settings are already consistent — hooks no longer reference removed
+	// paths. The user can re-run teardown to clean up remaining artifacts.
 
-	// Remove managed files (skip those with reasons — they're user-modified).
-	for _, a := range fileActions {
-		if a.reason != "" {
-			continue
-		}
-		if err := cfg.Remove(a.path); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to remove %s: %w", a.path, err)
-		}
-	}
-
-	// Edit or remove settings.json (before directory cleanup).
+	// Edit or remove settings.json first.
 	if settingsExists && len(settingsActions) > 0 {
 		removeHooks(settings)
 		removePermission(settings, "Bash(pk:*)")
@@ -194,6 +189,16 @@ func Run(cfg Config) error {
 		}
 	}
 
+	// Remove managed files (skip those with reasons — they're user-modified).
+	for _, a := range fileActions {
+		if a.reason != "" {
+			continue
+		}
+		if err := cfg.Remove(a.path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove %s: %w", a.path, err)
+		}
+	}
+
 	// Remove empty directories (leaf-first order from analyzeDirs).
 	for _, a := range dirActions {
 		_ = cfg.Remove(a.path) // ignore errors — dir may not be empty
@@ -212,39 +217,16 @@ func Run(cfg Config) error {
 }
 
 // analyzeSettings identifies pk hooks and permissions to remove.
+// Uses the same map-based representation as removeHooks so preview and
+// execute paths agree on what pk hooks are present.
 func analyzeSettings(settings map[string]json.RawMessage) []action {
 	var actions []action
 
-	raw, ok := settings["hooks"]
-	if ok {
-		var hooks setup.HooksConfig
+	if raw, ok := settings["hooks"]; ok {
+		hooks := map[string]json.RawMessage{}
 		if json.Unmarshal(raw, &hooks) == nil {
-			for _, entry := range hooks.PreToolUse {
-				for _, h := range entry.Hooks {
-					if setup.IsPlankitHook(h.Command) {
-						actions = append(actions, action{
-							label: fmt.Sprintf("PreToolUse[%s]: %s", entry.Matcher, h.Command),
-						})
-					}
-				}
-			}
-			for _, entry := range hooks.PostToolUse {
-				for _, h := range entry.Hooks {
-					if setup.IsPlankitHook(h.Command) {
-						actions = append(actions, action{
-							label: fmt.Sprintf("PostToolUse[%s]: %s", entry.Matcher, h.Command),
-						})
-					}
-				}
-			}
-			for _, entry := range hooks.SessionStart {
-				for _, h := range entry.Hooks {
-					if setup.IsPlankitHook(h.Command) {
-						actions = append(actions, action{
-							label: fmt.Sprintf("SessionStart[%s]: %s", entry.Matcher, h.Command),
-						})
-					}
-				}
+			for _, category := range []string{"PreToolUse", "PostToolUse", "SessionStart"} {
+				actions = append(actions, findPKHooksInCategory(hooks, category)...)
 			}
 		}
 	}
@@ -266,6 +248,30 @@ func analyzeSettings(settings map[string]json.RawMessage) []action {
 		}
 	}
 
+	return actions
+}
+
+// findPKHooksInCategory returns removal actions for pk hooks in a single
+// hook category. Returns nil if the category is missing or has no pk hooks.
+func findPKHooksInCategory(hooks map[string]json.RawMessage, category string) []action {
+	raw, ok := hooks[category]
+	if !ok {
+		return nil
+	}
+	var entries []setup.HookEntry
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return nil
+	}
+	var actions []action
+	for _, entry := range entries {
+		for _, h := range entry.Hooks {
+			if setup.IsPlankitHook(h.Command) {
+				actions = append(actions, action{
+					label: fmt.Sprintf("%s[%s]: %s", category, entry.Matcher, h.Command),
+				})
+			}
+		}
+	}
 	return actions
 }
 
@@ -477,23 +483,27 @@ func settingsWillBeEmpty(cfg Config, path string) bool {
 }
 
 // removeHooks removes all plankit hooks from the settings hooks config.
+// removeHooks strips plankit hooks from the three categories it manages,
+// preserving user hooks and any unknown categories (e.g., SessionEnd, Stop,
+// UserPromptSubmit). If all three managed categories become empty and no
+// other categories exist, the hooks key is removed entirely.
 func removeHooks(settings map[string]json.RawMessage) {
 	raw, ok := settings["hooks"]
 	if !ok {
 		return
 	}
 
-	var hooks setup.HooksConfig
+	// Parse as a generic map so unknown categories pass through untouched.
+	hooks := map[string]json.RawMessage{}
 	if json.Unmarshal(raw, &hooks) != nil {
 		return
 	}
 
-	hooks.PreToolUse = filterCategory(hooks.PreToolUse)
-	hooks.PostToolUse = filterCategory(hooks.PostToolUse)
-	hooks.SessionStart = filterCategory(hooks.SessionStart)
+	for _, key := range []string{"PreToolUse", "PostToolUse", "SessionStart"} {
+		filterCategoryKey(hooks, key)
+	}
 
-	// If all categories are empty, remove the hooks key entirely.
-	if len(hooks.PreToolUse) == 0 && len(hooks.PostToolUse) == 0 && len(hooks.SessionStart) == 0 {
+	if len(hooks) == 0 {
 		delete(settings, "hooks")
 		return
 	}
@@ -503,6 +513,29 @@ func removeHooks(settings map[string]json.RawMessage) {
 		return
 	}
 	settings["hooks"] = json.RawMessage(hooksJSON)
+}
+
+// filterCategoryKey removes plankit hooks from a single hook category in the
+// hooks map, deleting the key if the category becomes empty.
+func filterCategoryKey(hooks map[string]json.RawMessage, key string) {
+	raw, ok := hooks[key]
+	if !ok {
+		return
+	}
+	var entries []setup.HookEntry
+	if json.Unmarshal(raw, &entries) != nil {
+		return
+	}
+	filtered := filterCategory(entries)
+	if len(filtered) == 0 {
+		delete(hooks, key)
+		return
+	}
+	filteredJSON, err := json.Marshal(filtered)
+	if err != nil {
+		return
+	}
+	hooks[key] = json.RawMessage(filteredJSON)
 }
 
 // filterCategory removes plankit hooks from a hook category.

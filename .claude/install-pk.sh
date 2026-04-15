@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
+#
+# install-pk.sh — bootstraps the pk binary for Claude Code sessions.
+#
+# Managed by `pk setup`. Regenerated on every setup run and removed on
+# `pk teardown`. Don't edit this file — customizations will be overwritten.
+#
+# When it runs:
+# - Configured as a SessionStart hook, so Claude Code invokes it at the
+#   start of every session.
+#
+# What it does:
+# - On a developer machine with pk already on PATH: exits immediately.
+#   The body of this script never runs locally.
+# - In a Claude Code cloud sandbox (ephemeral VM with no pk installed):
+#   downloads the matching pk release into $HOME/.local/bin so the
+#   protective hooks (pk guard, pk preserve, pk protect) can run.
+
 set -euo pipefail
 
 command -v pk >/dev/null 2>&1 && exit 0
