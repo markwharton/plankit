@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.10.0] - 2026-04-16
+
+### Added
+
+- block by default, add --ask flag for user confirmation (b4f286e)
+- add plankit-tooling rule for pk-setup projects (fb6ff05)
+- flag unpinned GitHub Actions and missing Dependabot config (f6cb4b8)
+- add pk teardown command to remove plankit from a project (3fd5296)
+- add pk status command and non-git awareness (9ce9dc0)
+- split pk feature configuration into three opt-in questions (685a418)
+
+### Fixed
+
+- validate version argument as semver (42b6355)
+- add target verification step to soft reset guidance (0576063)
+- preserve unknown hook categories and hook fields during merge (97ce733)
+
+### Documentation
+
+- align workflow steps across site and docs (fb366aa)
+- add /rollback tutorial and harden /preview (8ec000a)
+- add SEO metadata, design note, and README positioning line (3b8f95d)
+- add --guard option to setup examples and clarify doc update trigger (723f8e5)
+- document three command layers and their flag patterns (3b9a8bd)
+- restructure site with /pk home and simplified landing (1f66617)
+
 ## [v0.9.0] - 2026-04-13
 
 ### Added
@@ -304,3 +330,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.7.1]: https://github.com/markwharton/plankit/compare/v0.7.0...v0.7.1
 [v0.8.0]: https://github.com/markwharton/plankit/compare/v0.7.1...v0.8.0
 [v0.9.0]: https://github.com/markwharton/plankit/compare/v0.8.0...v0.9.0
+[v0.10.0]: https://github.com/markwharton/plankit/compare/v0.9.0...v0.10.0
