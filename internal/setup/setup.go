@@ -14,6 +14,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/markwharton/plankit/internal/git"
 )
 
 //go:embed skills/*/SKILL.md
@@ -318,6 +320,7 @@ type Config struct {
 	PreserveMode string
 	GuardMode    string
 	Force        bool
+	AllowNonGit  bool
 	Version      string
 }
 
@@ -427,6 +430,17 @@ func Run(cfg Config) error {
 	force := cfg.Force
 	settingsDir := filepath.Join(projectDir, ".claude")
 	settingsFile := filepath.Join(settingsDir, "settings.json")
+
+	// Refuse to install outside a git working tree unless explicitly allowed.
+	// pk requires git for most commands (guard, changelog, release, preserve),
+	// though rules, skills, and protect still work without it.
+	// IsRepo walks up parents, so monorepo subdirectories are correctly detected.
+	if !git.IsRepo(os.Stat, projectDir) {
+		if !cfg.AllowNonGit {
+			return fmt.Errorf("this is not a git repository. pk requires git for most commands.\n\nRun `git init` first, or pass --allow-non-git to proceed anyway")
+		}
+		fmt.Fprintln(stderr, "Warning: this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.")
+	}
 
 	// Read existing settings or start fresh.
 	var settings map[string]json.RawMessage

@@ -13,7 +13,7 @@ func TestRun_freshProject(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestRun_createsClaudeMD(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestRun_skipsUnmanagedClaudeMD(t *testing.T) {
 	os.WriteFile(claudeFile, []byte("# My Custom CLAUDE.md\n"), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -170,7 +170,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md with marker.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
 
 	// User modifies it but keeps the marker line at the top.
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
@@ -183,7 +183,7 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 
 	// Re-run — should skip.
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
 
 	final, _ := os.ReadFile(claudeFile)
 	if !strings.Contains(string(final), "User's custom content") {
@@ -196,14 +196,14 @@ func TestRun_updatesUnmodifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
 
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
 	original, _ := os.ReadFile(claudeFile)
 
 	// Re-run — should update (content unchanged, SHA matches).
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
 
 	updated, _ := os.ReadFile(claudeFile)
 	// Content should be identical (same template, same SHA).
@@ -222,7 +222,7 @@ func TestRun_existingSettings(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -259,7 +259,7 @@ func TestRun_existingPermissions(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestRun_duplicatePermission(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -327,9 +327,44 @@ func TestRun_invalidJSON(t *testing.T) {
 	os.WriteFile(settingsFile, []byte("not json"), 0644)
 
 	var stderr bytes.Buffer
-	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block"})
+	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true})
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestRun_refusesNonGitDir(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	if err == nil {
+		t.Fatal("expected error for non-git directory without AllowNonGit")
+	}
+	if !strings.Contains(err.Error(), "not a git repository") {
+		t.Errorf("error should mention git repository, got: %v", err)
+	}
+
+	// Nothing should have been created.
+	if _, statErr := os.Stat(filepath.Join(projectDir, ".claude")); !os.IsNotExist(statErr) {
+		t.Error(".claude should not exist after refused setup")
+	}
+	if _, statErr := os.Stat(filepath.Join(projectDir, "CLAUDE.md")); !os.IsNotExist(statErr) {
+		t.Error("CLAUDE.md should not exist after refused setup")
+	}
+}
+
+func TestRun_gitDirAllowsSetup(t *testing.T) {
+	projectDir := t.TempDir()
+	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+	var stderr bytes.Buffer
+
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+		t.Fatalf("Run() with .git dir should succeed: %v", err)
+	}
+	// .claude should be created.
+	if _, err := os.Stat(filepath.Join(projectDir, ".claude")); err != nil {
+		t.Error(".claude should exist after successful setup")
 	}
 }
 
@@ -337,7 +372,7 @@ func TestRun_manualMode(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -487,7 +522,7 @@ func TestRun_existingHooks(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -961,7 +996,7 @@ func TestRun_sessionStartHook(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", Version: "0.7.1"}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 

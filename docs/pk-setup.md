@@ -10,7 +10,10 @@ pk setup --guard ask                  # prompt user instead of blocking on prote
 pk setup --preserve auto              # auto-preserve plans on ExitPlanMode
 pk setup --project-dir /path/to/dir   # specify project directory
 pk setup --force                      # overwrite all managed skills
+pk setup --allow-non-git              # proceed even if directory is not a git repo
 ```
+
+Setup refuses to install outside a git working tree by default — most pk commands require git. Run `git init` first, or pass `--allow-non-git` to proceed anyway. Monorepo subdirectories are correctly detected as inside a git repo (the check walks up parents looking for `.git`).
 
 ## How it works
 
@@ -28,9 +31,25 @@ After setup, restart Claude Code to apply changes.
 - **--guard** — Guard mode: `block` or `ask` (default: `block`). Controls whether `pk guard` blocks git mutations outright or prompts the user to confirm.
 - **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
+- **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
 - **--project-dir** — Project directory (default: current directory).
 
 ## Details
+
+### Running without git
+
+pk is designed for git repositories, but parts of it work without git. When `--allow-non-git` is used, setup installs everything but some commands will not function:
+
+| Feature | Without git |
+|---------|-------------|
+| Rules (`.claude/rules/`) | Fully functional — Claude Code loads them regardless |
+| `pk protect` | Fully functional — checks file paths only |
+| `pk guard` hook | Silent no-op — nothing to guard |
+| `pk preserve` hook | Silent skip — plan is not saved |
+| `pk changelog` | Fails (exit 1) — needs `git log` |
+| `pk release` | Fails (exit 1) — needs tags, branches |
+
+The common non-git use case is getting pk's rules and skills in a scratch directory or during the gap between `pk setup` and `git init`.
 
 ### CLAUDE.md
 

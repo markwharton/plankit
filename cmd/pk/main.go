@@ -12,6 +12,7 @@
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
 //	pk setup       Configure a project's .claude/settings.json
+//	pk status      Report plankit configuration state of a project
 //	pk teardown    Remove plankit hooks, skills, and rules from a project
 //	pk version     Print version (--verbose for build details)
 package main
@@ -28,6 +29,7 @@ import (
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/setup"
+	"github.com/markwharton/plankit/internal/status"
 	"github.com/markwharton/plankit/internal/teardown"
 	"github.com/markwharton/plankit/internal/update"
 	"github.com/markwharton/plankit/internal/version"
@@ -52,6 +54,8 @@ func main() {
 		runProtect(os.Args[2:])
 	case "setup":
 		runSetup(os.Args[2:])
+	case "status":
+		runStatus(os.Args[2:])
 	case "teardown":
 		runTeardown(os.Args[2:])
 	case "pin":
@@ -144,6 +148,7 @@ func runSetup(args []string) {
 	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual or auto")
 	guardMode := fs.String("guard", "block", "Guard mode: block or ask")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
+	allowNonGit := fs.Bool("allow-non-git", false, "Proceed even if the project directory is not a git repository")
 	fs.Parse(args)
 
 	dir := *projectDir
@@ -179,6 +184,7 @@ func runSetup(args []string) {
 	cfg.PreserveMode = *preserveMode
 	cfg.GuardMode = *guardMode
 	cfg.Force = *force
+	cfg.AllowNonGit = *allowNonGit
 	cfg.Version = version.Version()
 	if err := setup.Run(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -186,6 +192,35 @@ func runSetup(args []string) {
 	}
 
 	printUpdateNotice()
+}
+
+func runStatus(args []string) {
+	fs := flag.NewFlagSet("status", flag.ExitOnError)
+	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
+	brief := fs.Bool("brief", false, "One-line summary (useful for scripting)")
+	fs.Parse(args)
+
+	dir := *projectDir
+	if dir == "." {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
+	}
+
+	cfg := status.DefaultConfig()
+	cfg.ProjectDir = dir
+	cfg.Brief = *brief
+	configured, err := status.Run(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+	if !configured {
+		os.Exit(1)
+	}
 }
 
 func runTeardown(args []string) {
@@ -278,8 +313,10 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
-	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
+	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
+	fmt.Fprintln(os.Stderr, "  pk status [--brief] [--project-dir <dir>]")
+	fmt.Fprintln(os.Stderr, "                                      Report plankit configuration state")
 	fmt.Fprintln(os.Stderr, "  pk teardown [--confirm] [--project-dir <dir>]")
 	fmt.Fprintln(os.Stderr, "                                      Remove plankit hooks, skills, and rules")
 	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")

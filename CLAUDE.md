@@ -51,7 +51,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 ### Directory Structure
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `teardown`, `update`, `version`.
+- `internal/` — all packages: `changelog`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (changelog, init, preserve, release).
 - `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior).
