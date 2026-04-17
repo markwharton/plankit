@@ -190,8 +190,8 @@
   <div class="section">
     <h2>Setup your project</h2>
     <pre>cd your-project
-pk setup</pre>
-    <p>This creates a <code>CLAUDE.md</code> with critical rules, installs guidelines as <code>.claude/rules/</code> files, adds skills for changelog, release, plan preservation, and project initialization, and writes a bootstrap script that fetches <code>pk</code> into cloud sandboxes. Restart Claude Code to apply changes.</p>
+pk setup --baseline</pre>
+    <p>This creates a <code>CLAUDE.md</code> with critical rules, installs guidelines as <code>.claude/rules/</code> files, adds skills for changelog, release, plan preservation, and project initialization, and writes a bootstrap script that fetches <code>pk</code> into cloud sandboxes. The <code>--baseline</code> flag also tags <code>v0.0.0</code> on HEAD so <code>pk changelog</code> and <code>pk release</code> have a starting anchor &mdash; safe to include: it's a no-op if your repo already has a semver tag. See <a href="https://github.com/markwharton/plankit/blob/main/docs/pk-setup.md#baseline-tag-for-pk-changelog">pk setup docs</a> for the existing-repo prior-art scenario. Restart Claude Code to apply changes.</p>
 
     <div class="tree">
       your-project/<br>
