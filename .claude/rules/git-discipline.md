@@ -1,6 +1,6 @@
 ---
 description: Commit with purpose, conventional commits, commit before risk
-pk_sha256: 34d619104e76a33928f99a04355a1067681538269206c4aeba9c571f61650719
+pk_sha256: 96fd2909c44a20f735c931ad04abc50a13ea2273873d04ee3461664e0c3fbc99
 ---
 
 # Git Discipline
@@ -10,5 +10,6 @@ pk_sha256: 34d619104e76a33928f99a04355a1067681538269206c4aeba9c571f61650719
 - **Never force push.** If a pushed commit needs fixing, make a new commit.
 - **Rewrite unpushed commits with soft reset.** To fold an edit into an earlier commit: `git log --oneline` (note hashes) → verify the target is the commit you intend to modify, not an unrelated commit that landed after it → `git reset --soft <target>~1` → `git restore --staged <files-for-later-commits>` → edit → `git add` + `git commit -C <target-hash>` → re-stage and re-commit later files with their hashes. Reflog recovers mistakes within ~30 days.
 - **Commit with purpose.** Each commit is one logical change. Follow Conventional Commits to make history scannable.
+- **Match message weight to change weight.** Substantive features — user-facing behavior, design decisions worth preserving — get a multi-paragraph body explaining why and shape. Focused small changes get one-line messages. Don't inherit the recent commits' style; match the message to this commit's content.
 - **Never include BREAKING CHANGE** in commit messages unless there is an actual breaking change.
 - **Commit before risk.** Before refactoring or trying an uncertain approach — commit what works. Git is your safety net, but only if you've saved your progress.
