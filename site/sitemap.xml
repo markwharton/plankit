@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://plankit.life/</loc>
+    <loc>https://plankit.com/</loc>
   </url>
   <url>
-    <loc>https://plankit.life/pk</loc>
+    <loc>https://plankit.com/pk</loc>
   </url>
   <url>
-    <loc>https://plankit.life/pk/start</loc>
+    <loc>https://plankit.com/pk/start</loc>
   </url>
   <url>
-    <loc>https://plankit.life/pk/guide</loc>
+    <loc>https://plankit.com/pk/guide</loc>
   </url>
 </urlset>

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://plankit.life/sitemap.xml
+Sitemap: https://plankit.com/sitemap.xml

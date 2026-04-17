@@ -8,4 +8,4 @@
 
 ## Articles
 
-- **"AI Doesn't Reduce Work — It Intensifies It"** — Harvard Business Review, Feb 2026. Eight-month study finding AI consistently increases work intensity through task expansion, blurred boundaries, and increased multitasking. Validates the plankit.life premise. [Article](https://hbr.org/2026/02/ai-doesnt-reduce-work-it-intensifies-it)
+- **"AI Doesn't Reduce Work — It Intensifies It"** — Harvard Business Review, Feb 2026. Eight-month study finding AI consistently increases work intensity through task expansion, blurred boundaries, and increased multitasking. Validates the plankit premise. [Article](https://hbr.org/2026/02/ai-doesnt-reduce-work-it-intensifies-it)

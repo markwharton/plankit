@@ -1,6 +1,6 @@
 /* TEAM */
   Builder: Mark Wharton
-  Site: https://plankit.life
+  Site: https://plankit.com
   GitHub: @markwharton
 
 /* THANKS */
