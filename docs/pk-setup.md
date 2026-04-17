@@ -11,6 +11,9 @@ pk setup --preserve auto              # auto-preserve plans on ExitPlanMode
 pk setup --project-dir /path/to/dir   # specify project directory
 pk setup --force                      # overwrite all managed skills
 pk setup --allow-non-git              # proceed even if directory is not a git repo
+pk setup --baseline                   # also create v0.0.0 tag if no version tag exists
+pk setup --baseline --at <ref>        # tag <ref> as v0.0.0 instead of HEAD
+pk setup --baseline --push            # also push the tag to origin
 ```
 
 Setup refuses to install outside a git working tree by default — most pk commands require git. Run `git init` first, or pass `--allow-non-git` to proceed anyway. Monorepo subdirectories are correctly detected as inside a git repo (the check walks up parents looking for `.git`).
@@ -33,6 +36,9 @@ After setup, restart Claude Code to apply changes.
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
 - **--project-dir** — Project directory (default: current directory).
+- **--baseline** — After setup, create a `v0.0.0` tag on HEAD if no valid semver tag exists in the repo. Idempotent: if any tag parses as semver (e.g. `v0.0.0`, `v1.2.3`), the step is a no-op. See [Baseline tag for pk changelog](#baseline-tag-for-pk-changelog).
+- **--at** — Tag the given ref instead of HEAD. Requires `--baseline`. Use this to anchor an existing repo at its first commit so all prior work lands in the first changelog entry (`pk setup --baseline --at $(git rev-list --max-parents=0 HEAD)`).
+- **--push** — After tagging, publish to `origin`. Requires `--baseline`. Pushes HEAD + tag by default, so the tagged commit is reachable from a branch on origin (matching `pk preserve --push`). With `--at`, pushes the tag only — the user picked the ref, pk doesn't assume which branch goes with it. Without `--push`, the tag stays local and pk prints the manual push command — consistent with the git-discipline rule that commit and push are separate decisions.
 
 ## Details
 
@@ -84,6 +90,47 @@ Re-run setup anytime to switch modes.
 - **CLAUDE.md** — starts managed, becomes user-owned once customized. Protected by a SHA256 marker (`<!-- pk:sha256:... -->`). Updated when pristine, skipped when modified. Never force-overwritten — once you add project conventions, it's yours.
 - **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them.
 - **install-pk.sh** — always overwritten with the latest template. No SHA protection. Users have no reason to customize it — it's infrastructure, not content. Script fixes ship to every project on the next `pk setup` run.
+
+### Baseline tag for pk changelog
+
+`pk changelog` reads every commit since the most recent semver tag. Without a tag, there is nothing to diff from and the command errors out. `--baseline` creates that anchor without you having to remember the raw git commands.
+
+Three common scenarios:
+
+**1. New repo, anchor from the initial commit.**
+
+```bash
+cd your-project
+git init
+# ... first commit ...
+pk setup --baseline
+```
+
+Tags HEAD (your initial commit) as `v0.0.0`. Next conventional commits on `develop` become the first changelog entry.
+
+**2. Existing repo, anchor from current state.**
+
+```bash
+cd your-repo
+pk setup --baseline
+```
+
+Tags current HEAD as `v0.0.0`. Prior commits are treated as prior art — they do not appear in the first changelog entry.
+
+**3. Existing repo, include prior commits in the first changelog.**
+
+```bash
+cd your-repo
+pk setup --baseline --at $(git rev-list --max-parents=0 HEAD)
+```
+
+Tags the initial commit of the repo as `v0.0.0`. Every commit since (including any pre-pk history) will be scanned by `pk changelog` and categorized by its conventional-commit type.
+
+**Idempotent.** If any valid semver tag exists in the repo, `--baseline` is a no-op and prints which tag was found. Running it repeatedly is safe.
+
+**Tag is local by default.** After tagging, `pk setup --baseline` prints the push command for you to run when ready. Pass `--push` to tag and push in one step. The manual push keeps the commit/push separation — creating a tag is reversible, publishing it is not.
+
+**Discoverability tip.** When `pk setup` runs in a git repo with no valid semver tag, it prints a tip suggesting `pk setup --baseline`. The tip is only shown when there is no tag — once anchored, setup is quiet.
 
 ### Cloud sandbox bootstrap
 

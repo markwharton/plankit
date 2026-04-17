@@ -130,9 +130,11 @@ Git tags are the single version source. If no tags exist, `pk changelog` exits w
 
 ```
 Error: no version tags found
-  To start from scratch: git tag v0.0.0 && git push origin v0.0.0
-  Or tag your current version and push it (e.g., git tag v1.2.3 && git push origin v1.2.3)
+  To anchor at v0.0.0: pk setup --baseline --push
+  Or tag a specific version manually (e.g., git tag v1.2.3 && git push origin v1.2.3)
 ```
+
+See [pk setup — baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk-changelog) for the three scenarios.
 
 ### Conventional commits
 

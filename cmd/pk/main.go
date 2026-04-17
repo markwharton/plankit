@@ -149,6 +149,9 @@ func runSetup(args []string) {
 	guardMode := fs.String("guard", "block", "Guard mode: block or ask")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	allowNonGit := fs.Bool("allow-non-git", false, "Proceed even if the project directory is not a git repository")
+	baseline := fs.Bool("baseline", false, "Anchor pk changelog by creating a v0.0.0 tag if none exists")
+	baselineAt := fs.String("at", "", "Ref to tag as v0.0.0 (requires --baseline; defaults to HEAD)")
+	push := fs.Bool("push", false, "Push the baseline tag to origin (requires --baseline)")
 	fs.Parse(args)
 
 	dir := *projectDir
@@ -179,6 +182,18 @@ func runSetup(args []string) {
 		os.Exit(1)
 	}
 
+	// --at and --push are modifiers of --baseline; reject on their own.
+	if !*baseline {
+		if *baselineAt != "" {
+			fmt.Fprintln(os.Stderr, "Error: --at requires --baseline")
+			os.Exit(1)
+		}
+		if *push {
+			fmt.Fprintln(os.Stderr, "Error: --push requires --baseline")
+			os.Exit(1)
+		}
+	}
+
 	cfg := setup.DefaultConfig()
 	cfg.ProjectDir = dir
 	cfg.PreserveMode = *preserveMode
@@ -186,6 +201,9 @@ func runSetup(args []string) {
 	cfg.Force = *force
 	cfg.AllowNonGit = *allowNonGit
 	cfg.Version = version.Version()
+	cfg.Baseline = *baseline
+	cfg.BaselineAt = *baselineAt
+	cfg.Push = *push
 	if err := setup.Run(cfg); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
@@ -314,7 +332,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
-	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills")
+	fmt.Fprintln(os.Stderr, "           [--baseline [--at <ref>] [--push]]")
+	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills; optionally anchor pk changelog")
 	fmt.Fprintln(os.Stderr, "  pk status [--brief] [--project-dir <dir>]")
 	fmt.Fprintln(os.Stderr, "                                      Report plankit configuration state")
 	fmt.Fprintln(os.Stderr, "  pk teardown [--confirm] [--project-dir <dir>]")
