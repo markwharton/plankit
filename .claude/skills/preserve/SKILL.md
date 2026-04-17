@@ -3,7 +3,7 @@ name: preserve
 description: Preserve the most recently approved plan to docs/plans/
 disable-model-invocation: true
 allowed-tools: Bash(pk:*)
-pk_sha256: f532434f2bace0307a64197c1b0cee9b5a890c5e5858e83b14ceb547bd71183d
+pk_sha256: b201b6dcd420d994ec65cd0b53b0be78c37dd4d9be7fd1548de8fbb23c3a0f45
 ---
 
 Preserve the most recently approved plan to docs/plans/ and commit it.
@@ -20,3 +20,5 @@ pk preserve
 This commits the plan locally. Do not push — the user decides when to push.
 
 Report the result to the user.
+
+With the plan preserved, proceed with its implementation.
