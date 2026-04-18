@@ -100,7 +100,7 @@ Files containing a version string to update when a new version is released. Each
 
 For JSON files, `pk changelog` updates the root-level `version` field using proper JSON parsing (no regex). Formatting, key order, and indentation are preserved.
 
-Version files are output-only — `pk changelog` writes to them but never reads from them. The git tag is always the version source.
+`pk changelog` writes versions into these files but never reads versions out of them — the git tag is always the source of truth.
 
 ### showScope
 
@@ -135,6 +135,22 @@ Error: no version tags found
 ```
 
 See [pk setup — baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk-changelog) for the three scenarios.
+
+### Single tag, many files
+
+The tag-as-source rule shines in monorepos with a unified-version policy — every package releases at the same version, governed by one tag. The `preCommit` hook fans the tag-derived version out to every file that needs it. For an npm workspaces monorepo:
+
+```json
+{
+  "changelog": {
+    "hooks": {
+      "preCommit": "npm version ${VERSION#v} --workspaces --no-git-tag-version && git add packages/*/package.json package-lock.json"
+    }
+  }
+}
+```
+
+`$VERSION` is set to the computed next version (e.g., `v0.11.0`); `${VERSION#v}` strips the leading `v` for tools like `npm version` that want a plain `0.11.0`. Every package.json gets the same bump, even unchanged ones — the accepted trade-off of unified versioning.
 
 ### Conventional commits
 
