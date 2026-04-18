@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: eb038ddd066f48d810eb6f9d5ae1cb800e755a1965b3d2abd6f73b81419e2520
+pk_sha256: d727fa7b820a63555bac150a661cbe725af14fd97623a10b83a41faf3cb14547
 ---
 
 # Plankit Tooling
@@ -20,6 +20,11 @@ pk_sha256: eb038ddd066f48d810eb6f9d5ae1cb800e755a1965b3d2abd6f73b81419e2520
 ## Session Bootstrap
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.
+
+## Flag Conventions
+
+- **`--push` means "publish this, fully."** When a pk command supports `--push`, it publishes whatever that command produced — and any refs needed to make it reachable on origin. For a tagging command, that includes the branch the tag sits on. `--push` always means "push what I just did, complete," never a narrower partial push. The default behavior (no `--push`) is local-only, consistent with the git-discipline rule that commit and push are separate decisions.
+- **`--at <ref>` narrows `--push` to the explicit target.** When a pk command accepts `--at <ref>` to operate on a specific ref rather than HEAD, `--push` publishes only the thing produced at that ref — not HEAD or its branch. The user picked the ref; pk doesn't assume which branch goes with it.
 
 ## CHANGELOG Format
 

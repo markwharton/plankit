@@ -20,6 +20,11 @@ description: Three-layer architecture (pk commands, hooks, skills) and hook beha
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.
 
+## Flag Conventions
+
+- **`--push` means "publish this, fully."** When a pk command supports `--push`, it publishes whatever that command produced — and any refs needed to make it reachable on origin. For a tagging command, that includes the branch the tag sits on. `--push` always means "push what I just did, complete," never a narrower partial push. The default behavior (no `--push`) is local-only, consistent with the git-discipline rule that commit and push are separate decisions.
+- **`--at <ref>` narrows `--push` to the explicit target.** When a pk command accepts `--at <ref>` to operate on a specific ref rather than HEAD, `--push` publishes only the thing produced at that ref — not HEAD or its branch. The user picked the ref; pk doesn't assume which branch goes with it.
+
 ## CHANGELOG Format
 
 - **Plain text, one link per version.** Entries are plain `- summary (abc1234)` — no clickable commit SHAs. Each version heading (`## [v0.10.1] - 2026-04-17`) is already a clickable link to a compare URL showing every commit in that release with full context. Don't link individual commits in any form — inline `[sha](url)` or reference-style. Don't pull in CHANGELOG generators (commit-and-tag-version, git-cliff). plankit is "small tools, carefully made" — plain text by design, not by oversight.
