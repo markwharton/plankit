@@ -20,7 +20,7 @@ set -euo pipefail
 
 command -v pk >/dev/null 2>&1 && exit 0
 
-PK_VERSION="v0.11.0"
+PK_VERSION="v0.11.1"
 install_dir="$HOME/.local/bin"
 mkdir -p "$install_dir"
 
