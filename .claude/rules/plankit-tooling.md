@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: c82f76f4be03ea0959cc566d4778d8b7784ed784548cfee1fbac2ed814be3027
+pk_sha256: eb038ddd066f48d810eb6f9d5ae1cb800e755a1965b3d2abd6f73b81419e2520
 ---
 
 # Plankit Tooling
@@ -20,3 +20,7 @@ pk_sha256: c82f76f4be03ea0959cc566d4778d8b7784ed784548cfee1fbac2ed814be3027
 ## Session Bootstrap
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.
+
+## CHANGELOG Format
+
+- **Plain text, one link per version.** Entries are plain `- summary (abc1234)` — no clickable commit SHAs. Each version heading (`## [v0.10.1] - 2026-04-17`) is already a clickable link to a compare URL showing every commit in that release with full context. Don't link individual commits in any form — inline `[sha](url)` or reference-style. Don't pull in CHANGELOG generators (commit-and-tag-version, git-cliff). plankit is "small tools, carefully made" — plain text by design, not by oversight.
