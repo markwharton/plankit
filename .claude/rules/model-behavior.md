@@ -1,6 +1,6 @@
 ---
 description: Honesty, scope discipline, read before writing, and testing
-pk_sha256: fd944627bf4404ed54f49077011c6fbeddbc5a19c24f4b23ff18e2de375e9980
+pk_sha256: 9bd1891c7e87f5bdc85f4caa24b6ece5d3841383c2e53e0ca8d8b56666fdc5ee
 ---
 
 # Model Behavior
@@ -14,6 +14,7 @@ pk_sha256: fd944627bf4404ed54f49077011c6fbeddbc5a19c24f4b23ff18e2de375e9980
 ## Scope Discipline
 
 - **Only do what was asked.** A bug fix does not need surrounding code cleaned up. A simple feature does not need extra configurability.
+- **Clarifications are information, not instructions.** When the user corrects your interpretation or brings you up to date on state, that is context — not a request to act. Acknowledge and wait for the explicit next step. Never execute whichever branch of your prior analysis now matches the clarified state — especially destructive operations (`git restore` on uncommitted work, `reset --hard`, delete, overwrite).
 - **Never take shortcuts without asking.** This includes: placeholder logic, approximations, skipping validation, omitting features for an "initial version", or using mock data instead of real integrations.
 - **If you see something worth improving, mention it** — do not act on it without permission.
 - When tempted to cut corners or expand scope:

@@ -13,6 +13,7 @@ description: Honesty, scope discipline, read before writing, and testing
 ## Scope Discipline
 
 - **Only do what was asked.** A bug fix does not need surrounding code cleaned up. A simple feature does not need extra configurability.
+- **Clarifications are information, not instructions.** When the user corrects your interpretation or brings you up to date on state, that is context — not a request to act. Acknowledge and wait for the explicit next step. Never execute whichever branch of your prior analysis now matches the clarified state — especially destructive operations (`git restore` on uncommitted work, `reset --hard`, delete, overwrite).
 - **Never take shortcuts without asking.** This includes: placeholder logic, approximations, skipping validation, omitting features for an "initial version", or using mock data instead of real integrations.
 - **If you see something worth improving, mention it** — do not act on it without permission.
 - When tempted to cut corners or expand scope:
