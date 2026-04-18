@@ -28,6 +28,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 6. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. Only include a "never commit directly to X" convention if the user specified protected branches in step 4.
 7. Show the proposed section to the user and ask for confirmation before writing.
 8. Create or update `.pk.json` only for the features opted into in step 4. If all three were "none," skip this step — do not create an empty `.pk.json`. Otherwise include only the opted-in keys: `{"guard": {"branches": [...]}}`, `{"release": {"branch": "..."}}`, `{"changelog": {"types": [...]}}`. If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
+9. Offer a baseline nudge if versioned releases are planned. If the user opted into release or changelog customization in step 4 (non-"none" answer to either), check for a version tag by running `git tag --list 'v*' --sort=-v:refname`. If the output is empty or nothing parses as semver, tell the user: "No version tags found. To anchor `pk changelog`, run `pk setup --baseline --push`. Use `--at <ref>` to fold prior commits into the first changelog entry." This is advisory — do not run the command from the skill. Remote state changes belong in explicit user-invoked commands.
 
 ## Rules
 
