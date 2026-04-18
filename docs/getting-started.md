@@ -51,6 +51,7 @@ Restart Claude Code to apply changes. See [pk setup](pk-setup.md) for all option
 
 ```bash
 pk setup                          # Default: block guard, manual preserve
+pk setup --baseline               # Anchor pk changelog with v0.0.0 tag
 pk setup --guard ask              # Prompt instead of blocking on protected branches
 pk setup --preserve auto          # Auto: preserve plans on ExitPlanMode
 pk setup --project-dir /path/to   # Specify project directory
