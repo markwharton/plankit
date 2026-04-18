@@ -174,8 +174,8 @@ func Run(cfg Config) int {
 	latestTag := firstLine(tagOutput)
 	if latestTag == "" {
 		fmt.Fprintln(cfg.Stderr, "Error: no version tags found")
-		fmt.Fprintln(cfg.Stderr, "  To anchor at v0.0.0: pk setup --baseline --push")
-		fmt.Fprintln(cfg.Stderr, "  Or tag a specific version manually (e.g., git tag v1.2.3 && git push origin v1.2.3)")
+		fmt.Fprintln(cfg.Stderr, "  To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push")
+		fmt.Fprintln(cfg.Stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
 		return 1
 	}
 	baseVersion, ok := version.ParseSemver(latestTag)

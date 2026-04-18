@@ -559,7 +559,9 @@ func Run(cfg Config) error {
 		}
 	} else if inGitRepo {
 		if _, ok := hasValidSemverTag(cfg, projectDir); !ok {
-			fmt.Fprintln(stderr, "No version tags found — run 'pk setup --baseline' to anchor pk changelog")
+			fmt.Fprintln(stderr, "No version tags found. If you plan to use pk changelog / pk release, anchor with:")
+			fmt.Fprintln(stderr, "  pk setup --baseline --push")
+			fmt.Fprintln(stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
 		}
 	}
 
