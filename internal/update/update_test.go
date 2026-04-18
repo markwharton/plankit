@@ -245,4 +245,7 @@ func TestFormatNotice(t *testing.T) {
 	if !strings.Contains(notice, "go install") {
 		t.Errorf("FormatNotice() = %q, want to contain install command", notice)
 	}
+	if !strings.Contains(notice, "pk setup") {
+		t.Errorf("FormatNotice() = %q, want to contain pk setup refresh guidance", notice)
+	}
 }

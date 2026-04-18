@@ -90,7 +90,12 @@ func Check(cfg Config) (latest string, available bool) {
 
 // FormatNotice returns a human-readable update notice.
 func FormatNotice(latest, current string) string {
-	return fmt.Sprintf("Update available: pk %s → %s. Run: go install github.com/markwharton/plankit/cmd/pk@latest", current, latest)
+	return fmt.Sprintf(
+		"Update available: pk %s → %s\n"+
+			"  Install: go install github.com/markwharton/plankit/cmd/pk@latest\n"+
+			"  Refresh: pk setup (updates rules and skills in this project)",
+		current, latest,
+	)
 }
 
 func cacheFilePath(cacheDir func() (string, error)) string {
