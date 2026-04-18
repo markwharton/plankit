@@ -59,6 +59,8 @@ pk setup --project-dir /path/to   # Specify project directory
 
 Re-run setup anytime to switch modes. To check what's configured, run `pk status` ([details](pk-status.md)). To remove plankit from a project, run `pk teardown` ([details](pk-teardown.md)).
 
+For server-side enforcement on GitHub, see [branch protection](branch-protection.md) for a ruleset template that pairs with `pk guard`.
+
 ## Try it
 
 1. Start Claude Code in your project
