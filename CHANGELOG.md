@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.11.0] - 2026-04-18
+
+### Added
+
+- continue implementation after preserving the plan (656cb34)
+- add --baseline flag to anchor pk changelog (44688ed)
+
+### Documentation
+
+- harmonize footer label and fix rules listing (b12e4a6)
+- recommend pk setup --baseline on the start page (f247dbe)
+- match commit message weight to change weight (a2e865a)
+- protect CHANGELOG format from tooling drift (c76943e)
+- clarify tag-as-source and add monorepo example (931f06f)
+- establish --push and --at flag conventions (931d425)
+
 ## [v0.10.1] - 2026-04-17
 
 ### Documentation
@@ -342,3 +358,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.9.0]: https://github.com/markwharton/plankit/compare/v0.8.0...v0.9.0
 [v0.10.0]: https://github.com/markwharton/plankit/compare/v0.9.0...v0.10.0
 [v0.10.1]: https://github.com/markwharton/plankit/compare/v0.10.0...v0.10.1
+[v0.11.0]: https://github.com/markwharton/plankit/compare/v0.10.1...v0.11.0
