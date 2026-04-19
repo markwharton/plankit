@@ -18,17 +18,17 @@ import (
 // Empty means no ldflags were set (go install path).
 var version string
 
-// Version returns the build version.
-// When ldflags are set (make build), returns the injected value.
-// When not set (go install), reads the module version from Go's build info.
+// Version returns the build version as a bare semver string (no leading "v").
+// A leading "v" is stripped so all three build paths report consistently —
+// the release workflow already strips it, but go install surfaces tag names verbatim.
 func Version() string {
+	v := "dev"
 	if version != "" {
-		return version
+		v = version
+	} else if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		v = info.Main.Version
 	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		return info.Main.Version
-	}
-	return "dev"
+	return strings.TrimPrefix(v, "v")
 }
 
 // Semver holds the components of a semantic version per semver.org/spec/v2.0.0.

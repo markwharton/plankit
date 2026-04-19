@@ -301,7 +301,7 @@ func runVersion(args []string) {
 	}
 
 	if scriptVer, found := setup.ScriptVersion(".claude/install-pk.sh"); found {
-		running := strings.TrimPrefix(version.Version(), "v")
+		running := version.Version()
 		pinned := strings.TrimPrefix(scriptVer, "v")
 		if running != "dev" && pinned != running {
 			fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — re-run 'pk setup' to update\n", scriptVer, running)
