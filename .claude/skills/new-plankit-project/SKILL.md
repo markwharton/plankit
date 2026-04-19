@@ -37,6 +37,8 @@ git add -A
 git commit -m "chore: pk setup"
 git push -u origin main
 git push origin v0.0.0
+git checkout -b develop
+git push -u origin develop
 ```
 
 ## Design notes
@@ -47,6 +49,7 @@ git push origin v0.0.0
 - **v0.0.0 lands on the license commit.** `gh repo create --license MIT` creates the initial commit (the LICENSE file). `pk setup --baseline` then tags that commit as `v0.0.0`. The setup files become the second commit. `pk changelog`'s first real release will start from that second commit — honest about where the project's code history begins.
 - **Two explicit pushes** — `git push -u origin main` first, then `git push origin v0.0.0`. At the init stage, reviewing each step matters more than brevity. When the pattern is trusted and boring, this could collapse to `pk setup --baseline --push`. For now, keep the explicit pushes.
 - **Setup commit message** — `"chore: pk setup"`. Short, accurate, no flavor.
+- **`develop` created and pushed at init.** `pk release` expects `origin/develop` to exist (it runs `git fetch origin develop` and `merge-base HEAD origin/develop` as pre-flight). Establishing the branch on origin at init avoids a cryptic git error weeks later and keeps every plankit-tooled project in the same starting state.
 - **No `/init` afterwards** — the project doesn't have conventions to discover yet. The user runs `/init` separately once the scaffold has enough shape for conventions to matter.
 
 ## Out of scope
