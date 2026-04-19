@@ -136,6 +136,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
+	// 0. Verify we're in a git repository. Without this, later git calls
+	// fail with exit 128 and surface as "failed to list tags: exit status
+	// 128" — accurate but unfriendly. Catch the common case up front.
+	if _, err := cfg.GitExec("", "rev-parse", "--is-inside-work-tree"); err != nil {
+		fmt.Fprintln(cfg.Stderr, "Error: not a git repository")
+		return 1
+	}
+
 	// 1. Load config.
 	fullConfig, err := LoadFullConfig(cfg.ReadFile)
 	if err != nil {

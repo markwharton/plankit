@@ -573,6 +573,31 @@ func fixedTime() time.Time {
 	return time.Date(2026, 4, 3, 0, 0, 0, 0, time.UTC)
 }
 
+func TestRun_notAGitRepo(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "rev-parse" {
+				return "", fmt.Errorf("fatal: not a git repository")
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "not a git repository") {
+		t.Errorf("stderr = %q, want 'not a git repository' message", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "failed to list tags") {
+		t.Errorf("stderr = %q, should not surface the raw git-tag error when the repo check catches it first", stderr.String())
+	}
+}
+
 func TestRun_noTags(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
