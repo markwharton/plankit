@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.12.0] - 2026-04-19
+
+### Added
+
+- nudge pk setup --baseline when no tag exists and versioned releases planned (0ec2df9)
+- suggest pk setup alongside install in update notice (f423f82)
+- add maintainer skill for plankit.com notes prompts (1d1d9d9)
+- add maintainer skill for project scaffolding (eee9a47)
+
+### Fixed
+
+- detect non-git repo up front with a friendly error (247581a)
+- normalize Version() output to bare semver (6460ca3)
+- create and push develop at init (052d33c)
+- clear error when source branch is not on origin (4fc914a)
+
+### Changed
+
+- split maintainer-side rules out of plankit-tooling.md (b63e73a)
+
+### Documentation
+
+- add branch protection ruleset template and companion guide (5e1727e)
+- document repo-check heuristic in plankit-development.md (1de8eb2)
+
+### Maintenance
+
+- read Go version from go.mod instead of pinning in workflows (a564a66)
+- apply gofmt across six files (c4e160f)
+- fail make lint on gofmt drift (3fa6a16)
+
 ## [v0.11.1] - 2026-04-19
 
 ### Fixed
@@ -375,3 +406,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.10.1]: https://github.com/markwharton/plankit/compare/v0.10.0...v0.10.1
 [v0.11.0]: https://github.com/markwharton/plankit/compare/v0.10.1...v0.11.0
 [v0.11.1]: https://github.com/markwharton/plankit/compare/v0.11.0...v0.11.1
+[v0.12.0]: https://github.com/markwharton/plankit/compare/v0.11.1...v0.12.0
