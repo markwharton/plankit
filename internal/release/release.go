@@ -39,7 +39,6 @@ func DefaultConfig() Config {
 	}
 }
 
-
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 1. Get current branch (implicit source).

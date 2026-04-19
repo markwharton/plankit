@@ -51,7 +51,6 @@ func DefaultConfig() Config {
 	}
 }
 
-
 // Commit represents a parsed conventional commit.
 type Commit struct {
 	Hash     string

@@ -36,12 +36,12 @@ type Config struct {
 // DefaultConfig returns a Config wired to real OS resources.
 func DefaultConfig() Config {
 	return Config{
-		Stderr:   os.Stderr,
-		ReadFile: os.ReadFile,
+		Stderr:    os.Stderr,
+		ReadFile:  os.ReadFile,
 		WriteFile: os.WriteFile,
-		Remove:   os.Remove,
-		Stat:     os.Stat,
-		ReadDir:  os.ReadDir,
+		Remove:    os.Remove,
+		Stat:      os.Stat,
+		ReadDir:   os.ReadDir,
 	}
 }
 

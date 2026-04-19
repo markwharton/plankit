@@ -935,8 +935,8 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 func TestRun_versionFiles(t *testing.T) {
 	var stderr bytes.Buffer
 	files := map[string][]byte{
-		".pk.json": []byte(`{"changelog":{"versionFiles":[{"path":"package.json","type":"json"}]}}`),
-		"package.json":    []byte(`{"name":"test","version":"0.0.0"}`),
+		".pk.json":     []byte(`{"changelog":{"versionFiles":[{"path":"package.json","type":"json"}]}}`),
+		"package.json": []byte(`{"name":"test","version":"0.0.0"}`),
 	}
 	var updatedPkg []byte
 

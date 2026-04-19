@@ -660,4 +660,3 @@ func TestRun_legacyFlow_noReleaseBranch(t *testing.T) {
 		t.Errorf("push branch = %q, want develop", pushArgs[2])
 	}
 }
-

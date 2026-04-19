@@ -954,10 +954,10 @@ func TestRun(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		var addPath string
 		cfg := Config{
-			Stdin:  strings.NewReader(inputJSON),
-			Stdout: &stdout,
-			Stderr: &stderr,
-			Env:    func(string) string { return "" },
+			Stdin:   strings.NewReader(inputJSON),
+			Stdout:  &stdout,
+			Stderr:  &stderr,
+			Env:     func(string) string { return "" },
 			HomeDir: func() (string, error) { return tmpDir, nil },
 			Now:     func() time.Time { return fixedTime },
 			Getwd:   func() (string, error) { return projectDir, nil },
