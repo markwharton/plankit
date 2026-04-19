@@ -41,6 +41,9 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 		"branch": func(args ...string) (string, error) {
 			return branch, nil
 		},
+		"ls-remote": func(args ...string) (string, error) {
+			return "abc123\trefs/heads/" + branch, nil
+		},
 		"fetch": func(args ...string) (string, error) {
 			return "", nil
 		},
@@ -71,6 +74,9 @@ func happyGitMerge(tag, sourceBranch, releaseBranch string) map[string]func(args
 		},
 		"branch": func(args ...string) (string, error) {
 			return currentBranch, nil
+		},
+		"ls-remote": func(args ...string) (string, error) {
+			return "abc123\trefs/heads/" + sourceBranch, nil
 		},
 		"fetch": func(args ...string) (string, error) {
 			return "", nil
@@ -278,6 +284,40 @@ func TestRun_behindRemote(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "behind origin/main") {
 		t.Errorf("stderr = %q, want behind remote message", stderr.String())
+	}
+}
+
+func TestRun_sourceBranchNotOnOrigin(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGit("v1.0.0", "develop")
+	fetchCalled := false
+	git["ls-remote"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("exit status 2")
+	}
+	git["fetch"] = func(args ...string) (string, error) {
+		fetchCalled = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "develop does not exist on origin") {
+		t.Errorf("stderr = %q, want missing-on-origin message", out)
+	}
+	if !strings.Contains(out, "git push -u origin develop") {
+		t.Errorf("stderr = %q, want push hint", out)
+	}
+	if fetchCalled {
+		t.Errorf("fetch should not run after ls-remote failure")
 	}
 }
 

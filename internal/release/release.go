@@ -98,6 +98,15 @@ func Run(cfg Config) int {
 	}
 	fmt.Fprintln(cfg.Stderr, "  Clean working tree")
 
+	// 7. Pre-flight: source branch exists on origin. Gives a clear error
+	// for the "local-only branch" case that would otherwise surface as a
+	// cryptic fetch failure.
+	if _, err := cfg.GitExec("", "ls-remote", "--exit-code", "--heads", "origin", sourceBranch); err != nil {
+		fmt.Fprintf(cfg.Stderr, "Error: %s does not exist on origin — push it first:\n  git push -u origin %s\n", sourceBranch, sourceBranch)
+		return 1
+	}
+	fmt.Fprintf(cfg.Stderr, "  %s exists on origin\n", sourceBranch)
+
 	// 7. Pre-flight: source branch not behind remote.
 	_, err = cfg.GitExec("", "fetch", "origin", sourceBranch, "--quiet")
 	if err != nil {

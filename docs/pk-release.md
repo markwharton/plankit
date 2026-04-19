@@ -16,7 +16,7 @@ When `release.branch` is configured in `.pk.json`:
 1. **Note current branch** — this is the source branch (no hard-coded name).
 2. **Read `Release-Tag:` trailer from HEAD** (written by `pk changelog`) and validate it as semver. Refuses if the trailer is missing or invalid.
 3. **Check the tag doesn't already exist locally** — refuses if it does.
-4. **Pre-flight checks** — clean working tree, source branch not behind remote.
+4. **Pre-flight checks** — clean working tree, source branch exists on origin, source branch not behind remote.
 5. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
 6. **Run pre-release hook** if configured.
 7. **Create the git tag** on HEAD (the fast-forwarded release branch points at the same commit as the source branch).
@@ -27,7 +27,7 @@ When `release.branch` is NOT configured (legacy flow):
 
 1. Read `Release-Tag:` trailer from HEAD and validate it as semver.
 2. Check the tag doesn't already exist locally.
-3. Pre-flight checks — clean working tree, not behind remote.
+3. Pre-flight checks — clean working tree, current branch exists on origin, not behind remote.
 4. Run pre-release hook if configured.
 5. Create the git tag on HEAD.
 6. Push current branch + tag to origin.
