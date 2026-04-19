@@ -8,7 +8,7 @@ export CGO_ENABLED := 0
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 
-.PHONY: all build clean test install fmt lint build-all release release-dry
+.PHONY: all build clean test install fmt lint vet fmtcheck build-all release release-dry
 
 all: build
 
@@ -41,9 +41,16 @@ install:
 fmt:
 	go fmt ./...
 
-# Lint code
-lint:
+# Lint code: vet + gofmt drift check. Fails if any .go file in a tracked
+# package needs formatting. `go list` scopes to real packages so sketch
+# dirs (underscore-prefixed) don't produce false positives.
+lint: vet fmtcheck
+
+vet:
 	go vet ./...
+
+fmtcheck:
+	@files=$$(gofmt -l $$(go list -f '{{.Dir}}' ./...)); [ -z "$$files" ] || { echo "gofmt drift:"; echo "$$files"; exit 1; }
 
 # Release: validate and push to trigger CI build
 release:
