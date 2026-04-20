@@ -10,9 +10,10 @@ The skill operates on plankit only. It does not read or write to the plankit.com
 
 ## Steps
 
-1. Determine the target version:
-   - If the user passed a version argument (e.g., `v0.12.0`), use that.
-   - Otherwise use the most recent version tag: `git describe --tags --abbrev=0`.
+1. Resolve inputs:
+   - **Tool slug** — from a `tool` argument if supplied, else default to `pk`. plankit.com is multi-tool: `pk` → `/pk/notes/`, `mcp-bridge` → `/mcp-bridge/notes/`, `signals` → `/signals/notes/`. The slug drives every path in the emitted prompt.
+   - **Version** — from a `version` argument if supplied (e.g., `v0.12.0`), else the most recent tag: `git describe --tags --abbrev=0`.
+   - **Repo name** — `basename $(git rev-parse --show-toplevel)`. Fills the `<REPO>` slot in the emitted Context block so the receiving session sees both the source repo and the binary (they differ for plankit: repo `plankit`, binary `pk`).
 2. Read `CHANGELOG.md` and extract the section for the target version (all categories: Added, Fixed, Documentation, Maintenance, etc.).
 3. Distill each commit in the section:
    - **User-visible** — keep: new flags, behavior changes, stderr message changes, new commands, breaking changes.
@@ -51,11 +52,12 @@ That's the CHANGELOG. This skill's job is to turn it into something a human read
 After distilling, emit a prompt with this structure. Fill the `<BRACKETS>` with the distilled content.
 
 ```
-# Write release notes for plankit.com — <VERSION>
+# Write release notes for plankit.com — <TOOL> <VERSION>
 
-Context: plankit <VERSION> shipped. Write a new "Notes from the workshop"
-entry at `site/notes/index.html`. If that file doesn't exist yet, create
-it; if it exists, add the new entry at the top (newest first).
+Context: <TOOL> <VERSION> shipped (repo: <REPO>, binary: <TOOL>). Write
+a new "Notes from the workshop" entry at `site/<TOOL>/notes/index.html`.
+If that file doesn't exist yet, create it; if it exists, add the new
+entry at the top (newest first).
 
 ## Entry content (already curated — use as the source for the entry text)
 
@@ -81,9 +83,12 @@ tokens, new layouts, or new CSS files.
 
 ## Link points
 
-After the notes page is in place, add a link from `site/pk/index.html`
-(Docs section or equivalent). Do not link from
-`site/pk/start/index.html` — that page stays focused on first-run.
+After the notes page is in place, `site/<TOOL>/index.html` should have
+a link to `/<TOOL>/notes/` in its Docs section. Verify the end state:
+if the link is already present, no change needed — do not make an
+empty commit. If missing, add it as a separate commit from the notes
+entry. Do not link from `site/<TOOL>/start/index.html` — that page
+stays focused on first-run.
 
 ## Constraints (explicitly NOT to build)
 
@@ -96,9 +101,9 @@ After the notes page is in place, add a link from `site/pk/index.html`
 ## Flow
 
 1. Read 2–3 existing plankit.com pages to absorb style.
-2. Draft `site/notes/index.html` — show the user before writing files.
+2. Draft `site/<TOOL>/notes/index.html` — show the user before writing files.
 3. Iterate on voice/length if needed.
-4. Add the link point from pk/index.html after the notes page is approved.
+4. Check the end-state link from the tool landing page; add only if missing, as a separate commit.
 5. Commit on develop with a clear message, then run `/changelog` and
    `/release` to ship.
 
@@ -108,6 +113,6 @@ and the link addition into one commit — they're two logical changes.
 
 ## Contract
 
-- **Input:** optional version argument (string like `v0.11.1`).
+- **Inputs:** optional `tool` argument (slug, default `pk` — e.g., `pk`, `mcp-bridge`, `signals`) and optional `version` argument (string like `v0.11.1`).
 - **Output:** the full prompt printed to stdout, ready for the user to copy.
 - **Side effects:** none. No writes, no cross-repo reads, no network calls.
