@@ -41,8 +41,10 @@ your-project/
         │   └── SKILL.md      # /init skill
         ├── preserve/
         │   └── SKILL.md      # /preserve skill
-        └── release/
-            └── SKILL.md      # /release skill
+        ├── release/
+        │   └── SKILL.md      # /release skill
+        └── ship/
+            └── SKILL.md      # /ship skill (chains /changelog + /release)
 ```
 
 Restart Claude Code to apply changes. See [pk setup](pk-setup.md) for all options.

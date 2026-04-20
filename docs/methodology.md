@@ -138,6 +138,6 @@ For frequent use, create a `/review` skill — see [Creating skills](creating-sk
 
 ## Use what you build
 
-plankit follows its own guidelines. The same critical rules and `.claude/rules/` files that `pk setup` creates for your project are what plankit uses itself — plus project-specific conventions. The same `/changelog` and `/release` skills that ship with pk are how plankit publishes releases.
+plankit follows its own guidelines. The same critical rules and `.claude/rules/` files that `pk setup` creates for your project are what plankit uses itself — plus project-specific conventions. The same `/changelog` and `/release` skills (or `/ship` to chain both) that ship with pk are how plankit publishes releases.
 
 This is sometimes called "eating your own dog food", or dogfooding. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).

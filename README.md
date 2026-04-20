@@ -14,11 +14,11 @@ A plan-driven development toolkit for [Claude Code](https://code.claude.com) (An
 `pk setup` installs the pieces that make plan-driven development work with Claude Code:
 
 - **Installs rules and guidelines** — CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
-- **Adds Claude Code skills** — `/init`, `/changelog`, `/release`, `/preserve`
+- **Adds Claude Code skills** — `/init`, `/changelog`, `/release`, `/ship`, `/preserve`
 - **Preserves approved plans** — saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
 - **Guards protected branches** — git mutations blocked via hooks, locally, before the damage happens
 
-After setup, `/changelog` and `/release` become your daily driver — each previews, confirms, then runs.
+After setup, `/changelog` and `/release` become your daily driver — each previews, confirms, then runs. Use `/ship` to chain both in a single flow.
 
 ## Install
 
