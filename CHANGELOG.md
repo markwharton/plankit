@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.13.0] - 2026-04-21
+
+### Added
+
+- add managed /ship skill chaining changelog and release (82492bd)
+
+### Maintenance
+
+- bump codecov/codecov-action from 5.5.4 to 6.0.0 (d3c2e20)
+- parameterize tool slug for multi-tool repos (6147eff)
+
 ## [v0.12.0] - 2026-04-19
 
 ### Added
@@ -407,3 +418,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.11.0]: https://github.com/markwharton/plankit/compare/v0.10.1...v0.11.0
 [v0.11.1]: https://github.com/markwharton/plankit/compare/v0.11.0...v0.11.1
 [v0.12.0]: https://github.com/markwharton/plankit/compare/v0.11.1...v0.12.0
+[v0.13.0]: https://github.com/markwharton/plankit/compare/v0.12.0...v0.13.0
