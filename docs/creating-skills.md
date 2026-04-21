@@ -70,7 +70,7 @@ Skills become much more powerful when they involve the user in the loop. The fiv
 
 ### Preview and confirm
 
-Before destructive or hard-to-reverse actions, run the dry-run version, show the user what will happen, and ask for confirmation. The `/changelog`, `/preserve`, and `/release` skills all use this pattern:
+Before destructive or hard-to-reverse actions, run the dry-run version, show the user what will happen, and ask for confirmation. The `/changelog` and `/release` skills use this pattern:
 
 ```markdown
 First, preview with a dry run:

@@ -24,7 +24,7 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 
 ## Flags
 
-- **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. Used by the `/preserve` skill for confirmation before proceeding.
+- **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing.
 - **--push** — Push to origin after committing. By default, `pk preserve` commits only — push when you're ready.
 - **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready. The response includes `additionalContext` so Claude is aware of the plan and can inform the user.
 
