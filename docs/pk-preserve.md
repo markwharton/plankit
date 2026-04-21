@@ -40,6 +40,10 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 
 ## Details
 
+### Race safety across Claude sessions
+
+`~/.claude/plans/` is shared — every Claude Code session writes plans there. When multiple sessions are active, mtime-based selection in `findLatestPlan()` can pick the wrong plan. To close that window, `pk preserve --notify` writes the absolute path of the approved plan to `<projectDir>/.git/pk-pending-plan`. When the `/preserve` skill later invokes `pk preserve` (no hook stdin), that invocation reads the pointer and preserves the exact plan that was approved — even if a rival session has since bumped the mtime on a different `*.md` in `~/.claude/plans/`. The pointer is deleted after successful preservation (or when it points at a missing file). No `.gitignore` coordination is needed because `.git/` is never tracked.
+
 ### Team usage
 
 The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based on what exists in `docs/plans/` at the time of preservation. In a team setting, developers working in parallel may generate duplicate sequence numbers because each developer's local directory is a different snapshot. This is harmless — the slug portion ensures filenames are unique, and git will merge them without conflict. The sequence number provides useful ordering for a single developer; across a team, the date is the primary sort key.

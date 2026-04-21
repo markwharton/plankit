@@ -60,6 +60,16 @@ func DefaultConfig() Config {
 // or aborted drafts.
 const minPlanSize = 50
 
+// pointerFilename names the per-repo pending-plan pointer written by
+// --notify mode and consumed by the /preserve skill invocation. It lives
+// under .git/ because that directory is always untracked by git, so no
+// .gitignore coordination is needed and the file is naturally scoped to
+// the repo. ~/.claude/plans/ is shared across Claude sessions, so an
+// mtime-based selection in findLatestPlan() can grab a rival session's
+// plan — the pointer records the exact plan that was approved so /preserve
+// can pick it up even if the user runs it minutes later.
+const pointerFilename = "pk-pending-plan"
+
 // Run reads a PostToolUse hook payload from stdin and preserves the approved plan.
 // Returns the process exit code (always 0 for hook commands).
 func Run(cfg Config) int {
@@ -67,12 +77,24 @@ func Run(cfg Config) int {
 	var inputCWD string
 
 	input, err := hooks.ReadInput(cfg.Stdin)
-	if err != nil {
-		// stdin may not have a hook payload (e.g., invoked via skill).
-		// Fall back to finding the latest plan.
-		planPath = findLatestPlan(cfg.HomeDir)
-	} else {
+	if err == nil {
 		inputCWD = input.CWD
+	}
+	projectDir := resolveProjectDir(cfg, inputCWD)
+
+	if err != nil {
+		// stdin has no hook payload (e.g., /preserve skill invocation).
+		// Prefer the project-local pointer written by --notify; fall back
+		// to mtime-based findLatestPlan only when the pointer is absent.
+		if projectDir != "" {
+			if p, ok := readPointer(projectDir); ok {
+				planPath = p
+			}
+		}
+		if planPath == "" {
+			planPath = findLatestPlan(cfg.HomeDir)
+		}
+	} else {
 		planPath = extractPlanPath(input.ToolResponseString())
 		if planPath == "" || !fileExists(planPath) {
 			planPath = findLatestPlan(cfg.HomeDir)
@@ -95,9 +117,12 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Notify-only mode: output plan title, don't preserve.
+	// Notify-only mode: output plan title, record the pointer for later /preserve, don't commit.
 	if cfg.Notify {
 		title := extractTitle(string(content))
+		if projectDir != "" {
+			writePointer(cfg, projectDir, planPath)
+		}
 		cfg.writeHookResponse(
 			fmt.Sprintf("Plan '%s' ready. Type /preserve to save it.", title),
 			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /preserve to save it to docs/plans/.", title),
@@ -105,16 +130,6 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Determine project directory.
-	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
-	if projectDir == "" {
-		projectDir = inputCWD
-	}
-	if projectDir == "" {
-		if wd, err := cfg.Getwd(); err == nil {
-			projectDir = wd
-		}
-	}
 	if projectDir == "" {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: could not determine project directory\n")
 		return 0
@@ -141,6 +156,7 @@ func Run(cfg Config) int {
 	// Scan destination directory for duplicates and next sequence number.
 	dupName, seq := scanDestDir(destDir, datePrefix, content)
 	if dupName != "" {
+		removePointer(projectDir)
 		cfg.writeSystemMessage(fmt.Sprintf("Plan already preserved as docs/plans/%s", dupName))
 		return 0
 	}
@@ -174,6 +190,7 @@ func Run(cfg Config) int {
 
 	// Check for staged changes.
 	if _, err := cfg.GitExec(projectDir, "diff", "--cached", "--quiet"); err == nil {
+		removePointer(projectDir)
 		cfg.writeSystemMessage("Plan unchanged, no commit needed.")
 		return 0
 	}
@@ -184,6 +201,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: git commit failed: %v\n", err)
 		return 0
 	}
+	removePointer(projectDir)
 
 	// Git push (only when --push is set).
 	if cfg.Push {
@@ -197,6 +215,58 @@ func Run(cfg Config) int {
 	}
 
 	return 0
+}
+
+// resolveProjectDir determines the project directory from CLAUDE_PROJECT_DIR,
+// the hook payload's CWD, or os.Getwd(). Returns "" when no source yields a path.
+func resolveProjectDir(cfg Config, inputCWD string) string {
+	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
+	if projectDir == "" {
+		projectDir = inputCWD
+	}
+	if projectDir == "" && cfg.Getwd != nil {
+		if wd, err := cfg.Getwd(); err == nil {
+			projectDir = wd
+		}
+	}
+	return projectDir
+}
+
+// pointerPath returns the absolute path to the pending-plan pointer for a repo.
+func pointerPath(projectDir string) string {
+	return filepath.Join(projectDir, ".git", pointerFilename)
+}
+
+// readPointer reads the pending-plan pointer. Returns the plan path and true
+// when the pointer is present and the pointed-to file still exists. A stale
+// pointer (missing target) is deleted and reported as absent.
+func readPointer(projectDir string) (string, bool) {
+	path := pointerPath(projectDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	planPath := strings.TrimSpace(string(data))
+	if planPath == "" || !fileExists(planPath) {
+		os.Remove(path)
+		return "", false
+	}
+	return planPath, true
+}
+
+// writePointer records the pending-plan pointer. Best-effort: a write failure
+// (e.g., .git/ is a worktree file or the directory is read-only) is logged and
+// the caller continues — /preserve will still work via the mtime fallback.
+func writePointer(cfg Config, projectDir, planPath string) {
+	path := pointerPath(projectDir)
+	if err := os.WriteFile(path, []byte(planPath+"\n"), 0644); err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write pending-plan pointer: %v\n", err)
+	}
+}
+
+// removePointer deletes the pending-plan pointer. Best-effort.
+func removePointer(projectDir string) {
+	os.Remove(pointerPath(projectDir))
 }
 
 // planPathRegex matches paths to Claude Code plan files.

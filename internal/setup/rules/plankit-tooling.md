@@ -14,7 +14,7 @@ description: Three-layer architecture (pk commands, hooks, skills) and hook beha
 
 - **`pk guard` blocks git mutations on protected branches.** If the project uses ask mode, you will be prompted instead — respect the user's decision either way. When blocked, switch to the development branch.
 - **`pk protect` blocks edits to pk-managed files.** The block reason tells you why — adjust your approach, don't try to work around it.
-- **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration — it may preserve automatically or notify that a plan is ready.
+- **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration — it may preserve automatically or notify that a plan is ready. If the user types `/preserve`, dispatch the skill as your next action — never queue it behind implementation work. `/preserve` is an explicit request, not a go-signal for something else.
 
 ## Session Bootstrap
 

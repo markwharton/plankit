@@ -628,6 +628,167 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("notify writes pending-plan pointer in .git/", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Pointer Plan\n\nThis plan has enough content to pass the minimum length check easily."
+		planFile := filepath.Join(plansDir, "pointer-test.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
+			Notify:  true,
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+
+		pointerFile := filepath.Join(projectDir, ".git", "pk-pending-plan")
+		data, err := os.ReadFile(pointerFile)
+		if err != nil {
+			t.Fatalf("pointer file not written: %v", err)
+		}
+		got := strings.TrimSpace(string(data))
+		if got != planFile {
+			t.Errorf("pointer content = %q, want %q", got, planFile)
+		}
+	})
+
+	t.Run("skill invocation reads pointer under race", func(t *testing.T) {
+		// Regression guard: ~/.claude/plans/ contains both the approved plan
+		// (older mtime) and a rival plan from another session (newer mtime).
+		// mtime-based findLatestPlan would pick the rival; the pointer must win.
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		approvedContent := "# Approved Plan\n\nThe plan Session A approved and expects to preserve."
+		approvedFile := filepath.Join(plansDir, "approved.md")
+		os.WriteFile(approvedFile, []byte(approvedContent), 0644)
+		older := time.Now().Add(-time.Hour)
+		os.Chtimes(approvedFile, older, older)
+
+		rivalContent := "# Rival Plan\n\nA plan written by Session B in a different project after Session A's approval."
+		rivalFile := filepath.Join(plansDir, "rival.md")
+		os.WriteFile(rivalFile, []byte(rivalContent), 0644)
+
+		projectDir := t.TempDir()
+		os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+		pointerFile := filepath.Join(projectDir, ".git", "pk-pending-plan")
+		os.WriteFile(pointerFile, []byte(approvedFile+"\n"), 0644)
+
+		var stdout, stderr bytes.Buffer
+		var commitMsg string
+		cfg := Config{
+			Stdin:  strings.NewReader(""), // skill invocation: no stdin
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "commit" {
+					commitMsg = args[2]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if !strings.Contains(commitMsg, "Approved Plan") {
+			t.Errorf("commit message = %q, want to contain 'Approved Plan' (pointer must win over mtime)", commitMsg)
+		}
+		if strings.Contains(commitMsg, "Rival Plan") {
+			t.Errorf("commit message = %q, must not contain 'Rival Plan'", commitMsg)
+		}
+		if _, err := os.Stat(pointerFile); !os.IsNotExist(err) {
+			t.Errorf("pointer file still exists after successful preserve: err=%v", err)
+		}
+	})
+
+	t.Run("stale pointer target missing falls back to latest", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		plansDir := filepath.Join(tmpDir, ".claude", "plans")
+		os.MkdirAll(plansDir, 0755)
+
+		planContent := "# Latest Plan\n\nThe only real plan; the pointer target is missing."
+		planFile := filepath.Join(plansDir, "latest.md")
+		os.WriteFile(planFile, []byte(planContent), 0644)
+
+		projectDir := t.TempDir()
+		os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+		pointerFile := filepath.Join(projectDir, ".git", "pk-pending-plan")
+		os.WriteFile(pointerFile, []byte("/does/not/exist.md\n"), 0644)
+
+		var stdout, stderr bytes.Buffer
+		var commitMsg string
+		cfg := Config{
+			Stdin:  strings.NewReader(""),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			HomeDir: func() (string, error) { return tmpDir, nil },
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(dir string, args ...string) (string, error) {
+				if args[0] == "commit" {
+					commitMsg = args[2]
+				}
+				if args[0] == "diff" && args[1] == "--cached" {
+					return "", fmt.Errorf("changes exist")
+				}
+				return "", nil
+			},
+		}
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if !strings.Contains(commitMsg, "Latest Plan") {
+			t.Errorf("commit message = %q, want 'Latest Plan' (mtime fallback)", commitMsg)
+		}
+		if _, err := os.Stat(pointerFile); !os.IsNotExist(err) {
+			t.Errorf("stale pointer still exists: err=%v", err)
+		}
+	})
+
 	t.Run("dry-run previews without writing or committing", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		plansDir := filepath.Join(tmpDir, ".claude", "plans")

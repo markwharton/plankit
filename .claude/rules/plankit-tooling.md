@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: 8c213fd4bb44f251cef8ace5a5fefa62f85352dc2d24d8ca875cf9c4c10eedcd
+pk_sha256: 0861fd94a8a62912154ff312225589023322965dd8e6aa37c5a4fd581c82bc13
 ---
 
 # Plankit Tooling
@@ -15,7 +15,7 @@ pk_sha256: 8c213fd4bb44f251cef8ace5a5fefa62f85352dc2d24d8ca875cf9c4c10eedcd
 
 - **`pk guard` blocks git mutations on protected branches.** If the project uses ask mode, you will be prompted instead — respect the user's decision either way. When blocked, switch to the development branch.
 - **`pk protect` blocks edits to pk-managed files.** The block reason tells you why — adjust your approach, don't try to work around it.
-- **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration — it may preserve automatically or notify that a plan is ready.
+- **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration — it may preserve automatically or notify that a plan is ready. If the user types `/preserve`, dispatch the skill as your next action — never queue it behind implementation work. `/preserve` is an explicit request, not a go-signal for something else.
 
 ## Session Bootstrap
 
