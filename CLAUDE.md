@@ -51,10 +51,10 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 ### Directory Structure
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
+- `internal/` — all packages: `changelog`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
-- `.claude/skills/` — managed skills (changelog, init, preserve, release).
-- `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior).
+- `.claude/skills/` — managed skills (changelog, init, preserve, release, ship).
+- `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior, plankit-tooling).
 - `site/` — landing page.
 
 ### Design
@@ -62,7 +62,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
 - **Three command layers, three flag patterns.**
   - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
-  - **Skill-managed commands** (changelog, release) — `/command` skills handle the preview/confirm cycle. `--dry-run` exists for the skill to preview before executing. Power users typing `pk command` in the terminal bypass the skill and execute directly.
+  - **Skill-managed commands** (changelog, release, ship) — `/command` skills handle the preview/confirm cycle. `--dry-run` exists for the skill to preview before executing. Power users typing `pk command` in the terminal bypass the skill and execute directly.
   - **User-only commands** (teardown) — no skill wrapping, destructive. Preview by default, `--confirm` to execute.
 
 ### Code Patterns
