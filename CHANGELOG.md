@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.13.1] - 2026-04-22
+
+### Fixed
+
+- close manual-mode race with pointer file (186d73e)
+- preserve settings.json key order across pk setup (1813b68)
+- preserve unknown fields on user hook objects (8b2d05d)
+
+### Changed
+
+- drop dry-run preview from /preserve skill (4975ffe)
+
+### Documentation
+
+- refresh stale enumerations (8802dca)
+
 ## [v0.13.0] - 2026-04-21
 
 ### Added
@@ -419,3 +435,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.11.1]: https://github.com/markwharton/plankit/compare/v0.11.0...v0.11.1
 [v0.12.0]: https://github.com/markwharton/plankit/compare/v0.11.1...v0.12.0
 [v0.13.0]: https://github.com/markwharton/plankit/compare/v0.12.0...v0.13.0
+[v0.13.1]: https://github.com/markwharton/plankit/compare/v0.13.0...v0.13.1
