@@ -60,13 +60,15 @@ func Run(cfg Config) error {
 
 	// --- Settings analysis ---
 	settingsData, settingsErr := cfg.ReadFile(settingsFile)
-	var settings map[string]json.RawMessage
+	var settings *setup.OrderedObject
 	settingsExists := false
 	if settingsErr == nil {
 		settingsExists = true
-		if err := json.Unmarshal(settingsData, &settings); err != nil {
+		parsed, err := setup.ParseOrderedObject(settingsData)
+		if err != nil {
 			return fmt.Errorf("failed to parse %s: %w", settingsFile, err)
 		}
+		settings = parsed
 		settingsActions = analyzeSettings(settings)
 	}
 
@@ -167,13 +169,7 @@ func Run(cfg Config) error {
 		removeHooks(settings)
 		removePermission(settings, "Bash(pk:*)")
 
-		// Check if settings is now empty.
-		empty := true
-		for range settings {
-			empty = false
-			break
-		}
-		if empty {
+		if settings.Len() == 0 {
 			if err := cfg.Remove(settingsFile); err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("failed to remove %s: %w", settingsFile, err)
 			}
@@ -217,25 +213,24 @@ func Run(cfg Config) error {
 }
 
 // analyzeSettings identifies pk hooks and permissions to remove.
-// Uses the same map-based representation as removeHooks so preview and
-// execute paths agree on what pk hooks are present.
-func analyzeSettings(settings map[string]json.RawMessage) []action {
+// Uses OrderedObject so preview and execute paths see the same key order.
+func analyzeSettings(settings *setup.OrderedObject) []action {
 	var actions []action
 
-	if raw, ok := settings["hooks"]; ok {
-		hooks := map[string]json.RawMessage{}
-		if json.Unmarshal(raw, &hooks) == nil {
-			for _, category := range []string{"PreToolUse", "PostToolUse", "SessionStart"} {
+	if raw, ok := settings.Get("hooks"); ok {
+		hooks, err := setup.ParseOrderedObject(raw)
+		if err == nil {
+			for _, category := range setup.KnownHookCategories {
 				actions = append(actions, findPKHooksInCategory(hooks, category)...)
 			}
 		}
 	}
 
 	// Check for pk permission.
-	if permRaw, ok := settings["permissions"]; ok {
-		var perms map[string]json.RawMessage
-		if json.Unmarshal(permRaw, &perms) == nil {
-			if allowRaw, ok := perms["allow"]; ok {
+	if permRaw, ok := settings.Get("permissions"); ok {
+		perms, err := setup.ParseOrderedObject(permRaw)
+		if err == nil {
+			if allowRaw, ok := perms.Get("allow"); ok {
 				var allowList []string
 				if json.Unmarshal(allowRaw, &allowList) == nil {
 					for _, p := range allowList {
@@ -253,8 +248,8 @@ func analyzeSettings(settings map[string]json.RawMessage) []action {
 
 // findPKHooksInCategory returns removal actions for pk hooks in a single
 // hook category. Returns nil if the category is missing or has no pk hooks.
-func findPKHooksInCategory(hooks map[string]json.RawMessage, category string) []action {
-	raw, ok := hooks[category]
+func findPKHooksInCategory(hooks *setup.OrderedObject, category string) []action {
+	raw, ok := hooks.Get(category)
 	if !ok {
 		return nil
 	}
@@ -470,8 +465,8 @@ func settingsWillBeEmpty(cfg Config, path string) bool {
 	if err != nil {
 		return false
 	}
-	var settings map[string]json.RawMessage
-	if json.Unmarshal(data, &settings) != nil {
+	settings, err := setup.ParseOrderedObject(data)
+	if err != nil {
 		return false
 	}
 
@@ -479,32 +474,31 @@ func settingsWillBeEmpty(cfg Config, path string) bool {
 	removeHooks(settings)
 	removePermission(settings, "Bash(pk:*)")
 
-	return len(settings) == 0
+	return settings.Len() == 0
 }
 
 // removeHooks removes all plankit hooks from the settings hooks config.
-// removeHooks strips plankit hooks from the three categories it manages,
+// Strips plankit hooks from every managed category (see setup.KnownHookCategories),
 // preserving user hooks and any unknown categories (e.g., SessionEnd, Stop,
-// UserPromptSubmit). If all three managed categories become empty and no
-// other categories exist, the hooks key is removed entirely.
-func removeHooks(settings map[string]json.RawMessage) {
-	raw, ok := settings["hooks"]
+// UserPromptSubmit). Key order is preserved across the edit. If all managed
+// categories become empty and no other categories exist, the hooks key is removed.
+func removeHooks(settings *setup.OrderedObject) {
+	raw, ok := settings.Get("hooks")
 	if !ok {
 		return
 	}
 
-	// Parse as a generic map so unknown categories pass through untouched.
-	hooks := map[string]json.RawMessage{}
-	if json.Unmarshal(raw, &hooks) != nil {
+	hooks, err := setup.ParseOrderedObject(raw)
+	if err != nil {
 		return
 	}
 
-	for _, key := range []string{"PreToolUse", "PostToolUse", "SessionStart"} {
+	for _, key := range setup.KnownHookCategories {
 		filterCategoryKey(hooks, key)
 	}
 
-	if len(hooks) == 0 {
-		delete(settings, "hooks")
+	if hooks.Len() == 0 {
+		settings.Delete("hooks")
 		return
 	}
 
@@ -512,13 +506,13 @@ func removeHooks(settings map[string]json.RawMessage) {
 	if err != nil {
 		return
 	}
-	settings["hooks"] = json.RawMessage(hooksJSON)
+	settings.Set("hooks", json.RawMessage(hooksJSON))
 }
 
-// filterCategoryKey removes plankit hooks from a single hook category in the
-// hooks map, deleting the key if the category becomes empty.
-func filterCategoryKey(hooks map[string]json.RawMessage, key string) {
-	raw, ok := hooks[key]
+// filterCategoryKey removes plankit hooks from a single hook category,
+// deleting the key if the category becomes empty. Preserves its position.
+func filterCategoryKey(hooks *setup.OrderedObject, key string) {
+	raw, ok := hooks.Get(key)
 	if !ok {
 		return
 	}
@@ -528,14 +522,14 @@ func filterCategoryKey(hooks map[string]json.RawMessage, key string) {
 	}
 	filtered := filterCategory(entries)
 	if len(filtered) == 0 {
-		delete(hooks, key)
+		hooks.Delete(key)
 		return
 	}
 	filteredJSON, err := json.Marshal(filtered)
 	if err != nil {
 		return
 	}
-	hooks[key] = json.RawMessage(filteredJSON)
+	hooks.Set(key, json.RawMessage(filteredJSON))
 }
 
 // filterCategory removes plankit hooks from a hook category.
@@ -556,19 +550,20 @@ func filterCategory(entries []setup.HookEntry) []setup.HookEntry {
 	return result
 }
 
-// removePermission removes a permission string from settings.
-func removePermission(settings map[string]json.RawMessage, perm string) {
-	permRaw, ok := settings["permissions"]
+// removePermission removes a permission string from settings. Preserves the
+// existing key order of the permissions object.
+func removePermission(settings *setup.OrderedObject, perm string) {
+	permRaw, ok := settings.Get("permissions")
 	if !ok {
 		return
 	}
 
-	var perms map[string]json.RawMessage
-	if json.Unmarshal(permRaw, &perms) != nil {
+	perms, err := setup.ParseOrderedObject(permRaw)
+	if err != nil {
 		return
 	}
 
-	allowRaw, ok := perms["allow"]
+	allowRaw, ok := perms.Get("allow")
 	if !ok {
 		return
 	}
@@ -586,17 +581,17 @@ func removePermission(settings map[string]json.RawMessage, perm string) {
 	}
 
 	if len(filtered) == 0 {
-		delete(perms, "allow")
+		perms.Delete("allow")
 	} else {
 		allowJSON, _ := json.Marshal(filtered)
-		perms["allow"] = json.RawMessage(allowJSON)
+		perms.Set("allow", json.RawMessage(allowJSON))
 	}
 
-	if len(perms) == 0 {
-		delete(settings, "permissions")
+	if perms.Len() == 0 {
+		settings.Delete("permissions")
 	} else {
 		permsJSON, _ := json.Marshal(perms)
-		settings["permissions"] = json.RawMessage(permsJSON)
+		settings.Set("permissions", json.RawMessage(permsJSON))
 	}
 }
 

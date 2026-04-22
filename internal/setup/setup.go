@@ -3,6 +3,7 @@
 package setup
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -53,6 +54,137 @@ type HooksConfig struct {
 	PreToolUse   []HookEntry `json:"PreToolUse"`
 	PostToolUse  []HookEntry `json:"PostToolUse,omitempty"`
 	SessionStart []HookEntry `json:"SessionStart,omitempty"`
+}
+
+// KnownHookCategories lists the Claude Code hook categories plankit manages.
+// Both mergeHooks (setup) and removeHooks (teardown) iterate this list.
+// Adding a new category means: add its name here, add a matching field to
+// HooksConfig, and add a case to HooksConfig.categoryEntries.
+var KnownHookCategories = []string{"PreToolUse", "PostToolUse", "SessionStart"}
+
+// categoryEntries returns the HookEntries in h for the given category name.
+// Returns nil when name is not a known category.
+func (h HooksConfig) categoryEntries(name string) []HookEntry {
+	switch name {
+	case "PreToolUse":
+		return h.PreToolUse
+	case "PostToolUse":
+		return h.PostToolUse
+	case "SessionStart":
+		return h.SessionStart
+	}
+	return nil
+}
+
+// OrderedObject is a JSON object that preserves its key insertion order
+// across unmarshal/marshal cycles. Go's standard map[string]json.RawMessage
+// marshals keys alphabetically, which would silently reorder user-authored
+// files like .claude/settings.json on every pk setup. Tools don't get to
+// reorder user files for their own convenience — key order is a user choice.
+type OrderedObject struct {
+	keys   []string
+	values map[string]json.RawMessage
+}
+
+// NewOrderedObject returns an empty object.
+func NewOrderedObject() *OrderedObject {
+	return &OrderedObject{values: make(map[string]json.RawMessage)}
+}
+
+// ParseOrderedObject parses a JSON object, preserving key order as it appears
+// in the input. Returns an empty object for null or empty input.
+func ParseOrderedObject(raw json.RawMessage) (*OrderedObject, error) {
+	oo := NewOrderedObject()
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return oo, nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, err
+	}
+	if delim, ok := tok.(json.Delim); !ok || delim != '{' {
+		return nil, fmt.Errorf("expected JSON object, got %v", tok)
+	}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, err
+		}
+		key, ok := tok.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected string key, got %v", tok)
+		}
+		var val json.RawMessage
+		if err := dec.Decode(&val); err != nil {
+			return nil, err
+		}
+		oo.keys = append(oo.keys, key)
+		oo.values[key] = val
+	}
+	return oo, nil
+}
+
+// Get returns the raw JSON value for key and whether the key is present.
+func (oo *OrderedObject) Get(key string) (json.RawMessage, bool) {
+	v, ok := oo.values[key]
+	return v, ok
+}
+
+// Has reports whether key is present.
+func (oo *OrderedObject) Has(key string) bool {
+	_, ok := oo.values[key]
+	return ok
+}
+
+// Set updates the value for key. New keys are appended to the end;
+// existing keys keep their position.
+func (oo *OrderedObject) Set(key string, val json.RawMessage) {
+	if _, exists := oo.values[key]; !exists {
+		oo.keys = append(oo.keys, key)
+	}
+	oo.values[key] = val
+}
+
+// Delete removes key. No-op when key is absent.
+func (oo *OrderedObject) Delete(key string) {
+	if _, exists := oo.values[key]; !exists {
+		return
+	}
+	delete(oo.values, key)
+	for i, k := range oo.keys {
+		if k == key {
+			oo.keys = append(oo.keys[:i], oo.keys[i+1:]...)
+			return
+		}
+	}
+}
+
+// Len returns the number of keys.
+func (oo *OrderedObject) Len() int {
+	return len(oo.keys)
+}
+
+// MarshalJSON emits the object with keys in their preserved order. The output
+// is compact; json.MarshalIndent at the top level re-indents the whole tree.
+func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, k := range oo.keys {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		kJSON, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(kJSON)
+		buf.WriteByte(':')
+		buf.Write(oo.values[k])
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }
 
 // buildHookConfig returns the hook configuration for the given modes.
@@ -451,15 +583,16 @@ func Run(cfg Config) error {
 		fmt.Fprintln(stderr, "Warning: this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.")
 	}
 
-	// Read existing settings or start fresh.
-	var settings map[string]json.RawMessage
+	// Read existing settings or start fresh. OrderedObject preserves the
+	// user's existing key order — pk setup must not reorder settings.json.
+	settings := NewOrderedObject()
 	data, err := os.ReadFile(settingsFile)
 	if err == nil {
-		if err := json.Unmarshal(data, &settings); err != nil {
+		parsed, err := ParseOrderedObject(data)
+		if err != nil {
 			return fmt.Errorf("failed to parse %s: %w", settingsFile, err)
 		}
-	} else {
-		settings = make(map[string]json.RawMessage)
+		settings = parsed
 	}
 
 	// Merge plankit hooks with any existing user hooks.
@@ -632,100 +765,101 @@ func runBaseline(cfg Config, projectDir string) error {
 }
 
 // addPermission adds a permission string to the settings "permissions.allow" list
-// if it is not already present.
-func addPermission(settings map[string]json.RawMessage, perm string) error {
-	// Parse existing permissions.
-	var perms map[string]json.RawMessage
-	if raw, ok := settings["permissions"]; ok {
-		if err := json.Unmarshal(raw, &perms); err != nil {
+// if it is not already present. Preserves existing key order in the permissions
+// object (allow, deny, ask, and any future keys).
+func addPermission(settings *OrderedObject, perm string) error {
+	perms := NewOrderedObject()
+	if raw, ok := settings.Get("permissions"); ok {
+		parsed, err := ParseOrderedObject(raw)
+		if err != nil {
 			return err
 		}
-	} else {
-		perms = make(map[string]json.RawMessage)
+		perms = parsed
 	}
 
-	// Parse existing allow list.
 	var allowList []string
-	if raw, ok := perms["allow"]; ok {
+	if raw, ok := perms.Get("allow"); ok {
 		if err := json.Unmarshal(raw, &allowList); err != nil {
 			return err
 		}
 	}
 
-	// Check if permission already exists.
 	for _, p := range allowList {
 		if p == perm {
 			return nil
 		}
 	}
 
-	// Add permission.
 	allowList = append(allowList, perm)
 	allowJSON, err := json.Marshal(allowList)
 	if err != nil {
 		return err
 	}
-	perms["allow"] = json.RawMessage(allowJSON)
+	perms.Set("allow", json.RawMessage(allowJSON))
 
 	permsJSON, err := json.Marshal(perms)
 	if err != nil {
 		return err
 	}
-	settings["permissions"] = json.RawMessage(permsJSON)
+	settings.Set("permissions", json.RawMessage(permsJSON))
 
 	return nil
 }
 
 // mergeHooks merges plankit hooks into existing settings, preserving user hooks
 // and any unknown hook categories (e.g., SessionEnd, Stop, UserPromptSubmit).
-// Existing hooks with commands starting with "pk " are replaced; all others are kept.
-func mergeHooks(settings map[string]json.RawMessage, newHooks HooksConfig) error {
-	// Parse hooks as a generic map so unknown categories pass through untouched.
-	existing := map[string]json.RawMessage{}
-	if raw, ok := settings["hooks"]; ok {
-		if err := json.Unmarshal(raw, &existing); err != nil {
+// Existing hooks with commands starting with "pk " are replaced; all others are
+// kept. Key order is preserved across the merge — both in the outer settings
+// object and the inner hooks object.
+func mergeHooks(settings *OrderedObject, newHooks HooksConfig) error {
+	existing := NewOrderedObject()
+	if raw, ok := settings.Get("hooks"); ok {
+		parsed, err := ParseOrderedObject(raw)
+		if err != nil {
+			return err
+		}
+		existing = parsed
+	}
+
+	// Iterate KnownHookCategories so adding a new category is a one-liner.
+	for _, cat := range KnownHookCategories {
+		if err := mergeCategory(existing, cat, newHooks.categoryEntries(cat)); err != nil {
 			return err
 		}
 	}
 
-	// Merge only the categories pk knows about.
-	if err := mergeCategory(existing, "PreToolUse", newHooks.PreToolUse); err != nil {
-		return err
+	if existing.Len() == 0 {
+		settings.Delete("hooks")
+		return nil
 	}
-	if err := mergeCategory(existing, "PostToolUse", newHooks.PostToolUse); err != nil {
-		return err
-	}
-	if err := mergeCategory(existing, "SessionStart", newHooks.SessionStart); err != nil {
-		return err
-	}
-
 	hooksJSON, err := json.Marshal(existing)
 	if err != nil {
 		return err
 	}
-	settings["hooks"] = json.RawMessage(hooksJSON)
+	settings.Set("hooks", json.RawMessage(hooksJSON))
 	return nil
 }
 
-// mergeCategory merges plankit hooks into a single category, preserving user hooks.
-// Empty categories after merging are removed from the map.
-func mergeCategory(existing map[string]json.RawMessage, key string, newEntries []HookEntry) error {
+// mergeCategory merges plankit hooks into a single category, preserving user
+// hooks and the category's existing position in the hooks object. Empty
+// categories after merging are removed.
+func mergeCategory(existing *OrderedObject, key string, newEntries []HookEntry) error {
 	var existingEntries []HookEntry
-	if raw, ok := existing[key]; ok {
+	if raw, ok := existing.Get(key); ok {
 		if err := json.Unmarshal(raw, &existingEntries); err != nil {
 			return err
 		}
 	}
 	merged := mergeHookCategory(existingEntries, newEntries)
 	if len(merged) == 0 {
-		delete(existing, key)
+		existing.Delete(key)
 		return nil
 	}
 	mergedJSON, err := json.Marshal(merged)
 	if err != nil {
 		return err
 	}
-	existing[key] = json.RawMessage(mergedJSON)
+	existing.Set(key, json.RawMessage(mergedJSON))
 	return nil
 }
 

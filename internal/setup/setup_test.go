@@ -665,15 +665,16 @@ func TestRun_noTagsTip_hiddenWhenTagsExist(t *testing.T) {
 }
 
 func TestMergeHooks_freshSettings(t *testing.T) {
-	settings := make(map[string]json.RawMessage)
+	settings := NewOrderedObject()
 	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
+	raw, _ := settings.Get("hooks")
 	var result HooksConfig
-	json.Unmarshal(settings["hooks"], &result)
+	json.Unmarshal(raw, &result)
 
 	if len(result.PreToolUse) != 3 {
 		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
@@ -685,17 +686,17 @@ func TestMergeHooks_freshSettings(t *testing.T) {
 
 func TestMergeHooks_existingUserHooks(t *testing.T) {
 	existing := `{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-checker","timeout":5}]}]}`
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(existing),
-	}
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(existing))
 	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
+	raw, _ := settings.Get("hooks")
 	var result HooksConfig
-	json.Unmarshal(settings["hooks"], &result)
+	json.Unmarshal(raw, &result)
 
 	// User's Bash hook + plankit's Bash/guard, Edit/protect, Write/protect.
 	if len(result.PreToolUse) != 4 {
@@ -714,9 +715,8 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 	// Simulate old plankit hooks (e.g., from a previous pk setup with auto mode).
 	existing := `{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"pk protect","timeout":5}]}],"PostToolUse":[{"matcher":"ExitPlanMode","hooks":[{"type":"command","command":"pk preserve","async":true,"timeout":60}]}]}`
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(existing),
-	}
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(existing))
 	// Re-setup with manual mode — should replace old plankit hooks.
 	hooks := buildHookConfig("manual", "block")
 
@@ -724,8 +724,9 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
+	raw, _ := settings.Get("hooks")
 	var result HooksConfig
-	json.Unmarshal(settings["hooks"], &result)
+	json.Unmarshal(raw, &result)
 
 	// Should have plankit's 3 PreToolUse entries (old one removed, new ones added).
 	if len(result.PreToolUse) != 3 {
@@ -744,17 +745,17 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 func TestMergeHooks_mixedHooks(t *testing.T) {
 	// An entry with both a plankit hook and a user hook on the same matcher.
 	existing := `{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"pk protect","timeout":5},{"type":"command","command":"my-linter","timeout":10}]}]}`
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(existing),
-	}
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(existing))
 	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
+	raw, _ := settings.Get("hooks")
 	var result HooksConfig
-	json.Unmarshal(settings["hooks"], &result)
+	json.Unmarshal(raw, &result)
 
 	// Should have: user's Edit entry (my-linter only) + plankit's Bash/guard + Edit/protect + Write/protect = 4.
 	if len(result.PreToolUse) != 4 {
@@ -1287,17 +1288,17 @@ func TestRun_sessionStartHook(t *testing.T) {
 
 func TestMergeHooks_existingSessionStart(t *testing.T) {
 	existing := `{"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":".claude/install-pk.sh","timeout":30}]}]}`
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(existing),
-	}
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(existing))
 	hooks := buildHookConfig("manual", "block")
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
+	raw, _ := settings.Get("hooks")
 	var result HooksConfig
-	json.Unmarshal(settings["hooks"], &result)
+	json.Unmarshal(raw, &result)
 
 	if len(result.SessionStart) != 1 {
 		t.Errorf("SessionStart = %d entries, want 1 (no duplicate)", len(result.SessionStart))
@@ -1336,24 +1337,26 @@ func TestWriteManaged_skipsModified(t *testing.T) {
 // doesn't manage (SessionEnd, Stop, UserPromptSubmit, etc.) pass through
 // untouched when pk hooks are merged.
 func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(`{
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
 			"SessionEnd": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code session-end"}]}],
 			"Stop": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code stop"}]}],
 			"UserPromptSubmit": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code user-prompt-submit"}]}]
-		}`),
-	}
+		}`))
 
 	hooks := buildHookConfig("manual", "block")
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
 
-	var merged map[string]json.RawMessage
-	json.Unmarshal(settings["hooks"], &merged)
+	hooksRaw, _ := settings.Get("hooks")
+	merged, err := ParseOrderedObject(hooksRaw)
+	if err != nil {
+		t.Fatalf("ParseOrderedObject() error = %v", err)
+	}
 
 	for _, key := range []string{"SessionEnd", "Stop", "UserPromptSubmit"} {
-		raw, ok := merged[key]
+		raw, ok := merged.Get(key)
 		if !ok {
 			t.Errorf("category %s was dropped — must be preserved", key)
 			continue
@@ -1374,14 +1377,83 @@ func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
 	}
 }
 
+// TestRun_preservesSettingsKeyOrder is the regression guard for the ordering
+// bug where pk setup silently reordered user-authored settings.json keys
+// (alphabetical, because json.Marshal on a Go map sorts keys). Tools don't
+// get to reorder user files for their own convenience.
+func TestRun_preservesSettingsKeyOrder(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(settingsDir, 0755)
+
+	// Top-level keys in a non-alphabetical order; inner "hooks" also has
+	// categories in a non-alphabetical order (PreToolUse before PostToolUse),
+	// plus an unknown category (Stop) that must be preserved in place.
+	existing := `{
+  "statusLine": {"type": "command", "command": "echo hi"},
+  "hooks": {
+    "PreToolUse": [{"matcher":"Bash","hooks":[{"type":"command","command":"my-checker","timeout":5}]}],
+    "PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}],
+    "Stop": [{"matcher":"","hooks":[{"type":"command","command":"user-stop"}]}]
+  },
+  "permissions": {"deny": ["Write(/etc/**)"], "allow": ["Bash(make:*)"]}
+}
+`
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	os.WriteFile(settingsFile, []byte(existing), 0644)
+
+	var stderr bytes.Buffer
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	data, err := os.ReadFile(settingsFile)
+	if err != nil {
+		t.Fatalf("read settings.json: %v", err)
+	}
+
+	// Top-level order: statusLine, hooks, permissions (preserved as input).
+	wantTopOrder := []string{`"statusLine"`, `"hooks"`, `"permissions"`}
+	if !keysAppearInOrder(string(data), wantTopOrder) {
+		t.Errorf("top-level keys reordered; want %v in order.\nGot:\n%s", wantTopOrder, string(data))
+	}
+
+	// Inner hooks order: PreToolUse, PostToolUse, Stop (SessionStart appended).
+	// SessionStart is added by pk setup because it's a managed category — new
+	// keys append to the end.
+	wantHooksOrder := []string{`"PreToolUse"`, `"PostToolUse"`, `"Stop"`, `"SessionStart"`}
+	if !keysAppearInOrder(string(data), wantHooksOrder) {
+		t.Errorf("hooks keys reordered; want %v in order.\nGot:\n%s", wantHooksOrder, string(data))
+	}
+
+	// Inner permissions order: deny before allow (as the user wrote it).
+	wantPermsOrder := []string{`"deny"`, `"allow"`}
+	if !keysAppearInOrder(string(data), wantPermsOrder) {
+		t.Errorf("permissions keys reordered; want %v in order.\nGot:\n%s", wantPermsOrder, string(data))
+	}
+}
+
+// keysAppearInOrder reports whether each marker appears in src, and each one
+// starts after the previous one. Used to assert key ordering in serialized JSON.
+func keysAppearInOrder(src string, markers []string) bool {
+	offset := 0
+	for _, m := range markers {
+		idx := strings.Index(src[offset:], m)
+		if idx < 0 {
+			return false
+		}
+		offset += idx + len(m)
+	}
+	return true
+}
+
 // TestMergeHooks_noTimeoutZero verifies that user hooks without a timeout
 // don't get "timeout": 0 stamped on them after merging.
 func TestMergeHooks_noTimeoutZero(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(`{
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
 			"PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}]
-		}`),
-	}
+		}`))
 
 	hooks := buildHookConfig("manual", "block")
 	if err := mergeHooks(settings, hooks); err != nil {
@@ -1389,7 +1461,8 @@ func TestMergeHooks_noTimeoutZero(t *testing.T) {
 	}
 
 	// The user hook should NOT have "timeout": 0 in the serialized output.
-	hooksJSON := string(settings["hooks"])
+	hooksRaw, _ := settings.Get("hooks")
+	hooksJSON := string(hooksRaw)
 	if strings.Contains(hooksJSON, `"command":"user-hook","timeout":0`) {
 		t.Errorf("timeout: 0 was added to user hook; JSON:\n%s", hooksJSON)
 	}

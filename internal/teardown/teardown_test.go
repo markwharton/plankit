@@ -547,60 +547,63 @@ func TestRun_directoryCleanup(t *testing.T) {
 // TestRemoveHooks_preservesUnknownCategories verifies teardown doesn't drop
 // hook categories outside the three pk manages (PreToolUse/PostToolUse/SessionStart).
 func TestRemoveHooks_preservesUnknownCategories(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(`{
+	settings := setup.NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
 			"PreToolUse": [{"matcher":"Bash","hooks":[{"type":"command","command":"pk guard","timeout":5}]}],
 			"SessionEnd": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code session-end"}]}],
 			"Stop": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code stop"}]}]
-		}`),
-	}
+		}`))
 
 	removeHooks(settings)
 
-	raw, ok := settings["hooks"]
+	raw, ok := settings.Get("hooks")
 	if !ok {
 		t.Fatal("hooks key removed but SessionEnd and Stop should have kept it alive")
 	}
 
-	var hooks map[string]json.RawMessage
-	json.Unmarshal(raw, &hooks)
+	hooks, err := setup.ParseOrderedObject(raw)
+	if err != nil {
+		t.Fatalf("ParseOrderedObject() error = %v", err)
+	}
 
-	if _, ok := hooks["PreToolUse"]; ok {
+	if hooks.Has("PreToolUse") {
 		t.Error("PreToolUse should be removed (only had a pk hook)")
 	}
-	if _, ok := hooks["SessionEnd"]; !ok {
+	if !hooks.Has("SessionEnd") {
 		t.Error("SessionEnd was dropped by teardown — must be preserved")
 	}
-	if _, ok := hooks["Stop"]; !ok {
+	if !hooks.Has("Stop") {
 		t.Error("Stop was dropped by teardown — must be preserved")
 	}
 }
 
 func TestRemoveHooks_emptyAfterRemoval(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"hooks": json.RawMessage(`{
+	settings := setup.NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
 			"PreToolUse": [{"matcher":"Bash","hooks":[{"type":"command","command":"pk guard","timeout":5}]}]
-		}`),
-	}
+		}`))
 
 	removeHooks(settings)
 
-	if _, ok := settings["hooks"]; ok {
+	if settings.Has("hooks") {
 		t.Error("hooks key should be removed when all hooks are pk-owned")
 	}
 }
 
 func TestRemovePermission_keepOthers(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"permissions": json.RawMessage(`{"allow":["Bash(pk:*)","Bash(make:*)"]}`),
-	}
+	settings := setup.NewOrderedObject()
+	settings.Set("permissions", json.RawMessage(`{"allow":["Bash(pk:*)","Bash(make:*)"]}`))
 
 	removePermission(settings, "Bash(pk:*)")
 
-	var perms map[string]json.RawMessage
-	json.Unmarshal(settings["permissions"], &perms)
+	permsRaw, _ := settings.Get("permissions")
+	perms, err := setup.ParseOrderedObject(permsRaw)
+	if err != nil {
+		t.Fatalf("ParseOrderedObject() error = %v", err)
+	}
+	allowRaw, _ := perms.Get("allow")
 	var allowList []string
-	json.Unmarshal(perms["allow"], &allowList)
+	json.Unmarshal(allowRaw, &allowList)
 
 	if len(allowList) != 1 || allowList[0] != "Bash(make:*)" {
 		t.Errorf("expected [Bash(make:*)], got %v", allowList)
@@ -608,13 +611,12 @@ func TestRemovePermission_keepOthers(t *testing.T) {
 }
 
 func TestRemovePermission_emptyAfterRemoval(t *testing.T) {
-	settings := map[string]json.RawMessage{
-		"permissions": json.RawMessage(`{"allow":["Bash(pk:*)"]}`),
-	}
+	settings := setup.NewOrderedObject()
+	settings.Set("permissions", json.RawMessage(`{"allow":["Bash(pk:*)"]}`))
 
 	removePermission(settings, "Bash(pk:*)")
 
-	if _, ok := settings["permissions"]; ok {
+	if settings.Has("permissions") {
 		t.Error("permissions key should be removed when empty")
 	}
 }
