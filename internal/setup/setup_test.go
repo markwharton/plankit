@@ -707,8 +707,8 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 	if result.PreToolUse[0].Matcher != "Bash" {
 		t.Errorf("first PreToolUse matcher = %q, want Bash", result.PreToolUse[0].Matcher)
 	}
-	if result.PreToolUse[0].Hooks[0].Command != "my-checker" {
-		t.Errorf("first hook command = %q, want my-checker", result.PreToolUse[0].Hooks[0].Command)
+	if cmd := HookCommand(result.PreToolUse[0].Hooks[0]); cmd != "my-checker" {
+		t.Errorf("first hook command = %q, want my-checker", cmd)
 	}
 }
 
@@ -737,8 +737,8 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 	if len(result.PostToolUse) != 1 {
 		t.Fatalf("PostToolUse = %d entries, want 1", len(result.PostToolUse))
 	}
-	if !strings.Contains(result.PostToolUse[0].Hooks[0].Command, "--notify") {
-		t.Errorf("PostToolUse command = %q, want --notify", result.PostToolUse[0].Hooks[0].Command)
+	if cmd := HookCommand(result.PostToolUse[0].Hooks[0]); !strings.Contains(cmd, "--notify") {
+		t.Errorf("PostToolUse command = %q, want --notify", cmd)
 	}
 }
 
@@ -769,8 +769,8 @@ func TestMergeHooks_mixedHooks(t *testing.T) {
 	if len(result.PreToolUse[0].Hooks) != 1 {
 		t.Fatalf("first entry hooks = %d, want 1", len(result.PreToolUse[0].Hooks))
 	}
-	if result.PreToolUse[0].Hooks[0].Command != "my-linter" {
-		t.Errorf("first hook command = %q, want my-linter", result.PreToolUse[0].Hooks[0].Command)
+	if cmd := HookCommand(result.PreToolUse[0].Hooks[0]); cmd != "my-linter" {
+		t.Errorf("first hook command = %q, want my-linter", cmd)
 	}
 }
 
@@ -800,7 +800,7 @@ func TestRun_existingHooks(t *testing.T) {
 	for _, entry := range hooks.PreToolUse {
 		if entry.Matcher == "Bash" {
 			for _, h := range entry.Hooks {
-				if h.Command == "my-checker" {
+				if HookCommand(h) == "my-checker" {
 					found = true
 				}
 			}
@@ -814,7 +814,7 @@ func TestRun_existingHooks(t *testing.T) {
 	hasProtect := false
 	for _, entry := range hooks.PreToolUse {
 		for _, h := range entry.Hooks {
-			if h.Command == "pk protect" {
+			if HookCommand(h) == "pk protect" {
 				hasProtect = true
 			}
 		}
@@ -1370,7 +1370,7 @@ func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
 			t.Errorf("category %s: expected 1 entry, got %d", key, len(entries))
 			continue
 		}
-		cmd := entries[0].Hooks[0].Command
+		cmd := HookCommand(entries[0].Hooks[0])
 		if !strings.Contains(cmd, "entire") {
 			t.Errorf("category %s: command mangled, got %q", key, cmd)
 		}
@@ -1445,6 +1445,62 @@ func keysAppearInOrder(src string, markers []string) bool {
 		offset += idx + len(m)
 	}
 	return true
+}
+
+// TestRun_preservesUnknownHookFields is the regression guard for dropping
+// user-authored hook fields on round-trip. Fields not declared on plankit's
+// Hook struct (whether from another tool, a user customisation, or a future
+// Claude Code addition) must pass through byte-for-byte.
+func TestRun_preservesUnknownHookFields(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(settingsDir, 0755)
+
+	// A user hook with a field plankit doesn't know about (continueOnError)
+	// plus an ordering that plankit's Hook struct wouldn't produce
+	// (command before type).
+	existing := `{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "command": "my-checker",
+            "type": "command",
+            "timeout": 5,
+            "continueOnError": true
+          }
+        ]
+      }
+    ]
+  }
+}
+`
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	os.WriteFile(settingsFile, []byte(existing), 0644)
+
+	var stderr bytes.Buffer
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	data, err := os.ReadFile(settingsFile)
+	if err != nil {
+		t.Fatalf("read settings.json: %v", err)
+	}
+	out := string(data)
+
+	if !strings.Contains(out, `"continueOnError": true`) {
+		t.Errorf("continueOnError dropped on round-trip; settings.json:\n%s", out)
+	}
+	// Command-before-type order in the user's hook object should survive,
+	// since user hooks are carried as raw JSON.
+	commandIdx := strings.Index(out, `"command": "my-checker"`)
+	typeIdx := strings.Index(out, `"type": "command"`)
+	if commandIdx < 0 || typeIdx < 0 || commandIdx > typeIdx {
+		t.Errorf("user hook field order reshuffled; want command before type.\n%s", out)
+	}
 }
 
 // TestMergeHooks_noTimeoutZero verifies that user hooks without a timeout

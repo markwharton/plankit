@@ -78,7 +78,6 @@ Re-run setup anytime to switch.
 
 - **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline — no local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
 - **Claude Code on the web**: `pk setup` installs a SessionStart hook that fetches the matching `pk` binary into the cloud sandbox at session start. Protective hooks (`pk guard`, `pk preserve`, `pk protect`) then work normally. Mobile has no shell environment — hooks degrade to no-ops there.
-- **Hook object fields in managed categories**: Within the three categories pk manages (`PreToolUse`, `PostToolUse`, `SessionStart`), `pk setup` and `pk teardown` round-trip hook objects through a typed struct that recognises only `type`, `command`, `async`, `timeout`, and `statusMessage`. Any other fields on a hook object — whether from another tool, a user customisation, or a future Claude Code addition — will be dropped. Other hook categories (`SessionEnd`, `Stop`, `UserPromptSubmit`, and any not yet listed) pass through untouched. File an issue if you hit this.
 
 ## Cross-platform
 

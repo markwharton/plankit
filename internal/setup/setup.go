@@ -42,10 +42,39 @@ type Hook struct {
 	StatusMessage string `json:"statusMessage,omitempty"`
 }
 
-// HookEntry pairs a matcher pattern with its hook commands.
+// HookEntry pairs a matcher pattern with its hook commands. Hooks are
+// carried as []json.RawMessage so user-authored hook objects pass through
+// pk setup byte-for-byte — including fields that plankit doesn't recognise
+// (e.g., continueOnError, a future Claude Code field, or a field from
+// another tool). Plankit-owned hooks are built via NewHookEntry, which
+// marshals the typed Hook struct into raw JSON at construction time.
 type HookEntry struct {
-	Matcher string `json:"matcher"`
-	Hooks   []Hook `json:"hooks"`
+	Matcher string            `json:"matcher"`
+	Hooks   []json.RawMessage `json:"hooks"`
+}
+
+// NewHookEntry builds a HookEntry from the typed Hook values that plankit
+// owns. Plankit hooks get their canonical field layout (type, command, async,
+// timeout, statusMessage in struct-declaration order); user hooks are never
+// round-tripped through this constructor — they stay as raw JSON.
+func NewHookEntry(matcher string, hooks ...Hook) HookEntry {
+	raw := make([]json.RawMessage, len(hooks))
+	for i, h := range hooks {
+		data, _ := json.Marshal(h)
+		raw[i] = data
+	}
+	return HookEntry{Matcher: matcher, Hooks: raw}
+}
+
+// HookCommand extracts the command field from a raw hook object. Returns ""
+// when the object is malformed or has no command. Used to identify plankit-
+// owned hooks during merge and teardown without parsing the whole object.
+func HookCommand(raw json.RawMessage) string {
+	var x struct {
+		Command string `json:"command"`
+	}
+	_ = json.Unmarshal(raw, &x)
+	return x.Command
 }
 
 // HooksConfig defines the hook arrays for each Claude Code event.
@@ -196,18 +225,9 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 
 	config := HooksConfig{
 		PreToolUse: []HookEntry{
-			{
-				Matcher: "Bash",
-				Hooks:   []Hook{{Type: "command", Command: guardCommand, Timeout: 5}},
-			},
-			{
-				Matcher: "Edit",
-				Hooks:   []Hook{{Type: "command", Command: "pk protect", Timeout: 5}},
-			},
-			{
-				Matcher: "Write",
-				Hooks:   []Hook{{Type: "command", Command: "pk protect", Timeout: 5}},
-			},
+			NewHookEntry("Bash", Hook{Type: "command", Command: guardCommand, Timeout: 5}),
+			NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Timeout: 5}),
+			NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Timeout: 5}),
 		},
 	}
 
@@ -219,10 +239,7 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 	}
 
 	config.SessionStart = []HookEntry{
-		{
-			Matcher: "*",
-			Hooks:   []Hook{{Type: "command", Command: ".claude/install-pk.sh", Timeout: 30}},
-		},
+		NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Timeout: 30}),
 	}
 
 	return config
@@ -231,16 +248,13 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 // preserveHookEntry builds a PostToolUse entry for the given preserve command.
 func preserveHookEntry(command, statusMessage string, async bool, timeout int) []HookEntry {
 	return []HookEntry{
-		{
-			Matcher: "ExitPlanMode",
-			Hooks: []Hook{{
-				Type:          "command",
-				Command:       command,
-				Async:         async,
-				Timeout:       timeout,
-				StatusMessage: statusMessage,
-			}},
-		},
+		NewHookEntry("ExitPlanMode", Hook{
+			Type:          "command",
+			Command:       command,
+			Async:         async,
+			Timeout:       timeout,
+			StatusMessage: statusMessage,
+		}),
 	}
 }
 
@@ -877,10 +891,11 @@ func mergeHookCategory(existing, plankit []HookEntry) []HookEntry {
 }
 
 // filterNonPlankitHooks returns hooks whose command is not managed by plankit.
-func filterNonPlankitHooks(hooks []Hook) []Hook {
-	var result []Hook
+// Operates on raw JSON so unknown fields on user hooks survive unchanged.
+func filterNonPlankitHooks(hooks []json.RawMessage) []json.RawMessage {
+	var result []json.RawMessage
 	for _, h := range hooks {
-		if !IsPlankitHook(h.Command) {
+		if !IsPlankitHook(HookCommand(h)) {
 			result = append(result, h)
 		}
 	}

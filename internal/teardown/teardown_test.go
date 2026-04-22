@@ -226,8 +226,8 @@ func TestRun_mixedHooks(t *testing.T) {
 	if len(hooks.PreToolUse[0].Hooks) != 1 {
 		t.Fatalf("expected 1 hook in entry, got %d", len(hooks.PreToolUse[0].Hooks))
 	}
-	if hooks.PreToolUse[0].Hooks[0].Command != "my-linter" {
-		t.Errorf("expected user hook my-linter, got %s", hooks.PreToolUse[0].Hooks[0].Command)
+	if cmd := setup.HookCommand(hooks.PreToolUse[0].Hooks[0]); cmd != "my-linter" {
+		t.Errorf("expected user hook my-linter, got %s", cmd)
 	}
 
 	// Permission should keep Bash(make:*) only.

@@ -260,9 +260,10 @@ func findPKHooksInCategory(hooks *setup.OrderedObject, category string) []action
 	var actions []action
 	for _, entry := range entries {
 		for _, h := range entry.Hooks {
-			if setup.IsPlankitHook(h.Command) {
+			cmd := setup.HookCommand(h)
+			if setup.IsPlankitHook(cmd) {
 				actions = append(actions, action{
-					label: fmt.Sprintf("%s[%s]: %s", category, entry.Matcher, h.Command),
+					label: fmt.Sprintf("%s[%s]: %s", category, entry.Matcher, cmd),
 				})
 			}
 		}
@@ -532,13 +533,14 @@ func filterCategoryKey(hooks *setup.OrderedObject, key string) {
 	hooks.Set(key, json.RawMessage(filteredJSON))
 }
 
-// filterCategory removes plankit hooks from a hook category.
+// filterCategory removes plankit hooks from a hook category. Hooks are raw
+// JSON so user hooks pass through with unknown fields intact.
 func filterCategory(entries []setup.HookEntry) []setup.HookEntry {
 	var result []setup.HookEntry
 	for _, entry := range entries {
-		var filtered []setup.Hook
+		var filtered []json.RawMessage
 		for _, h := range entry.Hooks {
-			if !setup.IsPlankitHook(h.Command) {
+			if !setup.IsPlankitHook(setup.HookCommand(h)) {
 				filtered = append(filtered, h)
 			}
 		}

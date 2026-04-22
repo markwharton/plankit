@@ -290,9 +290,10 @@ func extractPKCommands(entries []setup.HookEntry) []string {
 	var cmds []string
 	for _, entry := range entries {
 		for _, h := range entry.Hooks {
-			if setup.IsPlankitHook(h.Command) && !seen[h.Command] {
-				seen[h.Command] = true
-				cmds = append(cmds, h.Command)
+			cmd := setup.HookCommand(h)
+			if setup.IsPlankitHook(cmd) && !seen[cmd] {
+				seen[cmd] = true
+				cmds = append(cmds, cmd)
 			}
 		}
 	}
