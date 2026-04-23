@@ -508,8 +508,8 @@ func ScriptVersion(filePath string) (string, bool) {
 
 // PinVersion updates a version pin in a script file. It finds the first line
 // matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in VERSION)
-// and replaces the version. Returns (true, nil) if updated, (false, nil) if the
-// file does not exist (no-op), or (false, error) on failure.
+// and replaces the version.
+// Returns (updated, error). updated is true if the file was rewritten, false if the file does not exist (no-op); a missing VERSION pin returns an error.
 func PinVersion(filePath string, ver string) (bool, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {

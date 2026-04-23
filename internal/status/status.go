@@ -212,6 +212,7 @@ func Run(cfg Config) (bool, error) {
 }
 
 // runBrief prints a one-line status summary. Useful for scripting.
+// Returns (configured, error). configured mirrors the input so Run can return runBrief's tuple directly.
 func runBrief(cfg Config, configured bool, hooks []hookSummary, isGit bool) (bool, error) {
 	stderr := cfg.Stderr
 	if !configured {
