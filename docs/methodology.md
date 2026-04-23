@@ -141,3 +141,11 @@ For frequent use, create a `/review` skill — see [Creating skills](creating-sk
 plankit follows its own guidelines. The same critical rules and `.claude/rules/` files that `pk setup` creates for your project are what plankit uses itself — plus project-specific conventions. The same `/changelog` and `/release` skills (or `/ship` to chain both) that ship with pk are how plankit publishes releases.
 
 This is sometimes called "eating your own dog food", or dogfooding. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
+
+## When the model shifts
+
+pk runs on top of Claude Code's hooks, skills, slash commands, and plan mode. Those primitives evolve with each Claude release — how slash commands dispatch, how plan mode exits, how long-session context is retained, how auto mode proceeds without prompting. Tooling built around one version's assumptions can behave differently under the next.
+
+pk's guarantees live in the CLI layer, not in the model. Git mutation guards, managed-file protection, bounded hook timeouts, single-file plan staging — pure Go, no network, no model state. What Claude does inside a single turn — how it schedules work, what it holds in context — isn't something pk can guarantee, and doesn't try to.
+
+When a release exposes an edge case, the fix belongs in the CLI layer: reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration from it. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues) — don't paper over it.
