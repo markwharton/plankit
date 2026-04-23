@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.14.0] - 2026-04-23
+
+### Added
+
+- suggest commit message after managed-file updates (ee84a5d)
+
+### Fixed
+
+- surface malformed hooks JSON to stderr (5a2ace9)
+
+### Security
+
+- verify pk binary checksum against published manifest (c30f3f4)
+
+### Changed
+
+- drop legacy protectedBranches config shim (82ce7c1)
+
+### Documentation
+
+- add "when the model shifts" section to methodology (7315fa8)
+- unify (bool, error) doc-comment style (8b2b62b)
+
 ## [v0.13.1] - 2026-04-22
 
 ### Fixed
@@ -436,3 +459,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.12.0]: https://github.com/markwharton/plankit/compare/v0.11.1...v0.12.0
 [v0.13.0]: https://github.com/markwharton/plankit/compare/v0.12.0...v0.13.0
 [v0.13.1]: https://github.com/markwharton/plankit/compare/v0.13.0...v0.13.1
+[v0.14.0]: https://github.com/markwharton/plankit/compare/v0.13.1...v0.14.0

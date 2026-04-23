@@ -25,7 +25,7 @@ if ! command -v sha256sum >/dev/null 2>&1; then
   exit 1
 fi
 
-PK_VERSION="v0.13.1"
+PK_VERSION="v0.14.0"
 install_dir="$HOME/.local/bin"
 mkdir -p "$install_dir"
 
