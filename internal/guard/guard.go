@@ -14,22 +14,8 @@ import (
 )
 
 // GuardConfig holds the guard section of .pk.json.
-// The legacy protectedBranches key is still accepted and promoted into
-// Branches after unmarshal, so existing configs keep working.
 type GuardConfig struct {
-	Branches          []string `json:"branches,omitempty"`
-	ProtectedBranches []string `json:"protectedBranches,omitempty"`
-}
-
-// Normalize promotes the legacy protectedBranches value into Branches if
-// Branches is empty. New key wins if both are present. Callers should
-// invoke this after json.Unmarshal so the rest of the code only reads
-// from Branches.
-func (g *GuardConfig) Normalize() {
-	if len(g.Branches) == 0 && len(g.ProtectedBranches) > 0 {
-		g.Branches = g.ProtectedBranches
-	}
-	g.ProtectedBranches = nil
+	Branches []string `json:"branches,omitempty"`
 }
 
 // PkConfig reads just the guard portion of .pk.json.
@@ -189,6 +175,5 @@ func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (
 	if err := json.Unmarshal(data, &pk); err != nil {
 		return GuardConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
 	}
-	pk.Guard.Normalize()
 	return pk.Guard, nil
 }

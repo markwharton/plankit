@@ -199,12 +199,8 @@ func Run(cfg Config) (bool, error) {
 		if pkConf.Release.Hooks.PreRelease != "" {
 			fmt.Fprintf(stderr, "  release.hooks:    preRelease set\n")
 		}
-		guardBranches := pkConf.Guard.Branches
-		if len(guardBranches) == 0 {
-			guardBranches = pkConf.Guard.ProtectedBranches
-		}
-		if len(guardBranches) > 0 {
-			fmt.Fprintf(stderr, "  guard.branches:   %s\n", strings.Join(guardBranches, ", "))
+		if len(pkConf.Guard.Branches) > 0 {
+			fmt.Fprintf(stderr, "  guard.branches:   %s\n", strings.Join(pkConf.Guard.Branches, ", "))
 		}
 	}
 

@@ -220,33 +220,6 @@ func TestRun_multipleProtectedBranches(t *testing.T) {
 	}
 }
 
-// TestRun_legacyProtectedBranchesKey verifies that .pk.json using the
-// legacy "protectedBranches" key still works. The key is accepted on read
-// and promoted into Branches by GuardConfig.normalize().
-func TestRun_legacyProtectedBranchesKey(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	cfg := Config{
-		Stdin:  strings.NewReader(`{"tool_input":{"command":"git commit -m 'test'"},"cwd":"/project"}`),
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Env:    func(string) string { return "" },
-		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
-		},
-		GitExec: func(dir string, args ...string) (string, error) {
-			return "main\n", nil
-		},
-	}
-
-	code := Run(cfg)
-	if code != 0 {
-		t.Errorf("exit code = %d, want 0", code)
-	}
-	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
-		t.Errorf("stdout = %q, want ask decision from legacy key", stdout.String())
-	}
-}
-
 func TestRun_askModePromptsUser(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	cfg := Config{

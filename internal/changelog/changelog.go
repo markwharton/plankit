@@ -389,7 +389,6 @@ func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
-	pk.Guard.Normalize()
 	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
 }
 

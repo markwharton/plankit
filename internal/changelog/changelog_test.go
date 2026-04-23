@@ -1173,32 +1173,6 @@ func TestRun_guardedBranch(t *testing.T) {
 	}
 }
 
-// TestRun_legacyProtectedBranchesKey verifies that .pk.json using the
-// legacy "protectedBranches" key is still honored by pk changelog.
-func TestRun_legacyProtectedBranchesKey(t *testing.T) {
-	var stderr bytes.Buffer
-	cfg := Config{
-		Stderr: &stderr,
-		GitExec: func(dir string, args ...string) (string, error) {
-			if args[0] == "branch" {
-				return "main\n", nil
-			}
-			return "", nil
-		},
-		ReadFile: func(name string) ([]byte, error) {
-			return []byte(`{"guard":{"protectedBranches":["main"]}}`), nil
-		},
-		Now: fixedTime,
-	}
-	code := Run(cfg)
-	if code != 1 {
-		t.Errorf("exit code = %d, want 1", code)
-	}
-	if !strings.Contains(stderr.String(), "protected branch") {
-		t.Errorf("stderr = %q, want protected branch warning from legacy key", stderr.String())
-	}
-}
-
 func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
