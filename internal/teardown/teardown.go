@@ -69,7 +69,7 @@ func Run(cfg Config) error {
 			return fmt.Errorf("failed to parse %s: %w", settingsFile, err)
 		}
 		settings = parsed
-		settingsActions = analyzeSettings(settings)
+		settingsActions = analyzeSettings(settings, cfg.Stderr, settingsFile)
 	}
 
 	// --- Scan for managed files ---
@@ -214,14 +214,14 @@ func Run(cfg Config) error {
 
 // analyzeSettings identifies pk hooks and permissions to remove.
 // Uses OrderedObject so preview and execute paths see the same key order.
-func analyzeSettings(settings *setup.OrderedObject) []action {
+func analyzeSettings(settings *setup.OrderedObject, stderr io.Writer, settingsFile string) []action {
 	var actions []action
 
 	if raw, ok := settings.Get("hooks"); ok {
 		hooks, err := setup.ParseOrderedObject(raw)
 		if err == nil {
 			for _, category := range setup.KnownHookCategories {
-				actions = append(actions, findPKHooksInCategory(hooks, category)...)
+				actions = append(actions, findPKHooksInCategory(hooks, category, stderr, settingsFile)...)
 			}
 		}
 	}
@@ -248,13 +248,16 @@ func analyzeSettings(settings *setup.OrderedObject) []action {
 
 // findPKHooksInCategory returns removal actions for pk hooks in a single
 // hook category. Returns nil if the category is missing or has no pk hooks.
-func findPKHooksInCategory(hooks *setup.OrderedObject, category string) []action {
+// Malformed JSON in a category is reported to stderr and skipped — teardown
+// continues with the categories it can parse.
+func findPKHooksInCategory(hooks *setup.OrderedObject, category string, stderr io.Writer, settingsFile string) []action {
 	raw, ok := hooks.Get(category)
 	if !ok {
 		return nil
 	}
 	var entries []setup.HookEntry
 	if err := json.Unmarshal(raw, &entries); err != nil {
+		fmt.Fprintf(stderr, "pk teardown: skipping hooks.%s in %s — malformed JSON: %v\n", category, settingsFile, err)
 		return nil
 	}
 	var actions []action
