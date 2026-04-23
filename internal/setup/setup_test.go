@@ -995,7 +995,7 @@ func TestWriteManaged_htmlComment(t *testing.T) {
 	var stderr bytes.Buffer
 
 	content := "# CLAUDE.md\nContent here.\n"
-	if err := writeManaged(path, content, &stderr, false); err != nil {
+	if _, err := writeManaged(path, content, &stderr, false); err != nil {
 		t.Fatalf("writeManaged() error = %v", err)
 	}
 
@@ -1025,7 +1025,7 @@ func TestWriteManaged_frontmatter(t *testing.T) {
 	var stderr bytes.Buffer
 
 	content := "---\nname: test\ndescription: A test\n---\nBody content.\n"
-	if err := writeManaged(path, content, &stderr, false); err != nil {
+	if _, err := writeManaged(path, content, &stderr, false); err != nil {
 		t.Fatalf("writeManaged() error = %v", err)
 	}
 
@@ -1163,7 +1163,7 @@ func TestWriteInstallScript_releaseVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := writeInstallScript(projectDir, "0.7.1", &stderr); err != nil {
+	if _, err := writeInstallScript(projectDir, "0.7.1", &stderr); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1196,7 +1196,7 @@ func TestWriteInstallScript_vPrefixedVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := writeInstallScript(projectDir, "v0.8.0", &stderr); err != nil {
+	if _, err := writeInstallScript(projectDir, "v0.8.0", &stderr); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1211,7 +1211,7 @@ func TestWriteInstallScript_devBuild(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := writeInstallScript(projectDir, "dev", &stderr); err != nil {
+	if _, err := writeInstallScript(projectDir, "dev", &stderr); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1229,7 +1229,7 @@ func TestWriteInstallScript_emptyVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := writeInstallScript(projectDir, "", &stderr); err != nil {
+	if _, err := writeInstallScript(projectDir, "", &stderr); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1525,5 +1525,73 @@ func TestMergeHooks_noTimeoutZero(t *testing.T) {
 	// Sanity: pk hooks DO have timeouts set, those should remain.
 	if !strings.Contains(hooksJSON, `"timeout":5`) {
 		t.Errorf("pk hooks lost their timeout; JSON:\n%s", hooksJSON)
+	}
+}
+
+func TestRun_commitTip_shownOnChangedRelease(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	want := `chore(pk): update managed files for v0.7.1`
+	if !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr = %q, want tip containing %q", stderr.String(), want)
+	}
+	if !strings.Contains(stderr.String(), "Commit these updates on their own:") {
+		t.Errorf("stderr = %q, want tip header", stderr.String())
+	}
+}
+
+func TestRun_commitTip_hiddenWhenIdempotent(t *testing.T) {
+	projectDir := t.TempDir()
+	var firstStderr, secondStderr bytes.Buffer
+
+	first := Config{Stderr: &firstStderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	if err := Run(first); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+	// Sanity: first run should have shown the tip.
+	if !strings.Contains(firstStderr.String(), "chore(pk): update managed files") {
+		t.Fatalf("first run did not show tip; stderr = %q", firstStderr.String())
+	}
+
+	second := Config{Stderr: &secondStderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	if err := Run(second); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+	if strings.Contains(secondStderr.String(), "chore(pk): update managed files") {
+		t.Errorf("idempotent re-run should not show tip; stderr = %q", secondStderr.String())
+	}
+}
+
+func TestRun_commitTip_hiddenOnDevBuild(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "dev"}
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if strings.Contains(stderr.String(), "chore(pk): update managed files") {
+		t.Errorf("dev build should not show tip; stderr = %q", stderr.String())
+	}
+}
+
+func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if strings.Contains(stderr.String(), "chore(pk): update managed files") {
+		t.Errorf("empty version should not show tip; stderr = %q", stderr.String())
 	}
 }

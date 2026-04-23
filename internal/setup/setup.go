@@ -412,11 +412,12 @@ func shouldUpdate(path string, newContent string, force bool) (bool, string) {
 // writeManaged writes content to path with a SHA marker embedded in the file.
 // Skills with YAML frontmatter get a pk_sha256 field; other files get an HTML comment on line 1.
 // If the file exists and has been modified by the user, it is skipped unless force is true.
-func writeManaged(path string, content string, stderr io.Writer, force bool) error {
+// Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
+func writeManaged(path string, content string, stderr io.Writer, force bool) (bool, error) {
 	update, reason := shouldUpdate(path, content, force)
 	if !update {
 		fmt.Fprintf(stderr, "  %s: %s\n", filepath.Base(path), reason)
-		return nil
+		return false, nil
 	}
 
 	// Compute SHA over the body that will be hashed (content after frontmatter for skills,
@@ -439,14 +440,17 @@ func writeManaged(path string, content string, stderr io.Writer, force bool) err
 
 	managed := embedSHA(content, sha)
 
+	// Read existing bytes before writing so we can report whether content actually changed.
+	existing, _ := os.ReadFile(path)
+
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("failed to create directory for %s: %w", path, err)
+		return false, fmt.Errorf("failed to create directory for %s: %w", path, err)
 	}
 	if err := os.WriteFile(path, []byte(managed), 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", path, err)
+		return false, fmt.Errorf("failed to write %s: %w", path, err)
 	}
 	fmt.Fprintf(stderr, "  %s: %s\n", displayName(path), reason)
-	return nil
+	return string(existing) != managed, nil
 }
 
 // displayName returns a short display name for a managed file path.
@@ -554,24 +558,28 @@ func versionPinName(line string) (string, bool) {
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.
 // The script is template-substituted with the running pk version and written with 0755
 // permissions. For development builds (version "dev"), the script is skipped.
-func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) error {
+// Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
+func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) (bool, error) {
 	if pkVersion == "" || pkVersion == "dev" {
 		fmt.Fprintln(stderr, "  install-pk.sh: skipped (development build)")
-		return nil
+		return false, nil
 	}
 	if !strings.HasPrefix(pkVersion, "v") {
 		pkVersion = "v" + pkVersion
 	}
 	content := strings.Replace(installScriptTemplate, "{{VERSION}}", pkVersion, 1)
 	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+
+	existing, _ := os.ReadFile(scriptPath)
+
 	if err := os.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
-		return fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
+		return false, fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
 	}
 	if err := os.WriteFile(scriptPath, []byte(content), 0755); err != nil {
-		return fmt.Errorf("failed to write %s: %w", scriptPath, err)
+		return false, fmt.Errorf("failed to write %s: %w", scriptPath, err)
 	}
 	fmt.Fprintf(stderr, "  install-pk.sh: updated (pinned %s)\n", pkVersion)
-	return nil
+	return string(existing) != content, nil
 }
 
 // Run configures the project's .claude/settings.json to use plankit.
@@ -646,6 +654,10 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to write %s: %w", settingsFile, err)
 	}
 
+	// Track whether anything actually changed on disk, so the commit-message tip
+	// is only printed when there's something for the user to commit.
+	anyChanged := !bytes.Equal(data, output)
+
 	fmt.Fprintf(stderr, "Configured plankit in %s (guard mode: %s, preserve mode: %s)\n", settingsFile, guardMode, preserveMode)
 
 	// Install CLAUDE.md if none exists or if pristine (never forced — CLAUDE.md is user-owned once customized).
@@ -654,9 +666,11 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to read embedded CLAUDE.md template: %w", err)
 	}
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
-	if err := writeManaged(claudeFile, string(claudeTemplate), stderr, false); err != nil {
+	changed, err := writeManaged(claudeFile, string(claudeTemplate), stderr, false)
+	if err != nil {
 		return err
 	}
+	anyChanged = anyChanged || changed
 
 	// Install skills.
 	skillsList, err := skills()
@@ -666,9 +680,11 @@ func Run(cfg Config) error {
 	fmt.Fprintln(stderr, "Skills:")
 	for _, skill := range skillsList {
 		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
-		if err := writeManaged(skillFile, skill.Content, stderr, force); err != nil {
+		changed, err := writeManaged(skillFile, skill.Content, stderr, force)
+		if err != nil {
 			return err
 		}
+		anyChanged = anyChanged || changed
 	}
 
 	// Install rules.
@@ -679,16 +695,20 @@ func Run(cfg Config) error {
 	fmt.Fprintln(stderr, "Rules:")
 	for _, rule := range rulesList {
 		ruleFile := filepath.Join(settingsDir, "rules", rule.Name+".md")
-		if err := writeManaged(ruleFile, rule.Content, stderr, force); err != nil {
+		changed, err := writeManaged(ruleFile, rule.Content, stderr, force)
+		if err != nil {
 			return err
 		}
+		anyChanged = anyChanged || changed
 	}
 
 	// Install bootstrap script for cloud sandboxes.
 	fmt.Fprintln(stderr, "Bootstrap:")
-	if err := writeInstallScript(projectDir, cfg.Version, stderr); err != nil {
+	changed, err = writeInstallScript(projectDir, cfg.Version, stderr)
+	if err != nil {
 		return err
 	}
+	anyChanged = anyChanged || changed
 
 	// Check if pk is in PATH.
 	if _, err := exec.LookPath("pk"); err != nil {
@@ -710,6 +730,17 @@ func Run(cfg Config) error {
 			fmt.Fprintln(stderr, "  pk setup --baseline --push")
 			fmt.Fprintln(stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
 		}
+	}
+
+	// Commit-message tip: shown only when something actually changed on disk
+	// and pk is a real release build (dev builds have no meaningful version to pin).
+	if anyChanged && cfg.Version != "" && cfg.Version != "dev" {
+		tipVersion := cfg.Version
+		if !strings.HasPrefix(tipVersion, "v") {
+			tipVersion = "v" + tipVersion
+		}
+		fmt.Fprintln(stderr, "Commit these updates on their own:")
+		fmt.Fprintf(stderr, "  git commit -m \"chore(pk): update managed files for %s\"\n", tipVersion)
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")

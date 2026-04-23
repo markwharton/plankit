@@ -20,6 +20,10 @@ description: Three-layer architecture (pk commands, hooks, skills) and hook beha
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.
 
+## Committing pk Setup Changes
+
+- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore(pk): update managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
+
 ## Flag Conventions
 
 - **`--push` means "publish this, fully."** When a pk command supports `--push`, it publishes whatever that command produced — and any refs needed to make it reachable on origin. For a tagging command, that includes the branch the tag sits on. `--push` always means "push what I just did, complete," never a narrower partial push. The default behavior (no `--push`) is local-only, consistent with the git-discipline rule that commit and push are separate decisions.
