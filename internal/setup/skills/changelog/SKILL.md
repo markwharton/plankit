@@ -20,4 +20,6 @@ pk changelog
 
 The commit carries a Release-Tag trailer; no git tag is created yet.
 
+To back out before `/release`, run `pk changelog --undo` — never `git reset`. The command refuses if HEAD has been pushed or the tree isn't clean.
+
 Report the result to the user. Follow with `/release` to tag, merge, and push.

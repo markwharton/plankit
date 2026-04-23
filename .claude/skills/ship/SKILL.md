@@ -3,7 +3,7 @@ name: ship
 description: Run pk changelog then pk release in one pass, with preview + confirm at each step
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
-pk_sha256: 1392d7fd1c7dedbec26fe71a3e7eafab243c3af1177dfc175f0e1c47a41faa88
+pk_sha256: e80fd3fdadb48141d5a45a8b540f038050d737cb17b36c0494b3acb69f26b73d
 ---
 
 Combined changelog + release workflow. `pk changelog` and `pk release` are always run in sequence when shipping a version; this skill chains them while preserving the preview+confirm gate for each step so nothing lands unreviewed.
@@ -44,4 +44,5 @@ Report the final result to the user.
 - Never skip a confirmation. Each `pk` command gets its own `--dry-run` preview and explicit user approval before the real run.
 - If the user declines at step 2, stop — do not proceed to step 3.
 - If `pk changelog` succeeds but `pk release` fails, the user can simply re-run `/ship` — step 1 will detect the `Release-Tag` trailer and resume at step 3.
+- If the user wants to back out after step 2 but before step 3, run `pk changelog --undo` — never `git reset`. The command refuses unless HEAD is the unpushed `pk changelog` commit and the tree is clean.
 - Never run `git push` directly. `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.

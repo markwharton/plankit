@@ -43,4 +43,5 @@ Report the final result to the user.
 - Never skip a confirmation. Each `pk` command gets its own `--dry-run` preview and explicit user approval before the real run.
 - If the user declines at step 2, stop — do not proceed to step 3.
 - If `pk changelog` succeeds but `pk release` fails, the user can simply re-run `/ship` — step 1 will detect the `Release-Tag` trailer and resume at step 3.
+- If the user wants to back out after step 2 but before step 3, run `pk changelog --undo` — never `git reset`. The command refuses unless HEAD is the unpushed `pk changelog` commit and the tree is clean.
 - Never run `git push` directly. `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.
