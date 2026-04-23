@@ -606,6 +606,9 @@ func TestRun_noTags(t *testing.T) {
 			if args[0] == "tag" {
 				return "", nil // no tags
 			}
+			if args[0] == "ls-remote" {
+				return "", nil // origin has no tags either
+			}
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
@@ -617,6 +620,40 @@ func TestRun_noTags(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "no version tags found") {
 		t.Errorf("stderr = %q, want no version tags message", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "pk setup --baseline") {
+		t.Errorf("stderr = %q, want baseline advice when origin has no tags either", stderr.String())
+	}
+}
+
+func TestRun_noLocalTagsButOriginHas(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" {
+				return "", nil // no local tags
+			}
+			if args[0] == "ls-remote" {
+				return "abc123\trefs/tags/v0.1.0\ndef456\trefs/tags/v0.2.0\n", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "no version tags found locally") {
+		t.Errorf("stderr = %q, want 'locally' qualifier", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "git fetch --tags") {
+		t.Errorf("stderr = %q, want fetch advice", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "pk setup --baseline") {
+		t.Errorf("stderr = %q, should not show baseline advice when origin has tags", stderr.String())
 	}
 }
 

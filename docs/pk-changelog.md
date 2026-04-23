@@ -134,6 +134,8 @@ Error: no version tags found
   Or tag a specific version manually (e.g., git tag v1.2.3 && git push origin v1.2.3)
 ```
 
+If origin has tags but they aren't present locally (common in shallow-clone sandboxes), the error instead points at `git fetch --tags`. The bootstrap script runs this automatically on session start, so the case normally only shows up outside a Claude Code session.
+
 See [pk setup — baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk-changelog) for the three scenarios.
 
 ### Single tag, many files

@@ -62,3 +62,11 @@ chmod +x "$tmp"
 mv "$tmp" "$install_dir/pk"
 
 [ -n "${CLAUDE_ENV_FILE:-}" ] && echo "export PATH=\"$install_dir:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+
+# Sandboxes clone only the working branch, so version tags aren't present
+# locally until we fetch them — pk changelog / pk release need them to
+# anchor history. Best-effort; never block session start.
+if git rev-parse --git-dir >/dev/null 2>&1 && git remote get-url origin >/dev/null 2>&1; then
+  git fetch origin --tags --quiet 2>/dev/null \
+    || echo "pk install: git fetch --tags origin failed (non-fatal)" >&2
+fi

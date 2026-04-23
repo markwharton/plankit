@@ -134,7 +134,7 @@ Tags the initial commit of the repo as `v0.0.0`. Every commit since (including a
 
 ### Cloud sandbox bootstrap
 
-`pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start.
+`pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start, then runs a best-effort `git fetch --tags` so `pk changelog` and `pk release` see the repo's version tags — sandboxes clone only the working branch by default.
 
 On local surfaces (CLI, Desktop, VS Code), the script detects the existing `pk` install and exits immediately — no download, no PATH change.
 
