@@ -1563,7 +1563,7 @@ func TestRun_commitTip_shownOnChangedRelease(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	want := `chore(pk): update managed files for v0.7.1`
+	want := `chore: update pk-managed files for v0.7.1`
 	if !strings.Contains(stderr.String(), want) {
 		t.Errorf("stderr = %q, want tip containing %q", stderr.String(), want)
 	}
@@ -1581,7 +1581,7 @@ func TestRun_commitTip_hiddenWhenIdempotent(t *testing.T) {
 		t.Fatalf("first Run() error = %v", err)
 	}
 	// Sanity: first run should have shown the tip.
-	if !strings.Contains(firstStderr.String(), "chore(pk): update managed files") {
+	if !strings.Contains(firstStderr.String(), "chore: update pk-managed files") {
 		t.Fatalf("first run did not show tip; stderr = %q", firstStderr.String())
 	}
 
@@ -1589,7 +1589,7 @@ func TestRun_commitTip_hiddenWhenIdempotent(t *testing.T) {
 	if err := Run(second); err != nil {
 		t.Fatalf("second Run() error = %v", err)
 	}
-	if strings.Contains(secondStderr.String(), "chore(pk): update managed files") {
+	if strings.Contains(secondStderr.String(), "chore: update pk-managed files") {
 		t.Errorf("idempotent re-run should not show tip; stderr = %q", secondStderr.String())
 	}
 }
@@ -1603,7 +1603,7 @@ func TestRun_commitTip_hiddenOnDevBuild(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	if strings.Contains(stderr.String(), "chore(pk): update managed files") {
+	if strings.Contains(stderr.String(), "chore: update pk-managed files") {
 		t.Errorf("dev build should not show tip; stderr = %q", stderr.String())
 	}
 }
@@ -1617,7 +1617,7 @@ func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	if strings.Contains(stderr.String(), "chore(pk): update managed files") {
+	if strings.Contains(stderr.String(), "chore: update pk-managed files") {
 		t.Errorf("empty version should not show tip; stderr = %q", stderr.String())
 	}
 }

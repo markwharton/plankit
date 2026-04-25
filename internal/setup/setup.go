@@ -740,7 +740,7 @@ func Run(cfg Config) error {
 			tipVersion = "v" + tipVersion
 		}
 		fmt.Fprintln(stderr, "Commit these updates on their own:")
-		fmt.Fprintf(stderr, "  git commit -m \"chore(pk): update managed files for %s\"\n", tipVersion)
+		fmt.Fprintf(stderr, "  git commit -m \"chore: update pk-managed files for %s\"\n", tipVersion)
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")

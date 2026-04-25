@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: 87a37f0e28171b23ef6460f531630a02da170bc24fcdf9c8c58508a298e1e96d
+pk_sha256: 75bceb1b84a0e3765184c167140706ec5f0d3ef23fb891087eb15580ba0c038b
 ---
 
 # Plankit Tooling
@@ -23,7 +23,7 @@ pk_sha256: 87a37f0e28171b23ef6460f531630a02da170bc24fcdf9c8c58508a298e1e96d
 
 ## Committing pk Setup Changes
 
-- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore(pk): update managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
+- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore: update pk-managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
 
 ## Flag Conventions
 

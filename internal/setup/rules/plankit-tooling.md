@@ -22,7 +22,7 @@ description: Three-layer architecture (pk commands, hooks, skills) and hook beha
 
 ## Committing pk Setup Changes
 
-- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore(pk): update managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
+- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore: update pk-managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
 
 ## Flag Conventions
 
