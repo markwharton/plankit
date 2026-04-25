@@ -109,7 +109,7 @@ Exploration ends when the developer says it ends, not when Claude decides an ide
 
 The failure mode above is sticky — polite iteration won't pull Claude out. The editing rhythm defends itself; each correction becomes another edit. Direct intervention is what breaks it. A few moves that work:
 
-- **Say "stop" with authority.** When Claude is flailing, a firm interruption is valid and effective. You aren't being rude — you're breaking a loop the model can't break from the inside.
+- **Say "stop" with authority** (or hit Esc). When Claude is flailing, a firm interruption is valid and effective. You aren't being rude — you're breaking a loop the model can't break from the inside.
 - **Ask "what is the value?"** instead of "how do we word this?" The loop survives on rephrasing. Substance breaks it. Forcing Claude back to purpose is a shorter path than editing the current draft.
 - **Paste Claude's earlier clear statement back into the conversation.** The cleanest version of an idea is often the first unforced articulation, before formalization drained it. Pasting it back resets the frame.
 - **Mark the mode: "this is a discussion, not a command to change things."** Claude's default is action. Saying so slows it down enough to think.
