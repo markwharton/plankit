@@ -1272,11 +1272,20 @@ func TestWriteInstallScript_versionIsolatedPath(t *testing.T) {
 	if !strings.Contains(content, `install_dir="$HOME/.local/share/pk/$PK_VERSION"`) {
 		t.Errorf("script should install to per-version path under $HOME/.local/share/pk, got: %s", content)
 	}
-	// Stale binaries at the auto-PATHed $HOME/.local/bin survive across sandbox
-	// sessions and shadow the pinned version. The new template must never write
-	// pk into that directory.
-	if strings.Contains(content, `$HOME/.local/bin/pk`) || strings.Contains(content, `"$HOME/.local/bin"`) {
-		t.Errorf("script must not target $HOME/.local/bin (cross-session leak), got: %s", content)
+	// Cloud sandbox base images plant a stale pk at the legacy $HOME/.local/bin/pk
+	// path on every restart. The script must clear it before the presence gate so
+	// the per-version cache can take over.
+	if !strings.Contains(content, `rm -f "$HOME/.local/bin/pk"`) {
+		t.Errorf("script must clear legacy $HOME/.local/bin/pk on each run, got: %s", content)
+	}
+	// The new template must never WRITE pk into the legacy directory — guard
+	// against the old install_dir assignment and any redirect target sneaking
+	// back in.
+	if strings.Contains(content, `install_dir="$HOME/.local/bin"`) {
+		t.Errorf("script must not assign install_dir to $HOME/.local/bin (legacy shared path), got: %s", content)
+	}
+	if strings.Contains(content, `>> "$HOME/.local/bin`) || strings.Contains(content, `> "$HOME/.local/bin`) {
+		t.Errorf("script must not redirect into $HOME/.local/bin, got: %s", content)
 	}
 }
 

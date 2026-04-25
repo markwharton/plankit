@@ -20,6 +20,13 @@
 
 set -euo pipefail
 
+# Older install-pk.sh versions wrote pk to $HOME/.local/bin/pk, and some
+# cloud sandbox base images plant a stale pk at that path on every restart.
+# Clear it unconditionally so the gate below can't be tripped by a leftover
+# binary. set -e surfaces permission errors loud rather than silently
+# leaving a stale pk in place.
+rm -f "$HOME/.local/bin/pk"
+
 command -v pk >/dev/null 2>&1 && exit 0
 
 PK_VERSION="{{VERSION}}"
