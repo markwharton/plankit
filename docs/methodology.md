@@ -73,6 +73,14 @@ Every convention in the guidelines is a countermeasure to a specific tendency. "
 
 The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions — but mostly, deterministic outputs come from deliberate constraints.
 
+## Discipline as the multiplier
+
+The countermeasures in the previous section keep individual outputs from drifting. The discipline as a whole — plan, rules, review, model execution, tests — is what makes the work survive past the session that produced it.
+
+The result belongs to the system, not to any single component. A more capable model without discipline still drifts. A less capable model inside a stable structure produces work you can extend, audit, and revisit weeks later. The model isn't authoring; it's executing inside a frame the developer holds.
+
+Two recent papers calibrate the same idea on harder problem classes than typical product work — Donald Knuth's *Claude's Cycles* (2026) solves an open Hamiltonian-cycle problem from the TAOCP drafts under explicit plan-driven instruction; Keston Aquino-Michaels' *Completing Claude's Cycles* (2026) compresses Knuth's exploration path and clears the case Knuth left open by adding structured logging and synthesis across agents. Different scale, same axis.
+
 ## When guidelines are ignored
 
 Guidelines work — when they're read. A real example: a project's CLAUDE.md explicitly specified `heft` as the build tool (not the more common `gulp`). During a session, Claude ignored the instructions and ran `gulp bundle --ship` instead. When asked why:
