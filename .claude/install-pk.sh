@@ -27,10 +27,8 @@ set -euo pipefail
 # leaving a stale pk in place.
 rm -f "$HOME/.local/bin/pk"
 
-# With the legacy file cleared, anything still on PATH is legitimate: a
-# developer's `go install`-ed pk at ~/go/bin/pk, or a previous session's
-# version-pinned install at $HOME/.local/share/pk/<version>/pk that this
-# session inherited via CLAUDE_ENV_FILE. Either way, no install needed.
+# If pk is already on PATH, it's a developer's own install (e.g.,
+# ~/go/bin/pk). Skip our install so theirs stays in use.
 command -v pk >/dev/null 2>&1 && exit 0
 
 PK_VERSION="v0.14.2"
