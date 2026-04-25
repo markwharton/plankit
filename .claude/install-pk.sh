@@ -13,20 +13,41 @@
 # - On a developer machine with pk already on PATH: exits immediately.
 #   The body of this script never runs locally.
 # - In a Claude Code cloud sandbox (ephemeral VM with no pk installed):
-#   downloads the matching pk release into $HOME/.local/bin so the
-#   protective hooks (pk guard, pk preserve, pk protect) can run.
+#   downloads the matching pk release into $HOME/.local/share/pk/<version>
+#   and prepends that directory to PATH for the session, so the protective
+#   hooks (pk guard, pk preserve, pk protect) can run. Each version lives in
+#   its own directory; sessions on different pinned versions don't collide.
 
 set -euo pipefail
 
 command -v pk >/dev/null 2>&1 && exit 0
+
+PK_VERSION="v0.14.1"
+install_dir="$HOME/.local/share/pk/$PK_VERSION"
+binary="$install_dir/pk"
+
+# Append a PATH export to CLAUDE_ENV_FILE only if it isn't already there;
+# guards against PATH growing on repeat invocations within the same session.
+append_path_once() {
+  local dir="$1"
+  local file="${CLAUDE_ENV_FILE:-}"
+  [ -z "$file" ] && return 0
+  local line="export PATH=\"$dir:\$PATH\""
+  if ! grep -qxF "$line" "$file" 2>/dev/null; then
+    echo "$line" >> "$file"
+  fi
+}
+
+if [ -x "$binary" ]; then
+  append_path_once "$install_dir"
+  exit 0
+fi
 
 if ! command -v sha256sum >/dev/null 2>&1; then
   echo "pk install: sha256sum not found — cannot verify binary integrity" >&2
   exit 1
 fi
 
-PK_VERSION="v0.14.1"
-install_dir="$HOME/.local/bin"
 mkdir -p "$install_dir"
 
 arch="$(uname -m)"
@@ -59,9 +80,9 @@ if [ "$expected" != "$actual" ]; then
 fi
 
 chmod +x "$tmp"
-mv "$tmp" "$install_dir/pk"
+mv "$tmp" "$binary"
 
-[ -n "${CLAUDE_ENV_FILE:-}" ] && echo "export PATH=\"$install_dir:\$PATH\"" >> "$CLAUDE_ENV_FILE"
+append_path_once "$install_dir"
 
 # Sandboxes clone only the working branch, so version tags aren't present
 # locally until we fetch them — pk changelog / pk release need them to

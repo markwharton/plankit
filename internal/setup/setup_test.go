@@ -1254,6 +1254,32 @@ func TestWriteInstallScript_idempotent(t *testing.T) {
 	}
 }
 
+func TestWriteInstallScript_versionIsolatedPath(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	if _, err := writeInstallScript(projectDir, "0.14.1", &stderr); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	data, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("install-pk.sh not created: %v", err)
+	}
+	content := string(data)
+
+	if !strings.Contains(content, `install_dir="$HOME/.local/share/pk/$PK_VERSION"`) {
+		t.Errorf("script should install to per-version path under $HOME/.local/share/pk, got: %s", content)
+	}
+	// Stale binaries at the auto-PATHed $HOME/.local/bin survive across sandbox
+	// sessions and shadow the pinned version. The new template must never write
+	// pk into that directory.
+	if strings.Contains(content, `$HOME/.local/bin/pk`) || strings.Contains(content, `"$HOME/.local/bin"`) {
+		t.Errorf("script must not target $HOME/.local/bin (cross-session leak), got: %s", content)
+	}
+}
+
 func TestRun_sessionStartHook(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
