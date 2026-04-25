@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.14.2] - 2026-04-25
+
+### Fixed
+
+- install pk per-version to prevent stale-binary leak (ddc5a14)
+
+### Maintenance
+
+- make commit-message tip self-describing (a6e4ac3)
+
 ## [v0.14.1] - 2026-04-24
 
 ### Fixed
@@ -471,3 +481,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.13.1]: https://github.com/markwharton/plankit/compare/v0.13.0...v0.13.1
 [v0.14.0]: https://github.com/markwharton/plankit/compare/v0.13.1...v0.14.0
 [v0.14.1]: https://github.com/markwharton/plankit/compare/v0.14.0...v0.14.1
+[v0.14.2]: https://github.com/markwharton/plankit/compare/v0.14.1...v0.14.2
