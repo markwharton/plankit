@@ -23,7 +23,7 @@ When `release.branch` is configured in `.pk.json`:
 8. **Push** release branch + tag to origin.
 9. **Switch back** to source branch and push it to sync origin.
 
-When `release.branch` is NOT configured (legacy flow):
+When `release.branch` is NOT configured (trunk flow):
 
 1. Read `Release-Tag:` trailer from HEAD and validate it as semver.
 2. Check the tag doesn't already exist locally.
@@ -57,17 +57,22 @@ Add a `release` key to `.pk.json`:
 }
 ```
 
-- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the legacy flow (validate current branch and push).
+- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the trunk flow (validate current branch and push).
 - **hooks.preRelease** — Shell command that runs before pushing. If the hook fails, the release is aborted and nothing is pushed.
 
 ## Details
 
 ### Workflows
 
+`pk release` supports two flows. Pick whichever matches the project:
+
+- **Merge flow** — projects with a protected main branch and a development branch where work happens before being promoted. Use when you want a separation between "where work lands" and "what gets released."
+- **Trunk flow** — single-branch projects (content sites, fast iteration). No develop branch, no merge step. Use when you commit directly on the branch you ship from.
+
 | Flow | Config | Command | What happens |
 |------|--------|---------|--------------|
-| Legacy | no `release.branch` | `pk release` | Tag HEAD, push current branch + tag |
 | Merge | `release.branch` set | `pk release` | Tag, merge to release branch, push both |
+| Trunk | no `release.branch` | `pk release` | Tag HEAD, push current branch + tag |
 
 ### Release-Tag trailer
 
@@ -92,8 +97,8 @@ If any step fails after switching to the release branch (merge, hook, push), `pk
 
 `pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. This means `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks everything else on protected branches — `pk release` is the single command that legitimately touches the release branch.
 
-If you are already on the release branch when you run `pk release`, it refuses with an error: "switch to your development branch first." This prevents accidental pushes without a merge.
+If you are already on the release branch when you run `pk release`, it refuses with an error: "switch to your working branch first." This prevents accidental pushes without a merge.
 
 ### Scope
 
-Guard and `release.branch` are for multi-branch workflows (e.g., dev/main). Single-branch developers working directly on `main` don't need guard or `release.branch` — they run `pk changelog` and `pk release` with the legacy flow. No configuration needed.
+Guard and `release.branch` are for the merge flow. Trunk-flow projects don't need guard or `release.branch` — they run `pk changelog` and `pk release` directly on their working branch. No configuration needed; an empty `.pk.json` (or no `.pk.json` at all) is fine.
