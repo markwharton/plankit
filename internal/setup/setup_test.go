@@ -1091,6 +1091,82 @@ func TestPruneRules_ignoresUserCreated(t *testing.T) {
 	}
 }
 
+func TestPruneRules_keepsCurrentlyEmbedded(t *testing.T) {
+	rulesDir := t.TempDir()
+	body := "Rule body.\n"
+	sha := ContentSHA(body)
+	managed := "---\ndescription: keeper\npk_sha256: " + sha + "\n---\n" + body
+	ruleFile := filepath.Join(rulesDir, "keeper.md")
+	os.WriteFile(ruleFile, []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	pruneRules(rulesDir, map[string]bool{"keeper": true}, &stderr)
+
+	if _, err := os.Stat(ruleFile); err != nil {
+		t.Errorf("currently-embedded rule should not be touched: %v", err)
+	}
+}
+
+func TestPruneSkills_missingDir(t *testing.T) {
+	var stderr bytes.Buffer
+	if pruneSkills("/nonexistent/skills/dir", map[string]bool{}, &stderr) {
+		t.Error("pruneSkills should return false when the directory doesn't exist")
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr should be silent for missing dir, got %q", stderr.String())
+	}
+}
+
+func TestPruneRules_missingDir(t *testing.T) {
+	var stderr bytes.Buffer
+	if pruneRules("/nonexistent/rules/dir", map[string]bool{}, &stderr) {
+		t.Error("pruneRules should return false when the directory doesn't exist")
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr should be silent for missing dir, got %q", stderr.String())
+	}
+}
+
+func TestPruneSkills_skipsNonDirEntries(t *testing.T) {
+	skillsDir := t.TempDir()
+	// A stray file at the skills/ root level (not inside a subdirectory).
+	stray := filepath.Join(skillsDir, "README.md")
+	os.WriteFile(stray, []byte("# Notes about my skills\n"), 0644)
+
+	var stderr bytes.Buffer
+	pruneSkills(skillsDir, map[string]bool{}, &stderr)
+
+	if _, err := os.Stat(stray); err != nil {
+		t.Errorf("non-directory entries should be ignored: %v", err)
+	}
+}
+
+func TestPruneRules_skipsDirectoriesAndNonMd(t *testing.T) {
+	rulesDir := t.TempDir()
+	// A subdirectory at the rules/ root level.
+	subdir := filepath.Join(rulesDir, "drafts")
+	os.MkdirAll(subdir, 0755)
+	// A non-.md file at the rules/ root level.
+	other := filepath.Join(rulesDir, "scratch.txt")
+	os.WriteFile(other, []byte("scratch notes\n"), 0644)
+
+	var stderr bytes.Buffer
+	pruneRules(rulesDir, map[string]bool{}, &stderr)
+
+	if _, err := os.Stat(subdir); err != nil {
+		t.Errorf("directories under rules/ should be ignored: %v", err)
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Errorf("non-.md files under rules/ should be ignored: %v", err)
+	}
+}
+
+func TestEvaluateRemoval_missingFile(t *testing.T) {
+	if evaluateRemoval("/nonexistent/file.md") != "skip" {
+		t.Error("evaluateRemoval should return \"skip\" for a missing file")
+	}
+}
+
 func TestShouldUpdate_pristineFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "SKILL.md")
