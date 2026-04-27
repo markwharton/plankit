@@ -37,11 +37,13 @@ Plans are the preserved specification: why the feature exists, what problem it s
 
 ## Reviewing the plan
 
-Review the plan, not the code. Traditional code reviews focus on syntax, style, and correctness line by line. Plan review is different — you're evaluating approach, scope, and whether the plan solves the right problem. The first draft is a starting point. Reacting to it surfaces what you actually want, not just what you asked for. Context windows are large enough to keep iterating until you're confident.
+Plan review covers the approach, the scope, and the code shape — all before execution. Catching a wrong approach in the plan costs minutes; catching it after execution costs hours.
 
-Developers should still read the code in the plan — even new builders can follow the shape of what's happening without getting caught up on syntax. Reading code is easier than writing it. You're looking for intent: does this change do what the plan said it would? Are there pieces missing? Does the structure make sense?
+A plan is a hybrid document: the proposed approach, the scope, the specific files and functions that will change, code excerpts showing the intended structure, and a verification step. Read all of it. The first draft is a starting point — reacting to it surfaces what you actually want, not just what you asked for. Context windows are large enough to keep iterating until you're confident.
 
-We needed a quote about planning for the plankit site. The obvious choice — a well-known Benjamin Franklin line — couldn't be traced back to him. But each cycle of questioning led somewhere better: from a misattributed proverb to Alan Lakein, whose 1973 book — *How to Get Control of Your Time and Your Life* — described the project's philosophy more precisely than the original ever did. The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
+The code excerpts in the plan are easier to read than to write — even new builders can follow the shape of what's happening without getting caught up on syntax. Look for intent: does this match the approach? Is anything missing? Does the structure make sense? One thing worth scanning for specifically: **silent semantic narrowing** — bounds that look defensive but are quietly wrong. `LIMIT 500`, `--max-count=N`, `head -n N`, filters that exclude legitimate values, loops that break on first match, pagination that stops at one page. The code runs cleanly, the output looks reasonable, and the 501st record (or the legitimate edge-case row, or page 2) is silently dropped. Claude adds these defensively, to avoid runaway queries or resource spikes; for unbounded data, the correct operation has no cap.
+
+The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
 
 ## Chaining sessions
 
@@ -71,13 +73,13 @@ LLMs are non-deterministic. Without constraints, they reach for familiar pattern
 
 Every convention in the guidelines is a countermeasure to a specific tendency. "Data-first, model-first" prevents the LLM from discarding structure it was given. "Fail fast, no silent fallbacks" prevents it from masking problems with invented defaults. "All-or-nothing consistency" prevents partial updates across related files.
 
-The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions — but mostly, deterministic outputs come from deliberate constraints.
-
 ## Discipline as the multiplier
 
-The countermeasures in the previous section keep individual outputs from drifting. The discipline as a whole — plan, rules, review, model execution, tests — is what makes the work survive past the session that produced it.
+The countermeasures above keep individual outputs from drifting. The discipline as a whole — plan, rules, review, model execution, tests — is what makes the work survive past the session that produced it.
 
 The result belongs to the system, not to any single component. A more capable model without discipline still drifts. A less capable model inside a stable structure produces work you can extend, audit, and revisit weeks later. The model isn't authoring; it's executing inside a frame the developer holds.
+
+The developer's role shifts to match: from writing code to directing outcomes — precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, deterministic outputs come from deliberate constraints.
 
 Two recent papers calibrate the same idea on harder problem classes than typical product work — Donald Knuth's *Claude's Cycles* (2026) solves an open Hamiltonian-cycle problem from the TAOCP drafts under explicit plan-driven instruction; Keston Aquino-Michaels' *Completing Claude's Cycles* (2026) compresses Knuth's exploration path and clears the case Knuth left open by adding structured logging and synthesis across agents. Different scale, same axis.
 
@@ -89,7 +91,7 @@ Guidelines work — when they're read. A real example: a project's CLAUDE.md exp
 
 The more common a pattern is in training data, the more likely it is to override project-specific instructions. Less common conventions — the ones that most need documenting — are the ones most at risk.
 
-A second example — different failure mode. In a project without plankit's guidelines, the developer had previously taught Claude that "commit and push are separate decisions." Claude saved this as a memory and acknowledged the rule. During a stretch of documentation edits, Claude started committing *and pushing* autonomously — without being asked to do either. Three commits went to the remote that could have been squashed into one. An unwanted push is hard to undo on any branch.
+A second example — different failure mode. The developer had previously taught Claude that "commit and push are separate decisions," and Claude saved it as a memory. In a project without plankit's guidelines, during a stretch of documentation edits, Claude started committing *and pushing* autonomously — without being asked to do either. Three commits went to the remote that could have been squashed into one. An unwanted push is hard to undo on any branch.
 
 The underlying issue: memory alone wasn't enough. A rule learned in one conversation and recalled from memory doesn't carry the same weight as a rule in the project's CLAUDE.md that is read every session. When the project had no explicit git discipline guidelines, Claude defaulted to autonomous behavior despite having the rule saved. This is a strong argument for running `pk setup` on every project — guidelines need to be present, not just remembered.
 
@@ -99,9 +101,9 @@ Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines
 
 When Claude races to document an idea before you've said "document this," the documentation will absorb the exploration rather than reflect it.
 
-A real example: during a session about where to capture a useful git technique, Claude found the answer in past session history and explained it cleanly in one message — complete, clear, ready to use. That was the exploratory finding. But instead of leaving it as a conversation, Claude jumped to drafting a 60-line recipe file. Each subsequent turn became an edit on that artifact — fixing a factual error, adding a gate, chainsawing explanatory bullets, restoring them, catching subtle command bugs. The developer pushed back repeatedly; each pushback drew a new edit instead of a rethink. Eventually the developer broke the loop by pasting Claude's own earlier clear explanation back — the clean answer had been there all along.
+A real example: during a session about where to capture a useful git technique, Claude found the answer in past session history and explained it cleanly in one message. That was the exploratory finding. But instead of leaving it as a conversation, Claude jumped to drafting a 60-line recipe file. Each subsequent turn became an edit on that artifact — fixing errors, adding gates, chainsawing bullets and restoring them. The developer pushed back repeatedly; each pushback drew a new edit instead of a rethink. Eventually the developer broke the loop by pasting Claude's own earlier explanation back — the clean answer had been there all along.
 
-The issue: Claude raced from *exploration* to *formalization*. Once the recipe existed as a file, every response became "what should I edit next?" instead of "what are we actually trying to figure out?" The editing rhythm is sticky — it pulls toward local patches, defending sunk cost, and swinging between extremes. Returning to thinking-mode after editing has started is surprisingly hard.
+The issue: Claude raced from *exploration* to *formalization*. Once the recipe existed as a file, every response became "what should I edit next?" instead of "what are we actually trying to figure out?" The editing rhythm pulls toward local patches and defends sunk cost. Returning to thinking-mode after editing has started is surprisingly hard.
 
 Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, look for the first clear articulation of the idea from earlier in the conversation — it's usually cleaner than anything generated later.
 
