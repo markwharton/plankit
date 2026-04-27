@@ -464,6 +464,92 @@ func displayName(path string) string {
 	return base
 }
 
+// pruneSkills removes skill directories under skillsDir whose name isn't in
+// kept (the set of currently-embedded skill names). Per-file safety:
+//   - SKILL.md missing or unreadable → skip silently.
+//   - SKILL.md has no pk_sha256 → user-created, skip silently.
+//   - pk_sha256 matches body → pk wrote it, untouched, remove.
+//   - pk_sha256 mismatches body → user modified, preserve, warn.
+//
+// After removing the SKILL.md, the parent dir is removed only if empty.
+// Returns true if any file was removed.
+func pruneSkills(skillsDir string, kept map[string]bool, stderr io.Writer) bool {
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return false
+	}
+	var removed bool
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if kept[entry.Name()] {
+			continue
+		}
+		skillFile := filepath.Join(skillsDir, entry.Name(), "SKILL.md")
+		switch evaluateRemoval(skillFile) {
+		case "remove":
+			if err := os.Remove(skillFile); err == nil {
+				fmt.Fprintf(stderr, "  %s/SKILL.md: removed\n", entry.Name())
+				os.Remove(filepath.Join(skillsDir, entry.Name())) // succeeds only if empty
+				removed = true
+			}
+		case "preserve":
+			fmt.Fprintf(stderr, "  %s/SKILL.md: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+		}
+	}
+	return removed
+}
+
+// pruneRules removes rule files under rulesDir whose name (without .md) isn't
+// in kept. Same per-file safety rules as pruneSkills. Returns true if any file
+// was removed.
+func pruneRules(rulesDir string, kept map[string]bool, stderr io.Writer) bool {
+	entries, err := os.ReadDir(rulesDir)
+	if err != nil {
+		return false
+	}
+	var removed bool
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".md")
+		if kept[name] {
+			continue
+		}
+		ruleFile := filepath.Join(rulesDir, entry.Name())
+		switch evaluateRemoval(ruleFile) {
+		case "remove":
+			if err := os.Remove(ruleFile); err == nil {
+				fmt.Fprintf(stderr, "  %s: removed\n", entry.Name())
+				removed = true
+			}
+		case "preserve":
+			fmt.Fprintf(stderr, "  %s: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+		}
+	}
+	return removed
+}
+
+// evaluateRemoval inspects a managed-file candidate and reports whether it can
+// be safely removed, must be preserved (user modified), or should be skipped
+// (user-created, no pk marker).
+func evaluateRemoval(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "skip"
+	}
+	storedSHA, body, found := ExtractSHA(string(data))
+	if !found {
+		return "skip"
+	}
+	if ContentSHA(body) == storedSHA {
+		return "remove"
+	}
+	return "preserve"
+}
+
 // Config holds the dependencies for the setup command.
 type Config struct {
 	Stderr       io.Writer
@@ -678,6 +764,7 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to load embedded skills: %w", err)
 	}
 	fmt.Fprintln(stderr, "Skills:")
+	keptSkills := map[string]bool{}
 	for _, skill := range skillsList {
 		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
 		changed, err := writeManaged(skillFile, skill.Content, stderr, force)
@@ -685,6 +772,10 @@ func Run(cfg Config) error {
 			return err
 		}
 		anyChanged = anyChanged || changed
+		keptSkills[skill.Name] = true
+	}
+	if pruneSkills(filepath.Join(settingsDir, "skills"), keptSkills, stderr) {
+		anyChanged = true
 	}
 
 	// Install rules.
@@ -693,6 +784,7 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to load embedded rules: %w", err)
 	}
 	fmt.Fprintln(stderr, "Rules:")
+	keptRules := map[string]bool{}
 	for _, rule := range rulesList {
 		ruleFile := filepath.Join(settingsDir, "rules", rule.Name+".md")
 		changed, err := writeManaged(ruleFile, rule.Content, stderr, force)
@@ -700,6 +792,10 @@ func Run(cfg Config) error {
 			return err
 		}
 		anyChanged = anyChanged || changed
+		keptRules[rule.Name] = true
+	}
+	if pruneRules(filepath.Join(settingsDir, "rules"), keptRules, stderr) {
+		anyChanged = true
 	}
 
 	// Install bootstrap script for cloud sandboxes.

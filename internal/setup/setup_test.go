@@ -944,6 +944,153 @@ func TestShouldUpdate_pristineHTMLComment(t *testing.T) {
 	}
 }
 
+func TestPruneSkills_removesUnmodifiedDeprecated(t *testing.T) {
+	skillsDir := t.TempDir()
+	body := "Skill body for the deprecated entry.\n"
+	sha := ContentSHA(body)
+	managed := "---\nname: gone\npk_sha256: " + sha + "\n---\n" + body
+	skillDir := filepath.Join(skillsDir, "gone")
+	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+
+	if !changed {
+		t.Error("pruneSkills returned false; expected true after removal")
+	}
+	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); !os.IsNotExist(err) {
+		t.Error("deprecated SKILL.md should have been removed")
+	}
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
+		t.Error("empty skill directory should have been removed")
+	}
+	if !strings.Contains(stderr.String(), "gone/SKILL.md: removed") {
+		t.Errorf("stderr = %q, want removal notice", stderr.String())
+	}
+}
+
+func TestPruneSkills_preservesUserModified(t *testing.T) {
+	skillsDir := t.TempDir()
+	body := "Original body.\n"
+	sha := ContentSHA(body)
+	// User edited the body — body no longer hashes to sha.
+	managed := "---\nname: tweaked\npk_sha256: " + sha + "\n---\nUser changed this.\n"
+	skillDir := filepath.Join(skillsDir, "tweaked")
+	os.MkdirAll(skillDir, 0755)
+	skillFile := filepath.Join(skillDir, "SKILL.md")
+	os.WriteFile(skillFile, []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+
+	if changed {
+		t.Error("pruneSkills returned true; expected false when nothing was removed")
+	}
+	if _, err := os.Stat(skillFile); err != nil {
+		t.Errorf("user-modified SKILL.md should have been preserved: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "preserved") {
+		t.Errorf("stderr = %q, want preservation warning", stderr.String())
+	}
+}
+
+func TestPruneSkills_ignoresUserCreated(t *testing.T) {
+	skillsDir := t.TempDir()
+	// No pk_sha256 frontmatter — pk has never managed this.
+	skillDir := filepath.Join(skillsDir, "mine")
+	os.MkdirAll(skillDir, 0755)
+	skillFile := filepath.Join(skillDir, "SKILL.md")
+	os.WriteFile(skillFile, []byte("---\nname: mine\n---\nMy own skill.\n"), 0644)
+
+	var stderr bytes.Buffer
+	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+
+	if changed {
+		t.Error("pruneSkills returned true; expected false when nothing pk-managed was found")
+	}
+	if _, err := os.Stat(skillFile); err != nil {
+		t.Errorf("user-created SKILL.md should have been left alone: %v", err)
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr should be silent for user-created skills, got %q", stderr.String())
+	}
+}
+
+func TestPruneSkills_keepsCurrentlyEmbedded(t *testing.T) {
+	skillsDir := t.TempDir()
+	body := "Body content.\n"
+	sha := ContentSHA(body)
+	managed := "---\nname: keeper\npk_sha256: " + sha + "\n---\n" + body
+	skillDir := filepath.Join(skillsDir, "keeper")
+	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	pruneSkills(skillsDir, map[string]bool{"keeper": true}, &stderr)
+
+	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
+		t.Errorf("currently-embedded skill should not be touched: %v", err)
+	}
+}
+
+func TestPruneRules_removesUnmodifiedDeprecated(t *testing.T) {
+	rulesDir := t.TempDir()
+	body := "Rule body content.\n"
+	sha := ContentSHA(body)
+	managed := "---\ndescription: gone rule\npk_sha256: " + sha + "\n---\n" + body
+	ruleFile := filepath.Join(rulesDir, "gone.md")
+	os.WriteFile(ruleFile, []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	changed := pruneRules(rulesDir, map[string]bool{}, &stderr)
+
+	if !changed {
+		t.Error("pruneRules returned false; expected true after removal")
+	}
+	if _, err := os.Stat(ruleFile); !os.IsNotExist(err) {
+		t.Error("deprecated rule file should have been removed")
+	}
+	if !strings.Contains(stderr.String(), "gone.md: removed") {
+		t.Errorf("stderr = %q, want removal notice", stderr.String())
+	}
+}
+
+func TestPruneRules_preservesUserModified(t *testing.T) {
+	rulesDir := t.TempDir()
+	body := "Original rule body.\n"
+	sha := ContentSHA(body)
+	managed := "---\ndescription: tweaked\npk_sha256: " + sha + "\n---\nUser edited this.\n"
+	ruleFile := filepath.Join(rulesDir, "tweaked.md")
+	os.WriteFile(ruleFile, []byte(managed), 0644)
+
+	var stderr bytes.Buffer
+	pruneRules(rulesDir, map[string]bool{}, &stderr)
+
+	if _, err := os.Stat(ruleFile); err != nil {
+		t.Errorf("user-modified rule should have been preserved: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "preserved") {
+		t.Errorf("stderr = %q, want preservation warning", stderr.String())
+	}
+}
+
+func TestPruneRules_ignoresUserCreated(t *testing.T) {
+	rulesDir := t.TempDir()
+	ruleFile := filepath.Join(rulesDir, "mine.md")
+	os.WriteFile(ruleFile, []byte("# My rule\n\nNo pk marker.\n"), 0644)
+
+	var stderr bytes.Buffer
+	pruneRules(rulesDir, map[string]bool{}, &stderr)
+
+	if _, err := os.Stat(ruleFile); err != nil {
+		t.Errorf("user-created rule should have been left alone: %v", err)
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr should be silent for user-created rules, got %q", stderr.String())
+	}
+}
+
 func TestShouldUpdate_pristineFrontmatter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "SKILL.md")
