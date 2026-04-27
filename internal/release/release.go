@@ -60,7 +60,7 @@ func Run(cfg Config) int {
 
 	// 3. If releaseBranch is configured and we're already on it, refuse.
 	if releaseBranch != "" && sourceBranch == releaseBranch {
-		fmt.Fprintf(cfg.Stderr, "Error: you're on the release branch %q — switch to your development branch first\n", releaseBranch)
+		fmt.Fprintf(cfg.Stderr, "Error: you're on the release branch %q — switch to your working branch first\n", releaseBranch)
 		return 1
 	}
 
@@ -180,7 +180,7 @@ func Run(cfg Config) int {
 			fmt.Fprintf(cfg.Stderr, "  Merged %s into %s\n", sourceBranch, releaseBranch)
 		}
 	} else if releaseBranch == "" {
-		// Legacy flow: no releaseBranch configured.
+		// Trunk flow: no releaseBranch configured — tag HEAD, push current branch.
 		// We already checked tag exists above. Just note the branch.
 		fmt.Fprintf(cfg.Stderr, "  On %s branch\n", sourceBranch)
 	}
@@ -196,7 +196,7 @@ func Run(cfg Config) int {
 		fmt.Fprintln(cfg.Stderr, "  Hook passed")
 	}
 
-	// 10. Dry run complete (merge/legacy flows).
+	// 10. Dry run complete (merge/trunk flows).
 	if cfg.DryRun {
 		fmt.Fprintf(cfg.Stderr, "\n--- Dry run complete ---\n")
 		fmt.Fprintf(cfg.Stderr, "  Would create tag %s\n", tag)
@@ -204,7 +204,7 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// 11. Create the local tag on HEAD (which is either source HEAD in legacy
+	// 11. Create the local tag on HEAD (which is either source HEAD in trunk
 	// flow or release-branch HEAD after the fast-forward merge — same commit).
 	// Cleanup on subsequent failure is handled by the top-level defer.
 	if _, err := cfg.GitExec("", "tag", tag); err != nil {

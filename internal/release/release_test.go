@@ -21,7 +21,7 @@ func stubGitExec(handlers map[string]func(args ...string) (string, error)) func(
 // trailerFormat matches the git log --format used to extract Release-Tag.
 const trailerFormat = "--format=%(trailers:key=Release-Tag,valueonly)"
 
-// happyGit returns git stubs for a clean, valid legacy release state.
+// happyGit returns git stubs for a clean, valid trunk release state.
 // tag is the value that will be returned for the Release-Tag trailer lookup.
 // An empty tag means "no trailer present" (missing trailer error).
 func happyGit(tag, branch string) map[string]func(args ...string) (string, error) {
@@ -113,7 +113,7 @@ func mergeConfig(releaseBranch string) func(string) ([]byte, error) {
 	}
 }
 
-// --- Legacy flow tests (no release.branch configured) ---
+// --- Trunk flow tests (no release.branch configured) ---
 
 func TestRun_happyPath(t *testing.T) {
 	var stderr bytes.Buffer
@@ -552,7 +552,7 @@ func TestRun_mergeFlow_alreadyOnReleaseBranch(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	if !strings.Contains(stderr.String(), "switch to your development branch first") {
+	if !strings.Contains(stderr.String(), "switch to your working branch first") {
 		t.Errorf("stderr = %q, want development branch message", stderr.String())
 	}
 }
@@ -676,7 +676,7 @@ func TestRun_mergeFlow_sourceBehindRemote(t *testing.T) {
 	}
 }
 
-func TestRun_legacyFlow_noReleaseBranch(t *testing.T) {
+func TestRun_trunkFlow_noReleaseBranch(t *testing.T) {
 	var stderr bytes.Buffer
 	var pushArgs []string
 
