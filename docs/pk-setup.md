@@ -88,7 +88,7 @@ Re-run setup anytime to switch modes.
 `pk setup` manages files with three update strategies:
 
 - **CLAUDE.md** — starts managed, becomes user-owned once customized. Protected by a SHA256 marker (`<!-- pk:sha256:... -->`). Updated when pristine, skipped when modified. Never force-overwritten — once you add project conventions, it's yours.
-- **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them.
+- **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them. When pk no longer ships a skill or rule, the local copy is removed on the next `pk setup` run if its hash still matches — user-modified copies are preserved with a warning, and skills you authored yourself (no `pk_sha256` marker) are skipped without notice.
 - **install-pk.sh** — always overwritten with the latest template. No SHA protection. Users have no reason to customize it — it's infrastructure, not content. Script fixes ship to every project on the next `pk setup` run.
 
 ### Baseline tag for pk changelog
