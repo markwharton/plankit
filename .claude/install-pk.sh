@@ -31,7 +31,7 @@ rm -f "$HOME/.local/bin/pk"
 # ~/go/bin/pk). Skip our install so theirs stays in use.
 command -v pk >/dev/null 2>&1 && exit 0
 
-PK_VERSION="v0.14.3"
+PK_VERSION="v0.15.0"
 install_dir="$HOME/.local/share/pk/$PK_VERSION"
 binary="$install_dir/pk"
 

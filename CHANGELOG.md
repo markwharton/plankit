@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.15.0] - 2026-04-28
+
+### Added
+
+- prune skills and rules no longer in the embed set (4750772)
+
+### Changed
+
+- rename "legacy" to "trunk" in code + tests (334f4ea)
+
+### Documentation
+
+- add "discipline as the multiplier" section to methodology (9d8b5cd)
+- note Esc as the keyboard interrupt in "breaking the loop" (753239f)
+- document the prune-on-setup behavior (cb0c2ea)
+- make /ship workflow-agnostic (caeceb8)
+- rename legacy flow → trunk flow and surface both in examples (238c694)
+- doc pass — Reviewing the plan + four tightenings (0ccece6)
+
 ## [v0.14.3] - 2026-04-25
 
 ### Fixed
@@ -494,3 +513,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.14.1]: https://github.com/markwharton/plankit/compare/v0.14.0...v0.14.1
 [v0.14.2]: https://github.com/markwharton/plankit/compare/v0.14.1...v0.14.2
 [v0.14.3]: https://github.com/markwharton/plankit/compare/v0.14.2...v0.14.3
+[v0.15.0]: https://github.com/markwharton/plankit/compare/v0.14.3...v0.15.0
