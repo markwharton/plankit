@@ -3,12 +3,12 @@ name: ship
 description: Run pk changelog then pk release in one pass, with preview + confirm at each step
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
-pk_sha256: e80fd3fdadb48141d5a45a8b540f038050d737cb17b36c0494b3acb69f26b73d
+pk_sha256: c839e8e4acd81def39d347a6d4244411ab6633fb59d997f786f468037390dd7b
 ---
 
 Combined changelog + release workflow. `pk changelog` and `pk release` are always run in sequence when shipping a version; this skill chains them while preserving the preview+confirm gate for each step so nothing lands unreviewed.
 
-Run this on a development branch, not a guarded branch (e.g., `main`).
+Run this on the branch where you've been working. For develop→main projects, that's `develop`; for trunk-based projects, that's the main branch. `pk release` refuses to release directly from a configured release branch.
 
 ## Flow
 
