@@ -30,7 +30,7 @@ go install github.com/markwharton/plankit/cmd/pk@latest
 
 Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases) (no Go required).
 
-After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below or [Getting Started](docs/getting-started.md) for details.
+After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below for details.
 
 ## Setup
 
@@ -69,7 +69,6 @@ Re-run setup anytime to switch.
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — install, setup, first run
 - [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
 - [Anti-Patterns](docs/anti-patterns.md) — what to watch for
 - [Resources](docs/resources.md) — Claude Code best practices, git references

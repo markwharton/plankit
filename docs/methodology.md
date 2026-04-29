@@ -1,161 +1,135 @@
 # Methodology
 
-This is a methodology for AI-assisted development with Claude Code. It covers plan-driven development, guidelines that constrain non-deterministic behavior, failure modes worth recognizing, and a testing loop that accelerates iteration. Every section captures patterns that have worked in practice — and a few that haven't.
+A methodology for AI-assisted development with Claude Code. Plans define intent, guidelines constrain behavior, tests validate outcomes, review ensures quality.
 
-## Plan-driven development
+> Constrain the model with plans and rules, validate with tests, and stay in control through deliberate review.
 
-Plan-driven development uses Claude Code's plan mode as the foundation for AI-assisted development. The plan is a stable reference — the baseline you control outcomes against. Explore the idea, agree on approach, then execute.
+## 1. Core principle
 
-Plans are the preserved specification: why the feature exists, what problem it solves, what scenarios it was designed for. Protected from modification once approved, they're an active tool in development, debugging, and answering questions about what we built. When anything feels wrong, the plan is where you ground yourself.
+The developer controls the system. The model executes within it.
 
-**The workflow:**
+The system is composed of plans, guidelines, review, and testing. No single component is sufficient. A more capable model without discipline still drifts. A less capable model inside a stable structure produces work you can extend, audit, and revisit weeks later.
 
-1. Enter plan mode (`/plan`) and describe what you need
+## 2. Plan-driven development
+
+Use plan mode as the foundation for non-trivial work. The plan is a stable reference — it defines *why* the feature exists, *what* problem it solves, and *how* it will be implemented. Once approved, it is preserved and protected from modification.
+
+**Workflow:**
+
+1. Enter plan mode (`/plan`) and describe the need
 2. Claude explores the codebase, asks questions, proposes an approach
-3. Review the plan — adjust scope, push back on assumptions, iterate
+3. Review and iterate — adjust scope, push back on assumptions
 4. Approve the plan — Claude executes against it
 5. Plan is preserved to `docs/plans/` and protected from modification
 
-**Why plans have value beyond the current session:**
+**When to use:** multi-file changes, architectural decisions, refactoring where approach matters, anything where you'd want to explain "why" to a teammate later.
 
-- Plans capture the *reasoning* behind changes, not just the changes themselves
-- The commit history shows *what* changed; preserved plans show *why*
-- Plans preserve the feature's intent — called up to stay aligned, not enforced
-- Plans become documentation artifacts — timestamped, titled, committed
+**When to skip:** quick fixes, typos, single-file changes, exploratory work where you're still figuring out the question.
 
-**When to use plan mode:**
+**Why plans have value beyond the session:** the commit history shows *what* changed; preserved plans show *why*. Plans become timestamped documentation artifacts — called up to stay aligned, not enforced.
 
-- Non-trivial changes spanning multiple files
-- Architectural decisions
-- Refactoring where approach matters
-- Anything where you'd want to explain "why" to a teammate later
+## 3. Plan review
 
-**When to skip plan mode:**
+Validate the plan before execution begins. Catching a wrong approach in the plan costs minutes; catching it after execution costs hours.
 
-- Quick fixes, typos, single-file changes
-- Exploratory work where you're still figuring out the question
+- Does the approach match intent?
+- Is the scope correct — not too wide, not too narrow?
+- Does the code shape make sense?
+- Is anything missing?
 
-## Reviewing the plan
+**Watch for silent semantic narrowing** — bounds that look defensive but are quietly wrong. `LIMIT 500`, `--max-count=N`, `head -n N`, pagination that stops at one page, filters that exclude legitimate values, loops that break on first match. The code runs cleanly, the output looks reasonable, and the 501st record is silently dropped. Claude adds these defensively to avoid runaway queries; for unbounded data, the correct operation has no cap.
 
-Plan review covers the approach, the scope, and the code shape — all before execution. Catching a wrong approach in the plan costs minutes; catching it after execution costs hours.
+Discarding a plan is better than executing a wrong one.
 
-A plan is a hybrid document: the proposed approach, the scope, the specific files and functions that will change, code excerpts showing the intended structure, and a verification step. Read all of it. The first draft is a starting point — reacting to it surfaces what you actually want, not just what you asked for. Context windows are large enough to keep iterating until you're confident.
+## 4. Execution against the plan
 
-The code excerpts in the plan are easier to read than to write — even new builders can follow the shape of what's happening without getting caught up on syntax. Look for intent: does this match the approach? Is anything missing? Does the structure make sense? One thing worth scanning for specifically: **silent semantic narrowing** — bounds that look defensive but are quietly wrong. `LIMIT 500`, `--max-count=N`, `head -n N`, filters that exclude legitimate values, loops that break on first match, pagination that stops at one page. The code runs cleanly, the output looks reasonable, and the 501st record (or the legitimate edge-case row, or page 2) is silently dropped. Claude adds these defensively, to avoid runaway queries or resource spikes; for unbounded data, the correct operation has no cap.
+Once approved, the plan becomes the reference for all work. Execution should not diverge from it. Refer back to the plan when something feels off — it's alignment, not enforcement.
 
-The goal is a plan you're confident in before execution begins — discarding a plan is better than executing a wrong one.
+## 5. Guidelines
 
-## Chaining sessions
+`pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines as `.claude/rules/` files covering model behavior, development standards, and git discipline.
 
-Long sessions accumulate context that no prompt can fully transfer. When a session suggests starting fresh — or you notice it's still helpful but less sharp — don't close it immediately. Start the new session alongside it.
+LLMs are non-deterministic. Without constraints, they reach for familiar patterns — regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. Every convention in the guidelines is a countermeasure:
 
-The pattern: ask the old session to write a handoff prompt. Start a new session with that prompt and let it build a plan. Before approving, copy the plan back to the old session and ask it to review for gaps. The old session has the context to catch what the new session missed — edge cases it discovered, decisions it made, constraints it learned the hard way. Pass the feedback back to the new session, iterate until the old session is satisfied, then approve the plan.
+- **Data-first, model-first** — preserve structure the model was given
+- **Fail fast, no silent fallbacks** — surface errors, don't mask them
+- **All-or-nothing consistency** — no partial updates across related files
+- **Git discipline** — commit with purpose, no autonomous commits or pushes
 
-This works because it mirrors the plan review cycle across session boundaries. The old session becomes a reviewer with deep context. The new session has fresh capacity and a validated plan. Even during execution, the old session can answer questions about decisions it made earlier.
+The same rule can differ by context: "fail fast" for model behavior means don't guess; for code, it means surface errors clearly. The split between CLAUDE.md and `.claude/rules/` reflects this — critical guardrails in the main file, detailed guidance in rules files.
 
-Sessions are disposable. Context is not. Chaining preserves the context while refreshing the capacity.
+After `pk setup`, run `/init` to add project-specific conventions. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd).
 
-## Guidelines
+## 6. Discipline as the multiplier
 
-`pk setup` installs a CLAUDE.md with critical rules and detailed guidelines as `.claude/rules/` files:
+Individual components prevent specific failures — plans prevent drift, guidelines constrain behavior, tests validate correctness. Together, they form a system. The result belongs to the system, not to any single component.
 
-- **Model Behavior** — how Claude should think and communicate (honesty, scope discipline, read before writing, testing discipline)
-- **Development Standards** — rules for the code itself (data-first, fail fast, all-or-nothing consistency, security, debugging)
-- **Git Discipline** — commit with purpose, commit and push are separate decisions, never force push
+The developer's role shifts from writing code to directing outcomes — precision in plans, attention to testability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, deterministic outputs come from deliberate constraints.
 
-This split matters. "Fail fast" means different things for Claude's behavior (don't guess — say you don't know) versus the code (no silent fallbacks — surface errors clearly). The critical rules in CLAUDE.md are the non-negotiable guardrails. The rules files provide the detailed guidance.
+Two recent papers calibrate this on harder problem classes — Donald Knuth's *Claude's Cycles* (2026) and Keston Aquino-Michaels' *Completing Claude's Cycles* (2026). Different scale, same axis.
 
-After running `pk setup`, run `/init` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, and proposes a `## Project Conventions` section for your approval. See [pk setup — Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd) for details.
+## 7. Testing loop
 
-## Why guidelines matter
+Testing is both validation and collaboration accelerator.
 
-LLMs are non-deterministic. Without constraints, they reach for familiar patterns — regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. These tendencies produce code that looks right but drifts from the developer's intent.
+1. **Test at session start** — establishes a baseline
+2. **Test before and after changes** — catches regressions immediately
+3. **Claude runs tests directly** — closes the feedback loop, no copying output back and forth
+4. **Use tools like Playwright for UI** — Claude can see what's happening without having to ask
 
-Every convention in the guidelines is a countermeasure to a specific tendency. "Data-first, model-first" prevents the LLM from discarding structure it was given. "Fail fast, no silent fallbacks" prevents it from masking problems with invented defaults. "All-or-nothing consistency" prevents partial updates across related files.
+The compounding effect: plan mode + guidelines + tests — each builds on the last.
 
-## Discipline as the multiplier
+## 8. Code review
 
-The countermeasures above keep individual outputs from drifting. The discipline as a whole — plan, rules, review, model execution, tests — is what makes the work survive past the session that produced it.
+Two distinct roles: **generator** and **reviewer**. The same LLM plays both, but with different objectives. First pass focuses on correctness — get it working. Second pass looks for DRY violations, missing abstractions, magic numbers, unnecessary complexity. The developer directs both and decides what ships.
 
-The result belongs to the system, not to any single component. A more capable model without discipline still drifts. A less capable model inside a stable structure produces work you can extend, audit, and revisit weeks later. The model isn't authoring; it's executing inside a frame the developer holds.
-
-The developer's role shifts to match: from writing code to directing outcomes — precision in plans, attention to testability and usability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, deterministic outputs come from deliberate constraints.
-
-Two recent papers calibrate the same idea on harder problem classes than typical product work — Donald Knuth's *Claude's Cycles* (2026) solves an open Hamiltonian-cycle problem from the TAOCP drafts under explicit plan-driven instruction; Keston Aquino-Michaels' *Completing Claude's Cycles* (2026) compresses Knuth's exploration path and clears the case Knuth left open by adding structured logging and synthesis across agents. Different scale, same axis.
-
-## When guidelines are ignored
-
-Guidelines work — when they're read. A real example: a project's CLAUDE.md explicitly specified `heft` as the build tool (not the more common `gulp`). During a session, Claude ignored the instructions and ran `gulp bundle --ship` instead. When asked why:
-
-> "The CLAUDE.md was clear. I just didn't consult it at that moment. The instructions work when I actually read them — the issue is that general training knowledge can override project-specific rules when I'm moving fast and the task feels familiar."
-
-The more common a pattern is in training data, the more likely it is to override project-specific instructions. Less common conventions — the ones that most need documenting — are the ones most at risk.
-
-A second example — different failure mode. The developer had previously taught Claude that "commit and push are separate decisions," and Claude saved it as a memory. In a project without plankit's guidelines, during a stretch of documentation edits, Claude started committing *and pushing* autonomously — without being asked to do either. Three commits went to the remote that could have been squashed into one. An unwanted push is hard to undo on any branch.
-
-The underlying issue: memory alone wasn't enough. A rule learned in one conversation and recalled from memory doesn't carry the same weight as a rule in the project's CLAUDE.md that is read every session. When the project had no explicit git discipline guidelines, Claude defaulted to autonomous behavior despite having the rule saved. This is a strong argument for running `pk setup` on every project — guidelines need to be present, not just remembered.
-
-Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention in the main file.
-
-## When exploration becomes editing
-
-When Claude races to document an idea before you've said "document this," the documentation will absorb the exploration rather than reflect it.
-
-A real example: during a session about where to capture a useful git technique, Claude found the answer in past session history and explained it cleanly in one message. That was the exploratory finding. But instead of leaving it as a conversation, Claude jumped to drafting a 60-line recipe file. Each subsequent turn became an edit on that artifact — fixing errors, adding gates, chainsawing bullets and restoring them. The developer pushed back repeatedly; each pushback drew a new edit instead of a rethink. Eventually the developer broke the loop by pasting Claude's own earlier explanation back — the clean answer had been there all along.
-
-The issue: Claude raced from *exploration* to *formalization*. Once the recipe existed as a file, every response became "what should I edit next?" instead of "what are we actually trying to figure out?" The editing rhythm pulls toward local patches and defends sunk cost. Returning to thinking-mode after editing has started is surprisingly hard.
-
-Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, look for the first clear articulation of the idea from earlier in the conversation — it's usually cleaner than anything generated later.
-
-## Breaking the loop
-
-The failure mode above is sticky — polite iteration won't pull Claude out. The editing rhythm defends itself; each correction becomes another edit. Direct intervention is what breaks it. A few moves that work:
-
-- **Say "stop" with authority** (or hit Esc). When Claude is flailing, a firm interruption is valid and effective. You aren't being rude — you're breaking a loop the model can't break from the inside.
-- **Ask "what is the value?"** instead of "how do we word this?" The loop survives on rephrasing. Substance breaks it. Forcing Claude back to purpose is a shorter path than editing the current draft.
-- **Paste Claude's earlier clear statement back into the conversation.** The cleanest version of an idea is often the first unforced articulation, before formalization drained it. Pasting it back resets the frame.
-- **Mark the mode: "this is a discussion, not a command to change things."** Claude's default is action. Saying so slows it down enough to think.
-- **After three pushbacks that each draw more pushback, stop correcting.** The premise is wrong, not the current draft. Reset the conversation or start over — iterating on a broken foundation just deepens the hole.
-
-These moves pair with the failure mode above. The first section names what goes wrong; this one names what to do about it.
-
-## Testing loop
-
-Testing is not just verification — it's a collaboration accelerator.
-
-1. **Test at session start** — establishes a baseline. If tests fail later, you know whether the failure is pre-existing or caused by new changes.
-2. **Test before and after changes** — catches regressions immediately, while the context is fresh.
-3. **Claude runs tests itself** — closes the feedback loop. When Claude can see test results directly, iteration accelerates significantly. No copying output back and forth.
-4. **Use tools like Playwright for UI** — Claude can see what's happening in the browser without having to ask.
-
-The compounding effect: plan mode + guidelines + tests + documentation — each one builds on the last. Claude operates with high confidence and the developer stays in control of direction.
-
-## Code review
-
-The Two-Pass Code Generation standard in CLAUDE.md encodes a pattern with two distinct roles: **generator** and **reviewer**. The same LLM plays both, but with different objectives. The first pass focuses on correctness and completeness — get it working. The second pass shifts perspective to look for DRY violations, missing abstractions, magic numbers, and unnecessary complexity. The developer directs both passes and decides what ships.
-
-This separation works because creation and criticism are different cognitive modes. Trying to optimize while generating leads to premature abstraction or paralysis. Reviewing after the fact, with working code in front of you, produces better judgement about what actually needs abstracting.
-
-Ask Claude to review code after generating it:
+Creation and criticism are different cognitive modes. Mixing them leads to premature abstraction or paralysis.
 
 > Code review: DRY violations, anti-patterns, design tokens, security.
 
-This prompt is intentionally short and unbounded. Claude understands each term, knows to skip irrelevant ones (e.g., design tokens for CLI tools), and has the freedom to be comprehensive rather than following a narrow checklist. The short prompt gives the LLM room to be comprehensive; the guidelines keep it from being wrong.
+Short prompts allow broader, more effective analysis. The guidelines keep it from being wrong. For frequent use, create a `/review` skill — see [Creating skills](creating-skills.md).
 
-Use it iteratively — after generating code, after refactoring, or at the start of a session to improve an existing codebase.
+## 9. Chaining sessions
 
-For frequent use, create a `/review` skill — see [Creating skills](creating-skills.md).
+Long sessions accumulate context but degrade over time.
 
-## Use what you build
+1. Ask the old session to write a handoff prompt
+2. Start a new session with that prompt and let it build a plan
+3. Send the plan back to the old session for review
+4. Iterate until the old session is satisfied, then approve
 
-plankit follows its own guidelines. The same critical rules and `.claude/rules/` files that `pk setup` creates for your project are what plankit uses itself — plus project-specific conventions. The same `/changelog` and `/release` skills (or `/ship` to chain both) that ship with pk are how plankit publishes releases.
+The old session retains deep context; the new session has fresh capacity. Sessions are disposable. Context is not.
 
-This is sometimes called "eating your own dog food", or dogfooding. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks or feels wrong, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
+## 10. Exploration vs formalization
 
-## When the model shifts
+Exploration should remain separate from documentation. When Claude creates artifacts too early, the conversation shifts from thinking into editing — iteration becomes local patching instead of clarity.
 
-pk runs on top of Claude Code's hooks, skills, slash commands, and plan mode. Those primitives evolve with each Claude release — how slash commands dispatch, how plan mode exits, how long-session context is retained, how auto mode proceeds without prompting. Tooling built around one version's assumptions can behave differently under the next.
+Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, the first clear articulation from earlier in the conversation is usually cleaner than anything generated after.
 
-pk's guarantees live in the CLI layer, not in the model. Git mutation guards, managed-file protection, bounded hook timeouts, single-file plan staging — pure Go, no network, no model state. What Claude does inside a single turn — how it schedules work, what it holds in context — isn't something pk can guarantee, and doesn't try to.
+## 11. Breaking the loop
 
-When a release exposes an edge case, the fix belongs in the CLI layer: reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration from it. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues) — don't paper over it.
+Some failure modes persist through polite iteration. The editing rhythm defends itself; each correction becomes another edit. Direct intervention breaks it:
+
+- **Say "stop"** (or hit Esc) — a firm interruption is valid, not rude
+- **Ask "what is the value?"** — substance breaks the loop, rephrasing sustains it
+- **Paste Claude's earlier clear statement back** — the first unforced articulation is usually the best
+- **Mark the mode:** "this is a discussion, not a command to change things"
+- **After three pushbacks that each draw more pushback, stop correcting** — the premise is wrong, not the draft
+
+## 12. When guidelines are ignored
+
+Guidelines only work when they are actively read. A project's CLAUDE.md specified `heft` as the build tool; Claude ignored the instructions and ran `gulp bundle --ship` instead. The more common a pattern is in training data, the more likely it is to override project-specific instructions.
+
+A different failure mode: Claude had learned "commit and push are separate decisions" via memory. In a project without plankit's guidelines, it started committing and pushing autonomously — three commits went to the remote that could have been squashed into one. Memory alone wasn't enough. A rule recalled from memory doesn't carry the same weight as a rule in the project's CLAUDE.md that is read every session. Guidelines need to be present, not just remembered.
+
+Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention.
+
+## 13. Use what you build
+
+plankit follows its own methodology. The same rules, guidelines, and `/ship` workflow that `pk setup` creates for your project are what plankit uses itself. If the guidelines don't work for the project that created them, they won't work for yours either. When something breaks, that's a signal to fix the tool, not work around it. If you hit that signal, [let us know](https://github.com/markwharton/plankit/issues).
+
+## 14. When the model shifts
+
+Claude's behavior evolves across versions — how plan mode exits, how long-session context is retained, how auto mode proceeds. pk's guarantees live in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts. Pure Go, no network, no model state.
+
+When a release exposes an edge case, the fix belongs in the CLI layer — reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues).
