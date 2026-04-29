@@ -33,7 +33,7 @@ Common fields worth knowing:
 - **disable-model-invocation: true** — block Claude from invoking the skill on its own. Use this for high-stakes workflows that the user must trigger explicitly (releases, deployments, anything destructive).
 - **user-invocable: false** — hide the skill from user menus. Use this for background knowledge Claude consults but you don't invoke directly.
 - **argument-hint** — hint shown in the `/` autocomplete menu.
-- **allowed-tools** — list of tools the skill can use without asking for permission while it's active. For example, `allowed-tools: Bash(pk:*)` lets a `pk`-wrapping skill run without prompting on each `pk` command. Use this to make skills self-contained — they work even in projects where `settings.json` doesn't have a matching permission entry. plankit's installed skills (`/changelog`, `/preserve`, `/release`, `/ship`) use this pattern.
+- **allowed-tools** — list of tools the skill can use without asking for permission while it's active. For example, `allowed-tools: Bash(pk:*)` lets a `pk`-wrapping skill run without prompting on each `pk` command. Use this to make skills self-contained — they work even in projects where `settings.json` doesn't have a matching permission entry. plankit's installed skills (`/preserve`, `/ship`) use this pattern.
 
 See the [official Skills reference](https://code.claude.com/docs/en/skills) for the full schema (paths, hooks, model, subagent forking, and more).
 
@@ -66,11 +66,11 @@ Save this as `.claude/skills/review-staged/SKILL.md`, restart Claude Code, and i
 
 ## Interactive patterns
 
-Skills become much more powerful when they involve the user in the loop. The five skills plankit installs (`.claude/skills/changelog/`, `init/`, `preserve/`, `release/`, `ship/`) are working examples worth reading.
+Skills become much more powerful when they involve the user in the loop. The three skills plankit installs (`.claude/skills/init/`, `preserve/`, `ship/`) are working examples worth reading.
 
 ### Preview and confirm
 
-Before destructive or hard-to-reverse actions, run the dry-run version, show the user what will happen, and ask for confirmation. The `/changelog` and `/release` skills use this pattern:
+Before destructive or hard-to-reverse actions, run the dry-run version, show the user what will happen, and ask for confirmation. The `/ship` skill uses this pattern:
 
 ```markdown
 First, preview with a dry run:
@@ -333,4 +333,4 @@ This is a high-stakes workflow that reverts a commit and opens a pull request. T
 
 - [Claude Code Skills](https://code.claude.com/docs/en/skills) — full schema, frontmatter fields, advanced features.
 - [Claude Code .claude directory](https://code.claude.com/docs/en/claude-directory) — file location and discovery rules.
-- plankit's installed skills (`.claude/skills/`) — `changelog`, `init`, `preserve`, `release`, `ship` as live examples.
+- plankit's installed skills (`.claude/skills/`) — `init`, `preserve`, `ship` as live examples.

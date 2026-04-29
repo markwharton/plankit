@@ -23,7 +23,7 @@ Setup refuses to install outside a git working tree by default — most pk comma
 1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** with critical rules if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
 3. **Installs rules** to `.claude/rules/`: model-behavior, development-standards, git-discipline. These contain the detailed guidelines that Claude Code loads automatically.
-4. **Installs skills** to `.claude/skills/`: `/init`, `/changelog`, `/preserve`, `/release`, `/ship`. User-modified skills are skipped unless `--force` is used.
+4. **Installs skills** to `.claude/skills/`: `/init`, `/preserve`, `/ship`. User-modified skills are skipped unless `--force` is used.
 5. **Writes `.claude/install-pk.sh`** — a bootstrap script that downloads `pk` into cloud sandboxes (Claude Code on the web). The script is pinned to the running `pk` version and is a no-op when `pk` is already on PATH. Skipped for development builds.
 6. **Checks PATH** and warns if `pk` is not found.
 
@@ -69,7 +69,7 @@ After running `pk setup`, run `/init` to add project-specific conventions. The s
 
 ### Add your own skills
 
-`pk setup` installs five managed skills (`/changelog`, `/init`, `/preserve`, `/release`, `/ship`). You can add your own — see [Creating skills](creating-skills.md).
+`pk setup` installs three managed skills (`/init`, `/preserve`, `/ship`). You can add your own — see [Creating skills](creating-skills.md).
 
 ### Guard modes
 

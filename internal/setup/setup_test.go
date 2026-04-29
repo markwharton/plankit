@@ -67,7 +67,7 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify skills were created with SHA markers.
-	for _, name := range []string{"changelog", "preserve", "release"} {
+	for _, name := range []string{"init", "preserve", "ship"} {
 		skillFile := filepath.Join(projectDir, ".claude", "skills", name, "SKILL.md")
 		data, err := os.ReadFile(skillFile)
 		if err != nil {

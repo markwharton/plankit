@@ -104,8 +104,7 @@ stays focused on first-run.
 2. Draft `site/<TOOL>/notes/index.html` — show the user before writing files.
 3. Iterate on voice/length if needed.
 4. Check the end-state link from the tool landing page; add only if missing, as a separate commit.
-5. Commit on develop with a clear message, then run `/changelog` and
-   `/release` to ship.
+5. Commit on develop with a clear message, then run `/ship` to release.
 
 Draft → user review → commit → release. Don't bundle the notes page
 and the link addition into one commit — they're two logical changes.
