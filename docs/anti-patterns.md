@@ -65,6 +65,16 @@ if (!secret || secret.length < 32) {
 - Ensure secret files are in `.gitignore` and not in directories the AI tool indexes.
 - For production: use secret managers (Azure Key Vault, AWS Secrets Manager, etc.) with runtime resolution.
 
+## Silent Semantic Narrowing
+
+**The pattern:** Claude adds defensive bounds — `LIMIT 500`, `--max-count=N`, `head -n N`, pagination that stops at one page, filters that exclude legitimate values, loops that break on first match. The code runs cleanly. The output looks reasonable. The 501st record is silently dropped.
+
+**The signal:** Any hard-coded cap on a query, scan, or iteration that wasn't in the requirements. Claude adds these to avoid runaway queries or resource spikes — the intent is defensive, but the effect is data loss.
+
+**The fix:** For unbounded data, the correct operation has no cap. If a limit is genuinely needed, it should come from the requirements or configuration, not from the model's instinct to be safe.
+
+**The principle:** Bounds that look defensive but are quietly wrong are harder to catch than bounds that are obviously wrong. Review plans for these specifically.
+
 ## Squash Merge and Release Tags
 
 **When this applies:** any workflow where you tag a commit on one branch and then squash-merge that branch into another. `pk release`'s direct merge flow is not affected — it tags on the fast-forwarded release branch, so the tag always points at a commit reachable from the release branch. This is a general warning for manual tagging or other tools that tag on a feature branch before a PR is squashed.
