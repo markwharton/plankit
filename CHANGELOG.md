@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.15.1] - 2026-04-30
+
+### Documentation
+
+- add bullet for commit-producing automation (bbf4122)
+- condense methodology and remove getting-started (511f13b)
+- add silent semantic narrowing to anti-patterns (0b0fcdb)
+
+### Maintenance
+
+- cover prune-helper directory and skip branches (d78f904)
+- add chore(deps) prefix to dependabot config (03e5b9a)
+- simplify skills to /init, /preserve, and /ship (82c3118)
+
 ## [v0.15.0] - 2026-04-28
 
 ### Added
@@ -514,3 +528,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.14.2]: https://github.com/markwharton/plankit/compare/v0.14.1...v0.14.2
 [v0.14.3]: https://github.com/markwharton/plankit/compare/v0.14.2...v0.14.3
 [v0.15.0]: https://github.com/markwharton/plankit/compare/v0.14.3...v0.15.0
+[v0.15.1]: https://github.com/markwharton/plankit/compare/v0.15.0...v0.15.1
