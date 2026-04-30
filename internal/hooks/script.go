@@ -3,14 +3,19 @@ package hooks
 import (
 	"os"
 	"os/exec"
+	"runtime"
 )
 
-// RunScript runs a shell command via "sh -c", inheriting stdout and stderr
-// from the parent. Optional environment variables are added on top of the
-// parent's environment. Used by command lifecycle hooks (e.g., preCommit,
-// preRelease, postVersion).
+// RunScript runs a shell command, inheriting stdout and stderr from the
+// parent. Uses "cmd /c" on Windows, "sh -c" elsewhere. Optional environment
+// variables are added on top of the parent's environment.
 func RunScript(command string, env map[string]string) error {
-	cmd := exec.Command("sh", "-c", command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", command)
+	} else {
+		cmd = exec.Command("sh", "-c", command)
+	}
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if len(env) > 0 {
