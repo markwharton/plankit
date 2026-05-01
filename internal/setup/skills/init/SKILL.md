@@ -10,7 +10,23 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 
 ## Steps
 
-1. Read the existing CLAUDE.md. If it does not exist, stop and tell the user to run `pk setup` first.
+1. Read the existing CLAUDE.md. If it does not exist, create it with the Critical Rules header below before proceeding.
+   ```markdown
+   # CLAUDE.md
+
+   IMPORTANT: Follow these rules at all times.
+
+   ## Critical Rules
+
+   - NEVER take shortcuts without asking. STOP, ASK, WAIT for approval.
+   - NEVER force push. Make a new commit to fix mistakes.
+   - NEVER commit secrets to version control.
+   - Only do what was asked. No scope creep.
+   - Understand existing code before changing it.
+   - If you don't know, say so. Never guess.
+   - Test before and after every change.
+   - Surface errors clearly. No silent fallbacks.
+   ```
 2. If a `## Project Conventions` section already exists, read it carefully — this is a refresh, not a blank slate. Preserve conventions that are still accurate, update what has changed, and add anything new.
 3. Explore the project to identify:
    - Primary language(s) and framework(s)
