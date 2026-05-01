@@ -1,14 +1,14 @@
 ---
-description: Rules for building plankit itself — CHANGELOG format, command evolution, tip messages. Not shipped to plankit-using projects.
+description: Rules for building plankit itself. CHANGELOG format, command evolution, tip messages. Not shipped to plankit-using projects.
 ---
 
 # Plankit Development
 
-These rules apply when working *on* plankit — authoring the CLI, writing runtime messages, maintaining the CHANGELOG. They are maintainer-side and live in plankit's `.claude/rules/` only. They are NOT embedded in `pk setup` and do NOT ship to other projects.
+These rules apply when working *on* plankit: authoring the CLI, writing runtime messages, maintaining the CHANGELOG. They are maintainer-side and live in plankit's `.claude/rules/` only. They are NOT embedded in `pk setup` and do NOT ship to other projects.
 
 ## CHANGELOG Format
 
-- **Plain text, one link per version.** Entries are plain `- summary (abc1234)` — no clickable commit SHAs. Each version heading (`## [v0.10.1] - 2026-04-17`) is already a clickable link to a compare URL showing every commit in that release with full context. Don't link individual commits in any form — inline `[sha](url)` or reference-style. Don't pull in CHANGELOG generators (commit-and-tag-version, git-cliff). plankit is "small tools, carefully made" — plain text by design, not by oversight.
+- **Plain text, one link per version.** Entries are plain `- summary (abc1234)` with no clickable commit SHAs. Each version heading (`## [v0.10.1] - 2026-04-17`) is already a clickable link to a compare URL showing every commit in that release with full context. Don't link individual commits in any form, whether inline `[sha](url)` or reference-style. Don't pull in CHANGELOG generators (commit-and-tag-version, git-cliff). plankit is "small tools, carefully made": plain text by design, not by oversight.
 
 ## Evolving pk Commands
 
@@ -20,4 +20,4 @@ These rules apply when working *on* plankit — authoring the CLI, writing runti
 
 ## Repo Checks
 
-- **Pick the repo check by command profile, not by habit.** Two patterns are in use. `git.IsRepo(stat, dir)` walks parent directories for `.git` with no subprocess — right for commands where the check is a pre-condition and may be the only git-adjacent op (`pk setup`, `pk status`). `cfg.GitExec("", "rev-parse", "--is-inside-work-tree")` shells to git and is authoritative on worktree/GIT_DIR/submodule edge cases — right for commands that already call GitExec extensively (`pk changelog`, `pk preserve`, `pk release`), where the check matches the rest of the command's git surface. The split is acceptable when each choice fits its command; don't standardize for its own sake.
+- **Pick the repo check by command profile, not by habit.** Two patterns are in use. `git.IsRepo(stat, dir)` walks parent directories for `.git` with no subprocess; right for commands where the check is a pre-condition and may be the only git-adjacent op (`pk setup`, `pk status`). `cfg.GitExec("", "rev-parse", "--is-inside-work-tree")` shells to git and is authoritative on worktree/GIT_DIR/submodule edge cases; right for commands that already call GitExec extensively (`pk changelog`, `pk preserve`, `pk release`), where the check matches the rest of the command's git surface. The split is acceptable when each choice fits its command; don't standardize for its own sake.
