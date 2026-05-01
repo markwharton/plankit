@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.15.3] - 2026-05-01
+
+### Documentation
+
+- condense methodology from 14 to 9 sections (d7ba140)
+- update README with best practices link and cleaner formatting (cc8f598)
+- limit release-notes skill to feat, security, and breaking changes (5b9d2c0)
+
+### Maintenance
+
+- add RunScript coverage (2fc0909)
+- tighten rules files, remove all em dashes (91632ac)
+- add rules for surfacing hook outcomes and system-reminder failures (c09e0b3)
+
 ## [v0.15.2] - 2026-04-30
 
 ### Fixed
@@ -536,3 +550,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.15.0]: https://github.com/markwharton/plankit/compare/v0.14.3...v0.15.0
 [v0.15.1]: https://github.com/markwharton/plankit/compare/v0.15.0...v0.15.1
 [v0.15.2]: https://github.com/markwharton/plankit/compare/v0.15.1...v0.15.2
+[v0.15.3]: https://github.com/markwharton/plankit/compare/v0.15.2...v0.15.3
