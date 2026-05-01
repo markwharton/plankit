@@ -5,20 +5,22 @@
 [![Go](https://img.shields.io/badge/Go-1.21-00ADD8.svg)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap — plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
+**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap: plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
 
-A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). The rules, testing discipline, and branch protection aren't extras — they're what make plans worth keeping. Designed for small teams and independent developers.
+A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Discipline is the multiplier. Rules, testing, and branch protection aren't extras; they're what make plans worth keeping. Designed for small teams and independent developers.
+
+Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-practices) covers the fundamentals that plankit builds on.
 
 ## What it does
 
 `pk setup` installs the pieces that make plan-driven development work with Claude Code:
 
-- **Installs rules and guidelines** — CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
-- **Adds Claude Code skills** — `/init`, `/preserve`, `/ship`
-- **Preserves approved plans** — saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
-- **Guards protected branches** — git mutations blocked via hooks, locally, before the damage happens
+- **Installs rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
+- **Adds Claude Code skills:** `/init`, `/preserve`, `/ship`
+- **Preserves approved plans:** saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
+- **Guards protected branches:** git mutations blocked via hooks, locally, before the damage happens
 
-After setup, `/ship` is your release workflow — it chains `pk changelog` and `pk release` with preview+confirm at each step.
+After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk release` with preview+confirm at each step.
 
 ## Install
 
@@ -56,27 +58,27 @@ Re-run setup anytime to switch.
 
 | Command | Description |
 |---------|-------------|
-| `pk setup` | Configure project hooks, skills, and CLAUDE.md — [details](docs/pk-setup.md) |
-| `pk status` | Report plankit configuration state — [details](docs/pk-status.md) |
-| `pk teardown` | Remove plankit hooks, skills, and rules — [details](docs/pk-teardown.md) |
-| `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`) — [details](docs/pk-changelog.md) |
-| `pk release` | Tag, merge to release branch, validate, and push — [details](docs/pk-release.md) |
-| `pk guard` | Block git mutations on protected branches — [details](docs/pk-guard.md) |
-| `pk preserve` | Preserve approved plan — [details](docs/pk-preserve.md) |
-| `pk protect` | Block edits to docs/plans/ — [details](docs/pk-protect.md) |
-| `pk pin` | Update pinned version in a script file — [details](docs/pk-pin.md) |
-| `pk version` | Print version and check for updates — [details](docs/pk-version.md) |
+| `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
+| `pk status` | Report plankit configuration state. [Details](docs/pk-status.md) |
+| `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
+| `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
+| `pk release` | Tag, merge to release branch, validate, and push. [Details](docs/pk-release.md) |
+| `pk guard` | Block git mutations on protected branches. [Details](docs/pk-guard.md) |
+| `pk preserve` | Preserve approved plan. [Details](docs/pk-preserve.md) |
+| `pk protect` | Block edits to docs/plans/. [Details](docs/pk-protect.md) |
+| `pk pin` | Update pinned version in a script file. [Details](docs/pk-pin.md) |
+| `pk version` | Print version and check for updates. [Details](docs/pk-version.md) |
 
 ## Documentation
 
-- [Methodology](docs/methodology.md) — plan-driven development, guidelines, testing loop
-- [Anti-Patterns](docs/anti-patterns.md) — what to watch for
-- [Resources](docs/resources.md) — Claude Code best practices, git references
+- [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
+- [Anti-Patterns](docs/anti-patterns.md): patterns to watch for
+- [Resources](docs/resources.md): Claude Code best practices, git references
 
 ## Known Limitations
 
-- **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline — no local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
-- **Claude Code on the web**: `pk setup` installs a SessionStart hook that fetches the matching `pk` binary into the cloud sandbox at session start. Protective hooks (`pk guard`, `pk preserve`, `pk protect`) then work normally. Mobile has no shell environment — hooks degrade to no-ops there.
+- **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline. No local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
+- **Claude Code on the web**: `pk setup` installs a SessionStart hook that fetches the matching `pk` binary into the cloud sandbox at session start. Protective hooks (`pk guard`, `pk preserve`, `pk protect`) then work normally. Mobile has no shell environment; hooks degrade to no-ops there.
 
 ## Cross-platform
 
