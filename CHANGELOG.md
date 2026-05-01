@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.16.0] - 2026-05-02
+
+### Added
+
+- preserve guard and preserve modes on re-run (dff2a05)
+- create Critical Rules header when CLAUDE.md is missing (231ba72)
+
+### Fixed
+
+- pre-expand hook variables for cross-platform compatibility (5cd06ca)
+
+### Documentation
+
+- fix "templates" in README, restore "When the model shifts" section (1001727)
+
+### Maintenance
+
+- add rules for git history rewrites and rule accountability (2b451af)
+
 ## [v0.15.3] - 2026-05-01
 
 ### Documentation
@@ -551,3 +570,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.15.1]: https://github.com/markwharton/plankit/compare/v0.15.0...v0.15.1
 [v0.15.2]: https://github.com/markwharton/plankit/compare/v0.15.1...v0.15.2
 [v0.15.3]: https://github.com/markwharton/plankit/compare/v0.15.2...v0.15.3
+[v0.16.0]: https://github.com/markwharton/plankit/compare/v0.15.3...v0.16.0
