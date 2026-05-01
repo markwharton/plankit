@@ -6,7 +6,11 @@ disable-model-invocation: true
 
 Generate a prompt for writing a new "Notes from the workshop" entry on plankit.com. Reads plankit's own `CHANGELOG.md`, distills user-visible changes, and outputs a ready-to-paste prompt for a plankit.com session.
 
-The skill operates on plankit only. It does not read or write to the plankit.com repo — output is a self-contained prompt the user pastes into a new plankit.com session. Push, not pull.
+The skill operates on plankit only. It does not read or write to the plankit.com repo; output is a self-contained prompt the user pastes into a new plankit.com session. Push, not pull.
+
+## When to use
+
+Only run for releases that contain at least one `feat`, `security`, or breaking change. Pure `fix`/`refactor`/`chore`/`docs` releases don't warrant a notes entry. Check the CHANGELOG section for the target version before proceeding; if nothing qualifies, tell the user there's nothing worth writing up.
 
 ## Steps
 
