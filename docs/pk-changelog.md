@@ -146,13 +146,13 @@ The tag-as-source rule shines in monorepos with a unified-version policy — eve
 {
   "changelog": {
     "hooks": {
-      "preCommit": "npm version ${VERSION#v} --workspaces --no-git-tag-version && git add packages/*/package.json package-lock.json"
+      "preCommit": "npm version $VERSION --workspaces --no-git-tag-version && git add packages/*/package.json package-lock.json"
     }
   }
 }
 ```
 
-`$VERSION` is set to the computed next version (e.g., `v0.11.0`); `${VERSION#v}` strips the leading `v` for tools like `npm version` that want a plain `0.11.0`. Every package.json gets the same bump, even unchanged ones — the accepted trade-off of unified versioning.
+`$VERSION` is set to the computed next version without the `v` prefix (e.g., `0.11.0`), ready for tools like `npm version` that expect a plain semver string. Every package.json gets the same bump, even unchanged ones, the accepted trade-off of unified versioning. pk pre-expands `$VERSION` before passing the command to the shell, so the same hook works on all platforms (macOS, Linux, Windows). Bash-specific parameter expansion like `${VAR#pattern}` is not supported cross-platform.
 
 ### Conventional commits
 
