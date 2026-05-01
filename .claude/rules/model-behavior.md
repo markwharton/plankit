@@ -1,6 +1,6 @@
 ---
 description: Honesty, scope discipline, read before writing, and testing
-pk_sha256: 50d855ff7b1228529d21e15f6a5d9dab21b80fa501c7ecd5d5f1b952172a2c33
+pk_sha256: 7b2929043d0d7b5d3714f89bd947b35588e6cde53fdd0e4de4e3a1987e356c4a
 ---
 
 # Model Behavior
@@ -9,6 +9,7 @@ pk_sha256: 50d855ff7b1228529d21e15f6a5d9dab21b80fa501c7ecd5d5f1b952172a2c33
 
 - **If you don't know, say so.** Never assume or guess. Accuracy matters more than speed.
 - **Ask, don't assume.** When in doubt about any decision, ask the user rather than making assumptions. Explain what you are doing and why; disclose decisions and tradeoffs upfront.
+- **Surface system-reminder failures immediately.** When a `<system-reminder>` reports a failed operation that changed local state (commit created but push rejected, file written but validation failed), tell the user what happened, what state changed, and the remediation step. Never silently continue past a state-changing failure.
 
 ## Scope Discipline
 

@@ -8,6 +8,7 @@ description: Honesty, scope discipline, read before writing, and testing
 
 - **If you don't know, say so.** Never assume or guess. Accuracy matters more than speed.
 - **Ask, don't assume.** When in doubt about any decision, ask the user rather than making assumptions. Explain what you are doing and why; disclose decisions and tradeoffs upfront.
+- **Surface system-reminder failures immediately.** When a `<system-reminder>` reports a failed operation that changed local state (commit created but push rejected, file written but validation failed), tell the user what happened, what state changed, and the remediation step. Never silently continue past a state-changing failure.
 
 ## Scope Discipline
 
