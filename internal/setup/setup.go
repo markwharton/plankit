@@ -26,6 +26,9 @@ var skillsFS embed.FS
 //go:embed rules/*.md
 var rulesFS embed.FS
 
+// The /init skill also carries a copy of this template for when CLAUDE.md is
+// missing at /init time. Update both when changing the Critical Rules header.
+//
 //go:embed template/CLAUDE.md
 var templateFS embed.FS
 
@@ -216,11 +219,19 @@ func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Hook command constants used by buildHookConfig and InferModesFromCommands.
+const (
+	GuardBlockCommand     = "pk guard"
+	GuardAskCommand       = "pk guard --ask"
+	PreserveAutoCommand   = "pk preserve"
+	PreserveManualCommand = "pk preserve --notify"
+)
+
 // buildHookConfig returns the hook configuration for the given modes.
 func buildHookConfig(preserveMode, guardMode string) HooksConfig {
-	guardCommand := "pk guard"
+	guardCommand := GuardBlockCommand
 	if guardMode == "ask" {
-		guardCommand = "pk guard --ask"
+		guardCommand = GuardAskCommand
 	}
 
 	config := HooksConfig{
@@ -233,9 +244,9 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 
 	switch preserveMode {
 	case "auto":
-		config.PostToolUse = preserveHookEntry("pk preserve", "Preserving approved plan...", true, 60)
+		config.PostToolUse = preserveHookEntry(PreserveAutoCommand, "Preserving approved plan...", true, 60)
 	case "manual":
-		config.PostToolUse = preserveHookEntry("pk preserve --notify", "Checking plan...", false, 10)
+		config.PostToolUse = preserveHookEntry(PreserveManualCommand, "Checking plan...", false, 10)
 	}
 
 	config.SessionStart = []HookEntry{
@@ -256,6 +267,48 @@ func preserveHookEntry(command, statusMessage string, async bool, timeout int) [
 			StatusMessage: statusMessage,
 		}),
 	}
+}
+
+// InferModesFromCommands returns guard and preserve modes from a list of hook
+// command strings. Returns ("", "") when no pk guard or preserve commands are
+// found.
+func InferModesFromCommands(commands []string) (guard, preserve string) {
+	for _, cmd := range commands {
+		switch cmd {
+		case GuardBlockCommand:
+			guard = "block"
+		case GuardAskCommand:
+			guard = "ask"
+		case PreserveManualCommand:
+			preserve = "manual"
+		case PreserveAutoCommand:
+			preserve = "auto"
+		}
+	}
+	return guard, preserve
+}
+
+// InferModes reads hook commands from a parsed settings object and returns the
+// current guard and preserve modes. Returns ("", "") when modes cannot be
+// inferred (no hooks, no pk commands, or malformed JSON).
+func InferModes(settings *OrderedObject) (guard, preserve string) {
+	hooksRaw, ok := settings.Get("hooks")
+	if !ok {
+		return "", ""
+	}
+	var hooks HooksConfig
+	if err := json.Unmarshal(hooksRaw, &hooks); err != nil {
+		return "", ""
+	}
+	var commands []string
+	for _, entries := range [][]HookEntry{hooks.PreToolUse, hooks.PostToolUse, hooks.SessionStart} {
+		for _, entry := range entries {
+			for _, h := range entry.Hooks {
+				commands = append(commands, HookCommand(h))
+			}
+		}
+	}
+	return InferModesFromCommands(commands)
 }
 
 // Skill represents a skill file to install.

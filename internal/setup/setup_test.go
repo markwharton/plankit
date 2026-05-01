@@ -1853,3 +1853,92 @@ func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
 		t.Errorf("empty version should not show tip; stderr = %q", stderr.String())
 	}
 }
+
+func TestInferModesFromCommands_blockAndManual(t *testing.T) {
+	guard, preserve := InferModesFromCommands([]string{
+		GuardBlockCommand, "pk protect", PreserveManualCommand,
+	})
+	if guard != "block" {
+		t.Errorf("guard = %q, want %q", guard, "block")
+	}
+	if preserve != "manual" {
+		t.Errorf("preserve = %q, want %q", preserve, "manual")
+	}
+}
+
+func TestInferModesFromCommands_askAndAuto(t *testing.T) {
+	guard, preserve := InferModesFromCommands([]string{
+		GuardAskCommand, "pk protect", PreserveAutoCommand,
+	})
+	if guard != "ask" {
+		t.Errorf("guard = %q, want %q", guard, "ask")
+	}
+	if preserve != "auto" {
+		t.Errorf("preserve = %q, want %q", preserve, "auto")
+	}
+}
+
+func TestInferModesFromCommands_empty(t *testing.T) {
+	guard, preserve := InferModesFromCommands(nil)
+	if guard != "" {
+		t.Errorf("guard = %q, want empty", guard)
+	}
+	if preserve != "" {
+		t.Errorf("preserve = %q, want empty", preserve)
+	}
+}
+
+func TestInferModes_roundTrip(t *testing.T) {
+	tests := []struct {
+		name         string
+		preserveMode string
+		guardMode    string
+		wantGuard    string
+		wantPreserve string
+	}{
+		{"block and manual", "manual", "block", "block", "manual"},
+		{"ask and auto", "auto", "ask", "ask", "auto"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			settings := NewOrderedObject()
+			hooks := buildHookConfig(tt.preserveMode, tt.guardMode)
+			if err := mergeHooks(settings, hooks); err != nil {
+				t.Fatalf("mergeHooks() error = %v", err)
+			}
+			guard, preserve := InferModes(settings)
+			if guard != tt.wantGuard {
+				t.Errorf("guard = %q, want %q", guard, tt.wantGuard)
+			}
+			if preserve != tt.wantPreserve {
+				t.Errorf("preserve = %q, want %q", preserve, tt.wantPreserve)
+			}
+		})
+	}
+}
+
+func TestInferModes_noHooks(t *testing.T) {
+	settings := NewOrderedObject()
+	guard, preserve := InferModes(settings)
+	if guard != "" || preserve != "" {
+		t.Errorf("expected empty for no hooks, got guard=%q preserve=%q", guard, preserve)
+	}
+}
+
+func TestInferModes_corruptHooks(t *testing.T) {
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{invalid`))
+	guard, preserve := InferModes(settings)
+	if guard != "" || preserve != "" {
+		t.Errorf("expected empty for corrupt hooks, got guard=%q preserve=%q", guard, preserve)
+	}
+}
+
+func TestInferModes_userHooksOnly(t *testing.T) {
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-custom-hook"}]}]}`))
+	guard, preserve := InferModes(settings)
+	if guard != "" || preserve != "" {
+		t.Errorf("expected empty for user-only hooks, got guard=%q preserve=%q", guard, preserve)
+	}
+}

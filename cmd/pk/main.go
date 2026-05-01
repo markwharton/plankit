@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
@@ -161,6 +162,33 @@ func runSetup(args []string) {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error:", err)
 			os.Exit(1)
+		}
+	}
+
+	// Preserve existing modes on re-run. When --guard or --preserve is not
+	// explicitly passed, infer the current mode from settings.json so that
+	// upgrading pk doesn't silently reset the user's configuration.
+	guardExplicit, preserveExplicit := false, false
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "guard":
+			guardExplicit = true
+		case "preserve":
+			preserveExplicit = true
+		}
+	})
+	if !guardExplicit || !preserveExplicit {
+		settingsFile := filepath.Join(dir, ".claude", "settings.json")
+		if data, err := os.ReadFile(settingsFile); err == nil {
+			if parsed, err := setup.ParseOrderedObject(data); err == nil {
+				g, p := setup.InferModes(parsed)
+				if !guardExplicit && g != "" {
+					*guardMode = g
+				}
+				if !preserveExplicit && p != "" {
+					*preserveMode = p
+				}
+			}
 		}
 	}
 

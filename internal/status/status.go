@@ -326,22 +326,11 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 // inferModes determines guard and preserve modes from hook commands.
 // Returns ("", "") if not inferable.
 func inferModes(hooks []hookSummary) (string, string) {
-	var guard, preserve string
+	var commands []string
 	for _, h := range hooks {
-		for _, cmd := range h.commands {
-			switch {
-			case cmd == "pk guard":
-				guard = "block"
-			case cmd == "pk guard --ask":
-				guard = "ask"
-			case strings.HasPrefix(cmd, "pk preserve --notify"):
-				preserve = "manual"
-			case cmd == "pk preserve":
-				preserve = "auto"
-			}
-		}
+		commands = append(commands, h.commands...)
 	}
-	return guard, preserve
+	return setup.InferModesFromCommands(commands)
 }
 
 // scanManaged scans a directory for pk-managed files and returns them sorted.

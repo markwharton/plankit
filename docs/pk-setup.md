@@ -81,7 +81,7 @@ After running `pk setup`, run `/init` to add project-specific conventions. The s
 - **manual** (default) — Use the `/preserve` skill when you're ready to save a plan.
 - **auto** — Plans are automatically preserved when you exit plan mode.
 
-Re-run setup anytime to switch modes.
+Re-running `pk setup` preserves the existing mode configuration. Pass `--guard` or `--preserve` explicitly to change modes.
 
 ### Managed file protection
 
