@@ -76,7 +76,7 @@ Two recent papers calibrate this on harder problem classes: Donald Knuth's *Clau
 
 Two distinct roles: **generator** and **reviewer**. The same LLM plays both, but with different objectives. First pass focuses on correctness. Get it working. Second pass looks for DRY violations, missing abstractions, magic numbers, unnecessary complexity. The developer directs both and decides what ships.
 
-Creation and criticism are different cognitive modes. Mixing them leads to premature abstraction or paralysis.
+Creation and criticism are different cognitive modes. Mixing them leads to premature abstraction or defensive bloat.
 
 > Code review: DRY violations, anti-patterns, design tokens, security.
 
@@ -118,6 +118,8 @@ A different failure mode: Claude had learned "commit and push are separate decis
 
 Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention.
 
-Claude's behavior evolves across versions: how plan mode exits, how long-session context is retained, how auto mode proceeds. pk's guarantees live in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts.
+## 10. When the model shifts
 
-When a release exposes an edge case, the fix belongs in the CLI layer. Reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration.
+Claude's behavior evolves across versions: how plan mode exits, how long-session context is retained, how auto mode proceeds. pk sits between the model and the action. When the model changes, the gaps show up here first. pk's guarantees live in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts.
+
+When a release exposes an edge case, the fix belongs in the CLI layer. Reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues).

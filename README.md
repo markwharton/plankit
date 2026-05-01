@@ -5,7 +5,7 @@
 [![Go](https://img.shields.io/badge/Go-1.21-00ADD8.svg)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap: plans commit to an approach before code is written, templates suppress the patterns that cause drift, and tests protect what works.**
+**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap: plans commit to an approach before code is written, rules suppress the patterns that cause drift, and tests protect what works.**
 
 A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Discipline is the multiplier. Rules, testing, and branch protection aren't extras; they're what make plans worth keeping. Designed for small teams and independent developers.
 
@@ -30,7 +30,7 @@ Requires [Go](https://go.dev/doc/install) (for `go install`) and [Claude Code](h
 go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
-Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases) (no Go required).
+Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases) (no Go required). `pk` is a command-line tool: run it from a terminal (PowerShell, Command Prompt, or Git Bash on Windows), not by double-clicking the binary.
 
 After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below for details.
 
@@ -52,7 +52,7 @@ pk setup --guard ask           # Prompt instead of blocking on protected branche
 pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
 ```
 
-Re-run setup anytime to switch.
+Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly to change modes.
 
 ## Commands
 
