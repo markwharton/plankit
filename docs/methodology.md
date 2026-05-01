@@ -118,6 +118,8 @@ A different failure mode: Claude had learned "commit and push are separate decis
 
 Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention.
 
+Rules create accountability, not obedience. The model won't follow them every time. But without them, the same failures happen silently and nobody learns.
+
 ## 10. When the model shifts
 
 Claude's behavior evolves across versions: how plan mode exits, how long-session context is retained, how auto mode proceeds. pk sits between the model and the action. When the model changes, the gaps show up here first. pk's guarantees live in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts.
