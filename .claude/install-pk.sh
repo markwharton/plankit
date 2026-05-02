@@ -11,7 +11,7 @@
 #
 # What it does:
 # - On a developer machine with pk already on PATH: exits immediately.
-#   The body of this script never runs locally.
+# - On a developer machine without pk: prints a warning and exits.
 # - In a Claude Code cloud sandbox (ephemeral VM with no pk installed):
 #   downloads the matching pk release into $HOME/.local/share/pk/<version>
 #   and prepends that directory to PATH for the session, so the protective
@@ -30,6 +30,14 @@ rm -f "$HOME/.local/bin/pk"
 # If pk is already on PATH, it's a developer's own install (e.g.,
 # ~/go/bin/pk). Skip our install so theirs stays in use.
 command -v pk >/dev/null 2>&1 && exit 0
+
+# On local machines (no CLAUDE_ENV_FILE), pk isn't installed but we can't
+# download it either. Warn so the developer knows hooks won't run.
+if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
+  echo "⚠ pk is not installed. Hooks (guard, preserve, protect) will not run." >&2
+  echo "Install: go install github.com/markwharton/plankit/cmd/pk@latest" >&2
+  exit 0
+fi
 
 PK_VERSION="v0.16.0"
 install_dir="$HOME/.local/share/pk/$PK_VERSION"
