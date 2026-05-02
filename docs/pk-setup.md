@@ -136,6 +136,6 @@ Tags the initial commit of the repo as `v0.0.0`. Every commit since (including a
 
 `pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start, then runs a best-effort `git fetch --tags` so `pk changelog` and `pk release` see the repo's version tags — sandboxes clone only the working branch by default.
 
-On local surfaces (CLI, Desktop, VS Code), the script detects the existing `pk` install and exits immediately — no download, no PATH change.
+On local surfaces (CLI, Desktop, VS Code), the script detects the existing `pk` install and exits immediately. If pk is not on PATH, it prints a warning with install instructions so developers know hooks won't run.
 
 The script is pinned to the version of `pk` that ran `pk setup`. After upgrading plankit, re-run `pk setup` to update the pinned version. `pk version` warns when the pinned version falls behind the running version.
