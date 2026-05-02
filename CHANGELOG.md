@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.16.1] - 2026-05-03
+
+### Fixed
+
+- warn when pk is not installed on local machines (57fe9fc)
+
+### Documentation
+
+- add adoption guide (4718081)
+
 ## [v0.16.0] - 2026-05-02
 
 ### Added
@@ -571,3 +581,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.15.2]: https://github.com/markwharton/plankit/compare/v0.15.1...v0.15.2
 [v0.15.3]: https://github.com/markwharton/plankit/compare/v0.15.2...v0.15.3
 [v0.16.0]: https://github.com/markwharton/plankit/compare/v0.15.3...v0.16.0
+[v0.16.1]: https://github.com/markwharton/plankit/compare/v0.16.0...v0.16.1
