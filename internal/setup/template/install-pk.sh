@@ -34,9 +34,9 @@ command -v pk >/dev/null 2>&1 && exit 0
 # On local machines (no CLAUDE_ENV_FILE), pk isn't installed but we can't
 # download it either. Warn so the developer knows hooks won't run.
 if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
-  echo "⚠ pk is not installed. Hooks (guard, preserve, protect) will not run." >&2
+  echo "pk is not installed. Hooks (guard, preserve, protect) will not run." >&2
   echo "Install: go install github.com/markwharton/plankit/cmd/pk@latest" >&2
-  exit 0
+  exit 1
 fi
 
 PK_VERSION="{{VERSION}}"
