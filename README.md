@@ -5,9 +5,9 @@
 [![Go](https://img.shields.io/badge/Go-1.21-00ADD8.svg)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**LLMs are open-ended by nature. Development needs deterministic outcomes. plankit bridges that gap: plans commit to an approach before code is written, rules suppress the patterns that cause drift, and tests protect what works.**
+**Every new LLM session picks a different approach. Plans narrow a specific task to an approved approach before code is written. Rules reduce drift between sessions. Hooks preserve what was approved and guard what should not change.**
 
-A plan-driven development toolkit for [Claude Code](https://code.claude.com) (Anthropic's AI coding agent). Discipline is the multiplier. Rules, testing, and branch protection aren't extras; they're what make plans worth keeping. Designed for small teams and independent developers.
+A plan-driven development toolkit for [Claude Code](https://code.claude.com). Plans are shared artifacts: one or two developers review and approve an approach, and that becomes the record. Plan preservation and plan protection keep approved work from being lost or overwritten. Discipline is the multiplier; rules, testing, and branch protection make plans worth keeping. Designed for small teams and independent developers.
 
 Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-practices) covers the fundamentals that plankit builds on.
 

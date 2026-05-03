@@ -46,7 +46,7 @@ Discarding a plan is better than executing a wrong one.
 
 `pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines as `.claude/rules/` files covering model behavior, development standards, and git discipline.
 
-LLMs are non-deterministic. Without constraints, they reach for familiar patterns: regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. Every convention in the guidelines is a countermeasure:
+Every new LLM session draws from a wide solution space. Without constraints, they reach for familiar patterns: regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. Every convention in the guidelines is a countermeasure:
 
 - **Data-first, model-first:** preserve structure the model was given
 - **Fail fast, no silent fallbacks:** surface errors, don't mask them
@@ -68,7 +68,7 @@ Testing is both validation and collaboration accelerator:
 3. **Claude runs tests directly:** closes the feedback loop, no copying output back and forth
 4. **Use tools like Playwright for UI:** Claude can see what's happening without having to ask
 
-The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, deterministic outputs come from deliberate constraints.
+The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, predictable outcomes come from deliberate constraints.
 
 Two recent papers calibrate this on harder problem classes: Donald Knuth's *Claude's Cycles* (2026) and Keston Aquino-Michaels' *Completing Claude's Cycles* (2026). Different scale, same axis.
 

@@ -4,26 +4,20 @@ plankit is adopted in layers. Layer 1 is the foundation; Layers 2 and 3 are inde
 
 ```mermaid
 graph TD
-    P["Prerequisites<br/>Claude Code + Git + pk"]
-    L1["Layer 1: Foundation<br/>rules, skills, hooks"]
-    L4["Layer 4: Migration<br/>from existing tools"]
+    P["Prerequisites<br/>Claude&nbsp;Code&nbsp;+&nbsp;Git&nbsp;+&nbsp;pk"]
+    L1["Layer&nbsp;1:&nbsp;Foundation<br/>rules,&nbsp;skills,&nbsp;hooks"]
+    L4["Layer&nbsp;4:&nbsp;Migration<br/>from&nbsp;existing&nbsp;tools"]
 
     P --> L1
 
     subgraph " "
         direction LR
-        L2["Layer 2: Branch Protection<br/>guard.branches in .pk.json"] --> L3["Layer 3: Release Management<br/>baseline tag + /ship"]
+        L2["Layer&nbsp;2:&nbsp;Branch&nbsp;Protection<br/>guard.branches&nbsp;in&nbsp;.pk.json"] --> L3["Layer&nbsp;3:&nbsp;Release&nbsp;Management<br/>baseline&nbsp;tag&nbsp;+&nbsp;/ship"]
     end
 
     L1 --> L2
     L1 --> L3
     L3 --> L4
-
-    style P fill:#f0f0f0,stroke:#999
-    style L1 fill:#d4edda,stroke:#28a745
-    style L2 fill:#cce5ff,stroke:#0d6efd
-    style L3 fill:#cce5ff,stroke:#0d6efd
-    style L4 fill:#fff3cd,stroke:#ffc107
 ```
 
 ## Prerequisites
