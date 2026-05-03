@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.16.2] - 2026-05-04
+
+### Fixed
+
+- exit 1 when pk is not installed so Claude Code surfaces the warning (aa94a4e)
+
+### Documentation
+
+- reframe messaging from deterministic outcomes to narrowing the solution space (ad7fea7)
+
 ## [v0.16.1] - 2026-05-03
 
 ### Fixed
@@ -582,3 +592,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.15.3]: https://github.com/markwharton/plankit/compare/v0.15.2...v0.15.3
 [v0.16.0]: https://github.com/markwharton/plankit/compare/v0.15.3...v0.16.0
 [v0.16.1]: https://github.com/markwharton/plankit/compare/v0.16.0...v0.16.1
+[v0.16.2]: https://github.com/markwharton/plankit/compare/v0.16.1...v0.16.2
