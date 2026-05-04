@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.16.3] - 2026-05-05
+
+### Fixed
+
+- skip baseline tag when repo has no commits (179df9d)
+
+### Maintenance
+
+- hint to run /init when CLAUDE.md is still the template (c4c5637)
+
 ## [v0.16.2] - 2026-05-04
 
 ### Fixed
@@ -593,3 +603,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.16.0]: https://github.com/markwharton/plankit/compare/v0.15.3...v0.16.0
 [v0.16.1]: https://github.com/markwharton/plankit/compare/v0.16.0...v0.16.1
 [v0.16.2]: https://github.com/markwharton/plankit/compare/v0.16.1...v0.16.2
+[v0.16.3]: https://github.com/markwharton/plankit/compare/v0.16.2...v0.16.3
