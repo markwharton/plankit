@@ -929,6 +929,11 @@ func runBaseline(cfg Config, projectDir string) error {
 			return fmt.Errorf("--at ref %q does not resolve", cfg.BaselineAt)
 		}
 		target = cfg.BaselineAt
+	} else if _, err := cfg.GitExec(projectDir, "rev-parse", "HEAD"); err != nil {
+		fmt.Fprintln(cfg.Stderr, "No commits yet — commit first, then anchor with:")
+		fmt.Fprintln(cfg.Stderr, "  pk setup --baseline")
+		fmt.Fprintln(cfg.Stderr, "  or: git tag v0.0.0")
+		return nil
 	}
 	if _, err := cfg.GitExec(projectDir, "tag", "v0.0.0", target); err != nil {
 		return fmt.Errorf("failed to create tag v0.0.0: %w", err)

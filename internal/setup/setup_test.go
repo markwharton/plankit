@@ -421,6 +421,7 @@ type fakeGitExec struct {
 	calls       []string
 	tagList     string // output for `tag --list v* ...`
 	revParseErr bool   // make `rev-parse --verify` fail
+	headErr     bool   // make `rev-parse HEAD` fail (no commits)
 	pushErr     bool   // make `push` fail
 }
 
@@ -432,6 +433,11 @@ func (f *fakeGitExec) exec(dir string, args ...string) (string, error) {
 	case len(args) >= 2 && args[0] == "rev-parse" && args[1] == "--verify":
 		if f.revParseErr {
 			return "", fmt.Errorf("bad ref")
+		}
+		return "abc123", nil
+	case len(args) == 2 && args[0] == "rev-parse" && args[1] == "HEAD":
+		if f.headErr {
+			return "", fmt.Errorf("fatal: ambiguous argument 'HEAD': unknown revision")
 		}
 		return "abc123", nil
 	case len(args) >= 1 && args[0] == "push":
@@ -631,6 +637,45 @@ func TestRun_baseline_requiresGitRepo(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "--baseline requires a git repository") {
 		t.Errorf("Run() error = %v, want '--baseline requires a git repository'", err)
 	}
+}
+
+func TestRun_baseline_skipsTagWhenNoCommits(t *testing.T) {
+	dir := newGitRepoDir(t)
+	var stderr bytes.Buffer
+	fake := &fakeGitExec{headErr: true}
+	cfg := baselineCfg(dir, &stderr, fake)
+	cfg.Baseline = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	assertCallMade(t, fake.calls, "rev-parse HEAD")
+	assertCallNotMade(t, fake.calls, "tag v0.0.0 HEAD")
+	if !strings.Contains(stderr.String(), "No commits yet") {
+		t.Errorf("stderr = %q, want 'No commits yet' guidance", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "pk setup --baseline") {
+		t.Errorf("stderr = %q, want re-run hint", stderr.String())
+	}
+}
+
+func TestRun_baseline_noCommitsDoesNotAffectBaselineAt(t *testing.T) {
+	dir := newGitRepoDir(t)
+	var stderr bytes.Buffer
+	fake := &fakeGitExec{headErr: true}
+	cfg := baselineCfg(dir, &stderr, fake)
+	cfg.Baseline = true
+	cfg.BaselineAt = "deadbeef"
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	// --at bypasses HEAD check; rev-parse --verify validates the ref instead.
+	assertCallNotMade(t, fake.calls, "rev-parse HEAD")
+	assertCallMade(t, fake.calls, "rev-parse --verify deadbeef")
+	assertCallMade(t, fake.calls, "tag v0.0.0 deadbeef")
 }
 
 func TestRun_noTagsTip_shownWhenNoTags(t *testing.T) {
