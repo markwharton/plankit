@@ -108,3 +108,8 @@ if git rev-parse --git-dir >/dev/null 2>&1 && git remote get-url origin >/dev/nu
   git fetch origin --tags --quiet 2>/dev/null \
     || echo "pk install: git fetch --tags origin failed (non-fatal)" >&2
 fi
+
+# If CLAUDE.md still has the pk setup template marker, suggest /init.
+if [ -f CLAUDE.md ] && head -1 CLAUDE.md | grep -q '^<!-- pk:sha256:'; then
+  echo "CLAUDE.md is still the default template. Run /init to discover project conventions." >&2
+fi
