@@ -645,9 +645,9 @@ func ScriptVersion(filePath string) (string, bool) {
 	return "", false
 }
 
-// PinVersion updates a version pin in a script file. It finds the first line
-// matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in VERSION)
-// and replaces the version.
+// PinVersion updates a shell-variable version pin in a file. It finds the first
+// line matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in
+// VERSION) and replaces the version.
 // Returns (updated, error). updated is true if the file was rewritten, false if the file does not exist (no-op); a missing VERSION pin returns an error.
 func PinVersion(filePath string, ver string) (bool, error) {
 	data, err := os.ReadFile(filePath)
@@ -692,6 +692,150 @@ func versionPinName(line string) (string, bool) {
 		return "", false
 	}
 	return name, true
+}
+
+// namedPinMatch holds the result of scanning a line for a named version pin.
+type namedPinMatch struct {
+	linePrefix string // everything up to and including the opening quote
+	lineSuffix string // everything after the closing quote
+	value      string // version string between quotes
+	quote      byte   // quote character (' or ")
+}
+
+// matchNamedPin checks if a line contains an assignment of a quoted string to
+// the given identifier name. The name must appear at a word boundary and be
+// followed by = or := then a quoted value.
+func matchNamedPin(line, name string) (namedPinMatch, bool) {
+	pos := 0
+	for {
+		idx := strings.Index(line[pos:], name)
+		if idx < 0 {
+			return namedPinMatch{}, false
+		}
+		idx += pos
+
+		// Word boundary before: must be start of line or non-identifier char.
+		if idx > 0 && isIdentChar(line[idx-1]) {
+			pos = idx + len(name)
+			continue
+		}
+		// Word boundary after: must be end or non-identifier char.
+		after := idx + len(name)
+		if after < len(line) && isIdentChar(line[after]) {
+			pos = after
+			continue
+		}
+
+		// Skip whitespace after name.
+		i := after
+		for i < len(line) && (line[i] == ' ' || line[i] == '\t') {
+			i++
+		}
+
+		// Expect = or :=
+		if i >= len(line) {
+			pos = after
+			continue
+		}
+		if line[i] == ':' {
+			i++
+			if i >= len(line) || line[i] != '=' {
+				pos = after
+				continue
+			}
+		}
+		if i >= len(line) || line[i] != '=' {
+			pos = after
+			continue
+		}
+		i++ // skip =
+
+		// Skip whitespace after operator.
+		for i < len(line) && (line[i] == ' ' || line[i] == '\t') {
+			i++
+		}
+
+		// Expect opening quote.
+		if i >= len(line) {
+			pos = after
+			continue
+		}
+		q := line[i]
+		if q != '"' && q != '\'' {
+			pos = after
+			continue
+		}
+		i++ // skip opening quote
+
+		// Find closing quote.
+		closeIdx := strings.IndexByte(line[i:], q)
+		if closeIdx < 0 {
+			pos = after
+			continue
+		}
+
+		value := line[i : i+closeIdx]
+		return namedPinMatch{
+			linePrefix: line[:i],
+			lineSuffix: line[i+closeIdx+1:],
+			value:      value,
+			quote:      q,
+		}, true
+	}
+}
+
+func isIdentChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+// PinVersionNamed updates a named version pin in a file. It finds the first
+// line where the identifier name is assigned a quoted string value and replaces
+// that value with ver. The v-prefix is inferred from the existing value.
+// Returns (updated, error). updated is false with nil error if the file does
+// not exist (safe for hooks).
+func PinVersionNamed(filePath, name, ver string) (bool, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, nil
+	}
+	lines := strings.Split(string(data), "\n")
+	found := false
+	for i, line := range lines {
+		m, ok := matchNamedPin(line, name)
+		if !ok {
+			continue
+		}
+		// Infer v-prefix from existing value.
+		newVer := strings.TrimPrefix(ver, "v")
+		if strings.HasPrefix(m.value, "v") {
+			newVer = "v" + newVer
+		}
+		lines[i] = m.linePrefix + newVer + string(m.quote) + m.lineSuffix
+		found = true
+		break
+	}
+	if !found {
+		return false, fmt.Errorf("%s has no pin for %q", filepath.Base(filePath), name)
+	}
+	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// ReadVersionNamed reads the pinned version for the given identifier name.
+// Returns the version string and true if found, or ("", false) if not.
+func ReadVersionNamed(filePath, name string) (string, bool) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if m, ok := matchNamedPin(line, name); ok {
+			return m.value, true
+		}
+	}
+	return "", false
 }
 
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.

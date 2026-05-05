@@ -1427,6 +1427,275 @@ func TestPinVersion_vPrefix(t *testing.T) {
 	}
 }
 
+// --- Named pin tests ---
+
+func TestMatchNamedPin_goConst(t *testing.T) {
+	m, ok := matchNamedPin(`const version = "0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+	if m.quote != '"' {
+		t.Errorf("quote = %c, want %c", m.quote, '"')
+	}
+}
+
+func TestMatchNamedPin_goVar(t *testing.T) {
+	m, ok := matchNamedPin(`var version = "0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+}
+
+func TestMatchNamedPin_python(t *testing.T) {
+	m, ok := matchNamedPin(`__version__ = "0.1.0"`, "__version__")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+}
+
+func TestMatchNamedPin_singleQuote(t *testing.T) {
+	m, ok := matchNamedPin(`__version__ = '0.1.0'`, "__version__")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+	if m.quote != '\'' {
+		t.Errorf("quote = %c, want %c", m.quote, '\'')
+	}
+}
+
+func TestMatchNamedPin_toml(t *testing.T) {
+	m, ok := matchNamedPin(`version = "0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+}
+
+func TestMatchNamedPin_vPrefix(t *testing.T) {
+	m, ok := matchNamedPin(`version = "v0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "v0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "v0.1.0")
+	}
+}
+
+func TestMatchNamedPin_noMatch(t *testing.T) {
+	_, ok := matchNamedPin(`comment = "hello"`, "version")
+	if ok {
+		t.Fatal("expected no match")
+	}
+}
+
+func TestMatchNamedPin_partialName(t *testing.T) {
+	_, ok := matchNamedPin(`my_version = "1.0.0"`, "version")
+	if ok {
+		t.Fatal("expected no match for partial name")
+	}
+}
+
+func TestMatchNamedPin_partialNameSuffix(t *testing.T) {
+	_, ok := matchNamedPin(`versioning = "1.0.0"`, "version")
+	if ok {
+		t.Fatal("expected no match for suffix overlap")
+	}
+}
+
+func TestMatchNamedPin_colonEquals(t *testing.T) {
+	m, ok := matchNamedPin(`version := "1.0.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "1.0.0" {
+		t.Errorf("value = %q, want %q", m.value, "1.0.0")
+	}
+}
+
+func TestMatchNamedPin_tabs(t *testing.T) {
+	m, ok := matchNamedPin("\tversion\t=\t\"1.0.0\"", "version")
+	if !ok {
+		t.Fatal("expected match with tabs")
+	}
+	if m.value != "1.0.0" {
+		t.Errorf("value = %q, want %q", m.value, "1.0.0")
+	}
+}
+
+func TestMatchNamedPin_trailingContent(t *testing.T) {
+	m, ok := matchNamedPin(`const version = "1.0.0" // app version`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "1.0.0" {
+		t.Errorf("value = %q, want %q", m.value, "1.0.0")
+	}
+	if m.lineSuffix != " // app version" {
+		t.Errorf("lineSuffix = %q, want %q", m.lineSuffix, " // app version")
+	}
+}
+
+func TestPinVersionNamed_updatesGoConst(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("package main\n\nconst version = \"0.1.0\"\n\nfunc main() {}\n"), 0644)
+
+	updated, err := PinVersionNamed(path, "version", "0.2.0")
+	if err != nil {
+		t.Fatalf("PinVersionNamed() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("expected updated=true")
+	}
+
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `const version = "0.2.0"`) {
+		t.Errorf("file should contain 0.2.0, got: %s", string(data))
+	}
+}
+
+func TestPinVersionNamed_preservesVPrefix(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("const version = \"v0.1.0\"\n"), 0644)
+
+	PinVersionNamed(path, "version", "0.2.0")
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `"v0.2.0"`) {
+		t.Errorf("should preserve v prefix, got: %s", string(data))
+	}
+}
+
+func TestPinVersionNamed_stripsVWhenBare(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("const version = \"0.1.0\"\n"), 0644)
+
+	PinVersionNamed(path, "version", "v0.2.0")
+	data, _ := os.ReadFile(path)
+	if strings.Contains(string(data), `"v0.2.0"`) {
+		t.Errorf("should strip v prefix when existing value is bare, got: %s", string(data))
+	}
+	if !strings.Contains(string(data), `"0.2.0"`) {
+		t.Errorf("should contain bare 0.2.0, got: %s", string(data))
+	}
+}
+
+func TestPinVersionNamed_noFile(t *testing.T) {
+	updated, err := PinVersionNamed(filepath.Join(t.TempDir(), "missing.go"), "version", "0.1.0")
+	if err != nil {
+		t.Fatalf("should not error when file doesn't exist, got: %v", err)
+	}
+	if updated {
+		t.Error("should return updated=false")
+	}
+}
+
+func TestPinVersionNamed_noMatch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("package main\n\nfunc main() {}\n"), 0644)
+
+	_, err := PinVersionNamed(path, "version", "0.1.0")
+	if err == nil {
+		t.Fatal("expected error for no match")
+	}
+	if !strings.Contains(err.Error(), "no pin for") {
+		t.Errorf("error = %v, want 'no pin for'", err)
+	}
+}
+
+func TestReadVersionNamed_found(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("package main\n\nconst version = \"0.3.0\"\n"), 0644)
+
+	ver, found := ReadVersionNamed(path, "version")
+	if !found {
+		t.Fatal("expected found=true")
+	}
+	if ver != "0.3.0" {
+		t.Errorf("version = %q, want %q", ver, "0.3.0")
+	}
+}
+
+func TestReadVersionNamed_notFound(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("package main\n"), 0644)
+
+	_, found := ReadVersionNamed(path, "version")
+	if found {
+		t.Fatal("expected found=false")
+	}
+}
+
+func TestReadVersionNamed_missingFile(t *testing.T) {
+	_, found := ReadVersionNamed(filepath.Join(t.TempDir(), "missing.go"), "version")
+	if found {
+		t.Fatal("expected found=false for missing file")
+	}
+}
+
+func TestMatchNamedPin_unclosedQuote(t *testing.T) {
+	_, ok := matchNamedPin(`version = "0.1.0`, "version")
+	if ok {
+		t.Fatal("expected no match for unclosed quote")
+	}
+}
+
+func TestMatchNamedPin_nameAtEndOfLine(t *testing.T) {
+	_, ok := matchNamedPin(`version`, "version")
+	if ok {
+		t.Fatal("expected no match when name is at end of line with no operator")
+	}
+}
+
+func TestMatchNamedPin_nameFollowedByWhitespaceOnly(t *testing.T) {
+	_, ok := matchNamedPin(`version   `, "version")
+	if ok {
+		t.Fatal("expected no match when no operator follows")
+	}
+}
+
+func TestMatchNamedPin_operatorNoQuote(t *testing.T) {
+	_, ok := matchNamedPin(`version = 123`, "version")
+	if ok {
+		t.Fatal("expected no match when value is not quoted")
+	}
+}
+
+func TestPinVersionNamed_firstMatchWins(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	content := "const version = \"0.1.0\"\nvar version = \"0.2.0\"\n"
+	os.WriteFile(path, []byte(content), 0644)
+
+	PinVersionNamed(path, "version", "0.9.0")
+	data, _ := os.ReadFile(path)
+	lines := strings.Split(string(data), "\n")
+	if lines[0] != `const version = "0.9.0"` {
+		t.Errorf("first line should be updated, got: %s", lines[0])
+	}
+	if lines[1] != `var version = "0.2.0"` {
+		t.Errorf("second line should be unchanged, got: %s", lines[1])
+	}
+}
+
 func TestWriteInstallScript_releaseVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer

@@ -66,7 +66,7 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 | `pk guard` | Block git mutations on protected branches. [Details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan. [Details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/. [Details](docs/pk-protect.md) |
-| `pk pin` | Update pinned version in a script file. [Details](docs/pk-pin.md) |
+| `pk pin` | Update pinned version in a file. [Details](docs/pk-pin.md) |
 | `pk version` | Print version and check for updates. [Details](docs/pk-version.md) |
 
 ## Documentation

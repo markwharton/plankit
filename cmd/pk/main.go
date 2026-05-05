@@ -7,7 +7,7 @@
 //
 //	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag version
 //	pk guard       PreToolUse hook: block git mutations on protected branches
-//	pk pin         Update pinned version in .claude/install-pk.sh
+//	pk pin         Update pinned version in a file
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
@@ -297,16 +297,23 @@ func runTeardown(args []string) {
 func runPin(args []string) {
 	fs := flag.NewFlagSet("pin", flag.ExitOnError)
 	file := fs.String("file", "", "File containing the version pin (required)")
+	name := fs.String("name", "", "Identifier to match (e.g., version, __version__)")
 	fs.Parse(args)
 	if *file == "" || fs.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: pk pin --file <path> <version>")
+		fmt.Fprintln(os.Stderr, "Usage: pk pin --file <path> [--name <identifier>] <version>")
 		os.Exit(1)
 	}
 	if _, ok := version.ParseSemver(fs.Arg(0)); !ok {
 		fmt.Fprintf(os.Stderr, "Error: %q is not valid semver\n", fs.Arg(0))
 		os.Exit(1)
 	}
-	updated, err := setup.PinVersion(*file, fs.Arg(0))
+	var updated bool
+	var err error
+	if *name != "" {
+		updated, err = setup.PinVersionNamed(*file, *name, fs.Arg(0))
+	} else {
+		updated, err = setup.PinVersion(*file, fs.Arg(0))
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
@@ -353,7 +360,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
 	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
-	fmt.Fprintln(os.Stderr, "  pk pin --file <path> <version>      Update pinned version in a script file (preCommit hook)")
+	fmt.Fprintln(os.Stderr, "  pk pin --file <path> [--name <id>] <version>")
+	fmt.Fprintln(os.Stderr, "                                      Update pinned version in a file (preCommit hook)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "User commands:")
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
