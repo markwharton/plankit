@@ -76,7 +76,7 @@ type TypeConfig struct {
 // VersionFile describes a file containing a version string to update.
 type VersionFile struct {
 	Path string `json:"path"`
-	Type string `json:"type"` // "json"
+	Type string `json:"type"` // "json" (TOML support would go here if needed)
 }
 
 // Hooks holds lifecycle hook commands for the changelog process.

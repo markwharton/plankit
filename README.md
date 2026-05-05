@@ -72,9 +72,10 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 ## Documentation
 
 - [Adoption](docs/adoption.md): layered adoption from foundation to release management
-- [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
 - [Anti-Patterns](docs/anti-patterns.md): failure modes identified through real project experience
+- [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
 - [Resources](docs/resources.md): Claude Code best practices, git references
+- [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts
 
 ## Known Limitations
 
