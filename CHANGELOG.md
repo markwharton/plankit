@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.18.0] - 2026-05-06
+
+### Added
+
+- add auto mode to skip confirmations when dry-runs pass (b4ecf47)
+
+### Documentation
+
+- add versioning guide (11b7caf)
+
 ## [v0.17.0] - 2026-05-05
 
 ### Added
@@ -615,3 +625,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.16.2]: https://github.com/markwharton/plankit/compare/v0.16.1...v0.16.2
 [v0.16.3]: https://github.com/markwharton/plankit/compare/v0.16.2...v0.16.3
 [v0.17.0]: https://github.com/markwharton/plankit/compare/v0.16.3...v0.17.0
+[v0.18.0]: https://github.com/markwharton/plankit/compare/v0.17.0...v0.18.0
