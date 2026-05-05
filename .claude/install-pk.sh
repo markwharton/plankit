@@ -39,7 +39,7 @@ if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
   exit 1
 fi
 
-PK_VERSION="v0.16.3"
+PK_VERSION="v0.17.0"
 install_dir="$HOME/.local/share/pk/$PK_VERSION"
 binary="$install_dir/pk"
 
