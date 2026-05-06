@@ -18,6 +18,10 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 
 - **Show the git equivalent when pk is a thin wrapper.** When stderr output suggests a pk command as a next step, follow with the git equivalent on the next line when pk is a thin wrap over 1–2 git commands (tag creation, push, add/commit). Format: the pk command on one line, `or: <git commands>` on the next. Skip the git line when pk adds substantial logic (pre-flight checks, hooks, multi-step flows, commit scanning) that would be lost in a direct translation. The pattern educates, builds trust, and gives power users an escape hatch.
 
+## Skill Authoring
+
+- **Keep skill questions conversational.** When a skill asks the user for input, list questions as plain bullets under a short heading. Move interpretation context (which config key maps to which answer, default values, command references) to the skill's Rules section. Dense instructional text around questions causes the model to dump it all as a wall of text instead of walking through questions naturally.
+
 ## Repo Checks
 
 - **Pick the repo check by command profile, not by habit.** Two patterns are in use. `git.IsRepo(stat, dir)` walks parent directories for `.git` with no subprocess; right for commands where the check is a pre-condition and may be the only git-adjacent op (`pk setup`, `pk status`). `cfg.GitExec("", "rev-parse", "--is-inside-work-tree")` shells to git and is authoritative on worktree/GIT_DIR/submodule edge cases; right for commands that already call GitExec extensively (`pk changelog`, `pk preserve`, `pk release`), where the check matches the rest of the command's git surface. The split is acceptable when each choice fits its command; don't standardize for its own sake.
