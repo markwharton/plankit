@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.0] - 2026-05-07
+
+### Added
+
+- add private repo support to new-plankit-project skill (4c5441e)
+
+### Fixed
+
+- restore conversational question style (2019654)
+- skip SessionStart hook for dev builds (3b7016c)
+
+### Documentation
+
+- add skill authoring rule for conversational questions (77d6699)
+
 ## [v0.18.0] - 2026-05-06
 
 ### Added
@@ -626,3 +641,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.16.3]: https://github.com/markwharton/plankit/compare/v0.16.2...v0.16.3
 [v0.17.0]: https://github.com/markwharton/plankit/compare/v0.16.3...v0.17.0
 [v0.18.0]: https://github.com/markwharton/plankit/compare/v0.17.0...v0.18.0
+[v0.19.0]: https://github.com/markwharton/plankit/compare/v0.18.0...v0.19.0
