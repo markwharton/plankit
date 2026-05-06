@@ -843,7 +843,7 @@ func ReadVersionNamed(filePath, name string) (string, bool) {
 // permissions. For development builds (version "dev"), the script is skipped.
 // Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
 func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) (bool, error) {
-	if pkVersion == "" || pkVersion == "dev" {
+	if version.IsDevBuild(pkVersion) {
 		fmt.Fprintln(stderr, "  install-pk.sh: skipped (development build)")
 		return false, nil
 	}
@@ -903,6 +903,9 @@ func Run(cfg Config) error {
 	// Merge plankit hooks with any existing user hooks.
 	guardMode := cfg.GuardMode
 	hookConfig := buildHookConfig(preserveMode, guardMode)
+	if version.IsDevBuild(cfg.Version) {
+		hookConfig.SessionStart = nil
+	}
 	if err := mergeHooks(settings, hookConfig); err != nil {
 		return fmt.Errorf("failed to merge hooks: %w", err)
 	}

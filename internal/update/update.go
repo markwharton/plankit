@@ -55,7 +55,7 @@ func DefaultConfig(currentVersion string) Config {
 // Check returns the latest version and whether an update is available.
 // Uses a daily cache to avoid repeated HTTP calls.
 func Check(cfg Config) (latest string, available bool) {
-	if cfg.CurrentVersion == "dev" || cfg.CurrentVersion == "" {
+	if version.IsDevBuild(cfg.CurrentVersion) {
 		return "", false
 	}
 

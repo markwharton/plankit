@@ -31,6 +31,11 @@ func Version() string {
 	return strings.TrimPrefix(v, "v")
 }
 
+// IsDevBuild reports whether v is a development build (empty or "dev").
+func IsDevBuild(v string) bool {
+	return v == "" || v == "dev"
+}
+
 // Semver holds the components of a semantic version per semver.org/spec/v2.0.0.
 //
 // PreRelease and Build are stored as their original dot-separated strings.

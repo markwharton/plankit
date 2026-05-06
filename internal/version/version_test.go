@@ -38,6 +38,26 @@ func TestVersion_FallbackToDev(t *testing.T) {
 	}
 }
 
+func TestIsDevBuild(t *testing.T) {
+	tests := []struct {
+		v    string
+		want bool
+	}{
+		{"", true},
+		{"dev", true},
+		{"v1.0.0", false},
+		{"0.1.0", false},
+		{"v0.0.0", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.v, func(t *testing.T) {
+			if got := IsDevBuild(tt.v); got != tt.want {
+				t.Errorf("IsDevBuild(%q) = %v, want %v", tt.v, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseSemver(t *testing.T) {
 	tests := []struct {
 		input string

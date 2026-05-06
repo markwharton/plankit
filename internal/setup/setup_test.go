@@ -1975,7 +1975,7 @@ func TestRun_preservesSettingsKeyOrder(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "v1.0.0"}); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -1992,7 +1992,7 @@ func TestRun_preservesSettingsKeyOrder(t *testing.T) {
 
 	// Inner hooks order: PreToolUse, PostToolUse, Stop (SessionStart appended).
 	// SessionStart is added by pk setup because it's a managed category — new
-	// keys append to the end.
+	// keys append to the end. Requires a non-dev Version to include SessionStart.
 	wantHooksOrder := []string{`"PreToolUse"`, `"PostToolUse"`, `"Stop"`, `"SessionStart"`}
 	if !keysAppearInOrder(string(data), wantHooksOrder) {
 		t.Errorf("hooks keys reordered; want %v in order.\nGot:\n%s", wantHooksOrder, string(data))
