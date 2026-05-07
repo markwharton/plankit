@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.1] - 2026-05-08
+
+### Fixed
+
+- address code review findings across correctness, shared config, and DRY (55e67e7)
+
 ## [v0.19.0] - 2026-05-07
 
 ### Added
@@ -642,3 +648,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.17.0]: https://github.com/markwharton/plankit/compare/v0.16.3...v0.17.0
 [v0.18.0]: https://github.com/markwharton/plankit/compare/v0.17.0...v0.18.0
 [v0.19.0]: https://github.com/markwharton/plankit/compare/v0.18.0...v0.19.0
+[v0.19.1]: https://github.com/markwharton/plankit/compare/v0.19.0...v0.19.1
