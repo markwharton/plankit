@@ -152,7 +152,9 @@ func ParseOrderedObject(raw json.RawMessage) (*OrderedObject, error) {
 		if err := dec.Decode(&val); err != nil {
 			return nil, err
 		}
-		oo.keys = append(oo.keys, key)
+		if _, exists := oo.values[key]; !exists {
+			oo.keys = append(oo.keys, key)
+		}
 		oo.values[key] = val
 	}
 	return oo, nil
@@ -437,8 +439,8 @@ func embedSHA(content string, sha string) string {
 
 // shouldUpdate checks whether a managed file should be updated.
 // Returns (true, reason) if the file should be written, (false, reason) if it should be skipped.
-func shouldUpdate(path string, newContent string, force bool) (bool, string) {
-	data, err := os.ReadFile(path)
+func shouldUpdate(readFile func(string) ([]byte, error), path string, newContent string, force bool) (bool, string) {
+	data, err := readFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return true, "created"
@@ -466,10 +468,10 @@ func shouldUpdate(path string, newContent string, force bool) (bool, string) {
 // Skills with YAML frontmatter get a pk_sha256 field; other files get an HTML comment on line 1.
 // If the file exists and has been modified by the user, it is skipped unless force is true.
 // Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
-func writeManaged(path string, content string, stderr io.Writer, force bool) (bool, error) {
-	update, reason := shouldUpdate(path, content, force)
+func writeManaged(cfg Config, path string, content string, force bool) (bool, error) {
+	update, reason := shouldUpdate(cfg.ReadFile, path, content, force)
 	if !update {
-		fmt.Fprintf(stderr, "  %s: %s\n", filepath.Base(path), reason)
+		fmt.Fprintf(cfg.Stderr, "  %s: %s\n", displayName(path), reason)
 		return false, nil
 	}
 
@@ -494,15 +496,15 @@ func writeManaged(path string, content string, stderr io.Writer, force bool) (bo
 	managed := embedSHA(content, sha)
 
 	// Read existing bytes before writing so we can report whether content actually changed.
-	existing, _ := os.ReadFile(path)
+	existing, _ := cfg.ReadFile(path)
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := cfg.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", path, err)
 	}
-	if err := os.WriteFile(path, []byte(managed), 0644); err != nil {
+	if err := cfg.WriteFile(path, []byte(managed), 0644); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", path, err)
 	}
-	fmt.Fprintf(stderr, "  %s: %s\n", displayName(path), reason)
+	fmt.Fprintf(cfg.Stderr, "  %s: %s\n", displayName(path), reason)
 	return string(existing) != managed, nil
 }
 
@@ -526,8 +528,8 @@ func displayName(path string) string {
 //
 // After removing the SKILL.md, the parent dir is removed only if empty.
 // Returns true if any file was removed.
-func pruneSkills(skillsDir string, kept map[string]bool, stderr io.Writer) bool {
-	entries, err := os.ReadDir(skillsDir)
+func pruneSkills(cfg Config, skillsDir string, kept map[string]bool) bool {
+	entries, err := cfg.ReadDir(skillsDir)
 	if err != nil {
 		return false
 	}
@@ -540,15 +542,15 @@ func pruneSkills(skillsDir string, kept map[string]bool, stderr io.Writer) bool 
 			continue
 		}
 		skillFile := filepath.Join(skillsDir, entry.Name(), "SKILL.md")
-		switch evaluateRemoval(skillFile) {
+		switch evaluateRemoval(cfg.ReadFile, skillFile) {
 		case "remove":
-			if err := os.Remove(skillFile); err == nil {
-				fmt.Fprintf(stderr, "  %s/SKILL.md: removed\n", entry.Name())
-				os.Remove(filepath.Join(skillsDir, entry.Name())) // succeeds only if empty
+			if err := cfg.Remove(skillFile); err == nil {
+				fmt.Fprintf(cfg.Stderr, "  %s/SKILL.md: removed\n", entry.Name())
+				cfg.Remove(filepath.Join(skillsDir, entry.Name()))
 				removed = true
 			}
 		case "preserve":
-			fmt.Fprintf(stderr, "  %s/SKILL.md: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+			fmt.Fprintf(cfg.Stderr, "  %s/SKILL.md: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
 		}
 	}
 	return removed
@@ -557,8 +559,8 @@ func pruneSkills(skillsDir string, kept map[string]bool, stderr io.Writer) bool 
 // pruneRules removes rule files under rulesDir whose name (without .md) isn't
 // in kept. Same per-file safety rules as pruneSkills. Returns true if any file
 // was removed.
-func pruneRules(rulesDir string, kept map[string]bool, stderr io.Writer) bool {
-	entries, err := os.ReadDir(rulesDir)
+func pruneRules(cfg Config, rulesDir string, kept map[string]bool) bool {
+	entries, err := cfg.ReadDir(rulesDir)
 	if err != nil {
 		return false
 	}
@@ -572,14 +574,14 @@ func pruneRules(rulesDir string, kept map[string]bool, stderr io.Writer) bool {
 			continue
 		}
 		ruleFile := filepath.Join(rulesDir, entry.Name())
-		switch evaluateRemoval(ruleFile) {
+		switch evaluateRemoval(cfg.ReadFile, ruleFile) {
 		case "remove":
-			if err := os.Remove(ruleFile); err == nil {
-				fmt.Fprintf(stderr, "  %s: removed\n", entry.Name())
+			if err := cfg.Remove(ruleFile); err == nil {
+				fmt.Fprintf(cfg.Stderr, "  %s: removed\n", entry.Name())
 				removed = true
 			}
 		case "preserve":
-			fmt.Fprintf(stderr, "  %s: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+			fmt.Fprintf(cfg.Stderr, "  %s: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
 		}
 	}
 	return removed
@@ -588,8 +590,8 @@ func pruneRules(rulesDir string, kept map[string]bool, stderr io.Writer) bool {
 // evaluateRemoval inspects a managed-file candidate and reports whether it can
 // be safely removed, must be preserved (user modified), or should be skipped
 // (user-created, no pk marker).
-func evaluateRemoval(path string) string {
-	data, err := os.ReadFile(path)
+func evaluateRemoval(readFile func(string) ([]byte, error), path string) string {
+	data, err := readFile(path)
 	if err != nil {
 		return "skip"
 	}
@@ -616,21 +618,37 @@ type Config struct {
 	BaselineAt   string
 	Push         bool
 	GitExec      func(projectDir string, args ...string) (string, error)
+	ReadFile     func(string) ([]byte, error)
+	WriteFile    func(string, []byte, os.FileMode) error
+	Stat         func(string) (os.FileInfo, error)
+	MkdirAll     func(string, os.FileMode) error
+	ReadDir      func(string) ([]os.DirEntry, error)
+	Remove       func(string) error
+	Rename       func(string, string) error
+	LookPath     func(string) (string, error)
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
 func DefaultConfig() Config {
 	return Config{
-		Stderr:  os.Stderr,
-		GitExec: git.Exec,
+		Stderr:    os.Stderr,
+		GitExec:   git.Exec,
+		ReadFile:  os.ReadFile,
+		WriteFile: os.WriteFile,
+		Stat:      os.Stat,
+		MkdirAll:  os.MkdirAll,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
+		Rename:    os.Rename,
+		LookPath:  exec.LookPath,
 	}
 }
 
 // ScriptVersion reads the pinned version from a file.
 // Returns the version string and true if found, or ("", false) if the file
 // does not exist or has no VERSION pin.
-func ScriptVersion(filePath string) (string, bool) {
-	data, err := os.ReadFile(filePath)
+func ScriptVersion(readFile func(string) ([]byte, error), filePath string) (string, bool) {
+	data, err := readFile(filePath)
 	if err != nil {
 		return "", false
 	}
@@ -649,8 +667,8 @@ func ScriptVersion(filePath string) (string, bool) {
 // line matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in
 // VERSION) and replaces the version.
 // Returns (updated, error). updated is true if the file was rewritten, false if the file does not exist (no-op); a missing VERSION pin returns an error.
-func PinVersion(filePath string, ver string) (bool, error) {
-	data, err := os.ReadFile(filePath)
+func PinVersion(readFile func(string) ([]byte, error), writeFile func(string, []byte, os.FileMode) error, filePath string, ver string) (bool, error) {
+	data, err := readFile(filePath)
 	if err != nil {
 		return false, nil
 	}
@@ -669,7 +687,7 @@ func PinVersion(filePath string, ver string) (bool, error) {
 	if !found {
 		return false, fmt.Errorf("%s has no VERSION pin", filepath.Base(filePath))
 	}
-	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0755); err != nil {
+	if err := writeFile(filePath, []byte(strings.Join(lines, "\n")), 0755); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -793,8 +811,8 @@ func isIdentChar(c byte) bool {
 // that value with ver. The v-prefix is inferred from the existing value.
 // Returns (updated, error). updated is false with nil error if the file does
 // not exist (safe for hooks).
-func PinVersionNamed(filePath, name, ver string) (bool, error) {
-	data, err := os.ReadFile(filePath)
+func PinVersionNamed(readFile func(string) ([]byte, error), writeFile func(string, []byte, os.FileMode) error, filePath, name, ver string) (bool, error) {
+	data, err := readFile(filePath)
 	if err != nil {
 		return false, nil
 	}
@@ -817,7 +835,7 @@ func PinVersionNamed(filePath, name, ver string) (bool, error) {
 	if !found {
 		return false, fmt.Errorf("%s has no pin for %q", filepath.Base(filePath), name)
 	}
-	if err := os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
+	if err := writeFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -825,8 +843,8 @@ func PinVersionNamed(filePath, name, ver string) (bool, error) {
 
 // ReadVersionNamed reads the pinned version for the given identifier name.
 // Returns the version string and true if found, or ("", false) if not.
-func ReadVersionNamed(filePath, name string) (string, bool) {
-	data, err := os.ReadFile(filePath)
+func ReadVersionNamed(readFile func(string) ([]byte, error), filePath, name string) (string, bool) {
+	data, err := readFile(filePath)
 	if err != nil {
 		return "", false
 	}
@@ -842,9 +860,9 @@ func ReadVersionNamed(filePath, name string) (string, bool) {
 // The script is template-substituted with the running pk version and written with 0755
 // permissions. For development builds (version "dev"), the script is skipped.
 // Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
-func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) (bool, error) {
+func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, error) {
 	if version.IsDevBuild(pkVersion) {
-		fmt.Fprintln(stderr, "  install-pk.sh: skipped (development build)")
+		fmt.Fprintln(cfg.Stderr, "  install-pk.sh: skipped (development build)")
 		return false, nil
 	}
 	if !strings.HasPrefix(pkVersion, "v") {
@@ -853,15 +871,15 @@ func writeInstallScript(projectDir string, pkVersion string, stderr io.Writer) (
 	content := strings.Replace(installScriptTemplate, "{{VERSION}}", pkVersion, 1)
 	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
 
-	existing, _ := os.ReadFile(scriptPath)
+	existing, _ := cfg.ReadFile(scriptPath)
 
-	if err := os.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
+	if err := cfg.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
 	}
-	if err := os.WriteFile(scriptPath, []byte(content), 0755); err != nil {
+	if err := cfg.WriteFile(scriptPath, []byte(content), 0755); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", scriptPath, err)
 	}
-	fmt.Fprintf(stderr, "  install-pk.sh: updated (pinned %s)\n", pkVersion)
+	fmt.Fprintf(cfg.Stderr, "  install-pk.sh: updated (pinned %s)\n", pkVersion)
 	return string(existing) != content, nil
 }
 
@@ -881,7 +899,7 @@ func Run(cfg Config) error {
 	// pk requires git for most commands (guard, changelog, release, preserve),
 	// though rules, skills, and protect still work without it.
 	// IsRepo walks up parents, so monorepo subdirectories are correctly detected.
-	if !git.IsRepo(os.Stat, projectDir) {
+	if !git.IsRepo(cfg.Stat, projectDir) {
 		if !cfg.AllowNonGit {
 			return fmt.Errorf("this is not a git repository. pk requires git for most commands.\n\nRun `git init` first, or pass --allow-non-git to proceed anyway")
 		}
@@ -891,7 +909,7 @@ func Run(cfg Config) error {
 	// Read existing settings or start fresh. OrderedObject preserves the
 	// user's existing key order — pk setup must not reorder settings.json.
 	settings := NewOrderedObject()
-	data, err := os.ReadFile(settingsFile)
+	data, err := cfg.ReadFile(settingsFile)
 	if err == nil {
 		parsed, err := ParseOrderedObject(data)
 		if err != nil {
@@ -916,14 +934,14 @@ func Run(cfg Config) error {
 	}
 
 	// Write with backup.
-	if err := os.MkdirAll(settingsDir, 0755); err != nil {
+	if err := cfg.MkdirAll(settingsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create .claude directory: %w", err)
 	}
 
 	// Backup existing file.
-	if _, err := os.Stat(settingsFile); err == nil {
+	if _, err := cfg.Stat(settingsFile); err == nil {
 		backupFile := settingsFile + ".bak"
-		if err := os.Rename(settingsFile, backupFile); err != nil {
+		if err := cfg.Rename(settingsFile, backupFile); err != nil {
 			return fmt.Errorf("failed to create backup: %w", err)
 		}
 		fmt.Fprintf(stderr, "Backed up existing settings to %s\n", filepath.Base(backupFile))
@@ -936,7 +954,7 @@ func Run(cfg Config) error {
 	}
 	output = append(output, '\n')
 
-	if err := os.WriteFile(settingsFile, output, 0644); err != nil {
+	if err := cfg.WriteFile(settingsFile, output, 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", settingsFile, err)
 	}
 
@@ -952,7 +970,7 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to read embedded CLAUDE.md template: %w", err)
 	}
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
-	changed, err := writeManaged(claudeFile, string(claudeTemplate), stderr, false)
+	changed, err := writeManaged(cfg, claudeFile, string(claudeTemplate), false)
 	if err != nil {
 		return err
 	}
@@ -967,14 +985,14 @@ func Run(cfg Config) error {
 	keptSkills := map[string]bool{}
 	for _, skill := range skillsList {
 		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
-		changed, err := writeManaged(skillFile, skill.Content, stderr, force)
+		changed, err := writeManaged(cfg, skillFile, skill.Content, force)
 		if err != nil {
 			return err
 		}
 		anyChanged = anyChanged || changed
 		keptSkills[skill.Name] = true
 	}
-	if pruneSkills(filepath.Join(settingsDir, "skills"), keptSkills, stderr) {
+	if pruneSkills(cfg, filepath.Join(settingsDir, "skills"), keptSkills) {
 		anyChanged = true
 	}
 
@@ -987,32 +1005,32 @@ func Run(cfg Config) error {
 	keptRules := map[string]bool{}
 	for _, rule := range rulesList {
 		ruleFile := filepath.Join(settingsDir, "rules", rule.Name+".md")
-		changed, err := writeManaged(ruleFile, rule.Content, stderr, force)
+		changed, err := writeManaged(cfg, ruleFile, rule.Content, force)
 		if err != nil {
 			return err
 		}
 		anyChanged = anyChanged || changed
 		keptRules[rule.Name] = true
 	}
-	if pruneRules(filepath.Join(settingsDir, "rules"), keptRules, stderr) {
+	if pruneRules(cfg, filepath.Join(settingsDir, "rules"), keptRules) {
 		anyChanged = true
 	}
 
 	// Install bootstrap script for cloud sandboxes.
 	fmt.Fprintln(stderr, "Bootstrap:")
-	changed, err = writeInstallScript(projectDir, cfg.Version, stderr)
+	changed, err = writeInstallScript(cfg, projectDir, cfg.Version)
 	if err != nil {
 		return err
 	}
 	anyChanged = anyChanged || changed
 
 	// Check if pk is in PATH.
-	if _, err := exec.LookPath("pk"); err != nil {
+	if _, err := cfg.LookPath("pk"); err != nil {
 		fmt.Fprintln(stderr, "Warning: pk is not in your PATH. Hooks will silently skip until it is installed.")
 	}
 
 	// Baseline tag or discoverability tip.
-	inGitRepo := git.IsRepo(os.Stat, projectDir)
+	inGitRepo := git.IsRepo(cfg.Stat, projectDir)
 	if cfg.Baseline {
 		if !inGitRepo {
 			return fmt.Errorf("--baseline requires a git repository")

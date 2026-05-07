@@ -12,6 +12,6 @@ func Exec(dir string, args ...string) (string, error) {
 	if dir != "" {
 		args = append([]string{"-C", dir}, args...)
 	}
-	out, err := exec.Command("git", args...).CombinedOutput()
+	out, err := exec.Command("git", args...).Output()
 	return strings.TrimRight(string(out), "\n"), err
 }

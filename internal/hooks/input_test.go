@@ -107,6 +107,33 @@ func TestReadInput_largePayload(t *testing.T) {
 	}
 }
 
+func TestResolveProjectDir(t *testing.T) {
+	tests := []struct {
+		name     string
+		envVal   string
+		inputCWD string
+		want     string
+	}{
+		{"env wins", "/from/env", "/from/cwd", "/from/env"},
+		{"falls back to CWD", "", "/from/cwd", "/from/cwd"},
+		{"both empty", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return tt.envVal
+				}
+				return ""
+			}
+			got := ResolveProjectDir(env, tt.inputCWD)
+			if got != tt.want {
+				t.Errorf("ResolveProjectDir() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestToolResponseString(t *testing.T) {
 	tests := []struct {
 		name string

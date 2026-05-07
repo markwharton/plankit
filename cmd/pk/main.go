@@ -155,15 +155,7 @@ func runSetup(args []string) {
 	push := fs.Bool("push", false, "Push the baseline tag to origin (requires --baseline)")
 	fs.Parse(args)
 
-	dir := *projectDir
-	if dir == "." {
-		var err error
-		dir, err = os.Getwd()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
-			os.Exit(1)
-		}
-	}
+	dir := resolveDir(*projectDir)
 
 	// Preserve existing modes on re-run. When --guard or --preserve is not
 	// explicitly passed, infer the current mode from settings.json so that
@@ -246,15 +238,7 @@ func runStatus(args []string) {
 	brief := fs.Bool("brief", false, "One-line summary (useful for scripting)")
 	fs.Parse(args)
 
-	dir := *projectDir
-	if dir == "." {
-		var err error
-		dir, err = os.Getwd()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
-			os.Exit(1)
-		}
-	}
+	dir := resolveDir(*projectDir)
 
 	cfg := status.DefaultConfig()
 	cfg.ProjectDir = dir
@@ -275,15 +259,7 @@ func runTeardown(args []string) {
 	confirm := fs.Bool("confirm", false, "Actually remove (default: preview only)")
 	fs.Parse(args)
 
-	dir := *projectDir
-	if dir == "." {
-		var err error
-		dir, err = os.Getwd()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
-			os.Exit(1)
-		}
-	}
+	dir := resolveDir(*projectDir)
 
 	cfg := teardown.DefaultConfig()
 	cfg.ProjectDir = dir
@@ -310,9 +286,9 @@ func runPin(args []string) {
 	var updated bool
 	var err error
 	if *name != "" {
-		updated, err = setup.PinVersionNamed(*file, *name, fs.Arg(0))
+		updated, err = setup.PinVersionNamed(os.ReadFile, os.WriteFile, *file, *name, fs.Arg(0))
 	} else {
-		updated, err = setup.PinVersion(*file, fs.Arg(0))
+		updated, err = setup.PinVersion(os.ReadFile, os.WriteFile, *file, fs.Arg(0))
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -335,7 +311,7 @@ func runVersion(args []string) {
 		}
 	}
 
-	if scriptVer, found := setup.ScriptVersion(".claude/install-pk.sh"); found {
+	if scriptVer, found := setup.ScriptVersion(os.ReadFile, ".claude/install-pk.sh"); found {
 		running := version.Version()
 		pinned := strings.TrimPrefix(scriptVer, "v")
 		if running != "dev" && pinned != running {
@@ -344,6 +320,15 @@ func runVersion(args []string) {
 	}
 
 	printUpdateNotice()
+}
+
+func resolveDir(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+	return abs
 }
 
 func printUpdateNotice() {

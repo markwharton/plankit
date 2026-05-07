@@ -27,6 +27,8 @@ func TestSlugify(t *testing.T) {
 		{"", 60, ""},
 		{"!!!", 60, ""},
 		{"Cross-platform Claude Code hooks (staged approach)", 60, "cross-platform-claude-code-hooks-staged-approach"},
+		{"Plan café design", 10, "plan-café"},
+		{"Résumé builder implementation", 60, "résumé-builder-implementation"},
 	}
 
 	for _, tt := range tests {
@@ -111,6 +113,16 @@ func TestExtractTitle(t *testing.T) {
 	}
 }
 
+// withFS sets the filesystem dependencies to real os implementations.
+func withFS(cfg *Config) {
+	cfg.ReadFile = os.ReadFile
+	cfg.WriteFile = os.WriteFile
+	cfg.Stat = os.Stat
+	cfg.MkdirAll = os.MkdirAll
+	cfg.ReadDir = os.ReadDir
+	cfg.Remove = os.Remove
+}
+
 func TestRun(t *testing.T) {
 	fixedTime := time.Date(2026, 3, 11, 15, 30, 0, 0, time.Local)
 
@@ -151,6 +163,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -226,6 +239,7 @@ func TestRun(t *testing.T) {
 			},
 			Push: true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -275,6 +289,7 @@ func TestRun(t *testing.T) {
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -314,6 +329,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -365,6 +381,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -418,6 +435,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -475,6 +493,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -530,6 +549,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -575,6 +595,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -607,6 +628,7 @@ func TestRun(t *testing.T) {
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
 			Notify:  true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -658,6 +680,7 @@ func TestRun(t *testing.T) {
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
 			Notify:  true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -722,6 +745,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -776,6 +800,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -820,6 +845,7 @@ func TestRun(t *testing.T) {
 			},
 			DryRun: true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -838,8 +864,12 @@ func TestRun(t *testing.T) {
 			t.Errorf("stderr = %q, want commit message preview", output)
 		}
 
-		// Verify no file was written.
-		destFile := filepath.Join(projectDir, "docs", "plans", "2026-03-11-001-dry-run-plan.md")
+		// Verify no directory or file was created.
+		destDir := filepath.Join(projectDir, "docs", "plans")
+		if _, err := os.Stat(destDir); err == nil {
+			t.Error("dry-run should not create the docs/plans/ directory")
+		}
+		destFile := filepath.Join(destDir, "2026-03-11-001-dry-run-plan.md")
 		if _, err := os.Stat(destFile); err == nil {
 			t.Error("dry-run should not write the plan file")
 		}
@@ -885,6 +915,7 @@ func TestRun(t *testing.T) {
 				return "Update available: pk v1.0.0 → v2.0.0"
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -936,6 +967,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -995,6 +1027,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1043,6 +1076,7 @@ func TestRun(t *testing.T) {
 			},
 			Push: true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1085,6 +1119,7 @@ func TestRun(t *testing.T) {
 			DryRun: true,
 			Push:   true,
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1132,6 +1167,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1182,6 +1218,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1221,6 +1258,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1272,6 +1310,7 @@ func TestRun(t *testing.T) {
 				return "", nil
 			},
 		}
+		withFS(&cfg)
 
 		exitCode := Run(cfg)
 		if exitCode != 0 {
@@ -1283,10 +1322,178 @@ func TestRun(t *testing.T) {
 	})
 }
 
+func TestRun_mkdirAllFailure(t *testing.T) {
+	fixedTime := time.Date(2026, 3, 11, 15, 30, 0, 0, time.Local)
+	tmpDir := t.TempDir()
+	plansDir := filepath.Join(tmpDir, ".claude", "plans")
+	os.MkdirAll(plansDir, 0755)
+
+	planFile := filepath.Join(plansDir, "test-plan.md")
+	os.WriteFile(planFile, []byte("# Test Plan\n\nEnough content to pass the minimum length check for this test."), 0644)
+
+	projectDir := t.TempDir()
+	inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stdin:     strings.NewReader(inputJSON),
+		Stdout:    &bytes.Buffer{},
+		Stderr:    &stderr,
+		Env:       func(string) string { return "" },
+		HomeDir:   func() (string, error) { return tmpDir, nil },
+		Now:       func() time.Time { return fixedTime },
+		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
+		ReadFile:  os.ReadFile,
+		Stat:      os.Stat,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
+		MkdirAll:  func(string, os.FileMode) error { return fmt.Errorf("permission denied") },
+		WriteFile: os.WriteFile,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to create directory") {
+		t.Errorf("stderr = %q, want 'failed to create directory'", stderr.String())
+	}
+}
+
+func TestRun_writeFileFailure(t *testing.T) {
+	fixedTime := time.Date(2026, 3, 11, 15, 30, 0, 0, time.Local)
+	tmpDir := t.TempDir()
+	plansDir := filepath.Join(tmpDir, ".claude", "plans")
+	os.MkdirAll(plansDir, 0755)
+
+	planFile := filepath.Join(plansDir, "test-plan.md")
+	os.WriteFile(planFile, []byte("# Test Plan\n\nEnough content to pass the minimum length check for this test."), 0644)
+
+	projectDir := t.TempDir()
+	inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stdin:     strings.NewReader(inputJSON),
+		Stdout:    &bytes.Buffer{},
+		Stderr:    &stderr,
+		Env:       func(string) string { return "" },
+		HomeDir:   func() (string, error) { return tmpDir, nil },
+		Now:       func() time.Time { return fixedTime },
+		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
+		ReadFile:  os.ReadFile,
+		Stat:      os.Stat,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
+		MkdirAll:  os.MkdirAll,
+		WriteFile: func(string, []byte, os.FileMode) error { return fmt.Errorf("disk full") },
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to write plan") {
+		t.Errorf("stderr = %q, want 'failed to write plan'", stderr.String())
+	}
+}
+
+func TestRun_gitAddFailure(t *testing.T) {
+	fixedTime := time.Date(2026, 3, 11, 15, 30, 0, 0, time.Local)
+	tmpDir := t.TempDir()
+	plansDir := filepath.Join(tmpDir, ".claude", "plans")
+	os.MkdirAll(plansDir, 0755)
+
+	planFile := filepath.Join(plansDir, "test-plan.md")
+	os.WriteFile(planFile, []byte("# Test Plan\n\nEnough content to pass the minimum length check for this test."), 0644)
+
+	projectDir := t.TempDir()
+	inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stdin:   strings.NewReader(inputJSON),
+		Stdout:  &bytes.Buffer{},
+		Stderr:  &stderr,
+		Env:     func(string) string { return "" },
+		HomeDir: func() (string, error) { return tmpDir, nil },
+		Now:     func() time.Time { return fixedTime },
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "add" {
+				return "", fmt.Errorf("add failed")
+			}
+			return "", nil
+		},
+		ReadFile:  os.ReadFile,
+		Stat:      os.Stat,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
+		MkdirAll:  os.MkdirAll,
+		WriteFile: os.WriteFile,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "git add failed") {
+		t.Errorf("stderr = %q, want 'git add failed'", stderr.String())
+	}
+}
+
+func TestRun_gitCommitFailure(t *testing.T) {
+	fixedTime := time.Date(2026, 3, 11, 15, 30, 0, 0, time.Local)
+	tmpDir := t.TempDir()
+	plansDir := filepath.Join(tmpDir, ".claude", "plans")
+	os.MkdirAll(plansDir, 0755)
+
+	planFile := filepath.Join(plansDir, "test-plan.md")
+	os.WriteFile(planFile, []byte("# Test Plan\n\nEnough content to pass the minimum length check for this test."), 0644)
+
+	projectDir := t.TempDir()
+	inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, planFile, projectDir)
+
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stdin:   strings.NewReader(inputJSON),
+		Stdout:  &bytes.Buffer{},
+		Stderr:  &stderr,
+		Env:     func(string) string { return "" },
+		HomeDir: func() (string, error) { return tmpDir, nil },
+		Now:     func() time.Time { return fixedTime },
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "diff" && args[1] == "--cached" {
+				return "", fmt.Errorf("changes exist")
+			}
+			if args[0] == "commit" {
+				return "", fmt.Errorf("commit failed")
+			}
+			return "", nil
+		},
+		ReadFile:  os.ReadFile,
+		Stat:      os.Stat,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
+		MkdirAll:  os.MkdirAll,
+		WriteFile: os.WriteFile,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "git commit failed") {
+		t.Errorf("stderr = %q, want 'git commit failed'", stderr.String())
+	}
+}
+
 func TestScanDestDir(t *testing.T) {
+	var fsCfg Config
+	withFS(&fsCfg)
+
 	t.Run("empty directory", func(t *testing.T) {
 		dir := t.TempDir()
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1296,7 +1503,7 @@ func TestScanDestDir(t *testing.T) {
 	})
 
 	t.Run("nonexistent directory", func(t *testing.T) {
-		dup, seq := scanDestDir("/nonexistent/path", "2026-03-11", []byte("content"))
+		dup, seq := scanDestDir(fsCfg, "/nonexistent/path", "2026-03-11", []byte("content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1308,7 +1515,7 @@ func TestScanDestDir(t *testing.T) {
 	t.Run("single file no duplicate", func(t *testing.T) {
 		dir := t.TempDir()
 		os.WriteFile(filepath.Join(dir, "2026-03-11-001-some-plan.md"), []byte("x"), 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("new content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("new content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1322,7 +1529,7 @@ func TestScanDestDir(t *testing.T) {
 		os.WriteFile(filepath.Join(dir, "2026-03-11-001-first.md"), []byte("x"), 0644)
 		os.WriteFile(filepath.Join(dir, "2026-03-11-003-third.md"), []byte("x"), 0644)
 		os.WriteFile(filepath.Join(dir, "2026-03-11-002-second.md"), []byte("x"), 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("new content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("new content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1335,7 +1542,7 @@ func TestScanDestDir(t *testing.T) {
 		dir := t.TempDir()
 		os.WriteFile(filepath.Join(dir, "2026-03-10-005-old-date.md"), []byte("x"), 0644)
 		os.WriteFile(filepath.Join(dir, "2026-03-11-002-today.md"), []byte("x"), 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("new content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("new content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1348,7 +1555,7 @@ func TestScanDestDir(t *testing.T) {
 		dir := t.TempDir()
 		os.WriteFile(filepath.Join(dir, "2026-03-11-999-plan.md"), []byte("x"), 0644)
 		os.WriteFile(filepath.Join(dir, "2026-03-11-1000-plan.md"), []byte("x"), 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("new content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("new content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1360,7 +1567,7 @@ func TestScanDestDir(t *testing.T) {
 	t.Run("files without sequence numbers", func(t *testing.T) {
 		dir := t.TempDir()
 		os.WriteFile(filepath.Join(dir, "2026-03-11-some-old-plan.md"), []byte("x"), 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", []byte("new content"))
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", []byte("new content"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty", dup)
 		}
@@ -1373,7 +1580,7 @@ func TestScanDestDir(t *testing.T) {
 		dir := t.TempDir()
 		content := []byte("# Same Plan\n\nExact same content.")
 		os.WriteFile(filepath.Join(dir, "2026-03-11-001-same-plan.md"), content, 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", content)
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", content)
 		if dup != "2026-03-11-001-same-plan.md" {
 			t.Errorf("dupName = %q, want matching filename", dup)
 		}
@@ -1386,7 +1593,7 @@ func TestScanDestDir(t *testing.T) {
 		dir := t.TempDir()
 		content := []byte("# Same Plan\n\nExact same content.")
 		os.WriteFile(filepath.Join(dir, "2026-03-10-001-same-plan.md"), content, 0644)
-		dup, seq := scanDestDir(dir, "2026-03-11", content)
+		dup, seq := scanDestDir(fsCfg, dir, "2026-03-11", content)
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty (different date)", dup)
 		}
@@ -1398,7 +1605,7 @@ func TestScanDestDir(t *testing.T) {
 	t.Run("different size not matched as duplicate", func(t *testing.T) {
 		dir := t.TempDir()
 		os.WriteFile(filepath.Join(dir, "2026-03-11-001-plan.md"), []byte("short"), 0644)
-		dup, _ := scanDestDir(dir, "2026-03-11", []byte("much longer content that differs in size"))
+		dup, _ := scanDestDir(fsCfg, dir, "2026-03-11", []byte("much longer content that differs in size"))
 		if dup != "" {
 			t.Errorf("dupName = %q, want empty (different size)", dup)
 		}

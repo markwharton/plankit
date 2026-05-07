@@ -44,16 +44,15 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
-	if projectDir == "" {
-		projectDir = input.CWD
-	}
+	projectDir := hooks.ResolveProjectDir(cfg.Env, input.CWD)
 	if projectDir == "" {
 		return 0
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, projectDir) {
-		hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation.")
+		if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation."); err != nil {
+			fmt.Fprintf(cfg.Stderr, "pk protect: write error: %v\n", err)
+		}
 	}
 
 	return 0

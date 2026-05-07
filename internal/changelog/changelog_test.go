@@ -1105,6 +1105,101 @@ func TestRun_hookFailure(t *testing.T) {
 	}
 }
 
+func TestRun_writeFileFailure(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return fmt.Errorf("disk full") },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "failed to write CHANGELOG.md") {
+		t.Errorf("stderr = %q, want 'failed to write CHANGELOG.md'", stderr.String())
+	}
+}
+
+func TestRun_gitAddFailure(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: feature\x00\x00", nil
+			}
+			if args[0] == "add" {
+				return "", fmt.Errorf("add failed")
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "git add failed") {
+		t.Errorf("stderr = %q, want 'git add failed'", stderr.String())
+	}
+}
+
+func TestRun_unsupportedVersionFileType(t *testing.T) {
+	var stderr bytes.Buffer
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			if name == ".pk.json" {
+				return []byte(`{"changelog":{"versionFiles":[{"path":"ver.yaml","type":"yaml"}]}}`), nil
+			}
+			return nil, os.ErrNotExist
+		},
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		RunScript: func(command string, env map[string]string) error { return nil },
+		Now:       fixedTime,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), `unsupported versionFile type "yaml"`) {
+		t.Errorf("stderr = %q, want unsupported type message", stderr.String())
+	}
+}
+
 func TestRun_gitCommitFailure(t *testing.T) {
 	var stderr bytes.Buffer
 

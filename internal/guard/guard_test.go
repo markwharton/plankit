@@ -27,7 +27,7 @@ func TestRun_blocksCommitOnProtectedBranch(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", code)
 	}
 	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
-		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
+		t.Errorf("stdout = %q, want permissionDecision=deny", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
 		t.Errorf("stdout = %q, want hookEventName=PreToolUse", stdout.String())
@@ -81,7 +81,7 @@ func TestRun_blocksPushOnProtectedBranch(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", code)
 	}
 	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
-		t.Errorf("stdout = %q, want permissionDecision=ask", stdout.String())
+		t.Errorf("stdout = %q, want permissionDecision=deny", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), `"hookEventName":"PreToolUse"`) {
 		t.Errorf("stdout = %q, want hookEventName=PreToolUse", stdout.String())
@@ -216,7 +216,7 @@ func TestRun_multipleProtectedBranches(t *testing.T) {
 		t.Errorf("exit code = %d, want 0", code)
 	}
 	if !strings.Contains(stdout.String(), `"permissionDecision":"deny"`) {
-		t.Errorf("stdout = %q, want permissionDecision=ask for production branch", stdout.String())
+		t.Errorf("stdout = %q, want permissionDecision=deny for production branch", stdout.String())
 	}
 }
 
@@ -257,6 +257,9 @@ func TestIsGitMutation(t *testing.T) {
 		{"git push origin main", true},
 		{"git merge dev", true},
 		{"git rebase main", true},
+		{"git reset --hard HEAD~1", true},
+		{"git reset --soft HEAD~1", true},
+		{"git reset", true},
 		{"git push --force origin main", true},
 		{"git push -f origin main", true},
 		{"git status", false},
@@ -275,6 +278,13 @@ func TestIsGitMutation(t *testing.T) {
 		{"git checkout main || git merge dev", true},
 		{"git status && git log", false},
 		{"echo hello && ls -la", false},
+		// Quoted operators should not split.
+		{`git commit -m "a && b"`, true},
+		{`git commit -m 'a || b; c'`, true},
+		{`echo "hello" && git push`, true},
+		{`echo "hello; world"`, false},
+		{`git commit -m "fix: a && b || c"`, true},
+		{`echo 'no && split' && echo 'no || split'`, false},
 	}
 
 	for _, tt := range tests {

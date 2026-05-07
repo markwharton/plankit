@@ -6,7 +6,6 @@
 package release
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
+	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
 )
@@ -41,6 +41,12 @@ func DefaultConfig() Config {
 
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
+	// 0. Verify we're in a git repository.
+	if err := pkgit.IsInsideWorkTree(cfg.GitExec, ""); err != nil {
+		fmt.Fprintln(cfg.Stderr, "Error: not a git repository")
+		return 1
+	}
+
 	// 1. Get current branch (implicit source).
 	sourceBranch, err := cfg.GitExec("", "branch", "--show-current")
 	if err != nil {
@@ -126,6 +132,8 @@ func Run(cfg Config) int {
 		return 1
 	}
 
+	mergeBase = strings.TrimSpace(mergeBase)
+	remote = strings.TrimSpace(remote)
 	if mergeBase != remote {
 		fmt.Fprintf(cfg.Stderr, "Error: local %s is behind origin/%s — pull first\n", sourceBranch, sourceBranch)
 		return 1
@@ -137,12 +145,20 @@ func Run(cfg Config) int {
 	tagCreated := false
 	released := false
 	switchedBack := true // default: no switch-back needed
+	preMergeHead := ""   // release branch HEAD before ff merge
 	defer func() {
 		if tagCreated && !released {
 			if _, err := cfg.GitExec("", "tag", "-d", tag); err != nil {
 				fmt.Fprintf(cfg.Stderr, "Warning: failed to delete local tag %s: %v\n", tag, err)
 			} else {
 				fmt.Fprintf(cfg.Stderr, "Cleaned up local tag %s\n", tag)
+			}
+		}
+		if preMergeHead != "" && !released {
+			if _, err := cfg.GitExec("", "reset", "--hard", preMergeHead); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Warning: failed to roll back merge on %s: %v\n", releaseBranch, err)
+			} else {
+				fmt.Fprintf(cfg.Stderr, "Rolled back merge on %s\n", releaseBranch)
 			}
 		}
 		if !switchedBack {
@@ -162,7 +178,9 @@ func Run(cfg Config) int {
 			fmt.Fprintf(cfg.Stderr, "  Would merge %s into %s (fast-forward)\n", sourceBranch, releaseBranch)
 		} else {
 			// Fetch release branch.
-			cfg.GitExec("", "fetch", "origin", releaseBranch, "--quiet")
+			if _, err := cfg.GitExec("", "fetch", "origin", releaseBranch, "--quiet"); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Warning: failed to fetch %s from origin: %v (continuing with local state)\n", releaseBranch, err)
+			}
 
 			// Switch to release branch. Mark switchedBack=false so the
 			// top-level defer switches back on any subsequent failure.
@@ -171,6 +189,14 @@ func Run(cfg Config) int {
 				return 1
 			}
 			switchedBack = false
+
+			// Capture release branch HEAD before merging for rollback.
+			head, err := cfg.GitExec("", "rev-parse", "HEAD")
+			if err != nil {
+				fmt.Fprintf(cfg.Stderr, "Error: failed to read HEAD of %s: %v\n", releaseBranch, err)
+				return 1
+			}
+			preMergeHead = strings.TrimSpace(head)
 
 			// Merge from source branch (fast-forward only).
 			if _, err := cfg.GitExec("", "merge", "--ff-only", sourceBranch); err != nil {
@@ -247,32 +273,15 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// ReleaseHooks holds lifecycle hook commands for the release process.
-type ReleaseHooks struct {
-	PreRelease string `json:"preRelease,omitempty"`
-}
-
-// ReleaseSection holds the release config from .pk.json.
-type ReleaseSection struct {
-	Branch string       `json:"branch,omitempty"`
-	Hooks  ReleaseHooks `json:"hooks,omitempty"`
-}
-
-// pkReleaseConfig reads the release section from .pk.json.
-type pkReleaseConfig struct {
-	Release ReleaseSection `json:"release,omitempty"`
-}
+// Type aliases for config types used throughout this package.
+type ReleaseSection = config.ReleaseSection
 
 // loadReleaseConfig reads the release section from .pk.json.
 // Returns an error if the file exists but contains malformed JSON.
 func loadReleaseConfig(readFile func(string) ([]byte, error)) (ReleaseSection, error) {
-	data, err := readFile(".pk.json")
+	pk, err := config.Load(readFile, ".pk.json")
 	if err != nil {
-		return ReleaseSection{}, nil
+		return ReleaseSection{}, err
 	}
-	var cfg pkReleaseConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return ReleaseSection{}, fmt.Errorf("failed to parse .pk.json: %w", err)
-	}
-	return cfg.Release, nil
+	return pk.Release, nil
 }

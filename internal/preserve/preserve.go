@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
@@ -28,7 +29,13 @@ type Config struct {
 	Now     func() time.Time
 	GitExec func(projectDir string, args ...string) (string, error)
 
-	Getwd func() (string, error)
+	Getwd     func() (string, error)
+	ReadFile  func(string) ([]byte, error)
+	WriteFile func(string, []byte, os.FileMode) error
+	Stat      func(string) (os.FileInfo, error)
+	MkdirAll  func(string, os.FileMode) error
+	ReadDir   func(string) ([]os.DirEntry, error)
+	Remove    func(string) error
 
 	// Notify outputs a systemMessage prompt without preserving.
 	Notify bool
@@ -43,14 +50,20 @@ type Config struct {
 // DefaultConfig returns a Config wired to real implementations.
 func DefaultConfig() Config {
 	return Config{
-		Stdin:   os.Stdin,
-		Stdout:  os.Stdout,
-		Stderr:  os.Stderr,
-		Env:     os.Getenv,
-		HomeDir: os.UserHomeDir,
-		Now:     time.Now,
-		GitExec: pkgit.Exec,
-		Getwd:   os.Getwd,
+		Stdin:     os.Stdin,
+		Stdout:    os.Stdout,
+		Stderr:    os.Stderr,
+		Env:       os.Getenv,
+		HomeDir:   os.UserHomeDir,
+		Now:       time.Now,
+		GitExec:   pkgit.Exec,
+		Getwd:     os.Getwd,
+		ReadFile:  os.ReadFile,
+		WriteFile: os.WriteFile,
+		Stat:      os.Stat,
+		MkdirAll:  os.MkdirAll,
+		ReadDir:   os.ReadDir,
+		Remove:    os.Remove,
 	}
 }
 
@@ -87,17 +100,17 @@ func Run(cfg Config) int {
 		// Prefer the project-local pointer written by --notify; fall back
 		// to mtime-based findLatestPlan only when the pointer is absent.
 		if projectDir != "" {
-			if p, ok := readPointer(projectDir); ok {
+			if p, ok := readPointer(cfg, projectDir); ok {
 				planPath = p
 			}
 		}
 		if planPath == "" {
-			planPath = findLatestPlan(cfg.HomeDir)
+			planPath = findLatestPlan(cfg)
 		}
 	} else {
 		planPath = extractPlanPath(input.ToolResponseString())
-		if planPath == "" || !fileExists(planPath) {
-			planPath = findLatestPlan(cfg.HomeDir)
+		if planPath == "" || !fileExists(cfg, planPath) {
+			planPath = findLatestPlan(cfg)
 		}
 	}
 
@@ -106,7 +119,7 @@ func Run(cfg Config) int {
 	}
 
 	// Read plan content.
-	content, err := os.ReadFile(planPath)
+	content, err := cfg.ReadFile(planPath)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to read plan: %v\n", err)
 		return 0
@@ -145,18 +158,16 @@ func Run(cfg Config) int {
 	title := extractTitle(string(content))
 	datePrefix := cfg.Now().Format("2006-01-02")
 	slug := slugify(title, 60)
+	if slug == "" {
+		slug = "untitled"
+	}
 	destDir := filepath.Join(projectDir, "docs", "plans")
 
-	// Ensure directory exists before scanning for sequence number.
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to create directory: %v\n", err)
-		return 0
-	}
-
 	// Scan destination directory for duplicates and next sequence number.
-	dupName, seq := scanDestDir(destDir, datePrefix, content)
+	// scanDestDir handles a missing directory gracefully (returns "", 1).
+	dupName, seq := scanDestDir(cfg, destDir, datePrefix, content)
 	if dupName != "" {
-		removePointer(projectDir)
+		removePointer(cfg, projectDir)
 		cfg.writeSystemMessage(fmt.Sprintf("Plan already preserved as docs/plans/%s", dupName))
 		return 0
 	}
@@ -175,8 +186,14 @@ func Run(cfg Config) int {
 		return 0
 	}
 
+	// Create directory before writing.
+	if err := cfg.MkdirAll(destDir, 0755); err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to create directory: %v\n", err)
+		return 0
+	}
+
 	destFile := filepath.Join(destDir, filename)
-	if err := os.WriteFile(destFile, content, 0644); err != nil {
+	if err := cfg.WriteFile(destFile, content, 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write plan: %v\n", err)
 		return 0
 	}
@@ -190,7 +207,7 @@ func Run(cfg Config) int {
 
 	// Check for staged changes.
 	if _, err := cfg.GitExec(projectDir, "diff", "--cached", "--quiet"); err == nil {
-		removePointer(projectDir)
+		removePointer(cfg, projectDir)
 		cfg.writeSystemMessage("Plan unchanged, no commit needed.")
 		return 0
 	}
@@ -201,7 +218,7 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: git commit failed: %v\n", err)
 		return 0
 	}
-	removePointer(projectDir)
+	removePointer(cfg, projectDir)
 
 	// Git push (only when --push is set).
 	if cfg.Push {
@@ -220,10 +237,7 @@ func Run(cfg Config) int {
 // resolveProjectDir determines the project directory from CLAUDE_PROJECT_DIR,
 // the hook payload's CWD, or os.Getwd(). Returns "" when no source yields a path.
 func resolveProjectDir(cfg Config, inputCWD string) string {
-	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
-	if projectDir == "" {
-		projectDir = inputCWD
-	}
+	projectDir := hooks.ResolveProjectDir(cfg.Env, inputCWD)
 	if projectDir == "" && cfg.Getwd != nil {
 		if wd, err := cfg.Getwd(); err == nil {
 			projectDir = wd
@@ -240,15 +254,19 @@ func pointerPath(projectDir string) string {
 // readPointer reads the pending-plan pointer. Returns the plan path and true
 // when the pointer is present and the pointed-to file still exists. A stale
 // pointer (missing target) is deleted and reported as absent.
-func readPointer(projectDir string) (string, bool) {
+func readPointer(cfg Config, projectDir string) (string, bool) {
 	path := pointerPath(projectDir)
-	data, err := os.ReadFile(path)
+	data, err := cfg.ReadFile(path)
 	if err != nil {
 		return "", false
 	}
 	planPath := strings.TrimSpace(string(data))
-	if planPath == "" || !fileExists(planPath) {
-		os.Remove(path)
+	if planPath == "" {
+		cfg.Remove(path)
+		return "", false
+	}
+	if _, err := cfg.Stat(planPath); err != nil {
+		cfg.Remove(path)
 		return "", false
 	}
 	return planPath, true
@@ -259,14 +277,14 @@ func readPointer(projectDir string) (string, bool) {
 // the caller continues — /preserve will still work via the mtime fallback.
 func writePointer(cfg Config, projectDir, planPath string) {
 	path := pointerPath(projectDir)
-	if err := os.WriteFile(path, []byte(planPath+"\n"), 0644); err != nil {
+	if err := cfg.WriteFile(path, []byte(planPath+"\n"), 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write pending-plan pointer: %v\n", err)
 	}
 }
 
 // removePointer deletes the pending-plan pointer. Best-effort.
-func removePointer(projectDir string) {
-	os.Remove(pointerPath(projectDir))
+func removePointer(cfg Config, projectDir string) {
+	cfg.Remove(pointerPath(projectDir))
 }
 
 // planPathRegex matches paths to Claude Code plan files.
@@ -306,8 +324,9 @@ func slugify(title string, maxLen int) string {
 	s := b.String()
 	s = strings.TrimRight(s, "-")
 
-	if len(s) > maxLen {
-		s = s[:maxLen]
+	if utf8.RuneCountInString(s) > maxLen {
+		runes := []rune(s)
+		s = string(runes[:maxLen])
 		s = strings.TrimRight(s, "-")
 	}
 
@@ -316,9 +335,9 @@ func slugify(title string, maxLen int) string {
 
 // scanDestDir reads destDir once and returns both a duplicate filename (if any
 // existing file for the given date has identical content) and the next sequence
-// number. This avoids two separate os.ReadDir calls on the same directory.
-func scanDestDir(destDir, datePrefix string, content []byte) (dupName string, nextSeq int) {
-	entries, err := os.ReadDir(destDir)
+// number. This avoids two separate ReadDir calls on the same directory.
+func scanDestDir(cfg Config, destDir, datePrefix string, content []byte) (dupName string, nextSeq int) {
+	entries, err := cfg.ReadDir(destDir)
 	if err != nil {
 		return "", 1
 	}
@@ -349,7 +368,7 @@ func scanDestDir(destDir, datePrefix string, content []byte) (dupName string, ne
 		// Check for duplicate content, using file size as a fast path.
 		if dupName == "" {
 			if info, err := entry.Info(); err == nil && info.Size() == int64(len(content)) {
-				if existing, err := os.ReadFile(filepath.Join(destDir, name)); err == nil {
+				if existing, err := cfg.ReadFile(filepath.Join(destDir, name)); err == nil {
 					if bytes.Equal(existing, content) {
 						dupName = name
 					}
@@ -361,14 +380,14 @@ func scanDestDir(destDir, datePrefix string, content []byte) (dupName string, ne
 }
 
 // findLatestPlan returns the most recently modified .md file in ~/.claude/plans/.
-func findLatestPlan(homeDir func() (string, error)) string {
-	home, err := homeDir()
+func findLatestPlan(cfg Config) string {
+	home, err := cfg.HomeDir()
 	if err != nil {
 		return ""
 	}
 
 	plansDir := filepath.Join(home, ".claude", "plans")
-	entries, err := os.ReadDir(plansDir)
+	entries, err := cfg.ReadDir(plansDir)
 	if err != nil {
 		return ""
 	}
@@ -393,8 +412,8 @@ func findLatestPlan(homeDir func() (string, error)) string {
 	return latestPath
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
+func fileExists(cfg Config, path string) bool {
+	_, err := cfg.Stat(path)
 	return err == nil
 }
 
@@ -412,5 +431,7 @@ func (cfg Config) writeHookResponse(msg, context string) {
 			msg += " | " + notice
 		}
 	}
-	hooks.WritePostToolUse(cfg.Stdout, msg, context)
+	if err := hooks.WritePostToolUse(cfg.Stdout, msg, context); err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk preserve: write error: %v\n", err)
+	}
 }

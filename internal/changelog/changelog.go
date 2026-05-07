@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
-	"github.com/markwharton/plankit/internal/guard"
 	"github.com/markwharton/plankit/internal/hooks"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -66,41 +66,12 @@ type CommitGroup struct {
 	Items   []Commit
 }
 
-// TypeConfig maps a conventional commit type to a changelog section.
-type TypeConfig struct {
-	Type    string `json:"type"`
-	Section string `json:"section,omitempty"`
-	Hidden  bool   `json:"hidden,omitempty"`
-}
-
-// VersionFile describes a file containing a version string to update.
-type VersionFile struct {
-	Path string `json:"path"`
-	Type string `json:"type"` // "json" (TOML support would go here if needed)
-}
-
-// Hooks holds lifecycle hook commands for the changelog process.
-type Hooks struct {
-	PostVersion string `json:"postVersion,omitempty"`
-	PreCommit   string `json:"preCommit,omitempty"`
-}
-
-// PkConfig is the top-level .pk.json schema. Each key maps to a pk command.
-// Guard config lives in internal/guard so that pk changelog (which reads it
-// for the on-protected-branch refusal) and pk guard (which enforces it as a
-// hook) share a single schema definition.
-type PkConfig struct {
-	Changelog ChangelogConfig   `json:"changelog,omitempty"`
-	Guard     guard.GuardConfig `json:"guard,omitempty"`
-}
-
-// ChangelogConfig holds configuration for pk changelog.
-type ChangelogConfig struct {
-	Types        []TypeConfig  `json:"types,omitempty"`
-	VersionFiles []VersionFile `json:"versionFiles,omitempty"`
-	ShowScope    bool          `json:"showScope,omitempty"`
-	Hooks        Hooks         `json:"hooks,omitempty"`
-}
+// Type aliases for config types used throughout this package.
+type (
+	ChangelogConfig = config.ChangelogConfig
+	TypeConfig      = config.TypeConfig
+	VersionFile     = config.VersionFile
+)
 
 var defaultTypes = []TypeConfig{
 	{Type: "feat", Section: "Added"},
@@ -135,10 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
-	// 0. Verify we're in a git repository. Without this, later git calls
-	// fail with exit 128 and surface as "failed to list tags: exit status
-	// 128" — accurate but unfriendly. Catch the common case up front.
-	if _, err := cfg.GitExec("", "rev-parse", "--is-inside-work-tree"); err != nil {
+	// 0. Verify we're in a git repository.
+	if err := pkgit.IsInsideWorkTree(cfg.GitExec, ""); err != nil {
 		fmt.Fprintln(cfg.Stderr, "Error: not a git repository")
 		return 1
 	}
@@ -252,6 +221,10 @@ func Run(cfg Config) int {
 
 	// 13. Update version files.
 	for _, vf := range config.VersionFiles {
+		if vf.Type != "" && vf.Type != "json" {
+			fmt.Fprintf(cfg.Stderr, "Error: unsupported versionFile type %q for %s (only \"json\" is supported)\n", vf.Type, vf.Path)
+			return 1
+		}
 		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, vf.Path, ver); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: failed to update %s: %v\n", vf.Path, err)
 			return 1
@@ -378,20 +351,16 @@ func Undo(cfg Config) int {
 // FullConfig holds both changelog and guard config from .pk.json.
 type FullConfig struct {
 	ChangelogConfig
-	Guard guard.GuardConfig
+	Guard config.GuardConfig
 }
 
 // LoadFullConfig reads .pk.json and returns changelog + guard config.
 // Falls back to defaults if the file is missing. Returns an error if the
 // file exists but contains malformed JSON.
 func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
-	data, err := readFile(".pk.json")
+	pk, err := config.Load(readFile, ".pk.json")
 	if err != nil {
-		return FullConfig{ChangelogConfig: ChangelogConfig{Types: defaultTypes}}, nil
-	}
-	var pk PkConfig
-	if err := json.Unmarshal(data, &pk); err != nil {
-		return FullConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
+		return FullConfig{}, err
 	}
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes

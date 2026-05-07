@@ -41,6 +41,16 @@ func ReadInput(r io.Reader) (Input, error) {
 	return input, nil
 }
 
+// ResolveProjectDir determines the project directory from the CLAUDE_PROJECT_DIR
+// environment variable or the hook payload's CWD field.
+func ResolveProjectDir(env func(string) string, inputCWD string) string {
+	projectDir := env("CLAUDE_PROJECT_DIR")
+	if projectDir == "" {
+		projectDir = inputCWD
+	}
+	return projectDir
+}
+
 // ToolResponseString returns the tool_response field as a string.
 // If tool_response is a JSON string, it is unquoted.
 // If it is an object or array, it is returned as raw JSON text.

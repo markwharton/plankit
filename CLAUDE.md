@@ -51,7 +51,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 ### Directory Structure
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
+- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (init, preserve, ship).
 - `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior, plankit-tooling).
@@ -67,9 +67,10 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 
 ### Code Patterns
 
-- **Dependency injection via Config structs.** Every package exports a `Config` struct with injectable deps (`Stdin`, `Stdout`, `Stderr`, `GitExec`, `ReadFile`, etc.) and a `DefaultConfig()` factory wired to real implementations.
-- **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests.
-- **Hook commands** read JSON from stdin, write JSON to stdout, and always exit 0. Shared types live in `internal/hooks`.
+- **Dependency injection via Config structs.** Every package exports a `Config` struct with injectable deps (`Stdin`, `Stdout`, `Stderr`, `GitExec`, `ReadFile`, etc.) and a `DefaultConfig()` factory wired to real implementations. DI extends to standalone utility functions too: any function that does file I/O accepts injected `readFile`/`writeFile` parameters rather than calling `os.ReadFile`/`os.WriteFile` directly. The call site in `cmd/pk/main.go` passes the real implementations.
+- **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests. Test error paths, not just happy paths: file I/O failures, git operation failures, and config parse errors all need coverage because they protect against silent data corruption.
+- **Hook commands** read JSON from stdin, write JSON to stdout, and always exit 0. Shared types and helpers live in `internal/hooks`: `ResolveProjectDir` for project-dir resolution (env var then CWD fallback), `ReadInput` for payload parsing, `WritePostToolUse`/`WritePermissionDecision` for response writing. Response writers return errors; callers log to stderr and continue (hooks never fail on write errors).
+- **Shared git helpers** live in `internal/git`: `IsRepo` (stat-based, no subprocess) for commands where the check is a pre-condition, `IsInsideWorkTree` (gitExec-based, authoritative) for commands that already call git extensively. Use the one that matches the command's git surface.
 - **Managed files** embed a SHA marker (HTML comment for CLAUDE.md, YAML frontmatter `pk_sha256` for skills) so `pk setup` can detect user modifications.
 - **Embedded assets** via `//go:embed` — templates, skills, and rules are compiled into the binary.
 

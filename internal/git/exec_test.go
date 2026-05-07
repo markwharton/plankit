@@ -37,7 +37,10 @@ func TestExec_trimOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != out || out[len(out)-1] == '\n' {
+	if out == "" {
+		t.Fatal("expected non-empty output")
+	}
+	if out[len(out)-1] == '\n' {
 		t.Errorf("output should be trimmed, got %q", out)
 	}
 }

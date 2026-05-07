@@ -3,25 +3,16 @@
 package guard
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
 )
-
-// GuardConfig holds the guard section of .pk.json.
-type GuardConfig struct {
-	Branches []string `json:"branches,omitempty"`
-}
-
-// PkConfig reads just the guard portion of .pk.json.
-type PkConfig struct {
-	Guard GuardConfig `json:"guard,omitempty"`
-}
 
 // Config holds the dependencies for the guard command.
 type Config struct {
@@ -69,21 +60,18 @@ func Run(cfg Config) int {
 	}
 
 	// Determine project directory.
-	projectDir := cfg.Env("CLAUDE_PROJECT_DIR")
-	if projectDir == "" {
-		projectDir = input.CWD
-	}
+	projectDir := hooks.ResolveProjectDir(cfg.Env, input.CWD)
 	if projectDir == "" {
 		return 0
 	}
 
 	// Load guard config.
-	config, err := loadGuardConfig(cfg.ReadFile, projectDir)
+	guardCfg, err := loadGuardConfig(cfg.ReadFile, projectDir)
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk guard: %v\n", err)
 		return 0
 	}
-	if len(config.Branches) == 0 {
+	if len(guardCfg.Branches) == 0 {
 		return 0
 	}
 
@@ -95,14 +83,18 @@ func Run(cfg Config) int {
 	branch = strings.TrimSpace(branch)
 
 	// Check if current branch is protected.
-	for _, protected := range config.Branches {
+	for _, protected := range guardCfg.Branches {
 		if branch == protected {
 			if cfg.Ask {
 				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", branch)
-				hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason)
+				if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason); err != nil {
+					fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
+				}
 			} else {
 				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", branch)
-				hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, reason)
+				if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, reason); err != nil {
+					fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
+				}
 			}
 			return 0
 		}
@@ -123,21 +115,43 @@ func isGitMutation(command string) bool {
 	return false
 }
 
-// splitShellCommands splits a command string on shell operators (&&, ||, ;).
+// splitShellCommands splits a command string on shell operators (&&, ||, ;),
+// respecting single and double quotes so that operators inside quoted strings
+// are not treated as delimiters.
 func splitShellCommands(command string) []string {
-	// Replace operators with a common delimiter, then split.
-	s := command
-	s = strings.ReplaceAll(s, "&&", "\x00")
-	s = strings.ReplaceAll(s, "||", "\x00")
-	s = strings.ReplaceAll(s, ";", "\x00")
-	parts := strings.Split(s, "\x00")
+	var result []string
+	var current strings.Builder
+	inSingle, inDouble := false, false
 
-	result := make([]string, 0, len(parts))
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
-		if trimmed != "" {
-			result = append(result, trimmed)
+	for i := 0; i < len(command); i++ {
+		c := command[i]
+		if c == '\'' && !inDouble {
+			inSingle = !inSingle
+			current.WriteByte(c)
+		} else if c == '"' && !inSingle {
+			inDouble = !inDouble
+			current.WriteByte(c)
+		} else if !inSingle && !inDouble {
+			if i+1 < len(command) && (command[i:i+2] == "&&" || command[i:i+2] == "||") {
+				if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
+					result = append(result, trimmed)
+				}
+				current.Reset()
+				i++
+			} else if c == ';' {
+				if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
+					result = append(result, trimmed)
+				}
+				current.Reset()
+			} else {
+				current.WriteByte(c)
+			}
+		} else {
+			current.WriteByte(c)
 		}
+	}
+	if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
+		result = append(result, trimmed)
 	}
 	return result
 }
@@ -146,34 +160,25 @@ func splitShellCommands(command string) []string {
 func isGitMutationSingle(cmd string) bool {
 	mutations := []string{
 		"git commit",
-		"git push",
 		"git merge",
+		"git push",
 		"git rebase",
+		"git reset",
 	}
 	for _, m := range mutations {
 		if strings.HasPrefix(cmd, m+" ") || cmd == m {
 			return true
 		}
 	}
-
-	// Also block force push variants.
-	if strings.Contains(cmd, "git push") && (strings.Contains(cmd, "--force") || strings.Contains(cmd, " -f")) {
-		return true
-	}
-
 	return false
 }
 
 // loadGuardConfig reads .pk.json from the project directory and returns the guard config.
 // Returns an error if the file exists but contains malformed JSON.
-func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (GuardConfig, error) {
-	data, err := readFile(projectDir + "/.pk.json")
+func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (config.GuardConfig, error) {
+	pk, err := config.Load(readFile, filepath.Join(projectDir, ".pk.json"))
 	if err != nil {
-		return GuardConfig{}, nil
-	}
-	var pk PkConfig
-	if err := json.Unmarshal(data, &pk); err != nil {
-		return GuardConfig{}, fmt.Errorf("failed to parse .pk.json: %w", err)
+		return config.GuardConfig{}, err
 	}
 	return pk.Guard, nil
 }

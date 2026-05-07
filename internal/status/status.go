@@ -11,20 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/markwharton/plankit/internal/changelog"
+	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
-	"github.com/markwharton/plankit/internal/guard"
-	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/setup"
 )
-
-// pkConfig mirrors the full .pk.json structure using exported types from
-// each command package. We parse with proper models, not regex.
-type pkConfig struct {
-	Changelog changelog.ChangelogConfig `json:"changelog,omitempty"`
-	Guard     guard.GuardConfig         `json:"guard,omitempty"`
-	Release   release.ReleaseSection    `json:"release,omitempty"`
-}
 
 // Config holds the dependencies for the status command.
 type Config struct {
@@ -240,18 +230,18 @@ func isGitRepo(cfg Config, dir string) bool {
 	return git.IsRepo(cfg.Stat, dir)
 }
 
-// loadPKConfig parses .pk.json using exported types from each command package.
+// loadPKConfig parses .pk.json using the shared config loader.
 // Returns (config, exists, error). If the file doesn't exist, returns zero
 // values with exists=false. Parse errors propagate.
-func loadPKConfig(cfg Config) (pkConfig, bool, error) {
+func loadPKConfig(cfg Config) (config.PkConfig, bool, error) {
 	path := filepath.Join(cfg.ProjectDir, ".pk.json")
-	data, err := cfg.ReadFile(path)
-	if err != nil {
-		return pkConfig{}, false, nil
+	// Check existence: config.Load treats any readFile error as "missing".
+	if _, err := cfg.ReadFile(path); err != nil {
+		return config.PkConfig{}, false, nil
 	}
-	var parsed pkConfig
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return pkConfig{}, true, fmt.Errorf("failed to parse .pk.json: %w", err)
+	parsed, err := config.Load(cfg.ReadFile, path)
+	if err != nil {
+		return config.PkConfig{}, true, err
 	}
 	return parsed, true, nil
 }

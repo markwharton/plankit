@@ -1,10 +1,29 @@
 package git
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestIsInsideWorkTree_success(t *testing.T) {
+	gitExec := func(dir string, args ...string) (string, error) {
+		return "true", nil
+	}
+	if err := IsInsideWorkTree(gitExec, ""); err != nil {
+		t.Errorf("expected nil error, got %v", err)
+	}
+}
+
+func TestIsInsideWorkTree_failure(t *testing.T) {
+	gitExec := func(dir string, args ...string) (string, error) {
+		return "", fmt.Errorf("not a git repository")
+	}
+	if err := IsInsideWorkTree(gitExec, ""); err == nil {
+		t.Error("expected error, got nil")
+	}
+}
 
 func TestIsRepo_directGitDir(t *testing.T) {
 	dir := t.TempDir()

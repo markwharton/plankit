@@ -10,11 +10,24 @@ import (
 	"testing"
 )
 
+func withFS(cfg *Config) {
+	cfg.ReadFile = os.ReadFile
+	cfg.WriteFile = os.WriteFile
+	cfg.Stat = os.Stat
+	cfg.MkdirAll = os.MkdirAll
+	cfg.ReadDir = os.ReadDir
+	cfg.Remove = os.Remove
+	cfg.Rename = os.Rename
+	cfg.LookPath = func(string) (string, error) { return "/usr/local/bin/pk", nil }
+}
+
 func TestRun_freshProject(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -117,7 +130,9 @@ func TestRun_createsClaudeMD(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -156,7 +171,9 @@ func TestRun_skipsUnmanagedClaudeMD(t *testing.T) {
 	os.WriteFile(claudeFile, []byte("# My Custom CLAUDE.md\n"), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -171,7 +188,9 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md with marker.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	Run(cfg)
 
 	// User modifies it but keeps the marker line at the top.
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
@@ -184,7 +203,9 @@ func TestRun_skipsModifiedClaudeMD(t *testing.T) {
 
 	// Re-run — should skip.
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
+	cfg = Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	Run(cfg)
 
 	final, _ := os.ReadFile(claudeFile)
 	if !strings.Contains(string(final), "User's custom content") {
@@ -197,14 +218,18 @@ func TestRun_updatesUnmodifiedClaudeMD(t *testing.T) {
 	var stderr bytes.Buffer
 
 	// First run creates CLAUDE.md.
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	Run(cfg)
 
 	claudeFile := filepath.Join(projectDir, "CLAUDE.md")
 	original, _ := os.ReadFile(claudeFile)
 
 	// Re-run — should update (content unchanged, SHA matches).
 	stderr.Reset()
-	Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true})
+	cfg = Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	Run(cfg)
 
 	updated, _ := os.ReadFile(claudeFile)
 	// Content should be identical (same template, same SHA).
@@ -223,7 +248,9 @@ func TestRun_existingSettings(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -260,7 +287,9 @@ func TestRun_existingPermissions(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -301,7 +330,9 @@ func TestRun_duplicatePermission(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -328,7 +359,9 @@ func TestRun_invalidJSON(t *testing.T) {
 	os.WriteFile(settingsFile, []byte("not json"), 0644)
 
 	var stderr bytes.Buffer
-	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true})
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	err := Run(cfg)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -338,7 +371,9 @@ func TestRun_refusesNonGitDir(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"})
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}
+	withFS(&cfg)
+	err := Run(cfg)
 	if err == nil {
 		t.Fatal("expected error for non-git directory without AllowNonGit")
 	}
@@ -360,7 +395,9 @@ func TestRun_gitDirAllowsSetup(t *testing.T) {
 	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() with .git dir should succeed: %v", err)
 	}
 	// .claude should be created.
@@ -373,7 +410,9 @@ func TestRun_manualMode(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -450,13 +489,15 @@ func (f *fakeGitExec) exec(dir string, args ...string) (string, error) {
 }
 
 func baselineCfg(dir string, stderr *bytes.Buffer, fake *fakeGitExec) Config {
-	return Config{
+	cfg := Config{
 		Stderr:       stderr,
 		ProjectDir:   dir,
 		PreserveMode: "manual",
 		GuardMode:    "block",
 		GitExec:      fake.exec,
 	}
+	withFS(&cfg)
+	return cfg
 }
 
 func assertCallMade(t *testing.T, calls []string, want string) {
@@ -829,7 +870,9 @@ func TestRun_existingHooks(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -949,7 +992,7 @@ func TestEmbedSHA_frontmatter(t *testing.T) {
 
 func TestShouldUpdate_newFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new.md")
-	update, reason := shouldUpdate(path, "content", false)
+	update, reason := shouldUpdate(os.ReadFile, path, "content", false)
 	if !update {
 		t.Fatalf("shouldUpdate for new file = false (%s), want true", reason)
 	}
@@ -963,7 +1006,7 @@ func TestShouldUpdate_unmanagedFile(t *testing.T) {
 	path := filepath.Join(dir, "existing.md")
 	os.WriteFile(path, []byte("# My custom file\nContent here.\n"), 0644)
 
-	update, reason := shouldUpdate(path, "new content", false)
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
 	if update {
 		t.Fatal("shouldUpdate for unmanaged file = true, want false")
 	}
@@ -980,7 +1023,7 @@ func TestShouldUpdate_pristineHTMLComment(t *testing.T) {
 	managed := "<!-- pk:sha256:" + sha + " -->\n" + content
 	os.WriteFile(path, []byte(managed), 0644)
 
-	update, reason := shouldUpdate(path, "new content", false)
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
 	if !update {
 		t.Fatalf("shouldUpdate for pristine file = false (%s), want true", reason)
 	}
@@ -999,7 +1042,9 @@ func TestPruneSkills_removesUnmodifiedDeprecated(t *testing.T) {
 	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	changed := pruneSkills(fsCfg, skillsDir, map[string]bool{})
 
 	if !changed {
 		t.Error("pruneSkills returned false; expected true after removal")
@@ -1027,7 +1072,9 @@ func TestPruneSkills_preservesUserModified(t *testing.T) {
 	os.WriteFile(skillFile, []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	changed := pruneSkills(fsCfg, skillsDir, map[string]bool{})
 
 	if changed {
 		t.Error("pruneSkills returned true; expected false when nothing was removed")
@@ -1049,7 +1096,9 @@ func TestPruneSkills_ignoresUserCreated(t *testing.T) {
 	os.WriteFile(skillFile, []byte("---\nname: mine\n---\nMy own skill.\n"), 0644)
 
 	var stderr bytes.Buffer
-	changed := pruneSkills(skillsDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	changed := pruneSkills(fsCfg, skillsDir, map[string]bool{})
 
 	if changed {
 		t.Error("pruneSkills returned true; expected false when nothing pk-managed was found")
@@ -1072,7 +1121,9 @@ func TestPruneSkills_keepsCurrentlyEmbedded(t *testing.T) {
 	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	pruneSkills(skillsDir, map[string]bool{"keeper": true}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneSkills(fsCfg, skillsDir, map[string]bool{"keeper": true})
 
 	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
 		t.Errorf("currently-embedded skill should not be touched: %v", err)
@@ -1088,7 +1139,9 @@ func TestPruneRules_removesUnmodifiedDeprecated(t *testing.T) {
 	os.WriteFile(ruleFile, []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	changed := pruneRules(rulesDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	changed := pruneRules(fsCfg, rulesDir, map[string]bool{})
 
 	if !changed {
 		t.Error("pruneRules returned false; expected true after removal")
@@ -1110,7 +1163,9 @@ func TestPruneRules_preservesUserModified(t *testing.T) {
 	os.WriteFile(ruleFile, []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	pruneRules(rulesDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneRules(fsCfg, rulesDir, map[string]bool{})
 
 	if _, err := os.Stat(ruleFile); err != nil {
 		t.Errorf("user-modified rule should have been preserved: %v", err)
@@ -1126,7 +1181,9 @@ func TestPruneRules_ignoresUserCreated(t *testing.T) {
 	os.WriteFile(ruleFile, []byte("# My rule\n\nNo pk marker.\n"), 0644)
 
 	var stderr bytes.Buffer
-	pruneRules(rulesDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneRules(fsCfg, rulesDir, map[string]bool{})
 
 	if _, err := os.Stat(ruleFile); err != nil {
 		t.Errorf("user-created rule should have been left alone: %v", err)
@@ -1145,7 +1202,9 @@ func TestPruneRules_keepsCurrentlyEmbedded(t *testing.T) {
 	os.WriteFile(ruleFile, []byte(managed), 0644)
 
 	var stderr bytes.Buffer
-	pruneRules(rulesDir, map[string]bool{"keeper": true}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneRules(fsCfg, rulesDir, map[string]bool{"keeper": true})
 
 	if _, err := os.Stat(ruleFile); err != nil {
 		t.Errorf("currently-embedded rule should not be touched: %v", err)
@@ -1154,7 +1213,9 @@ func TestPruneRules_keepsCurrentlyEmbedded(t *testing.T) {
 
 func TestPruneSkills_missingDir(t *testing.T) {
 	var stderr bytes.Buffer
-	if pruneSkills("/nonexistent/skills/dir", map[string]bool{}, &stderr) {
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	if pruneSkills(fsCfg, "/nonexistent/skills/dir", map[string]bool{}) {
 		t.Error("pruneSkills should return false when the directory doesn't exist")
 	}
 	if stderr.Len() != 0 {
@@ -1164,7 +1225,9 @@ func TestPruneSkills_missingDir(t *testing.T) {
 
 func TestPruneRules_missingDir(t *testing.T) {
 	var stderr bytes.Buffer
-	if pruneRules("/nonexistent/rules/dir", map[string]bool{}, &stderr) {
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	if pruneRules(fsCfg, "/nonexistent/rules/dir", map[string]bool{}) {
 		t.Error("pruneRules should return false when the directory doesn't exist")
 	}
 	if stderr.Len() != 0 {
@@ -1179,7 +1242,9 @@ func TestPruneSkills_skipsNonDirEntries(t *testing.T) {
 	os.WriteFile(stray, []byte("# Notes about my skills\n"), 0644)
 
 	var stderr bytes.Buffer
-	pruneSkills(skillsDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneSkills(fsCfg, skillsDir, map[string]bool{})
 
 	if _, err := os.Stat(stray); err != nil {
 		t.Errorf("non-directory entries should be ignored: %v", err)
@@ -1196,7 +1261,9 @@ func TestPruneRules_skipsDirectoriesAndNonMd(t *testing.T) {
 	os.WriteFile(other, []byte("scratch notes\n"), 0644)
 
 	var stderr bytes.Buffer
-	pruneRules(rulesDir, map[string]bool{}, &stderr)
+	fsCfg := Config{Stderr: &stderr}
+	withFS(&fsCfg)
+	pruneRules(fsCfg, rulesDir, map[string]bool{})
 
 	if _, err := os.Stat(subdir); err != nil {
 		t.Errorf("directories under rules/ should be ignored: %v", err)
@@ -1207,7 +1274,7 @@ func TestPruneRules_skipsDirectoriesAndNonMd(t *testing.T) {
 }
 
 func TestEvaluateRemoval_missingFile(t *testing.T) {
-	if evaluateRemoval("/nonexistent/file.md") != "skip" {
+	if evaluateRemoval(os.ReadFile, "/nonexistent/file.md") != "skip" {
 		t.Error("evaluateRemoval should return \"skip\" for a missing file")
 	}
 }
@@ -1220,7 +1287,7 @@ func TestShouldUpdate_pristineFrontmatter(t *testing.T) {
 	managed := "---\nname: test\npk_sha256: " + sha + "\n---\n" + body
 	os.WriteFile(path, []byte(managed), 0644)
 
-	update, reason := shouldUpdate(path, "new content", false)
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
 	if !update {
 		t.Fatalf("shouldUpdate for pristine frontmatter file = false (%s), want true", reason)
 	}
@@ -1234,7 +1301,7 @@ func TestShouldUpdate_modifiedFile(t *testing.T) {
 	managed := "<!-- pk:sha256:" + sha + " -->\nuser modified this\n"
 	os.WriteFile(path, []byte(managed), 0644)
 
-	update, reason := shouldUpdate(path, "new content", false)
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
 	if update {
 		t.Fatal("shouldUpdate for modified file = true, want false")
 	}
@@ -1248,7 +1315,7 @@ func TestShouldUpdate_forceOverwrite(t *testing.T) {
 	path := filepath.Join(dir, "managed.md")
 	os.WriteFile(path, []byte("# custom\n"), 0644)
 
-	update, reason := shouldUpdate(path, "new content", true)
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", true)
 	if !update {
 		t.Fatalf("shouldUpdate with force = false (%s), want true", reason)
 	}
@@ -1261,9 +1328,11 @@ func TestWriteManaged_htmlComment(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
 	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
 
 	content := "# CLAUDE.md\nContent here.\n"
-	if _, err := writeManaged(path, content, &stderr, false); err != nil {
+	if _, err := writeManaged(cfg, path, content, false); err != nil {
 		t.Fatalf("writeManaged() error = %v", err)
 	}
 
@@ -1291,9 +1360,11 @@ func TestWriteManaged_frontmatter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "SKILL.md")
 	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
 
 	content := "---\nname: test\ndescription: A test\n---\nBody content.\n"
-	if _, err := writeManaged(path, content, &stderr, false); err != nil {
+	if _, err := writeManaged(cfg, path, content, false); err != nil {
 		t.Fatalf("writeManaged() error = %v", err)
 	}
 
@@ -1326,7 +1397,7 @@ func TestScriptVersion_found(t *testing.T) {
 	path := filepath.Join(dir, "install-pk.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
 
-	ver, found := ScriptVersion(path)
+	ver, found := ScriptVersion(os.ReadFile, path)
 	if !found {
 		t.Fatal("ScriptVersion did not find PK_VERSION")
 	}
@@ -1340,7 +1411,7 @@ func TestScriptVersion_customName(t *testing.T) {
 	path := filepath.Join(dir, "install.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\nMY_APP_VERSION=\"v1.2.3\"\n"), 0755)
 
-	ver, found := ScriptVersion(path)
+	ver, found := ScriptVersion(os.ReadFile, path)
 	if !found {
 		t.Fatal("ScriptVersion did not find MY_APP_VERSION")
 	}
@@ -1350,7 +1421,7 @@ func TestScriptVersion_customName(t *testing.T) {
 }
 
 func TestScriptVersion_notFound(t *testing.T) {
-	_, found := ScriptVersion(filepath.Join(t.TempDir(), "missing.sh"))
+	_, found := ScriptVersion(os.ReadFile, filepath.Join(t.TempDir(), "missing.sh"))
 	if found {
 		t.Error("ScriptVersion should return false when file does not exist")
 	}
@@ -1361,7 +1432,7 @@ func TestScriptVersion_noVersionLine(t *testing.T) {
 	path := filepath.Join(dir, "script.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\necho hello\n"), 0755)
 
-	_, found := ScriptVersion(path)
+	_, found := ScriptVersion(os.ReadFile, path)
 	if found {
 		t.Error("ScriptVersion should return false when no VERSION line")
 	}
@@ -1372,7 +1443,7 @@ func TestPinVersion_updatesVersion(t *testing.T) {
 	path := filepath.Join(dir, "install-pk.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\ninstall_dir=\"$HOME/.local/bin\"\n"), 0755)
 
-	updated, err := PinVersion(path, "0.8.1")
+	updated, err := PinVersion(os.ReadFile, os.WriteFile, path, "0.8.1")
 	if err != nil {
 		t.Fatalf("PinVersion() error = %v", err)
 	}
@@ -1391,7 +1462,7 @@ func TestPinVersion_customName(t *testing.T) {
 	path := filepath.Join(dir, "install.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\nMY_APP_VERSION=\"v1.0.0\"\n"), 0755)
 
-	updated, err := PinVersion(path, "1.1.0")
+	updated, err := PinVersion(os.ReadFile, os.WriteFile, path, "1.1.0")
 	if err != nil {
 		t.Fatalf("PinVersion() error = %v", err)
 	}
@@ -1406,7 +1477,7 @@ func TestPinVersion_customName(t *testing.T) {
 }
 
 func TestPinVersion_noFile(t *testing.T) {
-	updated, err := PinVersion(filepath.Join(t.TempDir(), "missing.sh"), "0.8.1")
+	updated, err := PinVersion(os.ReadFile, os.WriteFile, filepath.Join(t.TempDir(), "missing.sh"), "0.8.1")
 	if err != nil {
 		t.Fatalf("PinVersion should not error when file doesn't exist, got: %v", err)
 	}
@@ -1420,7 +1491,7 @@ func TestPinVersion_vPrefix(t *testing.T) {
 	path := filepath.Join(dir, "install-pk.sh")
 	os.WriteFile(path, []byte("#!/usr/bin/env bash\nPK_VERSION=\"v0.8.0\"\n"), 0755)
 
-	PinVersion(path, "v0.8.1")
+	PinVersion(os.ReadFile, os.WriteFile, path, "v0.8.1")
 	data, _ := os.ReadFile(path)
 	if strings.Contains(string(data), `"vv0.8.1"`) {
 		t.Error("PinVersion should not double-prefix v")
@@ -1554,7 +1625,7 @@ func TestPinVersionNamed_updatesGoConst(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("package main\n\nconst version = \"0.1.0\"\n\nfunc main() {}\n"), 0644)
 
-	updated, err := PinVersionNamed(path, "version", "0.2.0")
+	updated, err := PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "0.2.0")
 	if err != nil {
 		t.Fatalf("PinVersionNamed() error = %v", err)
 	}
@@ -1573,7 +1644,7 @@ func TestPinVersionNamed_preservesVPrefix(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("const version = \"v0.1.0\"\n"), 0644)
 
-	PinVersionNamed(path, "version", "0.2.0")
+	PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "0.2.0")
 	data, _ := os.ReadFile(path)
 	if !strings.Contains(string(data), `"v0.2.0"`) {
 		t.Errorf("should preserve v prefix, got: %s", string(data))
@@ -1585,7 +1656,7 @@ func TestPinVersionNamed_stripsVWhenBare(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("const version = \"0.1.0\"\n"), 0644)
 
-	PinVersionNamed(path, "version", "v0.2.0")
+	PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "v0.2.0")
 	data, _ := os.ReadFile(path)
 	if strings.Contains(string(data), `"v0.2.0"`) {
 		t.Errorf("should strip v prefix when existing value is bare, got: %s", string(data))
@@ -1596,7 +1667,7 @@ func TestPinVersionNamed_stripsVWhenBare(t *testing.T) {
 }
 
 func TestPinVersionNamed_noFile(t *testing.T) {
-	updated, err := PinVersionNamed(filepath.Join(t.TempDir(), "missing.go"), "version", "0.1.0")
+	updated, err := PinVersionNamed(os.ReadFile, os.WriteFile, filepath.Join(t.TempDir(), "missing.go"), "version", "0.1.0")
 	if err != nil {
 		t.Fatalf("should not error when file doesn't exist, got: %v", err)
 	}
@@ -1610,7 +1681,7 @@ func TestPinVersionNamed_noMatch(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("package main\n\nfunc main() {}\n"), 0644)
 
-	_, err := PinVersionNamed(path, "version", "0.1.0")
+	_, err := PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "0.1.0")
 	if err == nil {
 		t.Fatal("expected error for no match")
 	}
@@ -1624,7 +1695,7 @@ func TestReadVersionNamed_found(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("package main\n\nconst version = \"0.3.0\"\n"), 0644)
 
-	ver, found := ReadVersionNamed(path, "version")
+	ver, found := ReadVersionNamed(os.ReadFile, path, "version")
 	if !found {
 		t.Fatal("expected found=true")
 	}
@@ -1638,14 +1709,14 @@ func TestReadVersionNamed_notFound(t *testing.T) {
 	path := filepath.Join(dir, "main.go")
 	os.WriteFile(path, []byte("package main\n"), 0644)
 
-	_, found := ReadVersionNamed(path, "version")
+	_, found := ReadVersionNamed(os.ReadFile, path, "version")
 	if found {
 		t.Fatal("expected found=false")
 	}
 }
 
 func TestReadVersionNamed_missingFile(t *testing.T) {
-	_, found := ReadVersionNamed(filepath.Join(t.TempDir(), "missing.go"), "version")
+	_, found := ReadVersionNamed(os.ReadFile, filepath.Join(t.TempDir(), "missing.go"), "version")
 	if found {
 		t.Fatal("expected found=false for missing file")
 	}
@@ -1685,7 +1756,7 @@ func TestPinVersionNamed_firstMatchWins(t *testing.T) {
 	content := "const version = \"0.1.0\"\nvar version = \"0.2.0\"\n"
 	os.WriteFile(path, []byte(content), 0644)
 
-	PinVersionNamed(path, "version", "0.9.0")
+	PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "0.9.0")
 	data, _ := os.ReadFile(path)
 	lines := strings.Split(string(data), "\n")
 	if lines[0] != `const version = "0.9.0"` {
@@ -1700,7 +1771,9 @@ func TestWriteInstallScript_releaseVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if _, err := writeInstallScript(projectDir, "0.7.1", &stderr); err != nil {
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, "0.7.1"); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1733,7 +1806,9 @@ func TestWriteInstallScript_vPrefixedVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if _, err := writeInstallScript(projectDir, "v0.8.0", &stderr); err != nil {
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, "v0.8.0"); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1748,7 +1823,9 @@ func TestWriteInstallScript_devBuild(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if _, err := writeInstallScript(projectDir, "dev", &stderr); err != nil {
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, "dev"); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1766,7 +1843,9 @@ func TestWriteInstallScript_emptyVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if _, err := writeInstallScript(projectDir, "", &stderr); err != nil {
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, ""); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1780,9 +1859,11 @@ func TestWriteInstallScript_idempotent(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	writeInstallScript(projectDir, "0.7.0", &stderr)
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	writeInstallScript(wsCfg, projectDir, "0.7.0")
 	stderr.Reset()
-	writeInstallScript(projectDir, "0.7.1", &stderr)
+	writeInstallScript(wsCfg, projectDir, "0.7.1")
 
 	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
 	data, _ := os.ReadFile(scriptPath)
@@ -1795,7 +1876,9 @@ func TestWriteInstallScript_versionIsolatedPath(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if _, err := writeInstallScript(projectDir, "0.14.1", &stderr); err != nil {
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, "0.14.1"); err != nil {
 		t.Fatalf("writeInstallScript() error = %v", err)
 	}
 
@@ -1830,7 +1913,9 @@ func TestRun_sessionStartHook(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -1881,9 +1966,11 @@ func TestWriteManaged_skipsModified(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "CLAUDE.md")
 	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
 
 	// Write initial managed file.
-	writeManaged(path, "# Original\nContent.\n", &stderr, false)
+	writeManaged(cfg, path, "# Original\nContent.\n", false)
 
 	// Simulate user modification: keep marker but change body.
 	data, _ := os.ReadFile(path)
@@ -1894,7 +1981,7 @@ func TestWriteManaged_skipsModified(t *testing.T) {
 
 	// Re-run writeManaged — should skip.
 	stderr.Reset()
-	writeManaged(path, "# New content\n", &stderr, false)
+	writeManaged(cfg, path, "# New content\n", false)
 
 	final, _ := os.ReadFile(path)
 	if !strings.Contains(string(final), "User modified this") {
@@ -1975,7 +2062,9 @@ func TestRun_preservesSettingsKeyOrder(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "v1.0.0"}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "v1.0.0"}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -2053,7 +2142,9 @@ func TestRun_preservesUnknownHookFields(t *testing.T) {
 	os.WriteFile(settingsFile, []byte(existing), 0644)
 
 	var stderr bytes.Buffer
-	if err := Run(Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}); err != nil {
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -2104,6 +2195,7 @@ func TestRun_commitTip_shownOnChangedRelease(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	withFS(&cfg)
 
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -2123,6 +2215,7 @@ func TestRun_commitTip_hiddenWhenIdempotent(t *testing.T) {
 	var firstStderr, secondStderr bytes.Buffer
 
 	first := Config{Stderr: &firstStderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	withFS(&first)
 	if err := Run(first); err != nil {
 		t.Fatalf("first Run() error = %v", err)
 	}
@@ -2132,6 +2225,7 @@ func TestRun_commitTip_hiddenWhenIdempotent(t *testing.T) {
 	}
 
 	second := Config{Stderr: &secondStderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "0.7.1"}
+	withFS(&second)
 	if err := Run(second); err != nil {
 		t.Fatalf("second Run() error = %v", err)
 	}
@@ -2144,6 +2238,7 @@ func TestRun_commitTip_hiddenOnDevBuild(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true, Version: "dev"}
+	withFS(&cfg)
 
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -2158,6 +2253,7 @@ func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
 	projectDir := t.TempDir()
 	var stderr bytes.Buffer
 	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
 
 	if err := Run(cfg); err != nil {
 		t.Fatalf("Run() error = %v", err)

@@ -60,44 +60,21 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 }
 
 // happyGitMerge returns git stubs for a merge flow release state.
+// It extends happyGit with branch-switching and merge support.
 func happyGitMerge(tag, sourceBranch, releaseBranch string) map[string]func(args ...string) (string, error) {
 	currentBranch := sourceBranch
-	return map[string]func(args ...string) (string, error){
-		"log": func(args ...string) (string, error) {
-			return tag, nil
-		},
-		"tag": func(args ...string) (string, error) {
-			return "", nil
-		},
-		"status": func(args ...string) (string, error) {
-			return "", nil
-		},
-		"branch": func(args ...string) (string, error) {
-			return currentBranch, nil
-		},
-		"ls-remote": func(args ...string) (string, error) {
-			return "abc123\trefs/heads/" + sourceBranch, nil
-		},
-		"fetch": func(args ...string) (string, error) {
-			return "", nil
-		},
-		"merge-base": func(args ...string) (string, error) {
-			return "abc123", nil
-		},
-		"rev-parse": func(args ...string) (string, error) {
-			return "abc123", nil
-		},
-		"switch": func(args ...string) (string, error) {
-			currentBranch = args[1]
-			return "", nil
-		},
-		"merge": func(args ...string) (string, error) {
-			return "", nil
-		},
-		"push": func(args ...string) (string, error) {
-			return "", nil
-		},
+	git := happyGit(tag, sourceBranch)
+	git["branch"] = func(args ...string) (string, error) {
+		return currentBranch, nil
 	}
+	git["switch"] = func(args ...string) (string, error) {
+		currentBranch = args[1]
+		return "", nil
+	}
+	git["merge"] = func(args ...string) (string, error) {
+		return "", nil
+	}
+	return git
 }
 
 func noConfig(_ string) ([]byte, error) {
@@ -110,6 +87,30 @@ func mergeConfig(releaseBranch string) func(string) ([]byte, error) {
 			return []byte(fmt.Sprintf(`{"release":{"branch":%q}}`, releaseBranch)), nil
 		}
 		return nil, os.ErrNotExist
+	}
+}
+
+// --- Repo check ---
+
+func TestRun_notAGitRepo(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGit("v1.0.0", "main")
+	git["rev-parse"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("fatal: not a git repository")
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "not a git repository") {
+		t.Errorf("stderr = %q, want not-a-git-repo message", stderr.String())
 	}
 }
 
@@ -622,6 +623,67 @@ func TestRun_mergeFlow_pushFails_switchesBack(t *testing.T) {
 	}
 }
 
+func TestRun_mergeFlow_pushFails_rollsMergeBack(t *testing.T) {
+	var stderr bytes.Buffer
+	var resetArgs []string
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["push"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("permission denied")
+	}
+	git["reset"] = func(args ...string) (string, error) {
+		resetArgs = args
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if len(resetArgs) < 3 {
+		t.Fatal("expected reset --hard to roll back merge")
+	}
+	if resetArgs[1] != "--hard" || resetArgs[2] != "abc123" {
+		t.Errorf("reset args = %v, want [reset --hard abc123]", resetArgs)
+	}
+	if !strings.Contains(stderr.String(), "Rolled back merge on main") {
+		t.Errorf("stderr = %q, want rollback message", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_fetchWarning(t *testing.T) {
+	var stderr bytes.Buffer
+
+	git := happyGitMerge("v1.0.0", "dev", "main")
+	git["fetch"] = func(args ...string) (string, error) {
+		// Fail only the release branch fetch, not the source branch fetch.
+		if len(args) >= 3 && args[2] == "main" {
+			return "", fmt.Errorf("could not resolve host")
+		}
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (fetch warning is non-fatal)", code)
+	}
+	if !strings.Contains(stderr.String(), "Warning: failed to fetch main from origin") {
+		t.Errorf("stderr = %q, want fetch warning", stderr.String())
+	}
+}
+
 func TestRun_mergeFlow_dirtyTree(t *testing.T) {
 	var stderr bytes.Buffer
 	git := happyGitMerge("v1.0.0", "dev", "main")
@@ -698,5 +760,28 @@ func TestRun_trunkFlow_noReleaseBranch(t *testing.T) {
 	}
 	if pushArgs[2] != "develop" {
 		t.Errorf("push branch = %q, want develop", pushArgs[2])
+	}
+}
+
+func TestRun_branchCheckFailure(t *testing.T) {
+	var stderr bytes.Buffer
+
+	git := happyGit("v1.0.0", "develop")
+	git["branch"] = func(args ...string) (string, error) {
+		return "", fmt.Errorf("git branch failed")
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "git branch failed") {
+		t.Errorf("stderr = %q, want branch failure message", stderr.String())
 	}
 }
