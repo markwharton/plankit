@@ -52,6 +52,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
 - `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
+- `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (init, preserve, ship).
 - `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior, plankit-tooling).
