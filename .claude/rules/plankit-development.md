@@ -12,7 +12,7 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 
 ## Evolving pk Commands
 
-- **Grep existing flag/mode enumerations before declaring done.** Adding or renaming a `pk` command option is a concept change, not just a command-doc update. Before finishing, grep the repo for existing option lists (`README.md`, other command docs) and add the new option where others are enumerated. The mechanical "code → tests → command doc" loop stops at the command doc; the grep catches the higher-level docs that the CLAUDE.md documentation rule requires updating for concept changes.
+- **Grep existing flag/mode enumerations before declaring done.** Adding or renaming a `pk` command option is a concept change, not just a command-doc update. Before finishing, grep the repo for existing option lists (`README.md`, other command docs) and add the new option where others are enumerated. The mechanical "code → tests → command doc → reference docs" loop stops at the reference docs; the grep catches the higher-level docs that the CLAUDE.md documentation rule requires updating for concept changes. Reference docs (`docs/pk-json.md`, `docs/error-reference.md`, `docs/environment-variables.md`) centralize cross-command information: config keys, error messages, and environment variables respectively. New docs in `docs/` go in the right README section: guides (adoption, methodology, versioning) under Documentation, lookup references (config schema, error messages, env vars) under Reference.
 
 ## Tip Messages
 

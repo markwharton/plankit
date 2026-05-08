@@ -69,6 +69,18 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 | `pk pin` | Update pinned version in a file. [Details](docs/pk-pin.md) |
 | `pk version` | Print version and check for updates. [Details](docs/pk-version.md) |
 
+## Skills and commands
+
+plankit has three skills that wrap pk commands into workflows Claude Code can run:
+
+| Skill | Wraps | What it does |
+|-------|-------|--------------|
+| `/init` | — | Analyze the codebase and generate project conventions for CLAUDE.md and `.pk.json` |
+| `/preserve` | `pk preserve` | Save the approved plan to `docs/plans/` and commit |
+| `/ship` | `pk changelog` + `pk release` | Preview and confirm changelog, then preview and confirm release |
+
+Skills add a preview+confirm cycle and handle the sequencing. The underlying pk commands work standalone from a terminal for power users who want to skip the prompts.
+
 ## Documentation
 
 - [Adoption](docs/adoption.md): layered adoption from foundation to release management
@@ -76,6 +88,12 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 - [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
 - [Resources](docs/resources.md): Claude Code best practices, git references
 - [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts
+
+### Reference
+
+- [.pk.json](docs/pk-json.md): configuration schema
+- [Environment Variables](docs/environment-variables.md): variables pk reads and sets
+- [Error Reference](docs/error-reference.md): common errors, causes, and recovery
 
 ## Known Limitations
 

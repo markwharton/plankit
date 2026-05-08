@@ -96,7 +96,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 ### Documentation
 
 - Convention format: bold principle, then concise context — plain statement when the rule speaks for itself.
-- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`). New command docs follow `docs/command-doc-template.md`. Higher-level docs (README, methodology) link to command docs and only change when concepts change. When they already enumerate options or modes, a new option is a concept change — update them too.
+- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`) → reference docs. New command docs follow `docs/command-doc-template.md`. Reference docs (`docs/pk-json.md`, `docs/error-reference.md`, `docs/environment-variables.md`) centralize information that spans multiple commands: when a change adds a config key, error message, or environment variable, update the relevant reference doc in the same pass. Higher-level docs (README, methodology) link to command docs and only change when concepts change. When they already enumerate options or modes, a new option is a concept change — update them too.
 - Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally).
 
 ### Commits and Releases
