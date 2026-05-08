@@ -180,13 +180,23 @@ Error: "abc" is not valid semver
 
 ## pk version
 
-### pinned version mismatch
+### pinned version mismatch (binary behind)
 
 ```
-Note: .claude/install-pk.sh pins v0.18.0 but you're running v0.19.0 — re-run 'pk setup' to update
+Note: .claude/install-pk.sh pins v0.19.2 but you're running 0.19.1 — run 'go install github.com/markwharton/plankit/cmd/pk@latest' to update
 ```
 
-**Cause:** The bootstrap script was written by an older version of pk. Cloud sandboxes will install the pinned version, not the version running locally.
+**Cause:** A newer version was released and the bootstrap script was updated, but the local binary hasn't been reinstalled yet.
+
+**Fix:** Run `go install github.com/markwharton/plankit/cmd/pk@latest` to update the binary.
+
+### pinned version mismatch (script behind)
+
+```
+Note: .claude/install-pk.sh pins v0.18.0 but you're running 0.19.0 — re-run 'pk setup' to update
+```
+
+**Cause:** The local binary is newer than the version pinned in the bootstrap script. Cloud sandboxes will install the pinned version, not the version running locally.
 
 **Fix:** Run `pk setup` to update the pin to the current version.
 

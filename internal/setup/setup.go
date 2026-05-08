@@ -334,7 +334,7 @@ func Run(cfg Config) error {
 
 	// Commit-message tip: shown only when something actually changed on disk
 	// and pk is a real release build (dev builds have no meaningful version to pin).
-	if anyChanged && cfg.Version != "" && cfg.Version != "dev" {
+	if anyChanged && !version.IsDevBuild(cfg.Version) {
 		tipVersion := cfg.Version
 		if !strings.HasPrefix(tipVersion, "v") {
 			tipVersion = "v" + tipVersion

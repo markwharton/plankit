@@ -305,7 +305,7 @@ func VerboseInfo() string {
 	if len(commitSHA) > 7 {
 		commitSHA = commitSHA[:7]
 	}
-	if dirty && Version() == "dev" {
+	if dirty && IsDevBuild(Version()) {
 		commitSHA += " (dirty)"
 	}
 	return fmt.Sprintf("  go: %s\n  build: %s\n  commit: %s", goVer, buildDate, commitSHA)

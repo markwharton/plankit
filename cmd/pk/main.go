@@ -314,8 +314,14 @@ func runVersion(args []string) {
 	if scriptVer, found := setup.ScriptVersion(os.ReadFile, ".claude/install-pk.sh"); found {
 		running := version.Version()
 		pinned := strings.TrimPrefix(scriptVer, "v")
-		if running != "dev" && pinned != running {
-			fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — re-run 'pk setup' to update\n", scriptVer, running)
+		if !version.IsDevBuild(running) && pinned != running {
+			pinnedSemver, pok := version.ParseSemver(pinned)
+			runningSemver, rok := version.ParseSemver(running)
+			if pok && rok && pinnedSemver.Compare(runningSemver) > 0 {
+				fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — run 'go install github.com/markwharton/plankit/cmd/pk@latest' to update\n", scriptVer, running)
+			} else {
+				fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — re-run 'pk setup' to update\n", scriptVer, running)
+			}
 		}
 	}
 
