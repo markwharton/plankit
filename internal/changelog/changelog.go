@@ -147,8 +147,8 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to list tags: %v\n", err)
 		return 1
 	}
-	latestTag := firstLine(tagOutput)
-	if latestTag == "" {
+	latestTag, baseVersion, found := latestSemverTag(tagOutput)
+	if !found {
 		// Origin has tags, local doesn't — common in shallow-clone sandboxes
 		// that fetch only the working branch. Point at fetch, not baseline.
 		if remoteTags, err := cfg.GitExec("", "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
@@ -159,11 +159,6 @@ func Run(cfg Config) int {
 		fmt.Fprintln(cfg.Stderr, "Error: no version tags found")
 		fmt.Fprintln(cfg.Stderr, "  To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push")
 		fmt.Fprintln(cfg.Stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
-		return 1
-	}
-	baseVersion, ok := version.ParseSemver(latestTag)
-	if !ok {
-		fmt.Fprintf(cfg.Stderr, "Error: invalid version tag %q\n", latestTag)
 		return 1
 	}
 
@@ -675,13 +670,15 @@ func lastLine(s string) string {
 	return ""
 }
 
-// firstLine returns the first non-empty line from s.
-func firstLine(s string) string {
-	for _, line := range strings.Split(s, "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return line
+func latestSemverTag(tagOutput string) (string, version.Semver, bool) {
+	for _, line := range strings.Split(tagOutput, "\n") {
+		tag := strings.TrimSpace(line)
+		if tag == "" {
+			continue
+		}
+		if sv, ok := version.ParseSemver(tag); ok {
+			return tag, sv, true
 		}
 	}
-	return ""
+	return "", version.Semver{}, false
 }

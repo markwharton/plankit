@@ -657,6 +657,40 @@ func TestRun_noLocalTagsButOriginHas(t *testing.T) {
 	}
 }
 
+func TestRun_skipsNonSemverTags(t *testing.T) {
+	var stderr bytes.Buffer
+	var writtenContent []byte
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0-pre-standalone\nv0.1.0\n", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			if args[0] == "remote" {
+				return "git@github.com:owner/repo.git", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error {
+			writtenContent = data
+			return nil
+		},
+		Now: fixedTime,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(string(writtenContent), "v0.2.0") {
+		t.Errorf("should bump from v0.1.0 to v0.2.0, got: %s", string(writtenContent))
+	}
+}
+
 func TestRun_firstRelease(t *testing.T) {
 	var stderr bytes.Buffer
 	var gitCalls []string
