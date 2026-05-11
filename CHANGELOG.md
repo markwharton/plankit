@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.4] - 2026-05-12
+
+### Fixed
+
+- check branch exists on origin before committing (8896ce3)
+- exit plan mode before executing action skills (6e9bd97)
+
 ## [v0.19.3] - 2026-05-11
 
 ### Fixed
@@ -668,3 +675,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.1]: https://github.com/markwharton/plankit/compare/v0.19.0...v0.19.1
 [v0.19.2]: https://github.com/markwharton/plankit/compare/v0.19.1...v0.19.2
 [v0.19.3]: https://github.com/markwharton/plankit/compare/v0.19.2...v0.19.3
+[v0.19.4]: https://github.com/markwharton/plankit/compare/v0.19.3...v0.19.4
