@@ -1370,6 +1370,34 @@ func TestRun_guardedBranchAllowsUnprotected(t *testing.T) {
 	}
 }
 
+func TestRun_branchNotOnOrigin(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "develop\n", nil
+			}
+			if args[0] == "ls-remote" {
+				return "", fmt.Errorf("exit status 2")
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "does not exist on origin") {
+		t.Errorf("stderr = %q, want 'does not exist on origin'", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "git push -u origin develop") {
+		t.Errorf("stderr = %q, want push advice", stderr.String())
+	}
+}
+
 func TestRun_dirtyWorkingTree(t *testing.T) {
 	var stderr bytes.Buffer
 

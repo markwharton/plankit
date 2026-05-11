@@ -37,6 +37,17 @@ Error: you're on "main" which is a protected branch — switch to your developme
 
 **Fix:** Switch to your development branch (`git switch develop`).
 
+### branch not on origin
+
+```
+Error: develop does not exist on origin — push it first:
+  git push -u origin develop
+```
+
+**Cause:** `pk changelog` checks that the current branch exists on the remote before committing. Without this, `pk changelog` succeeds but `pk release` fails, leaving a Release-Tag commit that requires a manual push to continue.
+
+**Fix:** Push the branch: `git push -u origin develop`.
+
 ### working tree not clean
 
 ```

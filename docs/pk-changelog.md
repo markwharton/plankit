@@ -16,13 +16,14 @@ pk changelog --exclude abc1234,def5678      # drop commits from the section by s
 
 1. Checks if the current branch is protected by `guard.branches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
 2. Verifies the working tree is clean (skipped in `--dry-run` mode). Exits with an error if there are uncommitted changes.
-3. Reads the latest version tag (git tags are the single version source)
-4. Scans commits since that tag for conventional commit messages
-5. Groups commits by type into changelog sections
-6. Writes or updates CHANGELOG.md with the new version section
-7. Updates version files if configured
-8. Runs lifecycle hooks if configured
-9. Commits CHANGELOG.md and all modified files, adding a `Release-Tag: vX.Y.Z` trailer to the commit body via `git commit --trailer`
+3. Verifies the current branch exists on origin. Without this, `pk changelog` would succeed but `pk release` would fail, leaving a stranded Release-Tag commit.
+4. Reads the latest version tag (git tags are the single version source)
+5. Scans commits since that tag for conventional commit messages
+6. Groups commits by type into changelog sections
+7. Writes or updates CHANGELOG.md with the new version section
+8. Updates version files if configured
+9. Runs lifecycle hooks if configured
+10. Commits CHANGELOG.md and all modified files, adding a `Release-Tag: vX.Y.Z` trailer to the commit body via `git commit --trailer`
 
 No git tag is created by `pk changelog`. The tag is the responsibility of `pk release`, which reads the trailer from HEAD and creates the tag just before pushing.
 

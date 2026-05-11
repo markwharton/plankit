@@ -141,7 +141,20 @@ func Run(cfg Config) int {
 		}
 	}
 
-	// 4. Get latest tag.
+	// 4. Check that the current branch exists on origin. Without this,
+	// pk changelog succeeds but pk release fails — leaving the user with a
+	// Release-Tag commit and a manual push before they can continue.
+	if branch, err := cfg.GitExec("", "branch", "--show-current"); err == nil {
+		branch = strings.TrimSpace(branch)
+		if branch != "" {
+			if _, err := cfg.GitExec("", "ls-remote", "--exit-code", "--heads", "origin", branch); err != nil {
+				fmt.Fprintf(cfg.Stderr, "Error: %s does not exist on origin — push it first:\n  git push -u origin %s\n", branch, branch)
+				return 1
+			}
+		}
+	}
+
+	// 5. Get latest tag.
 	tagOutput, err := cfg.GitExec("", "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to list tags: %v\n", err)
