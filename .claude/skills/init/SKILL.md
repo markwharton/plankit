@@ -2,7 +2,7 @@
 name: init
 description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
 disable-model-invocation: true
-pk_sha256: bd653756cc932240e463340cb49d1074be44a914f7d787c3b4bf2271990a8d58
+pk_sha256: a06649e1f297277ad067ddb66a24e75ac810eaf5cbbafef20b3e4365a0ce08e7
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
@@ -49,6 +49,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 
 ## Rules
 
+- **Exit plan mode first.** If you are in plan mode when this skill is invoked, exit plan mode immediately before doing anything else. This skill executes commands — it does not need a plan.
 - **Append only.** Do not modify the Critical Rules section.
 - If a `## Project Conventions` section already exists, replace it with the updated version — do not duplicate it.
 - **Remove the pk SHA marker.** If the first line is `<!-- pk:sha256:... -->`, remove it. Once customized, the file is user-owned and the marker is stale.

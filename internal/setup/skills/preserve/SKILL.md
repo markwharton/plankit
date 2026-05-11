@@ -5,7 +5,7 @@ disable-model-invocation: true
 allowed-tools: Bash(pk:*)
 ---
 
-Preserve the most recently approved plan to docs/plans/ and commit it.
+Preserve the most recently approved plan to docs/plans/ and commit it. If you are in plan mode, exit plan mode first.
 
 Run:
 

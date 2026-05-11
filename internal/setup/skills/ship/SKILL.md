@@ -47,6 +47,7 @@ Auto mode changes steps 2 and 3: run the dry-run, check for errors, and if clean
 
 ## Rules
 
+- **Exit plan mode first.** If you are in plan mode when this skill is invoked, exit plan mode immediately before doing anything else. This skill executes commands — it does not need a plan.
 - Never skip a confirmation unless auto mode is active and the dry-run completed without errors.
 - If the user declines at step 2, stop — do not proceed to step 3.
 - If `pk changelog` succeeds but `pk release` fails, the user can simply re-run `/ship` — step 1 will detect the `Release-Tag` trailer and resume at step 3.
