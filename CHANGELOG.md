@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.5] - 2026-05-13
+
+### Fixed
+
+- rename /init to /conventions, reorder steps, label trunk flow (8419a2c)
+
 ## [v0.19.4] - 2026-05-12
 
 ### Fixed
@@ -676,3 +682,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.2]: https://github.com/markwharton/plankit/compare/v0.19.1...v0.19.2
 [v0.19.3]: https://github.com/markwharton/plankit/compare/v0.19.2...v0.19.3
 [v0.19.4]: https://github.com/markwharton/plankit/compare/v0.19.3...v0.19.4
+[v0.19.5]: https://github.com/markwharton/plankit/compare/v0.19.4...v0.19.5
