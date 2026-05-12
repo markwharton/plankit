@@ -208,6 +208,7 @@ func Run(cfg Config) int {
 	} else if releaseBranch == "" {
 		// Trunk flow: no releaseBranch configured — tag HEAD, push current branch.
 		// We already checked tag exists above. Just note the branch.
+		fmt.Fprintln(cfg.Stderr, "  Trunk flow (no release.branch in .pk.json)")
 		fmt.Fprintf(cfg.Stderr, "  On %s branch\n", sourceBranch)
 	}
 

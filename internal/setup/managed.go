@@ -213,7 +213,7 @@ func writeManaged(cfg Config, path string, content string, force bool) (bool, er
 }
 
 // displayName returns a short display name for a managed file path.
-// Uses parent/file for skills (e.g., "init/SKILL.md") and just the filename otherwise.
+// Uses parent/file for skills (e.g., "conventions/SKILL.md") and just the filename otherwise.
 func displayName(path string) string {
 	dir := filepath.Base(filepath.Dir(path))
 	base := filepath.Base(path)

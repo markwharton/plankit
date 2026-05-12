@@ -10,8 +10,8 @@ import (
 	"github.com/markwharton/plankit/internal/version"
 )
 
-// The /init skill also carries a copy of this template for when CLAUDE.md is
-// missing at /init time. Update both when changing the Critical Rules header.
+// The /conventions skill also carries a copy of this template for when CLAUDE.md
+// is missing. Update both when changing the Critical Rules header.
 //
 //go:embed template/CLAUDE.md
 var templateFS embed.FS

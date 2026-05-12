@@ -1,6 +1,6 @@
 ---
-name: init
-description: Initialize project-specific CLAUDE.md conventions by analyzing the codebase
+name: conventions
+description: Discover project conventions and configure .pk.json by analyzing the codebase
 disable-model-invocation: true
 ---
 
@@ -41,9 +41,9 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    - Are there branches that should never receive direct commits? (e.g., `main`, `production`)
    - Should releases merge into a separate branch before pushing? Which one? (e.g., `main`)
    - Custom changelog commit types beyond the defaults, or use the defaults?
-5. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. Only include a "never commit directly to X" convention if the user specified protected branches in step 4.
-6. Show the proposed section to the user and ask for confirmation before writing.
-7. Create or update `.pk.json` based on step 4 answers. If the user specified no protected branches, no release branch, and no custom changelog types, skip this step — do not create an empty `.pk.json`. Otherwise include only the opted-in keys: `{"guard": {"branches": [...]}}`, `{"release": {"branch": "..."}}`, `{"changelog": {"types": [...]}}`. If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
+5. Create or update `.pk.json` based on step 4 answers. If the user specified no protected branches, no release branch, and no custom changelog types, skip this step — do not create an empty `.pk.json`. Otherwise include only the opted-in keys: `{"guard": {"branches": [...]}}`, `{"release": {"branch": "..."}}`, `{"changelog": {"types": [...]}}`. If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
+6. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. Only include a "never commit directly to X" convention if the user specified protected branches in step 4.
+7. Show the proposed section to the user and ask for confirmation before writing.
 8. Offer a baseline nudge if versioned releases are planned. If the user opted into release or changelog customization in step 4 (non-"none" answer to either), check for a version tag by running `git tag --list 'v*' --sort=-v:refname`. If the output is empty or nothing parses as semver, tell the user: "No version tags found. To anchor `pk changelog`, run `pk setup --baseline --push`. Use `--at <ref>` to fold prior commits into the first changelog entry." This is advisory — do not run the command from the skill. Remote state changes belong in explicit user-invoked commands.
 
 ## Rules
@@ -56,5 +56,6 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
 - Include the project's test command, build command, and any deployment patterns you discover.
 - If the project uses `.pk.json` with configured commit types, include them in the conventions.
 - For business rules, read into services, components, and pages — do not stop at file structure. Extract actual values, defaults, and logic constraints.
+- **Write .pk.json immediately after config questions.** Do not defer it past the CLAUDE.md draft and confirmation steps. The release workflow depends on this file; skipping it silently degrades `pk release` to trunk flow.
 - **Configuration mapping:** Protected branches configures `guard.branches`, release branch configures `release.branch`, custom changelog types configures `changelog.types`. Default commit types: `build`, `chore`, `ci`, `deprecate`, `docs`, `feat`, `fix`, `perf`, `plan` (hidden), `refactor`, `revert`, `security`, `style`, `test`.
 - If GitHub Actions use mutable tags (e.g., `@v4`), report this to the user as a security finding — mutable tags are vulnerable to supply chain attacks. If `.github/dependabot.yml` is missing or does not cover GitHub Actions, mention it as a way to keep pinned SHAs current. Include relevant conventions in the draft if the project has workflow files.

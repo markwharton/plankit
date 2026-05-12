@@ -77,7 +77,7 @@ git push -u origin develop
 - **Two explicit pushes** — `git push -u origin main` first, then `git push origin v0.0.0`. At the init stage, reviewing each step matters more than brevity. When the pattern is trusted and boring, this could collapse to `pk setup --baseline --push`. For now, keep the explicit pushes.
 - **Setup commit message** — `"chore: pk setup"`. Short, accurate, no flavor.
 - **`develop` created and pushed at init.** `pk release` expects `origin/develop` to exist (it runs `git fetch origin develop` and `merge-base HEAD origin/develop` as pre-flight). Establishing the branch on origin at init avoids a cryptic git error weeks later and keeps every plankit-tooled project in the same starting state.
-- **No `/init` afterwards** — the project doesn't have conventions to discover yet. The user runs `/init` separately once the scaffold has enough shape for conventions to matter.
+- **No `/conventions` afterwards** — the project doesn't have conventions to discover yet. The user runs `/conventions` separately once the scaffold has enough shape for conventions to matter.
 
 ## Out of scope
 

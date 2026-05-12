@@ -46,7 +46,7 @@ Multiple branches can be protected:
 
 If `.pk.json` does not exist or has no `guard` key, `pk guard` is a no-op — the hook exits silently and allows all commands.
 
-The `/init` skill can configure guard for you. When you specify protected branches during initialization, it creates the `.pk.json` guard configuration automatically.
+The `/conventions` skill can configure guard for you. When you specify protected branches, it creates the `.pk.json` guard configuration automatically.
 
 ## Hook protocol
 

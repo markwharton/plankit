@@ -55,7 +55,7 @@ Every new LLM session draws from a wide solution space. Without constraints, the
 
 The same rule can differ by context: "fail fast" for model behavior means don't guess; for code, it means surface errors clearly. The split between CLAUDE.md and `.claude/rules/` reflects this. Critical guardrails in the main file, detailed guidance in rules files.
 
-After `pk setup`, run `/init` to add project-specific conventions. See [Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd).
+After `pk setup`, run `/conventions` to add project-specific conventions. See [Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd).
 
 ## 5. Compounding effect
 

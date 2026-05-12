@@ -761,6 +761,9 @@ func TestRun_trunkFlow_noReleaseBranch(t *testing.T) {
 	if pushArgs[2] != "develop" {
 		t.Errorf("push branch = %q, want develop", pushArgs[2])
 	}
+	if !strings.Contains(stderr.String(), "Trunk flow (no release.branch in .pk.json)") {
+		t.Errorf("stderr missing trunk flow label: %s", stderr.String())
+	}
 }
 
 func TestRun_branchCheckFailure(t *testing.T) {

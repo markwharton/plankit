@@ -8,7 +8,7 @@ description: Three-layer architecture (pk commands, hooks, skills) and hook beha
 
 - **pk commands:** Standalone CLI tools that power everything below. You don't run these directly; hooks and skills handle that.
 - **Hooks:** Wire pk commands into Claude Code events. They run automatically and you receive their output (block decisions, ask prompts, notifications). Described below.
-- **Skills:** User-invoked workflows (`/init`, `/preserve`, `/ship`). Each has its own instructions. Execute them only when the user asks.
+- **Skills:** User-invoked workflows (`/conventions`, `/preserve`, `/ship`). Each has its own instructions. Execute them only when the user asks.
 
 ## Hook Behavior
 

@@ -66,7 +66,7 @@ Save this as `.claude/skills/review-staged/SKILL.md`, restart Claude Code, and i
 
 ## Interactive patterns
 
-Skills become much more powerful when they involve the user in the loop. The three skills plankit installs (`.claude/skills/init/`, `preserve/`, `ship/`) are working examples worth reading.
+Skills become much more powerful when they involve the user in the loop. The three skills plankit installs (`.claude/skills/conventions/`, `preserve/`, `ship/`) are working examples worth reading.
 
 ### Preview and confirm
 
@@ -87,7 +87,7 @@ Report the result to the user.
 
 ### Ask, then act
 
-When a skill needs information from the user before it can proceed, ask up front rather than guessing. The `/init` skill asks about branch conventions before drafting `## Project Conventions`:
+When a skill needs information from the user before it can proceed, ask up front rather than guessing. The `/conventions` skill asks about branch conventions before drafting `## Project Conventions`:
 
 > Ask the user about branch conventions:
 > - What is the default branch for development?
@@ -98,7 +98,7 @@ Gather inputs → draft → show → confirm → write. This turns Claude into a
 
 ### Multi-step exploration
 
-For skills that need to discover state before acting, lay out the steps explicitly. The `/init` skill explores the codebase, drafts a section, shows it, asks for confirmation, then writes. Each step is a distinct instruction in the SKILL.md so Claude follows the sequence reliably.
+For skills that need to discover state before acting, lay out the steps explicitly. The `/conventions` skill explores the codebase, drafts a section, shows it, asks for confirmation, then writes. Each step is a distinct instruction in the SKILL.md so Claude follows the sequence reliably.
 
 ## When skills work well
 

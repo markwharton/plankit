@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: 26408ee284677863a2e1d27607f9c1c2f62815598a6713b7111393fd63e587d4
+pk_sha256: d4cfcc9d01210a4b06d419bbbfe1b0e3c3d23dc65cb22066f2f97d7fd31d42a8
 ---
 
 # Plankit Tooling
@@ -9,7 +9,7 @@ pk_sha256: 26408ee284677863a2e1d27607f9c1c2f62815598a6713b7111393fd63e587d4
 
 - **pk commands:** Standalone CLI tools that power everything below. You don't run these directly; hooks and skills handle that.
 - **Hooks:** Wire pk commands into Claude Code events. They run automatically and you receive their output (block decisions, ask prompts, notifications). Described below.
-- **Skills:** User-invoked workflows (`/init`, `/preserve`, `/ship`). Each has its own instructions. Execute them only when the user asks.
+- **Skills:** User-invoked workflows (`/conventions`, `/preserve`, `/ship`). Each has its own instructions. Execute them only when the user asks.
 
 ## Hook Behavior
 

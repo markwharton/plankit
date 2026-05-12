@@ -40,14 +40,14 @@ pk setup
 
 - **CLAUDE.md** with critical rules that prevent the most common issues
 - **`.claude/rules/`** with detailed guidelines: model behavior, development standards, git discipline
-- **Three skills:** `/init` (project conventions), `/preserve` (plan preservation), `/ship` (release workflow)
+- **Three skills:** `/conventions` (project conventions), `/preserve` (plan preservation), `/ship` (release workflow)
 - **Hooks:** branch guard, plan protection, plan preservation
 
 **No configuration needed.** No `.pk.json`, no tags, no additional setup. Guard is installed but is a no-op without branches to protect. Preserve works in manual mode by default; pass `--preserve auto` to `pk setup` to preserve plans automatically on exit from plan mode.
 
 **Safe for existing projects.** `pk setup` never overwrites files it didn't create. Files without pk's SHA marker are skipped. Existing hooks in `.claude/settings.json` are preserved. See [Managed file protection](pk-setup.md#managed-file-protection) for details.
 
-**Next step:** Run `/init` inside Claude Code to add project-specific conventions to CLAUDE.md. Without project conventions, Claude follows the rules but rediscovers the project each session. With them, it knows the project from the start. See [Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd).
+**Next step:** Run `/conventions` inside Claude Code to add project-specific conventions to CLAUDE.md. Without project conventions, Claude follows the rules but rediscovers the project each session. With them, it knows the project from the start. See [Customize your CLAUDE.md](pk-setup.md#customize-your-claudemd).
 
 ## Layer 2: Branch protection
 
@@ -63,7 +63,7 @@ Create `.pk.json` in the project root:
 }
 ```
 
-`pk guard` now blocks git mutations on `main` during Claude Code sessions. The default mode is `block`; pass `--guard ask` to `pk setup` to prompt instead. See [pk guard](pk-guard.md) for details. `/init` offers to create this configuration for you.
+`pk guard` now blocks git mutations on `main` during Claude Code sessions. The default mode is `block`; pass `--guard ask` to `pk setup` to prompt instead. See [pk guard](pk-guard.md) for details. `/conventions` offers to create this configuration for you.
 
 **Server-side complement.** `pk guard` protects the local Claude Code session. A GitHub Ruleset covers the surfaces guard can't reach: pull requests, direct pushes via the GitHub UI, and other collaborators' machines. See [Branch protection](branch-protection.md) for an importable ruleset.
 
@@ -94,7 +94,7 @@ This layer builds on three conventions:
 }
 ```
 
-`release.branch` is the key config. `changelog.types` has sensible defaults (feat, fix, refactor, etc.) and only needs to be added if your project requires custom type-to-section mapping. See [pk changelog](pk-changelog.md#configuration) for the full reference. `/init` offers to create this configuration for you.
+`release.branch` is the key config. `changelog.types` has sensible defaults (feat, fix, refactor, etc.) and only needs to be added if your project requires custom type-to-section mapping. See [pk changelog](pk-changelog.md#configuration) for the full reference. `/conventions` offers to create this configuration for you.
 
 **`/ship` is the recommended release workflow.** It chains `pk changelog` and `pk release` with preview and confirm at each step, and handles the clean working tree requirement within the Claude session. Power users can run `pk changelog` and `pk release` directly in the terminal. See [pk release](pk-release.md#workflows) for merge flow vs. trunk flow.
 
@@ -131,7 +131,7 @@ When a developer clones a pk-configured repo without pk installed, hooks degrade
 |---------|------------|
 | CLAUDE.md | Works, Claude Code reads it regardless |
 | `.claude/rules/` | Works, loaded automatically |
-| `/init`, `/preserve`, `/ship` skills | Skills load but pk commands inside them fail |
+| `/conventions`, `/preserve`, `/ship` skills | Skills load but pk commands inside them fail |
 | `pk guard` hook | Silent no-op, hook exits 127 (non-blocking) |
 | `pk preserve` hook | Silent no-op, plans not preserved |
 | `pk protect` hook | Silent no-op, plan edits not blocked |

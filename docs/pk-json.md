@@ -4,7 +4,7 @@ Project-level configuration for pk. Each top-level key maps to a pk subcommand.
 
 ## Location
 
-`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned: `pk setup` does not create or modify it, `pk teardown` does not remove it. The `/init` skill can generate it for you during project initialization.
+`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned: `pk setup` does not create or modify it, `pk teardown` does not remove it. The `/conventions` skill can generate it for you during project setup.
 
 If `.pk.json` does not exist, all commands use their defaults. An empty file (`{}`) is equivalent to no file.
 
