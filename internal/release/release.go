@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
@@ -41,8 +42,9 @@ func DefaultConfig() Config {
 
 // Run executes the release command. Returns the process exit code.
 func Run(cfg Config) int {
-	// 0. Verify we're in a git repository.
-	if err := pkgit.IsInsideWorkTree(cfg.GitExec, ""); err != nil {
+	// 0. Verify we're in a git repository and resolve the root.
+	root, err := pkgit.TopLevel(cfg.GitExec, "")
+	if err != nil {
 		fmt.Fprintln(cfg.Stderr, "Error: not a git repository")
 		return 1
 	}
@@ -55,8 +57,8 @@ func Run(cfg Config) int {
 	}
 	sourceBranch = strings.TrimSpace(sourceBranch)
 
-	// 2. Load release config.
-	releaseConf, err := loadReleaseConfig(cfg.ReadFile)
+	// 2. Load release config from the repository root.
+	releaseConf, err := loadReleaseConfig(cfg.ReadFile, filepath.Join(root, ".pk.json"))
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
@@ -277,10 +279,10 @@ func Run(cfg Config) int {
 // Type aliases for config types used throughout this package.
 type ReleaseSection = config.ReleaseSection
 
-// loadReleaseConfig reads the release section from .pk.json.
+// loadReleaseConfig reads the release section from .pk.json at path.
 // Returns an error if the file exists but contains malformed JSON.
-func loadReleaseConfig(readFile func(string) ([]byte, error)) (ReleaseSection, error) {
-	pk, err := config.Load(readFile, ".pk.json")
+func loadReleaseConfig(readFile func(string) ([]byte, error), path string) (ReleaseSection, error) {
+	pk, err := config.Load(readFile, path)
 	if err != nil {
 		return ReleaseSection{}, err
 	}

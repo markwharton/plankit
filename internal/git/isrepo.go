@@ -12,6 +12,12 @@ func IsInsideWorkTree(gitExec func(string, ...string) (string, error), dir strin
 	return err
 }
 
+// TopLevel returns the absolute path of the repository root by invoking
+// git rev-parse --show-toplevel. Returns an error if not inside a work tree.
+func TopLevel(gitExec func(string, ...string) (string, error), dir string) (string, error) {
+	return gitExec(dir, "rev-parse", "--show-toplevel")
+}
+
 // IsRepo reports whether dir is inside a git working tree. It walks up
 // parent directories looking for a .git entry (directory or file — git
 // submodules and worktrees use a file). Returns false if no .git is

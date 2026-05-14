@@ -25,6 +25,41 @@ func TestIsInsideWorkTree_failure(t *testing.T) {
 	}
 }
 
+func TestTopLevel_success(t *testing.T) {
+	gitExec := func(dir string, args ...string) (string, error) {
+		return "/home/user/project", nil
+	}
+	root, err := TopLevel(gitExec, "")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if root != "/home/user/project" {
+		t.Errorf("root = %q, want /home/user/project", root)
+	}
+}
+
+func TestTopLevel_failure(t *testing.T) {
+	gitExec := func(dir string, args ...string) (string, error) {
+		return "", fmt.Errorf("not a git repository")
+	}
+	_, err := TopLevel(gitExec, "")
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestTopLevel_passesDir(t *testing.T) {
+	var receivedDir string
+	gitExec := func(dir string, args ...string) (string, error) {
+		receivedDir = dir
+		return "/repo", nil
+	}
+	TopLevel(gitExec, "/some/subdir")
+	if receivedDir != "/some/subdir" {
+		t.Errorf("dir = %q, want /some/subdir", receivedDir)
+	}
+}
+
 func TestIsRepo_directGitDir(t *testing.T) {
 	dir := t.TempDir()
 	os.MkdirAll(filepath.Join(dir, ".git"), 0755)

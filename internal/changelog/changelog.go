@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -106,14 +107,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
-	// 0. Verify we're in a git repository.
-	if err := pkgit.IsInsideWorkTree(cfg.GitExec, ""); err != nil {
+	// 0. Verify we're in a git repository and resolve the root.
+	root, err := pkgit.TopLevel(cfg.GitExec, "")
+	if err != nil {
 		fmt.Fprintln(cfg.Stderr, "Error: not a git repository")
 		return 1
 	}
 
-	// 1. Load config.
-	fullConfig, err := LoadFullConfig(cfg.ReadFile)
+	// 1. Load config from the repository root.
+	fullConfig, err := LoadFullConfig(cfg.ReadFile, filepath.Join(root, ".pk.json"))
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1
@@ -227,13 +229,14 @@ func Run(cfg Config) int {
 	// 12. Version without v prefix for files and hooks.
 	ver := strings.TrimPrefix(nextTag, "v")
 
-	// 13. Update version files.
+	// 13. Update version files (paths in config are relative to repo root).
 	for _, vf := range config.VersionFiles {
 		if vf.Type != "" && vf.Type != "json" {
 			fmt.Fprintf(cfg.Stderr, "Error: unsupported versionFile type %q for %s (only \"json\" is supported)\n", vf.Type, vf.Path)
 			return 1
 		}
-		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, vf.Path, ver); err != nil {
+		absPath := filepath.Join(root, vf.Path)
+		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, absPath, ver); err != nil {
 			fmt.Fprintf(cfg.Stderr, "Error: failed to update %s: %v\n", vf.Path, err)
 			return 1
 		}
@@ -255,8 +258,9 @@ func Run(cfg Config) int {
 		repoURL = pkgit.ParseRepoURL(remoteURL)
 	}
 
-	// 16. Read existing CHANGELOG.md.
-	existing, _ := cfg.ReadFile("CHANGELOG.md")
+	// 16. Read existing CHANGELOG.md from the repository root.
+	changelogPath := filepath.Join(root, "CHANGELOG.md")
+	existing, _ := cfg.ReadFile(changelogPath)
 
 	// 17. Insert section and comparison link.
 	updated := insertSection(string(existing), section)
@@ -266,7 +270,7 @@ func Run(cfg Config) int {
 	}
 
 	// 18. Write CHANGELOG.md.
-	if err := cfg.WriteFile("CHANGELOG.md", []byte(updated), 0644); err != nil {
+	if err := cfg.WriteFile(changelogPath, []byte(updated), 0644); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: failed to write CHANGELOG.md: %v\n", err)
 		return 1
 	}
@@ -283,9 +287,9 @@ func Run(cfg Config) int {
 	// 20. Git add and commit. The commit body carries a Release-Tag trailer
 	// so pk release can read the pending version and create the real git tag.
 	// No git tag is created here — that happens in pk release.
-	addFiles := []string{"add", "CHANGELOG.md"}
+	addFiles := []string{"add", changelogPath}
 	for _, vf := range config.VersionFiles {
-		addFiles = append(addFiles, vf.Path)
+		addFiles = append(addFiles, filepath.Join(root, vf.Path))
 	}
 	if _, err := cfg.GitExec("", addFiles...); err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: git add failed: %v\n", err)
@@ -362,11 +366,11 @@ type FullConfig struct {
 	Guard config.GuardConfig
 }
 
-// LoadFullConfig reads .pk.json and returns changelog + guard config.
+// LoadFullConfig reads .pk.json from path and returns changelog + guard config.
 // Falls back to defaults if the file is missing. Returns an error if the
 // file exists but contains malformed JSON.
-func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
-	pk, err := config.Load(readFile, ".pk.json")
+func LoadFullConfig(readFile func(string) ([]byte, error), path string) (FullConfig, error) {
+	pk, err := config.Load(readFile, path)
 	if err != nil {
 		return FullConfig{}, err
 	}
@@ -376,11 +380,11 @@ func LoadFullConfig(readFile func(string) ([]byte, error)) (FullConfig, error) {
 	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
 }
 
-// LoadConfig reads .pk.json and returns the changelog config.
+// LoadConfig reads .pk.json from path and returns the changelog config.
 // Falls back to defaults if the file is missing. Returns an error if
 // the file exists but contains malformed JSON.
-func LoadConfig(readFile func(string) ([]byte, error)) (ChangelogConfig, error) {
-	full, err := LoadFullConfig(readFile)
+func LoadConfig(readFile func(string) ([]byte, error), path string) (ChangelogConfig, error) {
+	full, err := LoadFullConfig(readFile, path)
 	return full.ChangelogConfig, err
 }
 

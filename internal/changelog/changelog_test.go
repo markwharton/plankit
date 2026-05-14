@@ -19,7 +19,7 @@ func TestLoadConfig(t *testing.T) {
 				"versionFiles": [{"path":"package.json","type":"json"}],
 				"hooks": {"postVersion":"echo done","preCommit":"echo pre"}
 			}}`), nil
-		})
+		}, ".pk.json")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
@@ -40,7 +40,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("types only", func(t *testing.T) {
 		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"changelog":{"types":[{"type":"fix","section":"Fixed"}]}}`), nil
-		})
+		}, ".pk.json")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
@@ -52,7 +52,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("missing file returns defaults", func(t *testing.T) {
 		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return nil, os.ErrNotExist
-		})
+		}, ".pk.json")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}
@@ -64,7 +64,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("malformed JSON returns error", func(t *testing.T) {
 		_, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{not json}`), nil
-		})
+		}, ".pk.json")
 		if err == nil {
 			t.Error("expected error for malformed JSON")
 		}
@@ -73,7 +73,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("empty types uses defaults", func(t *testing.T) {
 		cfg, err := LoadConfig(func(name string) ([]byte, error) {
 			return []byte(`{"changelog":{"types":[]}}`), nil
-		})
+		}, ".pk.json")
 		if err != nil {
 			t.Fatalf("LoadConfig() error = %v", err)
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -51,6 +52,9 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 			return "abc123", nil
 		},
 		"rev-parse": func(args ...string) (string, error) {
+			if len(args) >= 2 && args[1] == "--show-toplevel" {
+				return "/repo", nil
+			}
 			return "abc123", nil
 		},
 		"push": func(args ...string) (string, error) {
@@ -83,7 +87,7 @@ func noConfig(_ string) ([]byte, error) {
 
 func mergeConfig(releaseBranch string) func(string) ([]byte, error) {
 	return func(name string) ([]byte, error) {
-		if name == ".pk.json" {
+		if filepath.Base(name) == ".pk.json" {
 			return []byte(fmt.Sprintf(`{"release":{"branch":%q}}`, releaseBranch)), nil
 		}
 		return nil, os.ErrNotExist
@@ -270,6 +274,9 @@ func TestRun_behindRemote(t *testing.T) {
 		return "local123", nil
 	}
 	git["rev-parse"] = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[1] == "--show-toplevel" {
+			return "/repo", nil
+		}
 		return "remote456", nil
 	}
 
@@ -330,7 +337,7 @@ func TestRun_preReleaseHook(t *testing.T) {
 		Stderr:  &stderr,
 		GitExec: stubGitExec(happyGit("v1.0.0", "main")),
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".pk.json" {
+			if filepath.Base(name) == ".pk.json" {
 				return []byte(`{"release":{"hooks":{"preRelease":"echo test"}}}`), nil
 			}
 			return nil, os.ErrNotExist
@@ -357,7 +364,7 @@ func TestRun_preReleaseHookFailure(t *testing.T) {
 		Stderr:  &stderr,
 		GitExec: stubGitExec(happyGit("v1.0.0", "main")),
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".pk.json" {
+			if filepath.Base(name) == ".pk.json" {
 				return []byte(`{"release":{"hooks":{"preRelease":"false"}}}`), nil
 			}
 			return nil, os.ErrNotExist
@@ -717,6 +724,9 @@ func TestRun_mergeFlow_sourceBehindRemote(t *testing.T) {
 		return "abc123", nil
 	}
 	git["rev-parse"] = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[1] == "--show-toplevel" {
+			return "/repo", nil
+		}
 		if len(args) >= 2 && args[1] == "origin/dev" {
 			return "remote456", nil
 		}
