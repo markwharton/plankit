@@ -1,0 +1,9 @@
+ignore:
+  - ".claude/**"
+  - ".github/**"
+  - "docs/**"
+  - "**/*.md"
+  - "**/*.sh"
+  - "**/*.json"
+  - "LICENSE"
+  - "Makefile"
