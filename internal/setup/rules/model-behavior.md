@@ -30,5 +30,5 @@ description: Honesty, scope discipline, read before writing, and testing
 ## Testing Discipline
 
 - **Test at the start of each session** and report the status.
-- **Test before and after changes.** If tests fail after your changes, you know the cause.
+- **Test and lint before and after changes.** If tests or lint fail after your changes, you know the cause.
 - **Run tests yourself.** This closes the loop; no copy-paste back and forth.

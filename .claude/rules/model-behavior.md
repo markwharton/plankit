@@ -1,6 +1,6 @@
 ---
 description: Honesty, scope discipline, read before writing, and testing
-pk_sha256: 7b2929043d0d7b5d3714f89bd947b35588e6cde53fdd0e4de4e3a1987e356c4a
+pk_sha256: b6787fbec346c38b29728a103cad5b966779d37fb400c1e7a81074695b055e42
 ---
 
 # Model Behavior
@@ -31,5 +31,5 @@ pk_sha256: 7b2929043d0d7b5d3714f89bd947b35588e6cde53fdd0e4de4e3a1987e356c4a
 ## Testing Discipline
 
 - **Test at the start of each session** and report the status.
-- **Test before and after changes.** If tests fail after your changes, you know the cause.
+- **Test and lint before and after changes.** If tests or lint fail after your changes, you know the cause.
 - **Run tests yourself.** This closes the loop; no copy-paste back and forth.
