@@ -24,9 +24,8 @@ type Config struct {
 	Stdin   io.Reader
 	Stdout  io.Writer
 	Stderr  io.Writer
-	Env     func(string) string
-	HomeDir func() (string, error)
-	Now     func() time.Time
+	Env func(string) string
+	Now func() time.Time
 	GitExec func(projectDir string, args ...string) (string, error)
 
 	Getwd     func() (string, error)
@@ -53,9 +52,8 @@ func DefaultConfig() Config {
 		Stdin:     os.Stdin,
 		Stdout:    os.Stdout,
 		Stderr:    os.Stderr,
-		Env:       os.Getenv,
-		HomeDir:   os.UserHomeDir,
-		Now:       time.Now,
+		Env: os.Getenv,
+		Now: time.Now,
 		GitExec:   pkgit.Exec,
 		Getwd:     os.Getwd,
 		ReadFile:  os.ReadFile,
@@ -77,10 +75,8 @@ const minPlanSize = 50
 // --notify mode and consumed by the /preserve skill invocation. It lives
 // under .git/ because that directory is always untracked by git, so no
 // .gitignore coordination is needed and the file is naturally scoped to
-// the repo. ~/.claude/plans/ is shared across Claude sessions, so an
-// mtime-based selection in findLatestPlan() can grab a rival session's
-// plan — the pointer records the exact plan that was approved so /preserve
-// can pick it up even if the user runs it minutes later.
+// the repo. The pointer records the exact plan that was approved so
+// /preserve can pick it up even if the user runs it minutes later.
 const pointerFilename = "pk-pending-plan"
 
 // Run reads a PostToolUse hook payload from stdin and preserves the approved plan.
@@ -97,20 +93,16 @@ func Run(cfg Config) int {
 
 	if err != nil {
 		// stdin has no hook payload (e.g., /preserve skill invocation).
-		// Prefer the project-local pointer written by --notify; fall back
-		// to mtime-based findLatestPlan only when the pointer is absent.
+		// Use the project-local pointer written by --notify.
 		if projectDir != "" {
 			if p, ok := readPointer(cfg, projectDir); ok {
 				planPath = p
 			}
 		}
-		if planPath == "" {
-			planPath = findLatestPlan(cfg)
-		}
 	} else {
 		planPath = extractPlanPath(input.ToolResponseString())
-		if planPath == "" || !fileExists(cfg, planPath) {
-			planPath = findLatestPlan(cfg)
+		if planPath != "" && !fileExists(cfg, planPath) {
+			planPath = ""
 		}
 	}
 
@@ -274,7 +266,7 @@ func readPointer(cfg Config, projectDir string) (string, bool) {
 
 // writePointer records the pending-plan pointer. Best-effort: a write failure
 // (e.g., .git/ is a worktree file or the directory is read-only) is logged and
-// the caller continues — /preserve will still work via the mtime fallback.
+// the caller continues.
 func writePointer(cfg Config, projectDir, planPath string) {
 	path := pointerPath(projectDir)
 	if err := cfg.WriteFile(path, []byte(planPath+"\n"), 0644); err != nil {
@@ -377,39 +369,6 @@ func scanDestDir(cfg Config, destDir, datePrefix string, content []byte) (dupNam
 		}
 	}
 	return dupName, maxSeq + 1
-}
-
-// findLatestPlan returns the most recently modified .md file in ~/.claude/plans/.
-func findLatestPlan(cfg Config) string {
-	home, err := cfg.HomeDir()
-	if err != nil {
-		return ""
-	}
-
-	plansDir := filepath.Join(home, ".claude", "plans")
-	entries, err := cfg.ReadDir(plansDir)
-	if err != nil {
-		return ""
-	}
-
-	var latestPath string
-	var latestTime time.Time
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		if info.ModTime().After(latestTime) {
-			latestTime = info.ModTime()
-			latestPath = filepath.Join(plansDir, entry.Name())
-		}
-	}
-
-	return latestPath
 }
 
 func fileExists(cfg Config, path string) bool {

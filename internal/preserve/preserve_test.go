@@ -152,7 +152,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				call := strings.Join(args, " ")
@@ -227,7 +227,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				call := strings.Join(args, " ")
@@ -285,7 +285,7 @@ func TestRun(t *testing.T) {
 			Stdout:  &stdout,
 			Stderr:  &stderr,
 			Env:     func(string) string { return "" },
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
@@ -322,7 +322,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				// diff --cached --quiet exits 0 when no changes.
@@ -340,25 +340,11 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("fallback to latest plan", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		plansDir := filepath.Join(tmpDir, ".claude", "plans")
-		os.MkdirAll(plansDir, 0755)
-
-		// Create two plans; the second is newer.
-		old := filepath.Join(plansDir, "old.md")
-		os.WriteFile(old, []byte("# Old Plan\n\nOld content that is long enough to pass the check."), 0644)
-		os.Chtimes(old, time.Now().Add(-time.Hour), time.Now().Add(-time.Hour))
-
-		newer := filepath.Join(plansDir, "newer.md")
-		os.WriteFile(newer, []byte("# Newer Plan\n\nNewer content that is long enough to pass the check."), 0644)
-
+	t.Run("no plan path in tool_response exits silently", func(t *testing.T) {
 		projectDir := t.TempDir()
-		// tool_response has no plan path.
 		inputJSON := fmt.Sprintf(`{"tool_response":"something else","cwd":"%s"}`, projectDir)
 
 		var stdout, stderr bytes.Buffer
-		var commitMsg string
 		cfg := Config{
 			Stdin:  strings.NewReader(inputJSON),
 			Stdout: &stdout,
@@ -369,17 +355,8 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
 			Now:     func() time.Time { return fixedTime },
-			GitExec: func(dir string, args ...string) (string, error) {
-				if args[0] == "commit" {
-					commitMsg = args[2]
-				}
-				if args[0] == "diff" && args[1] == "--cached" {
-					return "", fmt.Errorf("changes exist")
-				}
-				return "", nil
-			},
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
 		withFS(&cfg)
 
@@ -387,8 +364,8 @@ func TestRun(t *testing.T) {
 		if exitCode != 0 {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
-		if !strings.Contains(commitMsg, "Newer Plan") {
-			t.Errorf("commit message = %q, want to contain 'Newer Plan'", commitMsg)
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
 		}
 	})
 
@@ -423,7 +400,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
@@ -483,7 +460,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "rev-parse" {
@@ -537,7 +514,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
@@ -560,21 +537,12 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid stdin falls back to latest plan", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		plansDir := filepath.Join(tmpDir, ".claude", "plans")
-		os.MkdirAll(plansDir, 0755)
-
-		planContent := "# Fallback Plan\n\nThis plan has enough content to pass the minimum length check easily."
-		planFile := filepath.Join(plansDir, "fallback.md")
-		os.WriteFile(planFile, []byte(planContent), 0644)
-
+	t.Run("empty stdin without pointer exits silently", func(t *testing.T) {
 		projectDir := t.TempDir()
 
 		var stdout, stderr bytes.Buffer
-		var commitMsg string
 		cfg := Config{
-			Stdin:  strings.NewReader(""), // empty stdin triggers fallback
+			Stdin:  strings.NewReader(""),
 			Stdout: &stdout,
 			Stderr: &stderr,
 			Env: func(key string) string {
@@ -583,17 +551,8 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
 			Now:     func() time.Time { return fixedTime },
-			GitExec: func(dir string, args ...string) (string, error) {
-				if args[0] == "commit" {
-					commitMsg = args[2]
-				}
-				if args[0] == "diff" && args[1] == "--cached" {
-					return "", fmt.Errorf("changes exist")
-				}
-				return "", nil
-			},
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
 		withFS(&cfg)
 
@@ -601,8 +560,8 @@ func TestRun(t *testing.T) {
 		if exitCode != 0 {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
-		if !strings.Contains(commitMsg, "Fallback Plan") {
-			t.Errorf("commit message = %q, want to contain 'Fallback Plan'", commitMsg)
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
 		}
 	})
 
@@ -623,7 +582,7 @@ func TestRun(t *testing.T) {
 			Stdout:  &stdout,
 			Stderr:  &stderr,
 			Env:     func(string) string { return "" },
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
 			Notify:  true,
@@ -675,7 +634,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
 			Notify:  true,
@@ -699,9 +658,7 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("skill invocation reads pointer under race", func(t *testing.T) {
-		// Regression guard: ~/.claude/plans/ contains both the approved plan
-		// (older mtime) and a rival plan from another session (newer mtime).
-		// mtime-based findLatestPlan would pick the rival; the pointer must win.
+		// Regression guard: pointer must win even when a newer rival plan exists.
 		tmpDir := t.TempDir()
 		plansDir := filepath.Join(tmpDir, ".claude", "plans")
 		os.MkdirAll(plansDir, 0755)
@@ -733,7 +690,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "commit" {
@@ -752,7 +709,7 @@ func TestRun(t *testing.T) {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
 		if !strings.Contains(commitMsg, "Approved Plan") {
-			t.Errorf("commit message = %q, want to contain 'Approved Plan' (pointer must win over mtime)", commitMsg)
+			t.Errorf("commit message = %q, want to contain 'Approved Plan'", commitMsg)
 		}
 		if strings.Contains(commitMsg, "Rival Plan") {
 			t.Errorf("commit message = %q, must not contain 'Rival Plan'", commitMsg)
@@ -762,22 +719,13 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("stale pointer target missing falls back to latest", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		plansDir := filepath.Join(tmpDir, ".claude", "plans")
-		os.MkdirAll(plansDir, 0755)
-
-		planContent := "# Latest Plan\n\nThe only real plan; the pointer target is missing."
-		planFile := filepath.Join(plansDir, "latest.md")
-		os.WriteFile(planFile, []byte(planContent), 0644)
-
+	t.Run("stale pointer target missing exits silently", func(t *testing.T) {
 		projectDir := t.TempDir()
 		os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
 		pointerFile := filepath.Join(projectDir, ".git", "pk-pending-plan")
 		os.WriteFile(pointerFile, []byte("/does/not/exist.md\n"), 0644)
 
 		var stdout, stderr bytes.Buffer
-		var commitMsg string
 		cfg := Config{
 			Stdin:  strings.NewReader(""),
 			Stdout: &stdout,
@@ -788,17 +736,8 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
 			Now:     func() time.Time { return fixedTime },
-			GitExec: func(dir string, args ...string) (string, error) {
-				if args[0] == "commit" {
-					commitMsg = args[2]
-				}
-				if args[0] == "diff" && args[1] == "--cached" {
-					return "", fmt.Errorf("changes exist")
-				}
-				return "", nil
-			},
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
 		withFS(&cfg)
 
@@ -806,8 +745,8 @@ func TestRun(t *testing.T) {
 		if exitCode != 0 {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
-		if !strings.Contains(commitMsg, "Latest Plan") {
-			t.Errorf("commit message = %q, want 'Latest Plan' (mtime fallback)", commitMsg)
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
 		}
 		if _, err := os.Stat(pointerFile); !os.IsNotExist(err) {
 			t.Errorf("stale pointer still exists: err=%v", err)
@@ -837,7 +776,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) {
 				// Only rev-parse should be called; no add/commit/push.
@@ -903,7 +842,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "diff" && args[1] == "--cached" {
@@ -955,7 +894,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
@@ -1015,7 +954,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
@@ -1063,7 +1002,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "diff" && args[1] == "--cached" {
@@ -1111,7 +1050,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) {
 				return "", nil
@@ -1154,7 +1093,7 @@ func TestRun(t *testing.T) {
 			Stdout:  &stdout,
 			Stderr:  &stderr,
 			Env:     func(string) string { return "" },
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			Getwd:   func() (string, error) { return projectDir, nil },
 			GitExec: func(dir string, args ...string) (string, error) {
@@ -1208,7 +1147,7 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "rev-parse" {
@@ -1250,7 +1189,7 @@ func TestRun(t *testing.T) {
 			Stdout:  &stdout,
 			Stderr:  &stderr,
 			Env:     func(string) string { return "" },
-			HomeDir: func() (string, error) { return tmpDir, nil },
+
 			Now:     func() time.Time { return fixedTime },
 			Getwd:   func() (string, error) { return "", fmt.Errorf("no working directory") },
 			GitExec: func(string, ...string) (string, error) {
@@ -1272,22 +1211,11 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("json object tool_response falls back to latest plan", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		plansDir := filepath.Join(tmpDir, ".claude", "plans")
-		os.MkdirAll(plansDir, 0755)
-
-		planContent := "# Fallback from JSON\n\nThis plan tests fallback when JSON tool_response has no plan path."
-		planFile := filepath.Join(plansDir, "latest.md")
-		os.WriteFile(planFile, []byte(planContent), 0644)
-
+	t.Run("json object tool_response without plan path exits silently", func(t *testing.T) {
 		projectDir := t.TempDir()
-		// JSON object with no .claude/plans/ path.
 		inputJSON := fmt.Sprintf(`{"tool_response":{"status":"approved","message":"Plan complete"},"cwd":"%s"}`, projectDir)
 
 		var stdout, stderr bytes.Buffer
-		var commitMsg string
-
 		cfg := Config{
 			Stdin:  strings.NewReader(inputJSON),
 			Stdout: &stdout,
@@ -1298,17 +1226,8 @@ func TestRun(t *testing.T) {
 				}
 				return ""
 			},
-			HomeDir: func() (string, error) { return tmpDir, nil },
 			Now:     func() time.Time { return fixedTime },
-			GitExec: func(dir string, args ...string) (string, error) {
-				if args[0] == "commit" {
-					commitMsg = args[2]
-				}
-				if args[0] == "diff" && args[1] == "--cached" {
-					return "", fmt.Errorf("changes exist")
-				}
-				return "", nil
-			},
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
 		}
 		withFS(&cfg)
 
@@ -1316,8 +1235,8 @@ func TestRun(t *testing.T) {
 		if exitCode != 0 {
 			t.Errorf("exit code = %d, want 0", exitCode)
 		}
-		if !strings.Contains(commitMsg, "Fallback from JSON") {
-			t.Errorf("commit message = %q, want to contain 'Fallback from JSON'", commitMsg)
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
 		}
 	})
 }
@@ -1340,7 +1259,7 @@ func TestRun_mkdirAllFailure(t *testing.T) {
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &stderr,
 		Env:       func(string) string { return "" },
-		HomeDir:   func() (string, error) { return tmpDir, nil },
+
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
 		ReadFile:  os.ReadFile,
@@ -1378,7 +1297,7 @@ func TestRun_writeFileFailure(t *testing.T) {
 		Stdout:    &bytes.Buffer{},
 		Stderr:    &stderr,
 		Env:       func(string) string { return "" },
-		HomeDir:   func() (string, error) { return tmpDir, nil },
+
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
 		ReadFile:  os.ReadFile,
@@ -1415,9 +1334,8 @@ func TestRun_gitAddFailure(t *testing.T) {
 		Stdin:   strings.NewReader(inputJSON),
 		Stdout:  &bytes.Buffer{},
 		Stderr:  &stderr,
-		Env:     func(string) string { return "" },
-		HomeDir: func() (string, error) { return tmpDir, nil },
-		Now:     func() time.Time { return fixedTime },
+		Env: func(string) string { return "" },
+		Now: func() time.Time { return fixedTime },
 		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "add" {
 				return "", fmt.Errorf("add failed")
@@ -1458,9 +1376,8 @@ func TestRun_gitCommitFailure(t *testing.T) {
 		Stdin:   strings.NewReader(inputJSON),
 		Stdout:  &bytes.Buffer{},
 		Stderr:  &stderr,
-		Env:     func(string) string { return "" },
-		HomeDir: func() (string, error) { return tmpDir, nil },
-		Now:     func() time.Time { return fixedTime },
+		Env: func(string) string { return "" },
+		Now: func() time.Time { return fixedTime },
 		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "diff" && args[1] == "--cached" {
 				return "", fmt.Errorf("changes exist")
