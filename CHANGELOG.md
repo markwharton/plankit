@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.7] - 2026-05-15
+
+### Fixed
+
+- remove mtime-based fallback from findLatestPlan (0c77097)
+- add lint to testing discipline (c89b0ee)
+
+### Maintenance
+
+- fix gofmt drift in preserve package (f3bfd7e)
+
 ## [v0.19.6] - 2026-05-14
 
 ### Fixed
@@ -690,3 +701,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.4]: https://github.com/markwharton/plankit/compare/v0.19.3...v0.19.4
 [v0.19.5]: https://github.com/markwharton/plankit/compare/v0.19.4...v0.19.5
 [v0.19.6]: https://github.com/markwharton/plankit/compare/v0.19.5...v0.19.6
+[v0.19.7]: https://github.com/markwharton/plankit/compare/v0.19.6...v0.19.7
