@@ -24,8 +24,8 @@ type Config struct {
 	Stdin   io.Reader
 	Stdout  io.Writer
 	Stderr  io.Writer
-	Env func(string) string
-	Now func() time.Time
+	Env     func(string) string
+	Now     func() time.Time
 	GitExec func(projectDir string, args ...string) (string, error)
 
 	Getwd     func() (string, error)
@@ -52,8 +52,8 @@ func DefaultConfig() Config {
 		Stdin:     os.Stdin,
 		Stdout:    os.Stdout,
 		Stderr:    os.Stderr,
-		Env: os.Getenv,
-		Now: time.Now,
+		Env:       os.Getenv,
+		Now:       time.Now,
 		GitExec:   pkgit.Exec,
 		Getwd:     os.Getwd,
 		ReadFile:  os.ReadFile,

@@ -153,7 +153,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				call := strings.Join(args, " ")
 				gitCalls = append(gitCalls, call)
@@ -228,7 +228,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				call := strings.Join(args, " ")
 				gitCalls = append(gitCalls, call)
@@ -281,10 +281,10 @@ func TestRun(t *testing.T) {
 
 		var stdout, stderr bytes.Buffer
 		cfg := Config{
-			Stdin:   strings.NewReader(inputJSON),
-			Stdout:  &stdout,
-			Stderr:  &stderr,
-			Env:     func(string) string { return "" },
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env:    func(string) string { return "" },
 
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
@@ -323,7 +323,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				// diff --cached --quiet exits 0 when no changes.
 				return "", nil
@@ -401,7 +401,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
 					addPath = args[1]
@@ -461,7 +461,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "rev-parse" {
 					return "", nil
@@ -515,7 +515,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
 					addCalled = true
@@ -578,10 +578,10 @@ func TestRun(t *testing.T) {
 
 		var stdout, stderr bytes.Buffer
 		cfg := Config{
-			Stdin:   strings.NewReader(inputJSON),
-			Stdout:  &stdout,
-			Stderr:  &stderr,
-			Env:     func(string) string { return "" },
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env:    func(string) string { return "" },
 
 			Now:     func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call in notify mode"); return "", nil },
@@ -691,7 +691,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "commit" {
 					commitMsg = args[2]
@@ -777,7 +777,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) {
 				// Only rev-parse should be called; no add/commit/push.
 				return "", nil
@@ -843,7 +843,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "diff" && args[1] == "--cached" {
 					return "", fmt.Errorf("changes exist")
@@ -895,7 +895,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
 					addPath = args[1]
@@ -955,7 +955,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
 					addPath = args[1]
@@ -1003,7 +1003,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "diff" && args[1] == "--cached" {
 					return "", fmt.Errorf("changes exist")
@@ -1051,7 +1051,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(string, ...string) (string, error) {
 				return "", nil
 			},
@@ -1089,13 +1089,13 @@ func TestRun(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		var addPath string
 		cfg := Config{
-			Stdin:   strings.NewReader(inputJSON),
-			Stdout:  &stdout,
-			Stderr:  &stderr,
-			Env:     func(string) string { return "" },
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env:    func(string) string { return "" },
 
-			Now:     func() time.Time { return fixedTime },
-			Getwd:   func() (string, error) { return projectDir, nil },
+			Now:   func() time.Time { return fixedTime },
+			Getwd: func() (string, error) { return projectDir, nil },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "add" {
 					addPath = args[1]
@@ -1148,7 +1148,7 @@ func TestRun(t *testing.T) {
 				return ""
 			},
 
-			Now:     func() time.Time { return fixedTime },
+			Now: func() time.Time { return fixedTime },
 			GitExec: func(dir string, args ...string) (string, error) {
 				if args[0] == "rev-parse" {
 					return "", fmt.Errorf("not a git repository")
@@ -1185,13 +1185,13 @@ func TestRun(t *testing.T) {
 
 		var stdout, stderr bytes.Buffer
 		cfg := Config{
-			Stdin:   strings.NewReader(inputJSON),
-			Stdout:  &stdout,
-			Stderr:  &stderr,
-			Env:     func(string) string { return "" },
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env:    func(string) string { return "" },
 
-			Now:     func() time.Time { return fixedTime },
-			Getwd:   func() (string, error) { return "", fmt.Errorf("no working directory") },
+			Now:   func() time.Time { return fixedTime },
+			Getwd: func() (string, error) { return "", fmt.Errorf("no working directory") },
 			GitExec: func(string, ...string) (string, error) {
 				t.Fatal("unexpected git call when no project directory")
 				return "", nil
@@ -1255,10 +1255,10 @@ func TestRun_mkdirAllFailure(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cfg := Config{
-		Stdin:     strings.NewReader(inputJSON),
-		Stdout:    &bytes.Buffer{},
-		Stderr:    &stderr,
-		Env:       func(string) string { return "" },
+		Stdin:  strings.NewReader(inputJSON),
+		Stdout: &bytes.Buffer{},
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
 
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
@@ -1293,10 +1293,10 @@ func TestRun_writeFileFailure(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cfg := Config{
-		Stdin:     strings.NewReader(inputJSON),
-		Stdout:    &bytes.Buffer{},
-		Stderr:    &stderr,
-		Env:       func(string) string { return "" },
+		Stdin:  strings.NewReader(inputJSON),
+		Stdout: &bytes.Buffer{},
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
 
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
@@ -1331,11 +1331,11 @@ func TestRun_gitAddFailure(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cfg := Config{
-		Stdin:   strings.NewReader(inputJSON),
-		Stdout:  &bytes.Buffer{},
-		Stderr:  &stderr,
-		Env: func(string) string { return "" },
-		Now: func() time.Time { return fixedTime },
+		Stdin:  strings.NewReader(inputJSON),
+		Stdout: &bytes.Buffer{},
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		Now:    func() time.Time { return fixedTime },
 		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "add" {
 				return "", fmt.Errorf("add failed")
@@ -1373,11 +1373,11 @@ func TestRun_gitCommitFailure(t *testing.T) {
 
 	var stderr bytes.Buffer
 	cfg := Config{
-		Stdin:   strings.NewReader(inputJSON),
-		Stdout:  &bytes.Buffer{},
-		Stderr:  &stderr,
-		Env: func(string) string { return "" },
-		Now: func() time.Time { return fixedTime },
+		Stdin:  strings.NewReader(inputJSON),
+		Stdout: &bytes.Buffer{},
+		Stderr: &stderr,
+		Env:    func(string) string { return "" },
+		Now:    func() time.Time { return fixedTime },
 		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "diff" && args[1] == "--cached" {
 				return "", fmt.Errorf("changes exist")
