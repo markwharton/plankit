@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.8] - 2026-05-17
+
+### Fixed
+
+- resolve to git root from subdirectories for status, setup, teardown (b04192c)
+
+### Maintenance
+
+- add codecov.yml to ignore non-Go files in coverage (f3cd23e)
+- add cmd/pk to codecov ignore (CLI glue, no unit tests) (339a547)
+
 ## [v0.19.7] - 2026-05-15
 
 ### Fixed
@@ -702,3 +713,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.5]: https://github.com/markwharton/plankit/compare/v0.19.4...v0.19.5
 [v0.19.6]: https://github.com/markwharton/plankit/compare/v0.19.5...v0.19.6
 [v0.19.7]: https://github.com/markwharton/plankit/compare/v0.19.6...v0.19.7
+[v0.19.8]: https://github.com/markwharton/plankit/compare/v0.19.7...v0.19.8
