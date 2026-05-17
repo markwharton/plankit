@@ -60,6 +60,43 @@ func TestTopLevel_passesDir(t *testing.T) {
 	}
 }
 
+func TestRepoRoot_returnsRoot(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, ".git"), 0755)
+	sub := filepath.Join(root, "packages", "foo")
+	os.MkdirAll(sub, 0755)
+
+	got, ok := RepoRoot(os.Stat, sub)
+	if !ok {
+		t.Fatal("expected ok=true for subdirectory of a git repo")
+	}
+	if got != root {
+		t.Errorf("RepoRoot = %q, want %q", got, root)
+	}
+}
+
+func TestRepoRoot_atRoot(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, ".git"), 0755)
+
+	got, ok := RepoRoot(os.Stat, root)
+	if !ok {
+		t.Fatal("expected ok=true for directory with .git")
+	}
+	if got != root {
+		t.Errorf("RepoRoot = %q, want %q", got, root)
+	}
+}
+
+func TestRepoRoot_notARepo(t *testing.T) {
+	dir := t.TempDir()
+
+	_, ok := RepoRoot(os.Stat, dir)
+	if ok {
+		t.Error("expected ok=false for directory without .git")
+	}
+}
+
 func TestIsRepo_directGitDir(t *testing.T) {
 	dir := t.TempDir()
 	os.MkdirAll(filepath.Join(dir, ".git"), 0755)

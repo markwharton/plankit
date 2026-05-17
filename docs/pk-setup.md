@@ -35,7 +35,7 @@ After setup, restart Claude Code to apply changes.
 - **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
-- **--project-dir** — Project directory (default: current directory).
+- **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.
 - **--baseline** — After setup, create a `v0.0.0` tag on HEAD if no valid semver tag exists in the repo. Idempotent: if any tag parses as semver (e.g. `v0.0.0`, `v1.2.3`), the step is a no-op. See [Baseline tag for pk changelog](#baseline-tag-for-pk-changelog).
 - **--at** — Tag the given ref instead of HEAD. Requires `--baseline`. Use this to anchor an existing repo at its first commit so all prior work lands in the first changelog entry (`pk setup --baseline --at $(git rev-list --max-parents=0 HEAD)`).
 - **--push** — After tagging, publish to `origin`. Requires `--baseline`. Pushes HEAD + tag by default, so the tagged commit is reachable from a branch on origin (matching `pk preserve --push`). With `--at`, pushes the tag only — the user picked the ref, pk doesn't assume which branch goes with it. Without `--push`, the tag stays local and pk prints the manual push command — consistent with the git-discipline rule that commit and push are separate decisions.

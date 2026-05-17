@@ -21,7 +21,7 @@ pk teardown --project-dir /path   # specify project directory
 ## Flags
 
 - **--confirm** — Execute the teardown. Without this flag, only a preview is shown.
-- **--project-dir** — Project directory (default: current directory).
+- **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.
 
 ## Details
 

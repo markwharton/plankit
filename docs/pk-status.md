@@ -23,7 +23,7 @@ pk status --project-dir /path     # specify project directory
 ## Flags
 
 - **--brief** — One-line summary. Useful for scripting: `if pk status --brief >/dev/null; then ...`
-- **--project-dir** — Project directory (default: current directory).
+- **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.
 
 ## Exit code
 

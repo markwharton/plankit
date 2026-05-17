@@ -60,6 +60,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 
 ### Design
 
+- **All commands resolve to the git repository root.** A pk command can be invoked from any subdirectory; it walks up to find `.git` and operates there. Commands don't require being at the root, but they effectively run as if they are. Non-git fallback: when no `.git` exists up the tree, the command uses the provided directory as-is.
 - **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
 - **Three command layers, three flag patterns.**
   - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
@@ -71,7 +72,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - **Dependency injection via Config structs.** Every package exports a `Config` struct with injectable deps (`Stdin`, `Stdout`, `Stderr`, `GitExec`, `ReadFile`, etc.) and a `DefaultConfig()` factory wired to real implementations. DI extends to standalone utility functions too: any function that does file I/O accepts injected `readFile`/`writeFile` parameters rather than calling `os.ReadFile`/`os.WriteFile` directly. The call site in `cmd/pk/main.go` passes the real implementations.
 - **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests. Test error paths, not just happy paths: file I/O failures, git operation failures, and config parse errors all need coverage because they protect against silent data corruption.
 - **Hook commands** read JSON from stdin, write JSON to stdout, and always exit 0. Shared types and helpers live in `internal/hooks`: `ResolveProjectDir` for project-dir resolution (env var then CWD fallback), `ReadInput` for payload parsing, `WritePostToolUse`/`WritePermissionDecision` for response writing. Response writers return errors; callers log to stderr and continue (hooks never fail on write errors).
-- **Shared git helpers** live in `internal/git`: `IsRepo` (stat-based, no subprocess) for commands where the check is a pre-condition, `IsInsideWorkTree` (gitExec-based, authoritative) for commands that already call git extensively. Use the one that matches the command's git surface.
+- **Shared git helpers** live in `internal/git`: `RepoRoot` (stat-based, no subprocess) resolves directory to the git repository root — the standard for all commands. `IsRepo` wraps `RepoRoot` when only the boolean is needed. `IsInsideWorkTree` and `TopLevel` (gitExec-based, authoritative) provide subprocess-based verification for commands that need worktree/GIT_DIR edge-case handling.
 - **Managed files** embed a SHA marker (HTML comment for CLAUDE.md, YAML frontmatter `pk_sha256` for skills) so `pk setup` can detect user modifications.
 - **Embedded assets** via `//go:embed` — templates, skills, and rules are compiled into the binary.
 

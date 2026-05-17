@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
+	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/guard"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
@@ -155,7 +156,7 @@ func runSetup(args []string) {
 	push := fs.Bool("push", false, "Push the baseline tag to origin (requires --baseline)")
 	fs.Parse(args)
 
-	dir := resolveDir(*projectDir)
+	dir := resolveProjectDir(*projectDir)
 
 	// Preserve existing modes on re-run. When --guard or --preserve is not
 	// explicitly passed, infer the current mode from settings.json so that
@@ -238,7 +239,7 @@ func runStatus(args []string) {
 	brief := fs.Bool("brief", false, "One-line summary (useful for scripting)")
 	fs.Parse(args)
 
-	dir := resolveDir(*projectDir)
+	dir := resolveProjectDir(*projectDir)
 
 	cfg := status.DefaultConfig()
 	cfg.ProjectDir = dir
@@ -259,7 +260,7 @@ func runTeardown(args []string) {
 	confirm := fs.Bool("confirm", false, "Actually remove (default: preview only)")
 	fs.Parse(args)
 
-	dir := resolveDir(*projectDir)
+	dir := resolveProjectDir(*projectDir)
 
 	cfg := teardown.DefaultConfig()
 	cfg.ProjectDir = dir
@@ -333,6 +334,14 @@ func resolveDir(dir string) string {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
+	}
+	return abs
+}
+
+func resolveProjectDir(dir string) string {
+	abs := resolveDir(dir)
+	if root, ok := pkgit.RepoRoot(os.Stat, abs); ok {
+		return root
 	}
 	return abs
 }
