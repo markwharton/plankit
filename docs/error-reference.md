@@ -68,6 +68,18 @@ Error: HEAD is already on the remote — cannot undo a pushed commit
 
 **Fix:** If the changelog commit has been pushed, create a new commit to correct it. Do not force push.
 
+### changelog already pending
+
+```
+Error: changelog for v0.19.9 is already pending (HEAD has Release-Tag: v0.19.9)
+  To complete the release: pk release
+  To undo and start over:  pk changelog --undo
+```
+
+**Cause:** `pk changelog` was already run and committed a Release-Tag trailer on HEAD. Running it again without `pk release` or `pk changelog --undo` in between would create duplicate changelog sections.
+
+**Fix:** Run `pk release` to complete the release, or `pk changelog --undo` to unwind the pending release and start over.
+
 ## pk release
 
 ### no Release-Tag trailer

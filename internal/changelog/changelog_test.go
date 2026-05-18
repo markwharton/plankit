@@ -1702,6 +1702,110 @@ func excludeConfig(t *testing.T, log string, exclude []string) (Config, *[]strin
 }
 
 // commitMatch returns true if gitCalls contains a "commit -m ... --trailer Release-Tag: <tag>" call.
+func TestRun_duplicateChangelogBlocked(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				for _, a := range args {
+					if strings.Contains(a, "%(trailers") {
+						return "v0.1.0\n", nil
+					}
+				}
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error {
+			t.Error("WriteFile should not be called when guard fires")
+			return nil
+		},
+		Now: fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "already pending") {
+		t.Errorf("stderr = %q, want 'already pending' message", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "pk release") {
+		t.Errorf("stderr = %q, want 'pk release' advice", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "pk changelog --undo") {
+		t.Errorf("stderr = %q, want 'pk changelog --undo' advice", stderr.String())
+	}
+}
+
+func TestRun_duplicateChangelogAllowedInDryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				for _, a := range args {
+					if strings.Contains(a, "%(trailers") {
+						return "v0.1.0\n", nil
+					}
+				}
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+		DryRun:   true,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "already pending") {
+		t.Error("guard should not fire in dry-run mode")
+	}
+}
+
+func TestRun_noGuardAfterUndo(t *testing.T) {
+	var stderr bytes.Buffer
+	gitCalls := &[]string{}
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			*gitCalls = append(*gitCalls, strings.Join(args, " "))
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				for _, a := range args {
+					if strings.Contains(a, "%(trailers") {
+						return "\n", nil
+					}
+				}
+				return "abc1234\x00feat: new feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
+		Now:       fixedTime,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "already pending") {
+		t.Error("guard should not fire after undo (no trailer on HEAD)")
+	}
+}
+
 func commitMatch(gitCalls []string, tag string) bool {
 	for _, c := range gitCalls {
 		if strings.Contains(c, "commit -m chore: release "+tag) &&

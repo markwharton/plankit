@@ -214,6 +214,17 @@ func Run(cfg Config) int {
 	nextTag := next.String()
 	fmt.Fprintf(cfg.Stderr, "Generating %s\n", nextTag)
 
+	// 9a. Guard: refuse if HEAD already carries a Release-Tag trailer.
+	if !cfg.DryRun {
+		_, trailerTag, err := ReadReleaseTagTrailer(cfg.GitExec)
+		if err == nil {
+			fmt.Fprintf(cfg.Stderr, "Error: changelog for %s is already pending (HEAD has Release-Tag: %s)\n", trailerTag, trailerTag)
+			fmt.Fprintln(cfg.Stderr, "  To complete the release: pk release")
+			fmt.Fprintln(cfg.Stderr, "  To undo and start over:  pk changelog --undo")
+			return 1
+		}
+	}
+
 	// 10. Generate section.
 	groups := groupCommits(commits, config.Types)
 	date := cfg.Now().Format("2006-01-02")
