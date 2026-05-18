@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - add changelog/release coupled-flow rule to git-discipline (f839a43)
 
+### Maintenance
+
+- release v0.19.9 (a8a460f)
+
+## [v0.19.9] - 2026-05-18
+
+### Fixed
+
+- add push-state verification and unexpected-state rules to git-discipline (bbda2e1)
+
+### Documentation
+
+- add changelog/release coupled-flow rule to git-discipline (f839a43)
+
 ## [v0.19.8] - 2026-05-17
 
 ### Fixed
