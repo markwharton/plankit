@@ -349,6 +349,30 @@ func TestWriteInstallScript_versionIsolatedPath(t *testing.T) {
 	}
 }
 
+func TestWriteInstallScript_fixesPermissions(t *testing.T) {
+	projectDir := t.TempDir()
+	var stderr bytes.Buffer
+
+	claudeDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(claudeDir, 0755)
+	scriptPath := filepath.Join(claudeDir, "install-pk.sh")
+	os.WriteFile(scriptPath, []byte("#!/bin/sh\n# stale"), 0644)
+
+	wsCfg := Config{Stderr: &stderr}
+	withFS(&wsCfg)
+	if _, err := writeInstallScript(wsCfg, projectDir, "0.9.0"); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+
+	info, err := os.Stat(scriptPath)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Error("install-pk.sh should be executable after overwriting a 0644 file")
+	}
+}
+
 func TestInferModesFromCommands_blockAndManual(t *testing.T) {
 	guard, preserve := InferModesFromCommands([]string{
 		GuardBlockCommand, "pk protect", PreserveManualCommand,

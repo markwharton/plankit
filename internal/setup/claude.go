@@ -204,6 +204,8 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 	if err := cfg.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
 	}
+	// WriteFile only applies the mode on creation, not when overwriting.
+	cfg.Remove(scriptPath)
 	if err := cfg.WriteFile(scriptPath, []byte(content), 0755); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", scriptPath, err)
 	}
