@@ -221,6 +221,10 @@ func Run(cfg Config) int {
 
 	// 10. Generate section.
 	groups := groupCommits(commits, config.Types)
+	if len(groups) == 0 {
+		fmt.Fprintln(cfg.Stderr, "No visible commits after grouping (all hidden or unmapped types).")
+		return 0
+	}
 	date := cfg.Now().Format("2006-01-02")
 	section := formatSection(nextTag, date, groups, config.ShowScope)
 

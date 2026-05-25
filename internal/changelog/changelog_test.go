@@ -777,6 +777,32 @@ func TestRun_noNewCommits(t *testing.T) {
 	}
 }
 
+func TestRun_allHiddenCommits(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v1.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00plan: preserved plan\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	if !strings.Contains(stderr.String(), "No visible commits") {
+		t.Errorf("stderr = %q, want hidden commits message", stderr.String())
+	}
+}
+
 func TestRun_dryRun(t *testing.T) {
 	var stderr bytes.Buffer
 	writeFileCalled := false
