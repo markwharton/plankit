@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.11] - 2026-05-26
+
+### Fixed
+
+- ensure install-pk.sh gets execute permissions on overwrite (96c0228)
+- run lifecycle hooks and git commands from the repo root (60d5697)
+- skip empty changelog when all commits are hidden or unmapped (2c39e20)
+
+### Documentation
+
+- add Working as a Team page (a36788a)
+
 ## [v0.19.10] - 2026-05-19
 
 ### Fixed
@@ -732,3 +744,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.8]: https://github.com/markwharton/plankit/compare/v0.19.7...v0.19.8
 [v0.19.9]: https://github.com/markwharton/plankit/compare/v0.19.8...v0.19.9
 [v0.19.10]: https://github.com/markwharton/plankit/compare/v0.19.9...v0.19.10
+[v0.19.11]: https://github.com/markwharton/plankit/compare/v0.19.10...v0.19.11
