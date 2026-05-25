@@ -52,9 +52,6 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 			return "abc123", nil
 		},
 		"rev-parse": func(args ...string) (string, error) {
-			if len(args) >= 2 && args[1] == "--show-toplevel" {
-				return "/repo", nil
-			}
 			return "abc123", nil
 		},
 		"push": func(args ...string) (string, error) {
@@ -91,30 +88,6 @@ func mergeConfig(releaseBranch string) func(string) ([]byte, error) {
 			return []byte(fmt.Sprintf(`{"release":{"branch":%q}}`, releaseBranch)), nil
 		}
 		return nil, os.ErrNotExist
-	}
-}
-
-// --- Repo check ---
-
-func TestRun_notAGitRepo(t *testing.T) {
-	var stderr bytes.Buffer
-	git := happyGit("v1.0.0", "main")
-	git["rev-parse"] = func(args ...string) (string, error) {
-		return "", fmt.Errorf("fatal: not a git repository")
-	}
-
-	cfg := Config{
-		Stderr:   &stderr,
-		GitExec:  stubGitExec(git),
-		ReadFile: noConfig,
-	}
-
-	code := Run(cfg)
-	if code != 1 {
-		t.Fatalf("exit code = %d, want 1", code)
-	}
-	if !strings.Contains(stderr.String(), "not a git repository") {
-		t.Errorf("stderr = %q, want not-a-git-repo message", stderr.String())
 	}
 }
 
@@ -274,9 +247,6 @@ func TestRun_behindRemote(t *testing.T) {
 		return "local123", nil
 	}
 	git["rev-parse"] = func(args ...string) (string, error) {
-		if len(args) >= 2 && args[1] == "--show-toplevel" {
-			return "/repo", nil
-		}
 		return "remote456", nil
 	}
 
@@ -342,7 +312,7 @@ func TestRun_preReleaseHook(t *testing.T) {
 			}
 			return nil, os.ErrNotExist
 		},
-		RunScript: func(command string, env map[string]string) error {
+		RunScript: func(dir string, command string, env map[string]string) error {
 			hookCommand = command
 			return nil
 		},
@@ -369,7 +339,7 @@ func TestRun_preReleaseHookFailure(t *testing.T) {
 			}
 			return nil, os.ErrNotExist
 		},
-		RunScript: func(command string, env map[string]string) error {
+		RunScript: func(dir string, command string, env map[string]string) error {
 			return fmt.Errorf("exit status 1")
 		},
 	}
@@ -724,9 +694,6 @@ func TestRun_mergeFlow_sourceBehindRemote(t *testing.T) {
 		return "abc123", nil
 	}
 	git["rev-parse"] = func(args ...string) (string, error) {
-		if len(args) >= 2 && args[1] == "--show-toplevel" {
-			return "/repo", nil
-		}
 		if len(args) >= 2 && args[1] == "origin/dev" {
 			return "remote456", nil
 		}

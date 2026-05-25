@@ -99,6 +99,7 @@ func runChangelog(args []string) {
 	fs.Parse(args)
 
 	cfg := changelog.DefaultConfig()
+	cfg.Dir = mustGitRoot()
 	cfg.Bump = *bump
 	cfg.DryRun = *dryRun
 	if *exclude != "" {
@@ -139,6 +140,7 @@ func runRelease(args []string) {
 	fs.Parse(args)
 
 	cfg := release.DefaultConfig()
+	cfg.Dir = mustGitRoot()
 	cfg.DryRun = *dryRun
 
 	os.Exit(release.Run(cfg))
@@ -327,6 +329,15 @@ func runVersion(args []string) {
 	}
 
 	printUpdateNotice()
+}
+
+func mustGitRoot() string {
+	root, err := pkgit.TopLevel(pkgit.Exec, "")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: not a git repository")
+		os.Exit(1)
+	}
+	return root
 }
 
 func resolveDir(dir string) string {

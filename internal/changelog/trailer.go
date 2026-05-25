@@ -38,8 +38,8 @@ var ErrInvalidTrailer = errors.New("Release-Tag trailer value is not valid semve
 //     missing v prefix)
 //
 // Steps 4 and 5 together yield ErrInvalidTrailer wrapped with the value.
-func ReadReleaseTagTrailer(gitExec func(dir string, args ...string) (string, error)) (version.Semver, string, error) {
-	out, err := gitExec("", "log", "-1", "--format=%(trailers:key="+TrailerKey+",valueonly)", "HEAD")
+func ReadReleaseTagTrailer(gitExec func(dir string, args ...string) (string, error), dir string) (version.Semver, string, error) {
+	out, err := gitExec(dir, "log", "-1", "--format=%(trailers:key="+TrailerKey+",valueonly)", "HEAD")
 	if err != nil {
 		return version.Semver{}, "", fmt.Errorf("git log failed: %w", err)
 	}

@@ -12,7 +12,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "v0.8.0\n", nil
 		}
-		parsed, tag, err := ReadReleaseTagTrailer(gitExec)
+		parsed, tag, err := ReadReleaseTagTrailer(gitExec, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -29,7 +29,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "\n", nil
 		}
-		_, _, err := ReadReleaseTagTrailer(gitExec)
+		_, _, err := ReadReleaseTagTrailer(gitExec, "")
 		if !errors.Is(err, ErrNoTrailer) {
 			t.Errorf("err = %v, want ErrNoTrailer", err)
 		}
@@ -39,7 +39,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "", errors.New("fatal: not a git repository")
 		}
-		_, _, err := ReadReleaseTagTrailer(gitExec)
+		_, _, err := ReadReleaseTagTrailer(gitExec, "")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -52,7 +52,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "  v1.2.3  \n", nil
 		}
-		parsed, tag, err := ReadReleaseTagTrailer(gitExec)
+		parsed, tag, err := ReadReleaseTagTrailer(gitExec, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -69,7 +69,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "", nil
 		}
-		_, _, err := ReadReleaseTagTrailer(gitExec)
+		_, _, err := ReadReleaseTagTrailer(gitExec, "")
 		if !errors.Is(err, ErrNoTrailer) {
 			t.Errorf("err = %v, want ErrNoTrailer", err)
 		}
@@ -79,7 +79,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "not-a-version\n", nil
 		}
-		_, _, err := ReadReleaseTagTrailer(gitExec)
+		_, _, err := ReadReleaseTagTrailer(gitExec, "")
 		if !errors.Is(err, ErrInvalidTrailer) {
 			t.Errorf("err = %v, want ErrInvalidTrailer", err)
 		}
@@ -89,7 +89,7 @@ func TestReadReleaseTagTrailer(t *testing.T) {
 		gitExec := func(dir string, args ...string) (string, error) {
 			return "1.2.3\n", nil
 		}
-		_, _, err := ReadReleaseTagTrailer(gitExec)
+		_, _, err := ReadReleaseTagTrailer(gitExec, "")
 		if !errors.Is(err, ErrInvalidTrailer) {
 			t.Errorf("err = %v, want ErrInvalidTrailer", err)
 		}

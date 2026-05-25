@@ -573,31 +573,6 @@ func fixedTime() time.Time {
 	return time.Date(2026, 4, 3, 0, 0, 0, 0, time.UTC)
 }
 
-func TestRun_notAGitRepo(t *testing.T) {
-	var stderr bytes.Buffer
-	cfg := Config{
-		Stderr: &stderr,
-		GitExec: func(dir string, args ...string) (string, error) {
-			if args[0] == "rev-parse" {
-				return "", fmt.Errorf("fatal: not a git repository")
-			}
-			return "", nil
-		},
-		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
-		Now:      fixedTime,
-	}
-	code := Run(cfg)
-	if code != 1 {
-		t.Errorf("exit code = %d, want 1", code)
-	}
-	if !strings.Contains(stderr.String(), "not a git repository") {
-		t.Errorf("stderr = %q, want 'not a git repository' message", stderr.String())
-	}
-	if strings.Contains(stderr.String(), "failed to list tags") {
-		t.Errorf("stderr = %q, should not surface the raw git-tag error when the repo check catches it first", stderr.String())
-	}
-}
-
 func TestRun_noTags(t *testing.T) {
 	var stderr bytes.Buffer
 	cfg := Config{
@@ -724,7 +699,7 @@ func TestRun_firstRelease(t *testing.T) {
 			writtenContent = data
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -822,7 +797,7 @@ func TestRun_dryRun(t *testing.T) {
 			writeFileCalled = true
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error {
+		RunScript: func(dir string, command string, env map[string]string) error {
 			t.Error("RunScript should not be called in dry run")
 			return nil
 		},
@@ -860,7 +835,7 @@ func TestRun_bumpOverride(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 		Bump:      "major",
 	}
@@ -900,7 +875,7 @@ func TestRun_breakingViaBang(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -939,7 +914,7 @@ func TestRun_breakingViaTrailer(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -985,7 +960,7 @@ func TestRun_customConfigHiddenTypes(t *testing.T) {
 			writtenContent = data
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1034,7 +1009,7 @@ func TestRun_versionFiles(t *testing.T) {
 			}
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1051,6 +1026,7 @@ func TestRun_versionFiles(t *testing.T) {
 func TestRun_hooks(t *testing.T) {
 	var stderr bytes.Buffer
 	type hookCall struct {
+		dir     string
 		command string
 		env     map[string]string
 	}
@@ -1058,6 +1034,7 @@ func TestRun_hooks(t *testing.T) {
 
 	cfg := Config{
 		Stderr: &stderr,
+		Dir:    "/repo",
 		GitExec: func(dir string, args ...string) (string, error) {
 			if args[0] == "tag" && args[1] == "--list" {
 				return "v0.0.0", nil
@@ -1068,14 +1045,14 @@ func TestRun_hooks(t *testing.T) {
 			return "", nil
 		},
 		ReadFile: func(name string) ([]byte, error) {
-			if name == ".pk.json" {
+			if name == "/repo/.pk.json" {
 				return []byte(`{"changelog":{"hooks":{"postVersion":"echo post","preCommit":"echo pre"}}}`), nil
 			}
 			return nil, os.ErrNotExist
 		},
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error {
-			hookCalls = append(hookCalls, hookCall{command, env})
+		RunScript: func(dir string, command string, env map[string]string) error {
+			hookCalls = append(hookCalls, hookCall{dir, command, env})
 			return nil
 		},
 		Now: fixedTime,
@@ -1089,11 +1066,17 @@ func TestRun_hooks(t *testing.T) {
 	if len(hookCalls) != 2 {
 		t.Fatalf("hook calls = %d, want 2: %v", len(hookCalls), hookCalls)
 	}
+	if hookCalls[0].dir != "/repo" {
+		t.Errorf("postVersion hook dir = %q, want '/repo'", hookCalls[0].dir)
+	}
 	if hookCalls[0].command != "echo post" {
 		t.Errorf("postVersion hook command = %q, want 'echo post'", hookCalls[0].command)
 	}
 	if hookCalls[0].env["VERSION"] != "0.1.0" {
 		t.Errorf("postVersion hook VERSION = %q, want '0.1.0'", hookCalls[0].env["VERSION"])
+	}
+	if hookCalls[1].dir != "/repo" {
+		t.Errorf("preCommit hook dir = %q, want '/repo'", hookCalls[1].dir)
 	}
 	if hookCalls[1].command != "echo pre" {
 		t.Errorf("preCommit hook command = %q, want 'echo pre'", hookCalls[1].command)
@@ -1124,7 +1107,7 @@ func TestRun_hookFailure(t *testing.T) {
 			return nil, os.ErrNotExist
 		},
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error {
+		RunScript: func(dir string, command string, env map[string]string) error {
 			return fmt.Errorf("hook failed")
 		},
 		Now: fixedTime,
@@ -1155,7 +1138,7 @@ func TestRun_writeFileFailure(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return fmt.Errorf("disk full") },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1187,7 +1170,7 @@ func TestRun_gitAddFailure(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1221,7 +1204,7 @@ func TestRun_unsupportedVersionFileType(t *testing.T) {
 			return nil, os.ErrNotExist
 		},
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1253,7 +1236,7 @@ func TestRun_gitCommitFailure(t *testing.T) {
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1291,7 +1274,7 @@ func TestRun_subsequentRelease(t *testing.T) {
 			}
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1474,7 +1457,7 @@ func TestRun_showScope(t *testing.T) {
 			writtenContent = data
 			return nil
 		},
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 	}
 
@@ -1694,7 +1677,7 @@ func excludeConfig(t *testing.T, log string, exclude []string) (Config, *[]strin
 		},
 		ReadFile:  func(name string) ([]byte, error) { return nil, os.ErrNotExist },
 		WriteFile: func(name string, data []byte, perm os.FileMode) error { return nil },
-		RunScript: func(command string, env map[string]string) error { return nil },
+		RunScript: func(dir string, command string, env map[string]string) error { return nil },
 		Now:       fixedTime,
 		Exclude:   exclude,
 	}
