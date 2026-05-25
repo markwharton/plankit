@@ -89,6 +89,7 @@ Skills add a preview+confirm cycle and handle the sequencing. The underlying pk 
 - [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
 - [Resources](docs/resources.md): Claude Code best practices, git references
 - [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts
+- [Working as a Team](docs/working-as-a-team.md): applying the methodology
 
 ### Reference
 

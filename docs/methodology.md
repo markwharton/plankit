@@ -42,6 +42,8 @@ Validate the plan before execution begins. Catching a wrong approach in the plan
 
 Discarding a plan is better than executing a wrong one.
 
+For how this works in practice as a small team, see [Working as a Team](working-as-a-team.md).
+
 ## 4. Guidelines
 
 `pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines as `.claude/rules/` files covering model behavior, development standards, and git discipline.
