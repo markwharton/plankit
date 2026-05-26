@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.19.12] - 2026-05-26
+
+### Documentation
+
+- add auto-preserve guidance to Working as a Team page (d3c9d9f)
+
+### Maintenance
+
+- exclude cmd/pk from patch coverage checks (4332a21)
+
 ## [v0.19.11] - 2026-05-26
 
 ### Fixed
@@ -745,3 +755,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.9]: https://github.com/markwharton/plankit/compare/v0.19.8...v0.19.9
 [v0.19.10]: https://github.com/markwharton/plankit/compare/v0.19.9...v0.19.10
 [v0.19.11]: https://github.com/markwharton/plankit/compare/v0.19.10...v0.19.11
+[v0.19.12]: https://github.com/markwharton/plankit/compare/v0.19.11...v0.19.12
