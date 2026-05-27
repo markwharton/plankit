@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.20.0] - 2026-05-27
+
+### Added
+
+- add "off" mode for --guard and --preserve flags (35b1dc6)
+
+### Fixed
+
+- specify bash shell for hooks and skills on Windows (0b2e54f)
+- add dry-run diagnostics and tilde expansion to pk preserve (2b93cf2)
+
+### Maintenance
+
+- update pk-managed settings for Windows shell compatibility (f0a079e)
+
 ## [v0.19.12] - 2026-05-26
 
 ### Documentation
@@ -756,3 +771,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.10]: https://github.com/markwharton/plankit/compare/v0.19.9...v0.19.10
 [v0.19.11]: https://github.com/markwharton/plankit/compare/v0.19.10...v0.19.11
 [v0.19.12]: https://github.com/markwharton/plankit/compare/v0.19.11...v0.19.12
+[v0.20.0]: https://github.com/markwharton/plankit/compare/v0.19.12...v0.20.0
