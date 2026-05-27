@@ -201,6 +201,40 @@ Error: "abc" is not valid semver
 
 **Fix:** Use a valid semver string (e.g., `1.0.0`, `0.8.1-beta.1`).
 
+## pk preserve
+
+### no plan found (dry-run)
+
+```
+pk preserve --dry-run: no plan found (tool_response did not contain a .claude/plans/*.md path)
+pk preserve --dry-run: no plan found (plan file not found: /path/to/.claude/plans/my-plan.md)
+pk preserve --dry-run: no plan found (stdin had no valid hook payload and no pending-plan pointer was found)
+```
+
+**Cause:** `--dry-run` found no plan to preview. The diagnostic in parentheses explains why: the `tool_response` didn't contain a path matching `.claude/plans/*.md`, the matched path doesn't exist on disk, or stdin had no valid JSON payload and no pending-plan pointer was available.
+
+**Fix:** Ensure the `tool_response` contains an absolute path with `.claude/plans/` in it (e.g., `/Users/you/.claude/plans/my-plan.md`). Paths using `~` or outside `.claude/plans/` are not recognized.
+
+### failed to read plan
+
+```
+pk preserve: failed to read plan: open /path/to/plan.md: no such file or directory
+```
+
+**Cause:** The plan path was extracted from `tool_response` and passed the existence check, but reading the file failed (permissions, race condition).
+
+**Fix:** Verify the plan file exists and is readable.
+
+### not a git repository
+
+```
+pk preserve: not a git repository: /path/to/project
+```
+
+**Cause:** The resolved project directory is not inside a git working tree. `pk preserve` needs git to commit the preserved plan.
+
+**Fix:** Run `git init` in the project directory, or set `CLAUDE_PROJECT_DIR` to a directory inside a git repository.
+
 ## pk version
 
 ### pinned version mismatch (binary behind)

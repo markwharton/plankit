@@ -28,6 +28,7 @@ type Config struct {
 	Now     func() time.Time
 	GitExec func(projectDir string, args ...string) (string, error)
 
+	HomeDir   func() (string, error)
 	Getwd     func() (string, error)
 	ReadFile  func(string) ([]byte, error)
 	WriteFile func(string, []byte, os.FileMode) error
@@ -55,6 +56,7 @@ func DefaultConfig() Config {
 		Env:       os.Getenv,
 		Now:       time.Now,
 		GitExec:   pkgit.Exec,
+		HomeDir:   os.UserHomeDir,
 		Getwd:     os.Getwd,
 		ReadFile:  os.ReadFile,
 		WriteFile: os.WriteFile,
@@ -83,6 +85,7 @@ const pointerFilename = "pk-pending-plan"
 // Returns the process exit code (always 0 for hook commands).
 func Run(cfg Config) int {
 	var planPath string
+	var reason string
 	var inputCWD string
 
 	input, err := hooks.ReadInput(cfg.Stdin)
@@ -99,14 +102,23 @@ func Run(cfg Config) int {
 				planPath = p
 			}
 		}
+		if planPath == "" {
+			reason = "stdin had no valid hook payload and no pending-plan pointer was found"
+		}
 	} else {
-		planPath = extractPlanPath(input.ToolResponseString())
-		if planPath != "" && !fileExists(cfg, planPath) {
+		planPath = extractPlanPath(input.ToolResponseString(), cfg.HomeDir)
+		if planPath == "" {
+			reason = "tool_response did not contain a .claude/plans/*.md path"
+		} else if !fileExists(cfg, planPath) {
+			reason = fmt.Sprintf("plan file not found: %s", planPath)
 			planPath = ""
 		}
 	}
 
 	if planPath == "" {
+		if cfg.DryRun {
+			fmt.Fprintf(cfg.Stderr, "pk preserve --dry-run: no plan found (%s)\n", reason)
+		}
 		return 0
 	}
 
@@ -283,9 +295,14 @@ func removePointer(cfg Config, projectDir string) {
 var planPathRegex = regexp.MustCompile(`/[^ "]*\.claude/plans/[^ "]*\.md`)
 
 // extractPlanPath searches the tool response text for a .claude/plans/*.md path.
-func extractPlanPath(text string) string {
-	match := planPathRegex.FindString(text)
-	return match
+// Tilde prefixes are expanded to the home directory so paths like
+// ~/.claude/plans/foo.md resolve correctly.
+func extractPlanPath(text string, homeDir func() (string, error)) string {
+	expanded := text
+	if home, err := homeDir(); err == nil {
+		expanded = strings.ReplaceAll(text, "~/", home+"/")
+	}
+	return planPathRegex.FindString(expanded)
 }
 
 // extractTitle finds the first H1 heading in the plan content.

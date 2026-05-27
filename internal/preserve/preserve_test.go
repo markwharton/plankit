@@ -77,11 +77,17 @@ func TestExtractPlanPath(t *testing.T) {
 			text: "Plan approved.\nSaved to /home/user/.claude/plans/my-plan.md\nDone.",
 			want: "/home/user/.claude/plans/my-plan.md",
 		},
+		{
+			name: "tilde path expanded",
+			text: "Plan saved to ~/.claude/plans/my-plan.md",
+			want: "/home/testuser/.claude/plans/my-plan.md",
+		},
 	}
 
+	homeDir := func() (string, error) { return "/home/testuser", nil }
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractPlanPath(tt.text)
+			got := extractPlanPath(tt.text, homeDir)
 			if got != tt.want {
 				t.Errorf("extractPlanPath() = %q, want %q", got, tt.want)
 			}
@@ -115,6 +121,7 @@ func TestExtractTitle(t *testing.T) {
 
 // withFS sets the filesystem dependencies to real os implementations.
 func withFS(cfg *Config) {
+	cfg.HomeDir = os.UserHomeDir
 	cfg.ReadFile = os.ReadFile
 	cfg.WriteFile = os.WriteFile
 	cfg.Stat = os.Stat
@@ -363,6 +370,120 @@ func TestRun(t *testing.T) {
 		exitCode := Run(cfg)
 		if exitCode != 0 {
 			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+
+	t.Run("dry-run with stdin parse error shows diagnostic", func(t *testing.T) {
+		projectDir := t.TempDir()
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(""),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
+			DryRun:  true,
+		}
+		withFS(&cfg)
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		output := stderr.String()
+		if !strings.Contains(output, "pk preserve --dry-run:") {
+			t.Errorf("stderr = %q, want dry-run prefix", output)
+		}
+		if !strings.Contains(output, "no valid hook payload") {
+			t.Errorf("stderr = %q, want stdin parse error reason", output)
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+
+	t.Run("dry-run with no plan path in tool_response shows diagnostic", func(t *testing.T) {
+		projectDir := t.TempDir()
+		inputJSON := fmt.Sprintf(`{"tool_response":"something else","cwd":"%s"}`, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
+			DryRun:  true,
+		}
+		withFS(&cfg)
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		output := stderr.String()
+		if !strings.Contains(output, "pk preserve --dry-run:") {
+			t.Errorf("stderr = %q, want dry-run prefix", output)
+		}
+		if !strings.Contains(output, ".claude/plans/") {
+			t.Errorf("stderr = %q, want regex explanation", output)
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+	})
+
+	t.Run("dry-run with missing plan file shows diagnostic", func(t *testing.T) {
+		projectDir := t.TempDir()
+		missingFile := "/tmp/nonexistent/.claude/plans/gone.md"
+		inputJSON := fmt.Sprintf(`{"tool_response":"Plan saved to %s","cwd":"%s"}`, missingFile, projectDir)
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(inputJSON),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
+			DryRun:  true,
+		}
+		withFS(&cfg)
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		output := stderr.String()
+		if !strings.Contains(output, "pk preserve --dry-run:") {
+			t.Errorf("stderr = %q, want dry-run prefix", output)
+		}
+		if !strings.Contains(output, "plan file not found") {
+			t.Errorf("stderr = %q, want file-not-found reason", output)
+		}
+		if !strings.Contains(output, missingFile) {
+			t.Errorf("stderr = %q, want missing file path", output)
 		}
 		if stdout.Len() > 0 {
 			t.Errorf("stdout = %q, want empty", stdout.String())
@@ -1262,6 +1383,7 @@ func TestRun_mkdirAllFailure(t *testing.T) {
 
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
+		HomeDir:   os.UserHomeDir,
 		ReadFile:  os.ReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
@@ -1300,6 +1422,7 @@ func TestRun_writeFileFailure(t *testing.T) {
 
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
+		HomeDir:   os.UserHomeDir,
 		ReadFile:  os.ReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
@@ -1342,6 +1465,7 @@ func TestRun_gitAddFailure(t *testing.T) {
 			}
 			return "", nil
 		},
+		HomeDir:   os.UserHomeDir,
 		ReadFile:  os.ReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
@@ -1387,6 +1511,7 @@ func TestRun_gitCommitFailure(t *testing.T) {
 			}
 			return "", nil
 		},
+		HomeDir:   os.UserHomeDir,
 		ReadFile:  os.ReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
