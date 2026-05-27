@@ -14,7 +14,7 @@ pk status --project-dir /path     # specify project directory
 
 1. Detects whether the directory is a git repository. Warns if not — pk requires git for most commands.
 2. Reads `.claude/settings.json` and identifies plankit hooks and the `Bash(pk:*)` permission.
-3. Infers guard mode (block or ask) and preserve mode (auto or manual) from hook commands.
+3. Infers guard mode (block, ask, or off) and preserve mode (auto, manual, or off) from hook commands.
 4. Scans `.claude/skills/` and `.claude/rules/` for files with `pk_sha256` markers and checks if they match (pristine) or have been modified.
 5. Checks `CLAUDE.md` for a plankit SHA marker.
 6. Checks for `.claude/install-pk.sh`.
@@ -52,8 +52,10 @@ Guard and preserve modes are not stored explicitly — they're inferred from the
 |---------|------|
 | `pk guard` | guard: block |
 | `pk guard --ask` | guard: ask |
+| (absent, other pk hooks present) | guard: off |
 | `pk preserve` | preserve: auto |
 | `pk preserve --notify` | preserve: manual |
+| (absent, other pk hooks present) | preserve: off |
 
 ### Related commands
 

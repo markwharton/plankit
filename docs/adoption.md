@@ -43,7 +43,7 @@ pk setup
 - **Three skills:** `/conventions` (project conventions), `/preserve` (plan preservation), `/ship` (release workflow)
 - **Hooks:** branch guard, plan protection, plan preservation
 
-**No configuration needed.** No `.pk.json`, no tags, no additional setup. Guard is installed but is a no-op without branches to protect. Preserve works in manual mode by default; pass `--preserve auto` to `pk setup` to preserve plans automatically on exit from plan mode.
+**No configuration needed.** No `.pk.json`, no tags, no additional setup. Guard is installed but is a no-op without branches to protect. Preserve works in manual mode by default; pass `--preserve auto` to `pk setup` to preserve plans automatically on exit from plan mode. Pass `--guard off` or `--preserve off` to disable features you don't need.
 
 **Safe for existing projects.** `pk setup` never overwrites files it didn't create. Files without pk's SHA marker are skipped. Existing hooks in `.claude/settings.json` are preserved. See [Managed file protection](pk-setup.md#managed-file-protection) for details.
 

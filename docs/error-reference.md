@@ -159,13 +159,13 @@ Error: git push failed: ...
 ### invalid mode
 
 ```
-Error: invalid --preserve mode "xyz" (must be auto or manual)
-Error: invalid --guard mode "xyz" (must be block or ask)
+Error: invalid --preserve mode "xyz" (must be auto, manual, or off)
+Error: invalid --guard mode "xyz" (must be block, ask, or off)
 ```
 
 **Cause:** The `--preserve` or `--guard` flag received an unrecognized value.
 
-**Fix:** Use `auto` or `manual` for `--preserve`, `block` or `ask` for `--guard`.
+**Fix:** Use `auto`, `manual`, or `off` for `--preserve`; `block`, `ask`, or `off` for `--guard`.
 
 ### flag dependencies
 

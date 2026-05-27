@@ -417,6 +417,9 @@ func TestInferModes_roundTrip(t *testing.T) {
 	}{
 		{"block and manual", "manual", "block", "block", "manual"},
 		{"ask and auto", "auto", "ask", "ask", "auto"},
+		{"guard off", "manual", "off", "off", "manual"},
+		{"preserve off", "off", "block", "block", "off"},
+		{"both off", "off", "off", "off", "off"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -459,6 +462,52 @@ func TestInferModes_userHooksOnly(t *testing.T) {
 	guard, preserve := InferModes(settings)
 	if guard != "" || preserve != "" {
 		t.Errorf("expected empty for user-only hooks, got guard=%q preserve=%q", guard, preserve)
+	}
+}
+
+func TestBuildHookConfig_guardOff(t *testing.T) {
+	hooks := buildHookConfig("manual", "off")
+	if len(hooks.PreToolUse) != 2 {
+		t.Fatalf("PreToolUse = %d entries, want 2 (protect only)", len(hooks.PreToolUse))
+	}
+	if hooks.PreToolUse[0].Matcher != "Edit" {
+		t.Errorf("first matcher = %q, want Edit", hooks.PreToolUse[0].Matcher)
+	}
+	if hooks.PreToolUse[1].Matcher != "Write" {
+		t.Errorf("second matcher = %q, want Write", hooks.PreToolUse[1].Matcher)
+	}
+	if len(hooks.PostToolUse) != 1 {
+		t.Errorf("PostToolUse = %d entries, want 1 (preserve still active)", len(hooks.PostToolUse))
+	}
+}
+
+func TestBuildHookConfig_preserveOff(t *testing.T) {
+	hooks := buildHookConfig("off", "block")
+	if len(hooks.PreToolUse) != 3 {
+		t.Errorf("PreToolUse = %d entries, want 3 (guard + protect)", len(hooks.PreToolUse))
+	}
+	if len(hooks.PostToolUse) != 0 {
+		t.Errorf("PostToolUse = %d entries, want 0", len(hooks.PostToolUse))
+	}
+}
+
+func TestBuildHookConfig_bothOff(t *testing.T) {
+	hooks := buildHookConfig("off", "off")
+	if len(hooks.PreToolUse) != 2 {
+		t.Fatalf("PreToolUse = %d entries, want 2 (protect only)", len(hooks.PreToolUse))
+	}
+	if len(hooks.PostToolUse) != 0 {
+		t.Errorf("PostToolUse = %d entries, want 0", len(hooks.PostToolUse))
+	}
+}
+
+func TestInferModesFromCommands_protectOnly(t *testing.T) {
+	guard, preserve := InferModesFromCommands([]string{"pk protect"})
+	if guard != "off" {
+		t.Errorf("guard = %q, want %q", guard, "off")
+	}
+	if preserve != "off" {
+		t.Errorf("preserve = %q, want %q", preserve, "off")
 	}
 }
 

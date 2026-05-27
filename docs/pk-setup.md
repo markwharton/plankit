@@ -7,7 +7,10 @@ Configure a project's hooks, skills, and CLAUDE.md for use with plankit.
 ```bash
 pk setup                              # default: block guard, manual preserve
 pk setup --guard ask                  # prompt user instead of blocking on protected branches
+pk setup --guard off                  # no branch protection hooks
 pk setup --preserve auto              # auto-preserve plans on ExitPlanMode
+pk setup --preserve off               # no plan preservation hooks
+pk setup --guard off --preserve off   # release management only (changelog, ship)
 pk setup --project-dir /path/to/dir   # specify project directory
 pk setup --force                      # overwrite all managed skills
 pk setup --allow-non-git              # proceed even if directory is not a git repo
@@ -31,8 +34,8 @@ After setup, restart Claude Code to apply changes.
 
 ## Flags
 
-- **--guard** — Guard mode: `block` or `ask` (default: `block`). Controls whether `pk guard` blocks git mutations outright or prompts the user to confirm.
-- **--preserve** — Plan preservation mode: `manual` or `auto` (default: `manual`).
+- **--guard** — Guard mode: `block`, `ask`, or `off` (default: `block`). Controls whether `pk guard` blocks git mutations outright, prompts the user to confirm, or is disabled entirely.
+- **--preserve** — Plan preservation mode: `manual`, `auto`, or `off` (default: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
 - **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.
@@ -75,11 +78,13 @@ After running `pk setup`, run `/conventions` to add project-specific conventions
 
 - **block** (default) — Git mutations on protected branches are denied outright.
 - **ask** — The user is prompted to confirm or reject, allowing emergency overrides.
+- **off** — No branch protection hooks. Use when you want release management without guard.
 
 ### Preserve modes
 
 - **manual** (default) — Use the `/preserve` skill when you're ready to save a plan.
 - **auto** — Plans are automatically preserved when you exit plan mode.
+- **off** — No plan preservation hooks. Use when you want guard or release management without plan preservation.
 
 Re-running `pk setup` preserves the existing mode configuration. Pass `--guard` or `--preserve` explicitly to change modes.
 

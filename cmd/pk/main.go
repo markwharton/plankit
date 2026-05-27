@@ -149,8 +149,8 @@ func runRelease(args []string) {
 func runSetup(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
-	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual or auto")
-	guardMode := fs.String("guard", "block", "Guard mode: block or ask")
+	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual, auto, or off")
+	guardMode := fs.String("guard", "block", "Guard mode: block, ask, or off")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	allowNonGit := fs.Bool("allow-non-git", false, "Proceed even if the project directory is not a git repository")
 	baseline := fs.Bool("baseline", false, "Anchor pk changelog by creating a v0.0.0 tag if none exists")
@@ -189,19 +189,19 @@ func runSetup(args []string) {
 
 	// Validate preserve mode.
 	switch *preserveMode {
-	case "auto", "manual":
+	case "auto", "manual", "off":
 		// Valid.
 	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --preserve mode %q (must be auto or manual)\n", *preserveMode)
+		fmt.Fprintf(os.Stderr, "Error: invalid --preserve mode %q (must be auto, manual, or off)\n", *preserveMode)
 		os.Exit(1)
 	}
 
 	// Validate guard mode.
 	switch *guardMode {
-	case "block", "ask":
+	case "block", "ask", "off":
 		// Valid.
 	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --guard mode %q (must be block or ask)\n", *guardMode)
+		fmt.Fprintf(os.Stderr, "Error: invalid --guard mode %q (must be block, ask, or off)\n", *guardMode)
 		os.Exit(1)
 	}
 

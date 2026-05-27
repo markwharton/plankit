@@ -103,17 +103,23 @@ const (
 
 // buildHookConfig returns the hook configuration for the given modes.
 func buildHookConfig(preserveMode, guardMode string) HooksConfig {
-	guardCommand := GuardBlockCommand
-	if guardMode == "ask" {
-		guardCommand = GuardAskCommand
+	var preToolUse []HookEntry
+
+	if guardMode != "off" {
+		guardCommand := GuardBlockCommand
+		if guardMode == "ask" {
+			guardCommand = GuardAskCommand
+		}
+		preToolUse = append(preToolUse, NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: guardCommand, Shell: "bash", Timeout: 5}))
 	}
 
+	preToolUse = append(preToolUse,
+		NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
+		NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
+	)
+
 	config := HooksConfig{
-		PreToolUse: []HookEntry{
-			NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: guardCommand, Shell: "bash", Timeout: 5}),
-			NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
-			NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
-		},
+		PreToolUse: preToolUse,
 	}
 
 	switch preserveMode {
@@ -145,10 +151,15 @@ func preserveHookEntry(command, statusMessage string, async bool, timeout int) [
 }
 
 // InferModesFromCommands returns guard and preserve modes from a list of hook
-// command strings. Returns ("", "") when no pk guard or preserve commands are
-// found.
+// command strings. Returns ("", "") when no plankit hooks are found (fresh
+// project). Returns "off" for a mode when plankit hooks exist but that
+// specific mode's command is absent (explicitly disabled).
 func InferModesFromCommands(commands []string) (guard, preserve string) {
+	hasPlankit := false
 	for _, cmd := range commands {
+		if IsPlankitHook(cmd) {
+			hasPlankit = true
+		}
 		switch cmd {
 		case GuardBlockCommand:
 			guard = "block"
@@ -158,6 +169,14 @@ func InferModesFromCommands(commands []string) (guard, preserve string) {
 			preserve = "manual"
 		case PreserveAutoCommand:
 			preserve = "auto"
+		}
+	}
+	if hasPlankit {
+		if guard == "" {
+			guard = "off"
+		}
+		if preserve == "" {
+			preserve = "off"
 		}
 	}
 	return guard, preserve

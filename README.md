@@ -49,7 +49,9 @@ This configures `.claude/settings.json` with hooks and installs skills. Restart 
 pk setup                       # Default: block guard, manual preserve
 pk setup --baseline            # Anchor pk changelog with v0.0.0 tag
 pk setup --guard ask           # Prompt instead of blocking on protected branches
+pk setup --guard off           # No branch protection hooks
 pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
+pk setup --preserve off        # No plan preservation hooks
 ```
 
 Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly to change modes.
