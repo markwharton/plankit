@@ -43,7 +43,7 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 	var result HooksConfig
 	json.Unmarshal(raw, &result)
 
-	// User's Bash hook + plankit's Bash/guard, Edit/protect, Write/protect.
+	// User's Bash hook + plankit's Bash|PowerShell/guard, Edit/protect, Write/protect.
 	if len(result.PreToolUse) != 4 {
 		t.Errorf("PreToolUse = %d entries, want 4", len(result.PreToolUse))
 	}
@@ -459,5 +459,41 @@ func TestInferModes_userHooksOnly(t *testing.T) {
 	guard, preserve := InferModes(settings)
 	if guard != "" || preserve != "" {
 		t.Errorf("expected empty for user-only hooks, got guard=%q preserve=%q", guard, preserve)
+	}
+}
+
+func TestBuildHookConfig_shellBash(t *testing.T) {
+	hooks := buildHookConfig("manual", "block")
+	settings := NewOrderedObject()
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+	raw, _ := settings.Get("hooks")
+	hooksJSON := string(raw)
+	if !strings.Contains(hooksJSON, `"shell":"bash"`) {
+		t.Errorf("pk hooks missing shell:bash; JSON:\n%s", hooksJSON)
+	}
+}
+
+func TestBuildHookConfig_guardMatcherIncludesPowerShell(t *testing.T) {
+	hooks := buildHookConfig("manual", "block")
+	if hooks.PreToolUse[0].Matcher != "Bash|PowerShell" {
+		t.Errorf("guard matcher = %q, want %q", hooks.PreToolUse[0].Matcher, "Bash|PowerShell")
+	}
+}
+
+func TestMergeHooks_noShellOnUserHooks(t *testing.T) {
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
+			"PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}]
+		}`))
+	hooks := buildHookConfig("manual", "block")
+	if err := mergeHooks(settings, hooks); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+	hooksRaw, _ := settings.Get("hooks")
+	hooksJSON := string(hooksRaw)
+	if strings.Contains(hooksJSON, `"command":"user-hook","shell"`) {
+		t.Errorf("shell was added to user hook; JSON:\n%s", hooksJSON)
 	}
 }

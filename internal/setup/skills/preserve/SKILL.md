@@ -7,7 +7,7 @@ allowed-tools: Bash(pk:*)
 
 Preserve the most recently approved plan to docs/plans/ and commit it. If you are in plan mode, exit plan mode first.
 
-Run:
+Run using the **Bash** tool (not PowerShell):
 
 pk preserve
 
@@ -16,3 +16,7 @@ This commits the plan locally with a `plan:` conventional commit. Do not push â€
 Report the result to the user.
 
 With the plan preserved, proceed with its implementation.
+
+## Rules
+
+- **Use the Bash tool for all commands.** pk requires a POSIX shell. Do not use the PowerShell tool.

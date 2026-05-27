@@ -25,6 +25,7 @@ type Hook struct {
 	Type          string `json:"type"`
 	Command       string `json:"command"`
 	Async         bool   `json:"async,omitempty"`
+	Shell         string `json:"shell,omitempty"`
 	Timeout       int    `json:"timeout,omitempty"`
 	StatusMessage string `json:"statusMessage,omitempty"`
 }
@@ -109,9 +110,9 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 
 	config := HooksConfig{
 		PreToolUse: []HookEntry{
-			NewHookEntry("Bash", Hook{Type: "command", Command: guardCommand, Timeout: 5}),
-			NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Timeout: 5}),
-			NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Timeout: 5}),
+			NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: guardCommand, Shell: "bash", Timeout: 5}),
+			NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
+			NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
 		},
 	}
 
@@ -123,7 +124,7 @@ func buildHookConfig(preserveMode, guardMode string) HooksConfig {
 	}
 
 	config.SessionStart = []HookEntry{
-		NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Timeout: 30}),
+		NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Shell: "bash", Timeout: 30}),
 	}
 
 	return config
@@ -136,6 +137,7 @@ func preserveHookEntry(command, statusMessage string, async bool, timeout int) [
 			Type:          "command",
 			Command:       command,
 			Async:         async,
+			Shell:         "bash",
 			Timeout:       timeout,
 			StatusMessage: statusMessage,
 		}),

@@ -4,7 +4,7 @@ description: "Ship a release: changelog, tag, merge, and push in one pass"
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
 argument-hint: [auto]
-pk_sha256: e1b6302b8440836d75b404005f6e277bcb3218b201b24aee8ff80b8d533d0867
+pk_sha256: a3453fd64f7165955923e807debc7310e0559c560670b1e9bfe2b045a3163139
 ---
 
 The release workflow. `pk changelog` and `pk release` are always run in sequence when shipping a version; this skill chains them while preserving the preview+confirm gate for each step so nothing lands unreviewed.
@@ -48,6 +48,7 @@ Auto mode changes steps 2 and 3: run the dry-run, check for errors, and if clean
 
 ## Rules
 
+- **Use the Bash tool for all commands.** pk requires a POSIX shell. Do not use the PowerShell tool.
 - **Exit plan mode first.** If you are in plan mode when this skill is invoked, exit plan mode immediately before doing anything else. This skill executes commands — it does not need a plan.
 - Never skip a confirmation unless auto mode is active and the dry-run completed without errors.
 - If the user declines at step 2, stop — do not proceed to step 3.
