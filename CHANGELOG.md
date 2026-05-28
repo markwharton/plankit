@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.20.1] - 2026-05-28
+
+### Fixed
+
+- normalize CRLF line endings in managed file detection (58f2e1a)
+- normalize backslash paths in plan preservation on Windows (dd38207)
+
 ## [v0.20.0] - 2026-05-27
 
 ### Added
@@ -772,3 +779,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.11]: https://github.com/markwharton/plankit/compare/v0.19.10...v0.19.11
 [v0.19.12]: https://github.com/markwharton/plankit/compare/v0.19.11...v0.19.12
 [v0.20.0]: https://github.com/markwharton/plankit/compare/v0.19.12...v0.20.0
+[v0.20.1]: https://github.com/markwharton/plankit/compare/v0.20.0...v0.20.1
