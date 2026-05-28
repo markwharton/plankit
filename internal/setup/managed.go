@@ -88,6 +88,14 @@ func ContentSHA(content string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// normalizeLF replaces \r\n with \n and any remaining lone \r with \n.
+func normalizeLF(s string) string {
+	if !strings.Contains(s, "\r") {
+		return s
+	}
+	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
+}
+
 // ExtractSHA extracts a pk SHA and the hashed content from a file.
 // Supports two formats:
 //   - HTML comment on first line: <!-- pk:sha256:... --> (for CLAUDE.md)
@@ -95,6 +103,8 @@ func ContentSHA(content string) string {
 //
 // Returns (sha, hashedContent, found).
 func ExtractSHA(fileContent string) (string, string, bool) {
+	fileContent = normalizeLF(fileContent)
+
 	// Try HTML comment on first line.
 	firstNewline := strings.IndexByte(fileContent, '\n')
 	if firstNewline > 0 {

@@ -517,3 +517,87 @@ func TestEvaluateRemoval_missingFile(t *testing.T) {
 		t.Error("evaluateRemoval should return \"skip\" for a missing file")
 	}
 }
+
+func TestNormalizeLF(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"no CR", "hello\nworld\n", "hello\nworld\n"},
+		{"CRLF", "hello\r\nworld\r\n", "hello\nworld\n"},
+		{"lone CR", "hello\rworld\r", "hello\nworld\n"},
+		{"mixed", "a\r\nb\rc\n", "a\nb\nc\n"},
+		{"empty", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeLF(tt.input)
+			if got != tt.want {
+				t.Errorf("normalizeLF(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractSHA_htmlComment_CRLF(t *testing.T) {
+	file := "<!-- pk:sha256:abc123 -->\r\n# CLAUDE.md\r\nContent.\r\n"
+	got, body, found := ExtractSHA(file)
+	if !found {
+		t.Fatal("ExtractSHA did not find HTML comment marker with CRLF")
+	}
+	if got != "abc123" {
+		t.Errorf("SHA = %q, want %q", got, "abc123")
+	}
+	if !strings.HasPrefix(body, "# CLAUDE.md") {
+		t.Errorf("body = %q, want to start with # CLAUDE.md", body)
+	}
+	if strings.Contains(body, "\r") {
+		t.Error("body should not contain \\r after normalization")
+	}
+}
+
+func TestExtractSHA_frontmatter_CRLF(t *testing.T) {
+	file := "---\r\nname: test\r\ndescription: A test\r\npk_sha256: def456\r\n---\r\nBody content.\r\n"
+	got, body, found := ExtractSHA(file)
+	if !found {
+		t.Fatal("ExtractSHA did not find frontmatter marker with CRLF")
+	}
+	if got != "def456" {
+		t.Errorf("SHA = %q, want %q", got, "def456")
+	}
+	if body != "Body content.\n" {
+		t.Errorf("body = %q, want %q", body, "Body content.\n")
+	}
+}
+
+func TestShouldUpdate_pristineHTMLComment_CRLF(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "CLAUDE.md")
+	content := "# CLAUDE.md\nContent.\n"
+	sha := ContentSHA(content)
+	managed := "<!-- pk:sha256:" + sha + " -->\r\n# CLAUDE.md\r\nContent.\r\n"
+	os.WriteFile(path, []byte(managed), 0644)
+
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
+	if !update {
+		t.Fatalf("shouldUpdate for pristine CRLF file = false (%s), want true", reason)
+	}
+	if reason != "updated" {
+		t.Errorf("reason = %q, want %q", reason, "updated")
+	}
+}
+
+func TestShouldUpdate_pristineFrontmatter_CRLF(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "SKILL.md")
+	body := "Skill body content.\n"
+	sha := ContentSHA(body)
+	managed := "---\r\nname: test\r\npk_sha256: " + sha + "\r\n---\r\nSkill body content.\r\n"
+	os.WriteFile(path, []byte(managed), 0644)
+
+	update, reason := shouldUpdate(os.ReadFile, path, "new content", false)
+	if !update {
+		t.Fatalf("shouldUpdate for pristine CRLF frontmatter file = false (%s), want true", reason)
+	}
+}
