@@ -292,17 +292,20 @@ func removePointer(cfg Config, projectDir string) {
 }
 
 // planPathRegex matches paths to Claude Code plan files.
-var planPathRegex = regexp.MustCompile(`/[^ "]*\.claude/plans/[^ "]*\.md`)
+// The optional drive-letter prefix handles Windows paths after backslash normalization.
+var planPathRegex = regexp.MustCompile(`(?:[A-Za-z]:)?/[^ "]*\.claude/plans/[^ "]*\.md`)
 
 // extractPlanPath searches the tool response text for a .claude/plans/*.md path.
+// Backslashes are normalized to forward slashes so Windows paths are matched.
 // Tilde prefixes are expanded to the home directory so paths like
 // ~/.claude/plans/foo.md resolve correctly.
 func extractPlanPath(text string, homeDir func() (string, error)) string {
-	expanded := text
+	normalized := strings.ReplaceAll(text, `\`, "/")
 	if home, err := homeDir(); err == nil {
-		expanded = strings.ReplaceAll(text, "~/", home+"/")
+		home = strings.ReplaceAll(home, `\`, "/")
+		normalized = strings.ReplaceAll(normalized, "~/", home+"/")
 	}
-	return planPathRegex.FindString(expanded)
+	return planPathRegex.FindString(normalized)
 }
 
 // extractTitle finds the first H1 heading in the plan content.

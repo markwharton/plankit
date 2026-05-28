@@ -95,6 +95,41 @@ func TestExtractPlanPath(t *testing.T) {
 	}
 }
 
+func TestExtractPlanPath_windows(t *testing.T) {
+	homeDir := func() (string, error) { return `C:\Users\jethro`, nil }
+
+	tests := []struct {
+		name string
+		text string
+		want string
+	}{
+		{
+			name: "tilde with backslash",
+			text: `Plan saved to: ~\.claude\plans\my-plan.md`,
+			want: "C:/Users/jethro/.claude/plans/my-plan.md",
+		},
+		{
+			name: "full Windows path",
+			text: `Plan saved to: C:\Users\jethro\.claude\plans\my-plan.md`,
+			want: "C:/Users/jethro/.claude/plans/my-plan.md",
+		},
+		{
+			name: "backslash path without tilde",
+			text: `Plan saved to: D:\Projects\app\.claude\plans\my-plan.md`,
+			want: "D:/Projects/app/.claude/plans/my-plan.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractPlanPath(tt.text, homeDir)
+			if got != tt.want {
+				t.Errorf("extractPlanPath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestExtractTitle(t *testing.T) {
 	tests := []struct {
 		name    string
