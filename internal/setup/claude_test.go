@@ -465,6 +465,61 @@ func TestInferModes_userHooksOnly(t *testing.T) {
 	}
 }
 
+func TestInferModesFromSettings(t *testing.T) {
+	settingsBytes := func(t *testing.T, preserveMode, guardMode string) []byte {
+		t.Helper()
+		settings := NewOrderedObject()
+		if err := mergeHooks(settings, buildHookConfig(preserveMode, guardMode)); err != nil {
+			t.Fatalf("mergeHooks() error = %v", err)
+		}
+		data, err := json.Marshal(settings)
+		if err != nil {
+			t.Fatalf("Marshal() error = %v", err)
+		}
+		return data
+	}
+
+	t.Run("missing file returns empty", func(t *testing.T) {
+		readFile := func(string) ([]byte, error) { return nil, os.ErrNotExist }
+		guard, preserve := InferModesFromSettings(readFile, "proj")
+		if guard != "" || preserve != "" {
+			t.Errorf("got guard=%q preserve=%q, want empty", guard, preserve)
+		}
+	})
+
+	t.Run("malformed JSON returns empty", func(t *testing.T) {
+		readFile := func(string) ([]byte, error) { return []byte("{not json"), nil }
+		guard, preserve := InferModesFromSettings(readFile, "proj")
+		if guard != "" || preserve != "" {
+			t.Errorf("got guard=%q preserve=%q, want empty", guard, preserve)
+		}
+	})
+
+	t.Run("reads block and manual from settings path", func(t *testing.T) {
+		data := settingsBytes(t, "manual", "block")
+		wantPath := filepath.Join("proj", ".claude", "settings.json")
+		readFile := func(path string) ([]byte, error) {
+			if path != wantPath {
+				t.Errorf("read path = %q, want %q", path, wantPath)
+			}
+			return data, nil
+		}
+		guard, preserve := InferModesFromSettings(readFile, "proj")
+		if guard != "block" || preserve != "manual" {
+			t.Errorf("got guard=%q preserve=%q, want block/manual", guard, preserve)
+		}
+	})
+
+	t.Run("guard command absent infers off", func(t *testing.T) {
+		data := settingsBytes(t, "manual", "off")
+		readFile := func(string) ([]byte, error) { return data, nil }
+		guard, preserve := InferModesFromSettings(readFile, "proj")
+		if guard != "off" || preserve != "manual" {
+			t.Errorf("got guard=%q preserve=%q, want off/manual", guard, preserve)
+		}
+	})
+}
+
 func TestBuildHookConfig_guardOff(t *testing.T) {
 	hooks := buildHookConfig("manual", "off")
 	if len(hooks.PreToolUse) != 2 {

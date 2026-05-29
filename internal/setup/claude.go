@@ -205,6 +205,21 @@ func InferModes(settings *OrderedObject) (guard, preserve string) {
 	return InferModesFromCommands(commands)
 }
 
+// InferModesFromSettings reads .claude/settings.json under dir and returns the
+// guard and preserve modes inferred from its hook commands. Returns ("", "")
+// when the file is missing, unreadable, malformed, or has no inferable pk hooks.
+func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) (guard, preserve string) {
+	data, err := readFile(filepath.Join(dir, ".claude", "settings.json"))
+	if err != nil {
+		return "", ""
+	}
+	parsed, err := ParseOrderedObject(data)
+	if err != nil {
+		return "", ""
+	}
+	return InferModes(parsed)
+}
+
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.
 // The script is template-substituted with the running pk version and written with 0755
 // permissions. For development builds (version "dev"), the script is skipped.

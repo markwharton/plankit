@@ -173,17 +173,12 @@ func runSetup(args []string) {
 		}
 	})
 	if !guardExplicit || !preserveExplicit {
-		settingsFile := filepath.Join(dir, ".claude", "settings.json")
-		if data, err := os.ReadFile(settingsFile); err == nil {
-			if parsed, err := setup.ParseOrderedObject(data); err == nil {
-				g, p := setup.InferModes(parsed)
-				if !guardExplicit && g != "" {
-					*guardMode = g
-				}
-				if !preserveExplicit && p != "" {
-					*preserveMode = p
-				}
-			}
+		g, p := setup.InferModesFromSettings(os.ReadFile, dir)
+		if !guardExplicit && g != "" {
+			*guardMode = g
+		}
+		if !preserveExplicit && p != "" {
+			*preserveMode = p
 		}
 	}
 
