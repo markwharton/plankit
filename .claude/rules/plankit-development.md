@@ -25,3 +25,7 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 ## Repo Checks
 
 - **All commands resolve to the git root via `git.RepoRoot`.** Directory resolution is uniform: `git.RepoRoot(stat, dir)` walks parent directories for `.git` (no subprocess) and returns the root path. There is no separate subprocess verification step. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).
+
+## Security Scanning
+
+- **Vulnerability scanning is `govulncheck` in CI, not GitHub Dependabot settings.** `make vuln` runs `govulncheck` against the live vuln.go.dev database and gates CI in `.github/workflows/ci.yml`. Do not enable GitHub's Dependabot *security updates* or *security alerts* toggles. Security-update PRs ignore `dependabot.yml`'s `target-branch` and `commit-message` and open against the default branch, bypassing the develop-first flow and `pk changelog`. Keep the dependency-security surface code-driven and in one place: `dependabot.yml` handles GitHub Actions *version* updates (landing on `develop` as `chore(deps)`), and `make vuln` handles the Go side. This also means CI builds on a maintained Go toolchain. The `go` directive pins an exact patch (e.g. `go 1.26.3`) so local auto-download and CI scan the same toolchain rather than an unpatched `.0`; when `govulncheck` flags a fix in a newer patch, bump that one line.

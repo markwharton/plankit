@@ -8,7 +8,7 @@ export CGO_ENABLED := 0
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 
-.PHONY: all build clean test install fmt lint vet fmtcheck build-all release release-dry
+.PHONY: all build clean test install fmt lint vet fmtcheck vuln build-all release release-dry
 
 all: build
 
@@ -51,6 +51,12 @@ vet:
 
 fmtcheck:
 	@files=$$(gofmt -l $$(go list -f '{{.Dir}}' ./...)); [ -z "$$files" ] || { echo "gofmt drift:"; echo "$$files"; exit 1; }
+
+# Scan for known vulnerabilities (Go stdlib + toolchain) against the live
+# vuln.go.dev database. Uses the latest govulncheck so detection stays current;
+# the database is fetched at run time. Exits non-zero on findings, gating CI.
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 # Release: validate and push to trigger CI build
 release:

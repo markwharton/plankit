@@ -29,6 +29,7 @@ make test           # Run tests with race detector
 make build-all      # Cross-compile for 5 platforms
 make install        # Install to GOPATH/bin
 make lint           # Run go vet + gofmt drift check
+make vuln           # Scan for known vulnerabilities (govulncheck)
 pk changelog        # Generate CHANGELOG.md and commit (no tag)
 pk changelog --undo # Unwind an unpushed release commit
 pk release          # Read Release-Tag trailer, create tag, merge, and push
