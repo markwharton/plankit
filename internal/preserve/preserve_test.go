@@ -909,6 +909,40 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("empty pointer exits silently and is removed", func(t *testing.T) {
+		projectDir := t.TempDir()
+		os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+		pointerFile := filepath.Join(projectDir, ".git", "pk-pending-plan")
+		os.WriteFile(pointerFile, []byte("\n  \n"), 0644) // whitespace only: trims to empty
+
+		var stdout, stderr bytes.Buffer
+		cfg := Config{
+			Stdin:  strings.NewReader(""),
+			Stdout: &stdout,
+			Stderr: &stderr,
+			Env: func(key string) string {
+				if key == "CLAUDE_PROJECT_DIR" {
+					return projectDir
+				}
+				return ""
+			},
+			Now:     func() time.Time { return fixedTime },
+			GitExec: func(string, ...string) (string, error) { t.Fatal("unexpected git call"); return "", nil },
+		}
+		withFS(&cfg)
+
+		exitCode := Run(cfg)
+		if exitCode != 0 {
+			t.Errorf("exit code = %d, want 0", exitCode)
+		}
+		if stdout.Len() > 0 {
+			t.Errorf("stdout = %q, want empty", stdout.String())
+		}
+		if _, err := os.Stat(pointerFile); !os.IsNotExist(err) {
+			t.Errorf("empty pointer still exists: err=%v", err)
+		}
+	})
+
 	t.Run("dry-run previews without writing or committing", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		plansDir := filepath.Join(tmpDir, ".claude", "plans")
