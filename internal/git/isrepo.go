@@ -5,19 +5,6 @@ import (
 	"path/filepath"
 )
 
-// IsInsideWorkTree verifies the directory is inside a git work tree by
-// invoking git rev-parse. Returns nil on success, the exec error otherwise.
-func IsInsideWorkTree(gitExec func(string, ...string) (string, error), dir string) error {
-	_, err := gitExec(dir, "rev-parse", "--is-inside-work-tree")
-	return err
-}
-
-// TopLevel returns the absolute path of the repository root by invoking
-// git rev-parse --show-toplevel. Returns an error if not inside a work tree.
-func TopLevel(gitExec func(string, ...string) (string, error), dir string) (string, error) {
-	return gitExec(dir, "rev-parse", "--show-toplevel")
-}
-
 // RepoRoot reports the root of the git repository containing dir. It walks up
 // parent directories looking for a .git entry (directory or file — git
 // submodules and worktrees use a file). Returns the absolute path and true,

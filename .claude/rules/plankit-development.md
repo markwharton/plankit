@@ -24,4 +24,4 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 
 ## Repo Checks
 
-- **All commands resolve to the git root via `git.RepoRoot`.** Directory resolution is consistent: `git.RepoRoot(stat, dir)` walks parent directories for `.git` (no subprocess) and returns the root path. This is the standard for determining where to operate. Commands that also need authoritative work-tree verification (worktree/GIT_DIR/submodule edge cases) additionally call `cfg.GitExec("", "rev-parse", "--is-inside-work-tree")` — but directory resolution itself always uses the stat-based walk.
+- **All commands resolve to the git root via `git.RepoRoot`.** Directory resolution is uniform: `git.RepoRoot(stat, dir)` walks parent directories for `.git` (no subprocess) and returns the root path. There is no separate subprocess verification step. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).

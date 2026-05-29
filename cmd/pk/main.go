@@ -332,8 +332,8 @@ func runVersion(args []string) {
 }
 
 func mustGitRoot() string {
-	root, err := pkgit.TopLevel(pkgit.Exec, "")
-	if err != nil {
+	root, ok := pkgit.RepoRoot(os.Stat, resolveDir("."))
+	if !ok {
 		fmt.Fprintln(os.Stderr, "Error: not a git repository")
 		os.Exit(1)
 	}
