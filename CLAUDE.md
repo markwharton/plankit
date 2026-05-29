@@ -38,7 +38,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 
 ### Language & Build
 
-- **Go 1.21**, standard library only — no third-party dependencies.
+- **Go 1.26**, standard library only — no third-party dependencies.
 - Binary: `pk` — single entrypoint at `cmd/pk/main.go`.
 - Build: `make build` (output to `dist/`).
 - Test: `make test` (runs `go test -v -race ./...`).

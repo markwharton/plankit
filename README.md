@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/markwharton/plankit/actions/workflows/ci.yml/badge.svg)](https://github.com/markwharton/plankit/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/markwharton/plankit/graph/badge.svg?token=y1SS0kyj3v)](https://codecov.io/gh/markwharton/plankit)
-[![Go](https://img.shields.io/badge/Go-1.21-00ADD8.svg)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8.svg)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Every new LLM session picks a different approach. Plans narrow a specific task to an approved approach before code is written. Rules reduce drift between sessions. Hooks preserve what was approved and guard what should not change.**
