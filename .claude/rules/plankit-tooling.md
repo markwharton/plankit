@@ -1,6 +1,6 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: 6173859c75ac6f981261cb52b0c75d53e309d504e246721aaf054b766a00ba1f
+pk_sha256: ba3d5b597b5f69b6bea7fce306bc65329e67d67d553f5ef5248b81769a3bcba9
 ---
 
 # Plankit Tooling
@@ -30,3 +30,4 @@ pk_sha256: 6173859c75ac6f981261cb52b0c75d53e309d504e246721aaf054b766a00ba1f
 - **`--push` exists only on `pk setup --baseline` and `pk preserve`.** On those commands it means "publish what I just produced, fully" — pushing any refs needed to make it reachable on origin (for a tag, the branch it sits on), never a partial push. Without `--push` they stay local-only, because commit and push are separate decisions (git-discipline). No other pk command takes `--push`.
 - **`--at <ref>` narrows `--push` to that ref.** When a command accepts `--at <ref>`, `--push` publishes only what was produced at that ref, not HEAD or its branch. The user picked the ref; pk doesn't assume the branch.
 - **`pk release` has no `--push`; it publishes atomically.** It fast-forward merges develop into main, tags, and pushes in one step; the only flag is `--dry-run` (preview). Passing `--push` errors. It won't be added: a local-only release would leave main merged and tagged locally but unpushed, diverging from origin/main and orphaning the tag.
+- **Don't infer a pk flag from another command — check `pk <cmd> --help`.** Each command's `--help` is the authoritative, always-current flag list and can't drift from the binary the way a copied list can. Flag conventions aren't universal: a flag on one command (`--push` on `pk setup --baseline`) may not exist on another (`pk release`). When unsure a flag exists, run `pk <cmd> --help` rather than assuming.
