@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.20.2] - 2026-05-30
+
+### Changed
+
+- unify git-root resolution on RepoRoot (5acab71)
+- extract setup mode inference into a testable helper (f920cc4)
+
+### Documentation
+
+- correct managed-skills list in CLAUDE.md (c9cf24e)
+
+### Maintenance
+
+- cover readPointer empty-pointer branch (5965318)
+- bump codecov/codecov-action from 6.0.0 to 6.0.1 (445db4a)
+- bump Go toolchain from 1.21 to 1.26.3 (fcb61cf)
+- gate on govulncheck vulnerability scan (8f8fbb6)
+
 ## [v0.20.1] - 2026-05-28
 
 ### Fixed
@@ -780,3 +798,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.19.12]: https://github.com/markwharton/plankit/compare/v0.19.11...v0.19.12
 [v0.20.0]: https://github.com/markwharton/plankit/compare/v0.19.12...v0.20.0
 [v0.20.1]: https://github.com/markwharton/plankit/compare/v0.20.0...v0.20.1
+[v0.20.2]: https://github.com/markwharton/plankit/compare/v0.20.1...v0.20.2
