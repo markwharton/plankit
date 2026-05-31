@@ -730,3 +730,38 @@ func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
 		t.Errorf("empty version should not show tip; stderr = %q", stderr.String())
 	}
 }
+
+func TestRun_conventionsReminder_shownWhenNoPkJSON(t *testing.T) {
+	projectDir := t.TempDir()
+	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}
+	withFS(&cfg)
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if !strings.Contains(stderr.String(), "Run /conventions") {
+		t.Errorf("stderr = %q, want /conventions reminder when no .pk.json", stderr.String())
+	}
+}
+
+func TestRun_conventionsReminder_hiddenWhenPkJSONPresent(t *testing.T) {
+	projectDir := t.TempDir()
+	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
+	if err := os.WriteFile(filepath.Join(projectDir, ".pk.json"), []byte(`{"release":{"branch":"main"}}`), 0644); err != nil {
+		t.Fatalf("write .pk.json: %v", err)
+	}
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "manual", GuardMode: "block"}
+	withFS(&cfg)
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if strings.Contains(stderr.String(), "Run /conventions") {
+		t.Errorf("stderr = %q, should not show /conventions reminder when .pk.json present", stderr.String())
+	}
+}

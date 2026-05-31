@@ -5,6 +5,7 @@ package setup
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -341,6 +342,16 @@ func Run(cfg Config) error {
 		}
 		fmt.Fprintln(stderr, "Commit these updates on their own:")
 		fmt.Fprintf(stderr, "  git commit -m \"chore: update pk-managed files for %s\"\n", tipVersion)
+	}
+
+	// Conventions reminder: shown only when no .pk.json exists, so a configured
+	// project re-running setup on an upgrade is not nagged. Without release.branch,
+	// pk release silently falls back to trunk flow.
+	if inGitRepo {
+		if _, err := cfg.Stat(filepath.Join(projectDir, ".pk.json")); errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(stderr, "No .pk.json found. Run /conventions in Claude Code to set release and guard branches.")
+			fmt.Fprintln(stderr, "  Without it, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
+		}
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")

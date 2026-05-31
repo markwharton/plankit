@@ -68,7 +68,7 @@ Add a `## Project Conventions` section to make Claude productive from the first 
 
 ### Customize your CLAUDE.md
 
-After running `pk setup`, run `/conventions` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, asks about branch protection, and proposes a `## Project Conventions` section for your approval.
+After running `pk setup`, run `/conventions` to add project-specific conventions. The skill analyzes the codebase, discovers technical conventions and business rules, asks about branch protection, and proposes a `## Project Conventions` section for your approval. When no `.pk.json` exists, `pk setup` prints a reminder to run it: without a configured `release.branch`, `pk release` falls back to trunk flow and tags the current branch instead of merging to a release branch.
 
 ### Add your own skills
 
