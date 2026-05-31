@@ -1,6 +1,6 @@
 ---
 name: new-plankit-project
-description: Emit the init commands for a new plankit-tooled project — GitHub repo, pk setup --baseline, v0.0.0 tag, develop branch
+description: Emit the init commands for a new plankit-tooled project — GitHub repo, pk setup --baseline, v0.0.0 tag, develop branch, .pk.json release config
 disable-model-invocation: true
 argument-hint: <name> [private <org>]
 ---
@@ -38,6 +38,16 @@ gh repo create markwharton/<NAME> \
   --clone
 
 cd <NAME>
+cat > .pk.json <<'JSON'
+{
+  "guard": {
+    "branches": ["main"]
+  },
+  "release": {
+    "branch": "main"
+  }
+}
+JSON
 pk setup --baseline
 git add -A
 git commit -m "chore: pk setup"
@@ -59,6 +69,16 @@ gh repo create <ORG>/<NAME> \
 
 cd <NAME>
 git commit --allow-empty -m "chore: init"
+cat > .pk.json <<'JSON'
+{
+  "guard": {
+    "branches": ["main"]
+  },
+  "release": {
+    "branch": "main"
+  }
+}
+JSON
 pk setup --baseline
 git add -A
 git commit -m "chore: pk setup"
@@ -77,7 +97,7 @@ git push -u origin develop
 - **Two explicit pushes** — `git push -u origin main` first, then `git push origin v0.0.0`. At the init stage, reviewing each step matters more than brevity. When the pattern is trusted and boring, this could collapse to `pk setup --baseline --push`. For now, keep the explicit pushes.
 - **Setup commit message** — `"chore: pk setup"`. Short, accurate, no flavor.
 - **`develop` created and pushed at init.** `pk release` expects `origin/develop` to exist (it runs `git fetch origin develop` and `merge-base HEAD origin/develop` as pre-flight). Establishing the branch on origin at init avoids a cryptic git error weeks later and keeps every plankit-tooled project in the same starting state.
-- **No `/conventions` afterwards** — the project doesn't have conventions to discover yet. The user runs `/conventions` separately once the scaffold has enough shape for conventions to matter.
+- **`.pk.json` written at init; `/conventions` deferred.** The branch-topology config (`release.branch: main`, `guard.branches: [main]`) is written now, because the script establishes those exact branches and `pk release` needs `release.branch` set or it silently falls back to trunk flow and ships on `develop`. CLAUDE.md project conventions are a separate matter: they need codebase shape to discover, so the user runs `/conventions` later, once the scaffold has enough shape for conventions to matter. A later `/conventions` run merges into this `.pk.json` rather than conflicting.
 
 ## Out of scope
 
