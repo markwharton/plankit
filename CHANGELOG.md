@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.20.3] - 2026-05-31
+
+### Security
+
+- scan embedded managed files for hidden characters (e81c59e)
+
+### Documentation
+
+- scope --push convention, exempt pk release (84abcb6)
+- point agents at pk <cmd> --help, don't infer flags (b72701c)
+- document contribution stance and line-ending fix (03d3065)
+
 ## [v0.20.2] - 2026-05-30
 
 ### Changed
@@ -799,3 +811,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.20.0]: https://github.com/markwharton/plankit/compare/v0.19.12...v0.20.0
 [v0.20.1]: https://github.com/markwharton/plankit/compare/v0.20.0...v0.20.1
 [v0.20.2]: https://github.com/markwharton/plankit/compare/v0.20.1...v0.20.2
+[v0.20.3]: https://github.com/markwharton/plankit/compare/v0.20.2...v0.20.3
