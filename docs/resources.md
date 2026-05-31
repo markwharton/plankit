@@ -46,6 +46,26 @@ pk release                            # tag HEAD, push current branch + tag
 
 `pk changelog` adds a `Release-Tag:` trailer to the commit message body. `pk release` reads that trailer to know which version to tag, then creates the tag just before pushing. If something goes wrong between `pk changelog` and `pk release`, run `pk changelog --undo` to cleanly unwind the release commit (refuses if HEAD has already been pushed).
 
+### Line endings (LF vs CRLF)
+
+On Windows, git's `core.autocrlf=true` (a common default) checks files out with CRLF but stores them as LF. When a repo has no `.gitattributes`, any command that stages LF-stored files prints a warning for each one:
+
+```
+warning: in the working copy of 'path/to/file', LF will be replaced by CRLF the next time Git touches it
+```
+
+It is informational, not an error — nothing is lost — but it is noisy. A `postVersion` hook touching many files (or pk's own `git add -u`) can emit it dozens of times in one run.
+
+The durable fix is a `.gitattributes` that makes the line-ending policy explicit, so git stops guessing per-file:
+
+```gitattributes
+* text=auto eol=lf
+```
+
+`text=auto` lets git detect binary files and leave them alone; `eol=lf` normalizes text to LF in the repo and on checkout across every platform. plankit's own root [`.gitattributes`](../.gitattributes) is exactly this, and it serves a second purpose: it keeps the managed files `pk setup` ships byte-stable, so the build-time hidden-character scan never trips over a stray CRLF.
+
+If you'd rather not commit a `.gitattributes`, `git config core.autocrlf input` on the machine silences the warning by storing and checking out LF without rewriting on checkout.
+
 ## GitHub CLI
 
 - [gh reference](https://cli.github.com/manual/) — Full command reference

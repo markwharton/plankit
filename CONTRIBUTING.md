@@ -71,3 +71,11 @@ pk release                        # read Release-Tag trailer, tag, merge to main
 See [pk changelog](docs/pk-changelog.md) and [pk release](docs/pk-release.md) for details.
 
 Monitor at: https://github.com/markwharton/plankit/actions
+
+## Contributions & AI
+
+plankit is a solo/small-team toolkit. Pull requests are welcome and reviewed by the maintainer.
+
+- **No third-party Go dependencies.** plankit is standard-library only; a PR that adds a dependency won't be accepted.
+- **Managed files get extra scrutiny.** Changes to the files `pk setup` ships downstream — `internal/setup/rules/`, `internal/setup/skills/`, and `internal/setup/template/CLAUDE.md` — are read by AI agents in every Claude Code session. They are line-ending normalized to LF via [`.gitattributes`](.gitattributes) and scanned for hidden/control characters by `make test` (the "Trojan Source" class: ANSI escapes, zero-width characters, bidi overrides). When you edit one, update its paired `pk_sha256` as described in [CLAUDE.md](CLAUDE.md) under "Updating pk-managed files".
+- **Describe intent, not just the diff.** For substantive or behavior-changing PRs, say what you're changing and why in the PR body. No formal plan is required.
