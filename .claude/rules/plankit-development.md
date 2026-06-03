@@ -23,6 +23,10 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 
 - **Keep skill questions conversational.** When a skill asks the user for input, list questions as plain bullets under a short heading. Move interpretation context (which config key maps to which answer, default values, command references) to the skill's Rules section. Dense instructional text around questions causes the model to dump it all as a wall of text instead of walking through questions naturally.
 
+## Rule Authoring
+
+- **Managed rules split by audience: developer craft vs agent conduct, and the two never mix in one file.** Craft files state standards for the work (`development-standards.md` for code, `git-discipline.md` for git history); they are developer-voiced and Claude inherits them the way a teammate inherits house style. Conduct files state how the agent behaves (`model-behavior.md`); they are Claude-voiced. The two blur easily: a developer-voiced line like "push when you're confident" gets misread as the agent's own license to push. When adding or editing a bullet, decide whose discipline it is and put it in that file; if a craft file has accumulated an agent-conduct bullet, move it. This is why `model-behavior.md` was split out from `development-standards.md`, and why git agent-conduct (don't originate a push; on unexpected state, defer to the developer) lives in `model-behavior.md`, not `git-discipline.md`.
+
 ## Repo Checks
 
 - **All commands resolve to the git root via `git.RepoRoot`.** Directory resolution is uniform: `git.RepoRoot(stat, dir)` walks parent directories for `.git` (no subprocess) and returns the root path. There is no separate subprocess verification step. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).

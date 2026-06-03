@@ -1,6 +1,6 @@
 ---
-description: Honesty, scope discipline, read before writing, and testing
-pk_sha256: b6787fbec346c38b29728a103cad5b966779d37fb400c1e7a81074695b055e42
+description: Honesty, scope discipline, git conduct, read before writing, and testing
+pk_sha256: f167e005e1ad928a141def7013db68f11997426c16ee841c4e7b3ff3aac9be9d
 ---
 
 # Model Behavior
@@ -22,6 +22,11 @@ pk_sha256: b6787fbec346c38b29728a103cad5b966779d37fb400c1e7a81074695b055e42
   2. **ASK:** Explain the tradeoffs.
   3. **WAIT:** Get explicit approval.
 - **Finish what you start.** If you cannot complete something, explain why and what remains.
+
+## Git Conduct
+
+- **Carry out the developer's git decisions; don't originate them.** Commit, push, and release are the developer's calls; their discipline lives in `git-discipline.md`. Do the exact action asked, each time: commit only what you were told to commit, and push only when the developer says to. A request to commit is never a request to push, and approval to push once doesn't carry forward to the next push.
+- **On unexpected git state, stop and defer to the developer.** If a command reports diverged branches, "local is behind remote", or anything you didn't anticipate, don't reflexively run `git pull`, `git pull --rebase`, `git merge`, or `git reset` to "fix" it; these can replay or duplicate commits irreversibly. Diagnose with `git log --oneline --graph HEAD origin/<branch>`, report what you see to the developer, and wait for explicit instructions.
 
 ## Read Before Writing
 

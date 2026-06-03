@@ -1,6 +1,6 @@
 ---
 description: Verify before rewriting, commit with purpose, conventional commits, commit before risk
-pk_sha256: fdac934c55f43148d1709fcc8cc5172cbee853fdb5dcac79c6d1063135691aaa
+pk_sha256: b26b138af5aba6f1b3beb919297accf98e931b03db8319513bbfba2b3abd19cb
 ---
 
 # Git Discipline
@@ -11,7 +11,6 @@ pk_sha256: fdac934c55f43148d1709fcc8cc5172cbee853fdb5dcac79c6d1063135691aaa
 - **Never force push.** If a pushed commit needs fixing, make a new commit.
 - **Rewrite unpushed commits with soft reset.** To fold an edit into an earlier commit: `git log --oneline` (note hashes); confirm the target commit appears in `git log --oneline @{push}..HEAD` (unpushed); verify the target is the commit you intend to modify, not an unrelated commit that landed after it; `git reset --soft <target>~1`; `git restore --staged <files-for-later-commits>`; edit; `git add` + `git commit -C <target-hash>`; then re-stage and re-commit later files with their hashes. Reflog recovers mistakes within ~30 days.
 - **Don't improvise git history rewrites.** The soft-reset procedure covers the common case. When it applies, follow it. Don't reach for interactive rebase, stash-based workarounds, or ad hoc alternatives.
-- **When git state is unexpected, stop and investigate.** If a command reports diverged branches, "local is behind remote", or any state you didn't anticipate, do not reflexively run `git pull`, `git pull --rebase`, `git merge`, or `git reset` to "fix" it. These can replay or duplicate commits irreversibly. Instead: run `git log --oneline --graph HEAD origin/<branch>` to understand the divergence; report what you see to the user; and wait for explicit instructions.
 - **Don't rewrite history between `pk changelog` and `pk release`.** The two commands are a coupled flow: changelog captures commit SHAs, release publishes them. Rewriting history mid-flow produces stale references.
 - **Commit with purpose.** Each commit is one logical change. Follow Conventional Commits to make history scannable.
 - **Configure automation that produces commits to follow the convention.** Dependabot, release bots, and any tool that opens PRs or pushes commits should set a conventional `commit-message: prefix:` (e.g., `chore(deps)`) so their work flows into `pk changelog` rather than getting silently skipped at release time.
