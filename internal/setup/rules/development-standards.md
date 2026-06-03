@@ -41,3 +41,4 @@ Unit tests verify isolated behavior in mocks; smoke tests verify the wiring. The
 ## Debugging
 
 - **Diagnostic scripts over rebuild cycles.** When debugging, create a minimal script that tests the specific issue. If you are about to do your second full rebuild, stop and write a diagnostic script instead.
+- **A failed text search means "not found by this method," never "not present."** Search matches only the stored surface form, so structured artifacts hide content from naive patterns (escaped JSON like `\"Field\"`, encoded IDs, split values). A false "not found" drives a wrong root cause and a fix for a bug that doesn't exist. When absence drives a root cause or code change, confirm by parsing the structure (walk the JSON/XML/AST), not the serialized surface.

@@ -1,6 +1,6 @@
 ---
 description: Data-first, fail fast, consistency, two-pass, verification, security, and debugging
-pk_sha256: 8ab21a5c7145ced589dbb37e1427e2ead6395cafdba22c2fe9d501d9df0be83c
+pk_sha256: c028397baebd320422ff961a73c0d9da558879ef4d720f8f65f48c2886da00e9
 ---
 
 # Development Standards
@@ -42,3 +42,4 @@ Unit tests verify isolated behavior in mocks; smoke tests verify the wiring. The
 ## Debugging
 
 - **Diagnostic scripts over rebuild cycles.** When debugging, create a minimal script that tests the specific issue. If you are about to do your second full rebuild, stop and write a diagnostic script instead.
+- **A failed text search means "not found by this method," never "not present."** Search matches only the stored surface form, so structured artifacts hide content from naive patterns (escaped JSON like `\"Field\"`, encoded IDs, split values). A false "not found" drives a wrong root cause and a fix for a bug that doesn't exist. When absence drives a root cause or code change, confirm by parsing the structure (walk the JSON/XML/AST), not the serialized surface.
