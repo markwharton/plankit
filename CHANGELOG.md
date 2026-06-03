@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.21.0] - 2026-06-03
+
+### Added
+
+- remind to run /conventions when pk setup finds no .pk.json (bf52cc7)
+
+### Fixed
+
+- write default .pk.json at project init so pk release uses merge flow (52d813f)
+- stop /ship from honoring or provoking a guessed version (ef911e9)
+
+### Documentation
+
+- make release the third separate decision, trim --push repetition (70c09b7)
+- add "not found by this method" debugging standard (58f1e23)
+
 ## [v0.20.3] - 2026-05-31
 
 ### Security
@@ -812,3 +828,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.20.1]: https://github.com/markwharton/plankit/compare/v0.20.0...v0.20.1
 [v0.20.2]: https://github.com/markwharton/plankit/compare/v0.20.1...v0.20.2
 [v0.20.3]: https://github.com/markwharton/plankit/compare/v0.20.2...v0.20.3
+[v0.21.0]: https://github.com/markwharton/plankit/compare/v0.20.3...v0.21.0
