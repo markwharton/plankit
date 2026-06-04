@@ -2,6 +2,7 @@ package preserve
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,7 +42,7 @@ func TestSlugify(t *testing.T) {
 	}
 }
 
-func TestExtractPlanPath(t *testing.T) {
+func TestMatchPlanPath(t *testing.T) {
 	tests := []struct {
 		name string
 		text string
@@ -87,15 +88,15 @@ func TestExtractPlanPath(t *testing.T) {
 	homeDir := func() (string, error) { return "/home/testuser", nil }
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractPlanPath(tt.text, homeDir)
+			got := matchPlanPath(tt.text, homeDir)
 			if got != tt.want {
-				t.Errorf("extractPlanPath() = %q, want %q", got, tt.want)
+				t.Errorf("matchPlanPath() = %q, want %q", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestExtractPlanPath_windows(t *testing.T) {
+func TestMatchPlanPath_windows(t *testing.T) {
 	homeDir := func() (string, error) { return `C:\Users\jethro`, nil }
 
 	tests := []struct {
@@ -122,7 +123,67 @@ func TestExtractPlanPath_windows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractPlanPath(tt.text, homeDir)
+			got := matchPlanPath(tt.text, homeDir)
+			if got != tt.want {
+				t.Errorf("matchPlanPath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestExtractPlanPath covers the json.RawMessage dispatch: the object form the
+// harness actually sends (plan path in filePath), the legacy string form, and
+// graceful "" returns for missing-field / non-path / malformed payloads.
+func TestExtractPlanPath(t *testing.T) {
+	homeDir := func() (string, error) { return `C:\Users\jethro`, nil }
+
+	tests := []struct {
+		name         string
+		toolResponse string
+		want         string
+	}{
+		{
+			// Regression: object form with an escaped Windows path. Parsing the
+			// JSON decodes \\ to \ before normalization, so the path matches.
+			name:         "object with Windows filePath",
+			toolResponse: `{"filePath":"C:\\Users\\jethro\\.claude\\plans\\my-plan.md","plan":"# X","isAgent":false}`,
+			want:         "C:/Users/jethro/.claude/plans/my-plan.md",
+		},
+		{
+			name:         "object with unix filePath",
+			toolResponse: `{"filePath":"/Users/mark/.claude/plans/my-plan.md","plan":"# X"}`,
+			want:         "/Users/mark/.claude/plans/my-plan.md",
+		},
+		{
+			name:         "legacy string form",
+			toolResponse: `"Plan saved to /Users/mark/.claude/plans/p.md"`,
+			want:         "/Users/mark/.claude/plans/p.md",
+		},
+		{
+			name:         "object without filePath",
+			toolResponse: `{"plan":"# X","isAgent":false}`,
+			want:         "",
+		},
+		{
+			name:         "object with non-path filePath",
+			toolResponse: `{"filePath":"/tmp/scratch.txt"}`,
+			want:         "",
+		},
+		{
+			name:         "non-path string",
+			toolResponse: `"no path here"`,
+			want:         "",
+		},
+		{
+			name:         "empty",
+			toolResponse: ``,
+			want:         "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractPlanPath(json.RawMessage(tt.toolResponse), homeDir)
 			if got != tt.want {
 				t.Errorf("extractPlanPath() = %q, want %q", got, tt.want)
 			}
@@ -1128,8 +1189,9 @@ func TestRun(t *testing.T) {
 		os.WriteFile(planFile, []byte(planContent), 0644)
 
 		projectDir := t.TempDir()
-		// tool_response is a JSON object, not a string.
-		inputJSON := fmt.Sprintf(`{"tool_response":{"planPath":"%s","approved":true},"cwd":"%s"}`, planFile, projectDir)
+		// tool_response is a JSON object, not a string (the shape the harness
+		// actually sends, with the plan path in filePath).
+		inputJSON := fmt.Sprintf(`{"tool_response":{"filePath":"%s","plan":"# X","isAgent":false},"cwd":"%s"}`, planFile, projectDir)
 
 		var stdout, stderr bytes.Buffer
 		var addPath string

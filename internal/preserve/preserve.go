@@ -5,6 +5,7 @@ package preserve
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -106,7 +107,7 @@ func Run(cfg Config) int {
 			reason = "stdin had no valid hook payload and no pending-plan pointer was found"
 		}
 	} else {
-		planPath = extractPlanPath(input.ToolResponseString(), cfg.HomeDir)
+		planPath = extractPlanPath(input.ToolResponse, cfg.HomeDir)
 		if planPath == "" {
 			reason = "tool_response did not contain a .claude/plans/*.md path"
 		} else if !fileExists(cfg, planPath) {
@@ -295,11 +296,39 @@ func removePointer(cfg Config, projectDir string) {
 // The optional drive-letter prefix handles Windows paths after backslash normalization.
 var planPathRegex = regexp.MustCompile(`(?:[A-Za-z]:)?/[^ "]*\.claude/plans/[^ "]*\.md`)
 
-// extractPlanPath searches the tool response text for a .claude/plans/*.md path.
-// Backslashes are normalized to forward slashes so Windows paths are matched.
-// Tilde prefixes are expanded to the home directory so paths like
-// ~/.claude/plans/foo.md resolve correctly.
-func extractPlanPath(text string, homeDir func() (string, error)) string {
+// extractPlanPath finds the plan file path in a PostToolUse tool_response.
+// The harness sends tool_response as an object carrying the plan path in a
+// filePath field; older versions sent a plain string ("Plan saved to <path>").
+// Parsing the JSON structurally lets encoding/json handle escaping, so a
+// Windows path's escaped backslashes are decoded to single separators before
+// normalization (matching the raw bytes would turn each `\\` into `//` and
+// break the path). Unmarshaling into a typed target also means a renamed,
+// missing, or wrong-typed field degrades to "" rather than panicking.
+func extractPlanPath(toolResponse json.RawMessage, homeDir func() (string, error)) string {
+	if len(toolResponse) == 0 {
+		return ""
+	}
+	// Object form: {"filePath": "...", "plan": "...", ...}.
+	var obj struct {
+		FilePath string `json:"filePath"`
+	}
+	if json.Unmarshal(toolResponse, &obj) == nil && obj.FilePath != "" {
+		if p := matchPlanPath(obj.FilePath, homeDir); p != "" {
+			return p
+		}
+	}
+	// Legacy string form: a string value that may contain the path.
+	var s string
+	if json.Unmarshal(toolResponse, &s) == nil {
+		return matchPlanPath(s, homeDir)
+	}
+	return ""
+}
+
+// matchPlanPath normalizes backslashes to forward slashes so Windows paths are
+// matched, expands a leading ~/ to the home directory, then returns the first
+// .claude/plans/*.md path found, or "".
+func matchPlanPath(text string, homeDir func() (string, error)) string {
 	normalized := strings.ReplaceAll(text, `\`, "/")
 	if home, err := homeDir(); err == nil {
 		home = strings.ReplaceAll(home, `\`, "/")
