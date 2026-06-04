@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.21.1] - 2026-06-04
+
+### Fixed
+
+- read plan path from tool_response.filePath in preserve (cfb9f9e)
+
+### Security
+
+- bump Go toolchain to 1.26.4 (ebf105a)
+
+### Changed
+
+- move git agent-conduct out of git-discipline into model-behavior (db57507)
+
+### Maintenance
+
+- run the vuln scan on a daily schedule (27bcf0c)
+
 ## [v0.21.0] - 2026-06-03
 
 ### Added
@@ -829,3 +847,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.20.2]: https://github.com/markwharton/plankit/compare/v0.20.1...v0.20.2
 [v0.20.3]: https://github.com/markwharton/plankit/compare/v0.20.2...v0.20.3
 [v0.21.0]: https://github.com/markwharton/plankit/compare/v0.20.3...v0.21.0
+[v0.21.1]: https://github.com/markwharton/plankit/compare/v0.21.0...v0.21.1
