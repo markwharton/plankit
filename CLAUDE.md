@@ -12,6 +12,7 @@ IMPORTANT: Follow these rules at all times.
 - If you don't know, say so. Never guess.
 - Test before and after every change.
 - Surface errors clearly. No silent fallbacks.
+- When rules conflict, prefer the safer, more reversible action and ask.
 
 ## Project Conventions
 

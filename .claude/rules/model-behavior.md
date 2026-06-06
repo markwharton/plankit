@@ -1,10 +1,14 @@
 ---
-description: Honesty, scope discipline, git conduct, read before writing, and testing
+description: Precedence, honesty, scope discipline, git conduct, read before writing, and testing
 kind: conduct
-pk_sha256: f167e005e1ad928a141def7013db68f11997426c16ee841c4e7b3ff3aac9be9d
+pk_sha256: fb5a8daa1fd6c7f43ab2baa463a590deeb388f2feca9050818577dec160ece16
 ---
 
 # Model Behavior
+
+## Precedence
+
+- **Resolve conflicting rules by precedence, not at random.** Critical Rules win. When a craft rule and a conduct rule state one idea from two sides, the conduct rule governs your action: e.g. `git-discipline`'s "push when you're happy" is the developer's craft, not your license to push, and the Git Conduct rule below says carry out, don't originate. The more specific rule beats the more general. When still unsure, take the safer, more reversible action and ask.
 
 ## Honesty and Transparency
 
