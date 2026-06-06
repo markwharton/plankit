@@ -11,6 +11,7 @@
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
+//	pk rules       Generate RULES.md from .claude/rules/ and report context footprint
 //	pk setup       Configure a project's .claude/settings.json
 //	pk status      Report plankit configuration state of a project
 //	pk teardown    Remove plankit hooks, skills, and rules from a project
@@ -30,6 +31,7 @@ import (
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
+	"github.com/markwharton/plankit/internal/rules"
 	"github.com/markwharton/plankit/internal/setup"
 	"github.com/markwharton/plankit/internal/status"
 	"github.com/markwharton/plankit/internal/teardown"
@@ -50,6 +52,8 @@ func main() {
 		runPreserve(os.Args[2:])
 	case "release":
 		runRelease(os.Args[2:])
+	case "rules":
+		runRules(os.Args[2:])
 	case "guard":
 		runGuard(os.Args[2:])
 	case "protect":
@@ -144,6 +148,28 @@ func runRelease(args []string) {
 	cfg.DryRun = *dryRun
 
 	os.Exit(release.Run(cfg))
+}
+
+func runRules(args []string) {
+	fs := flag.NewFlagSet("rules", flag.ExitOnError)
+	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
+	lint := fs.Bool("lint", false, "Scan rules for hidden/Trojan-source characters instead of generating RULES.md")
+	strict := fs.Bool("strict", false, "With --lint: also run plankit house-style checks (requires --lint)")
+	dryRun := fs.Bool("dry-run", false, "Print the footprint summary without writing RULES.md")
+	fs.Parse(args)
+
+	if *strict && !*lint {
+		fmt.Fprintln(os.Stderr, "Error: --strict requires --lint")
+		os.Exit(1)
+	}
+
+	cfg := rules.DefaultConfig()
+	cfg.ProjectDir = resolveProjectDir(*projectDir)
+	cfg.Version = version.Version()
+	cfg.Lint = *lint
+	cfg.Strict = *strict
+	cfg.DryRun = *dryRun
+	os.Exit(rules.Run(cfg))
 }
 
 func runSetup(args []string) {
@@ -373,6 +399,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
+	fmt.Fprintln(os.Stderr, "  pk rules [--lint [--strict]] [--dry-run] [--project-dir <dir>]")
+	fmt.Fprintln(os.Stderr, "                                      Generate RULES.md and report context footprint; --lint scans for hidden chars")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "           [--baseline [--at <ref>] [--push]]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills; optionally anchor pk changelog")

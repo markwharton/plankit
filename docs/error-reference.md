@@ -189,6 +189,30 @@ Some commands (changelog, release) will not work until git is initialized.
 
 **Fix:** Run `git init` when ready. Rules and `pk protect` work without git; other commands do not.
 
+## pk rules
+
+### flag dependencies
+
+```
+Error: --strict requires --lint
+```
+
+**Cause:** `--strict` only adds house-style checks to the `--lint` safety scan; it does nothing on its own.
+
+**Fix:** Run `pk rules --lint --strict`.
+
+### lint findings
+
+```
+pk rules --lint found 2 issue(s):
+  .claude/rules/example.md: 12:3 hidden/format U+200B [safety]
+  .claude/rules/example.md: line 40: em dash (U+2014) [style]
+```
+
+**Cause:** `pk rules --lint` found hidden/Trojan-source characters (always), or, under `--strict`, house-style violations. The command exits non-zero so scripts and CI can gate on it.
+
+**Fix:** Remove the flagged characters. `[safety]` findings are genuine risks; `[style]` findings reflect plankit's house style and only appear with `--strict`.
+
 ## pk pin
 
 ### invalid semver

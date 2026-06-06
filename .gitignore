@@ -2,6 +2,9 @@
 dist/
 /pk
 
+# Generated artifacts (regenerate with `pk rules`)
+RULES.md
+
 # Sketches
 _sketch*
 

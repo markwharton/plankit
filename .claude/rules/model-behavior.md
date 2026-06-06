@@ -1,5 +1,6 @@
 ---
 description: Honesty, scope discipline, git conduct, read before writing, and testing
+kind: conduct
 pk_sha256: f167e005e1ad928a141def7013db68f11997426c16ee841c4e7b3ff3aac9be9d
 ---
 

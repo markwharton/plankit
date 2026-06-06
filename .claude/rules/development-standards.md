@@ -1,5 +1,6 @@
 ---
 description: Data-first, fail fast, consistency, two-pass, verification, security, and debugging
+kind: craft
 pk_sha256: c028397baebd320422ff961a73c0d9da558879ef4d720f8f65f48c2886da00e9
 ---
 

@@ -1,6 +1,7 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
-pk_sha256: 283debc5844404c91f9268bb6a2e62996edbe548c99736914444cfdb235c8d7a
+kind: conduct
+pk_sha256: f4b49f77bee852ef39003dc3b85c8f60dd962b80d2bff26708c1c40d7a5aa74e
 ---
 
 # Plankit Tooling
@@ -20,10 +21,6 @@ pk_sha256: 283debc5844404c91f9268bb6a2e62996edbe548c99736914444cfdb235c8d7a
 ## Session Bootstrap
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.
-
-## Committing pk Setup Changes
-
-- **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore: update pk-managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
 
 ## Flag Conventions
 

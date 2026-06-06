@@ -1,5 +1,6 @@
 ---
 description: Honesty, scope discipline, git conduct, read before writing, and testing
+kind: conduct
 ---
 
 # Model Behavior

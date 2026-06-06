@@ -62,6 +62,7 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 |---------|-------------|
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
 | `pk status` | Report plankit configuration state. [Details](docs/pk-status.md) |
+| `pk rules` | Aggregate `.claude/rules/` into RULES.md and report context footprint. [Details](docs/pk-rules.md) |
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
 | `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
 | `pk release` | Tag, merge to release branch, validate, and push. [Details](docs/pk-release.md) |

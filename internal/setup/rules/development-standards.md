@@ -1,5 +1,6 @@
 ---
 description: Data-first, fail fast, consistency, two-pass, verification, security, and debugging
+kind: craft
 ---
 
 # Development Standards
