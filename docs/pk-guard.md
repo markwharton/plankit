@@ -1,6 +1,6 @@
 # pk guard
 
-Block git mutations on protected branches.
+Block git mutations on protected branches, and guard `git push` against unbidden pushes on any branch.
 
 ## Usage
 
@@ -9,18 +9,21 @@ Block git mutations on protected branches.
 ## How it works
 
 1. Reads the Bash command from the hook payload.
-2. Splits compound commands (`&&`, `||`, `;`) and checks each subcommand for git mutations (`commit`, `push`, `merge`, `rebase`).
-3. If any subcommand is a mutation, reads the `guard.branches` array from `.pk.json`.
-4. Gets the current branch via `git rev-parse --abbrev-ref HEAD`.
-5. If the current branch is in the protected list, blocks the command.
+2. Splits compound commands (`&&`, `||`, `;`) and parses each subcommand's git operation, skipping git global options so `git -C dir push` and `git -c k=v commit` are recognized (not just `git push`/`git commit`).
+3. **Branch policy:** if any subcommand mutates (`commit`, `push`, `merge`, `rebase`, `reset`), reads `guard.branches` from `.pk.json`, gets the current branch (`git rev-parse --abbrev-ref HEAD`), and if it is protected, decides per the branch mode (`--ask` → ask, else deny).
+4. **Push policy:** if any subcommand is a `git push`, decides per `--push-guard` (`block` → deny, `ask` → ask, `off` → allow) regardless of branch.
+5. **Strongest wins:** when both policies apply (e.g. a push on a protected branch), the strongest decision is emitted (deny > ask > allow), so a protected-branch push is never downgraded.
 
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) and non-git commands are always allowed.
 
-By default, guard blocks outright — the command is denied and Claude Code must switch to the development branch. With `--ask`, guard prompts the user to confirm or reject instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The normal path — `pk release` — bypasses guard entirely because `pk release` uses `exec.Command` directly, not Bash.
+The branch policy defaults to blocking outright; with `--ask` it prompts instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The push policy is independent and off unless `--push-guard` is set.
+
+**pk-mediated pushes pass through.** `pk release`, `pk preserve --push`, and `pk setup --baseline --push` reach the hook as the command `pk release` etc. (not `git push`), so they are allowed; their internal push is a child process of `pk` via `exec.Command`, not a Bash tool call, so it is never hooked. The agent cannot hand-push under `--push-guard block`; pk's deliberate publish flows still work.
 
 ## Flags
 
-- **--ask** — Prompt the user instead of blocking. Use this for teams that want emergency override capability without disabling the hook.
+- **--ask** — Branch policy: prompt the user instead of blocking on a protected branch. Use this for teams that want emergency override capability without disabling the hook.
+- **--push-guard `<block|ask|off>`** — Push policy for `git push` on any branch: `block` denies, `ask` prompts, `off` (default) allows. Set it via `pk setup --push-guard`.
 
 ## Configuration
 

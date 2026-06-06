@@ -133,25 +133,26 @@ func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
 
 // Config holds the dependencies for the setup command.
 type Config struct {
-	Stderr       io.Writer
-	ProjectDir   string
-	PreserveMode string
-	GuardMode    string
-	Force        bool
-	AllowNonGit  bool
-	Version      string
-	Baseline     bool
-	BaselineAt   string
-	Push         bool
-	GitExec      func(projectDir string, args ...string) (string, error)
-	ReadFile     func(string) ([]byte, error)
-	WriteFile    func(string, []byte, os.FileMode) error
-	Stat         func(string) (os.FileInfo, error)
-	MkdirAll     func(string, os.FileMode) error
-	ReadDir      func(string) ([]os.DirEntry, error)
-	Remove       func(string) error
-	Rename       func(string, string) error
-	LookPath     func(string) (string, error)
+	Stderr        io.Writer
+	ProjectDir    string
+	PreserveMode  string
+	GuardMode     string
+	PushGuardMode string
+	Force         bool
+	AllowNonGit   bool
+	Version       string
+	Baseline      bool
+	BaselineAt    string
+	Push          bool
+	GitExec       func(projectDir string, args ...string) (string, error)
+	ReadFile      func(string) ([]byte, error)
+	WriteFile     func(string, []byte, os.FileMode) error
+	Stat          func(string) (os.FileInfo, error)
+	MkdirAll      func(string, os.FileMode) error
+	ReadDir       func(string) ([]os.DirEntry, error)
+	Remove        func(string) error
+	Rename        func(string, string) error
+	LookPath      func(string) (string, error)
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -207,7 +208,7 @@ func Run(cfg Config) error {
 
 	// Merge plankit hooks with any existing user hooks.
 	guardMode := cfg.GuardMode
-	hookConfig := buildHookConfig(preserveMode, guardMode)
+	hookConfig := buildHookConfigWithPush(preserveMode, guardMode, cfg.PushGuardMode)
 	if version.IsDevBuild(cfg.Version) {
 		hookConfig.SessionStart = nil
 	}

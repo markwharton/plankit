@@ -23,8 +23,12 @@ type Config struct {
 	ReadFile func(string) ([]byte, error)
 	GitExec  func(projectDir string, args ...string) (string, error)
 
-	// Ask prompts the user instead of blocking outright.
+	// Ask prompts the user instead of blocking outright (branch policy).
 	Ask bool
+
+	// PushGuard is the policy for `git push` regardless of branch:
+	// "block", "ask", or "off"/"" (no push guard).
+	PushGuard string
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -39,8 +43,11 @@ func DefaultConfig() Config {
 	}
 }
 
-// Run reads a PreToolUse hook payload from stdin and blocks git mutations
-// on protected branches. Returns the process exit code (always 0 for hooks).
+// Run reads a PreToolUse hook payload from stdin and enforces two policies on git
+// mutations: a branch policy (block/ask mutations on protected branches) and a push
+// policy (block/ask any `git push` regardless of branch). The strongest applicable
+// decision wins (deny > ask > allow), so a push to a protected branch is never
+// downgraded. Returns the process exit code (always 0 for hooks).
 func Run(cfg Config) int {
 	input, err := hooks.ReadInput(cfg.Stdin)
 	if err != nil {
@@ -71,36 +78,62 @@ func Run(cfg Config) int {
 		fmt.Fprintf(cfg.Stderr, "pk guard: %v\n", err)
 		return 0
 	}
-	if len(guardCfg.Branches) == 0 {
-		return 0
-	}
 
-	// Get current branch.
-	branch, err := cfg.GitExec(projectDir, "rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return 0
-	}
-	branch = strings.TrimSpace(branch)
-
-	// Check if current branch is protected.
-	for _, protected := range guardCfg.Branches {
-		if branch == protected {
-			if cfg.Ask {
-				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", branch)
-				if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionAsk, reason); err != nil {
-					fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
-				}
-			} else {
-				reason := fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", branch)
-				if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, reason); err != nil {
-					fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
-				}
-			}
+	// Branch policy: a mutation on a protected branch.
+	branchDeny, branchAsk := false, false
+	var protectedBranch string
+	if len(guardCfg.Branches) > 0 {
+		branch, err := cfg.GitExec(projectDir, "rev-parse", "--abbrev-ref", "HEAD")
+		if err != nil {
 			return 0
+		}
+		branch = strings.TrimSpace(branch)
+		for _, protected := range guardCfg.Branches {
+			if branch == protected {
+				protectedBranch = branch
+				if cfg.Ask {
+					branchAsk = true
+				} else {
+					branchDeny = true
+				}
+				break
+			}
 		}
 	}
 
+	// Push policy: any `git push`, regardless of branch.
+	pushDeny, pushAsk := false, false
+	if isGitPush(command) {
+		switch cfg.PushGuard {
+		case "block":
+			pushDeny = true
+		case "ask":
+			pushAsk = true
+		}
+	}
+
+	// Strongest decision wins (deny > ask). Reason comes from whichever drove it.
+	const pushDenyReason = "pk guard: push blocked. Pushing is the developer's explicit action; the commit is local. Push it yourself, or use pk preserve / pk release, when ready."
+	const pushAskReason = "pk guard: the agent is about to git push. Pushing is the developer's call. Allow this push?"
+	switch {
+	case pushDeny:
+		writeDecision(cfg, hooks.PermissionDeny, pushDenyReason)
+	case branchDeny:
+		writeDecision(cfg, hooks.PermissionDeny, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", protectedBranch))
+	case pushAsk:
+		writeDecision(cfg, hooks.PermissionAsk, pushAskReason)
+	case branchAsk:
+		writeDecision(cfg, hooks.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
+	}
+
 	return 0
+}
+
+// writeDecision emits a PreToolUse permission decision, logging write errors.
+func writeDecision(cfg Config, decision, reason string) {
+	if err := hooks.WritePermissionDecision(cfg.Stdout, decision, reason); err != nil {
+		fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
+	}
 }
 
 // isGitMutation checks if any subcommand in a (possibly compound) command
@@ -158,19 +191,42 @@ func splitShellCommands(command string) []string {
 
 // isGitMutationSingle checks if a single command is a git mutation.
 func isGitMutationSingle(cmd string) bool {
-	mutations := []string{
-		"git commit",
-		"git merge",
-		"git push",
-		"git rebase",
-		"git reset",
+	switch gitSubcommand(cmd) {
+	case "commit", "merge", "push", "rebase", "reset":
+		return true
 	}
-	for _, m := range mutations {
-		if strings.HasPrefix(cmd, m+" ") || cmd == m {
+	return false
+}
+
+// isGitPush reports whether any subcommand in a (possibly compound) command is a git push.
+func isGitPush(command string) bool {
+	for _, sub := range splitShellCommands(command) {
+		if gitSubcommand(sub) == "push" {
 			return true
 		}
 	}
 	return false
+}
+
+// gitSubcommand returns the git subcommand for a single command, skipping git's
+// global options so forms like "git -C dir push" or "git -c k=v push" are recognized.
+// Returns "" if the command is not a git invocation. -C and -c take a separate-word
+// value; other global options (--git-dir=..., --work-tree=..., etc.) are self-contained.
+func gitSubcommand(cmd string) string {
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 || fields[0] != "git" {
+		return ""
+	}
+	for i := 1; i < len(fields); i++ {
+		f := fields[i]
+		if !strings.HasPrefix(f, "-") {
+			return f
+		}
+		if f == "-C" || f == "-c" {
+			i++ // skip its value
+		}
+	}
+	return ""
 }
 
 // loadGuardConfig reads .pk.json from the project directory and returns the guard config.

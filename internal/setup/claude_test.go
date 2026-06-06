@@ -520,6 +520,66 @@ func TestInferModesFromSettings(t *testing.T) {
 	})
 }
 
+func TestPushGuardWiring(t *testing.T) {
+	guardCmd := func(t *testing.T, hooks HooksConfig) string {
+		t.Helper()
+		for _, e := range hooks.PreToolUse {
+			if e.Matcher == "Bash|PowerShell" {
+				return HookCommand(e.Hooks[0])
+			}
+		}
+		return ""
+	}
+
+	t.Run("buildHookConfigWithPush appends the flag", func(t *testing.T) {
+		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "block", "block")); cmd != "pk guard --push-guard block" {
+			t.Errorf("guard command = %q, want %q", cmd, "pk guard --push-guard block")
+		}
+		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "ask", "ask")); cmd != "pk guard --ask --push-guard ask" {
+			t.Errorf("guard command = %q, want %q", cmd, "pk guard --ask --push-guard ask")
+		}
+		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "block", "off")); cmd != "pk guard" {
+			t.Errorf("guard command = %q, want %q (off omits flag)", cmd, "pk guard")
+		}
+	})
+
+	t.Run("guard mode still inferred when push flag present", func(t *testing.T) {
+		if guard, _ := InferModesFromCommands([]string{"pk guard --ask --push-guard block", "pk protect"}); guard != "ask" {
+			t.Errorf("guard = %q, want ask (must parse despite --push-guard)", guard)
+		}
+		if guard, _ := InferModesFromCommands([]string{"pk guard --push-guard block"}); guard != "block" {
+			t.Errorf("guard = %q, want block", guard)
+		}
+	})
+
+	t.Run("InferPushGuardFromCommands", func(t *testing.T) {
+		if got := InferPushGuardFromCommands([]string{"pk guard --ask --push-guard block"}); got != "block" {
+			t.Errorf("got %q, want block", got)
+		}
+		if got := InferPushGuardFromCommands([]string{"pk guard --ask"}); got != "" {
+			t.Errorf("got %q, want empty (no flag)", got)
+		}
+		if got := InferPushGuardFromCommands([]string{"pk protect"}); got != "" {
+			t.Errorf("got %q, want empty (not a guard command)", got)
+		}
+	})
+
+	t.Run("InferPushGuardFromSettings round-trips", func(t *testing.T) {
+		settings := NewOrderedObject()
+		if err := mergeHooks(settings, buildHookConfigWithPush("manual", "ask", "block")); err != nil {
+			t.Fatalf("mergeHooks() error = %v", err)
+		}
+		data, err := json.Marshal(settings)
+		if err != nil {
+			t.Fatalf("Marshal() error = %v", err)
+		}
+		readFile := func(string) ([]byte, error) { return data, nil }
+		if got := InferPushGuardFromSettings(readFile, "proj"); got != "block" {
+			t.Errorf("got %q, want block", got)
+		}
+	})
+}
+
 func TestBuildHookConfig_guardOff(t *testing.T) {
 	hooks := buildHookConfig("manual", "off")
 	if len(hooks.PreToolUse) != 2 {

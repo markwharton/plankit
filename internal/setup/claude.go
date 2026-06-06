@@ -103,12 +103,21 @@ const (
 
 // buildHookConfig returns the hook configuration for the given modes.
 func buildHookConfig(preserveMode, guardMode string) HooksConfig {
+	return buildHookConfigWithPush(preserveMode, guardMode, "off")
+}
+
+// buildHookConfigWithPush is buildHookConfig plus a push-guard mode appended to the
+// guard command as `--push-guard <mode>` when the mode is not "off".
+func buildHookConfigWithPush(preserveMode, guardMode, pushGuardMode string) HooksConfig {
 	var preToolUse []HookEntry
 
 	if guardMode != "off" {
 		guardCommand := GuardBlockCommand
 		if guardMode == "ask" {
 			guardCommand = GuardAskCommand
+		}
+		if pushGuardMode != "" && pushGuardMode != "off" {
+			guardCommand += " --push-guard " + pushGuardMode
 		}
 		preToolUse = append(preToolUse, NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: guardCommand, Shell: "bash", Timeout: 5}))
 	}
@@ -160,11 +169,16 @@ func InferModesFromCommands(commands []string) (guard, preserve string) {
 		if IsPlankitHook(cmd) {
 			hasPlankit = true
 		}
+		// Guard command may carry flags (--ask, --push-guard <mode>), so match by
+		// prefix and read the branch mode from --ask rather than exact-matching.
+		if strings.HasPrefix(cmd, GuardBlockCommand) {
+			if strings.Contains(cmd, " --ask") {
+				guard = "ask"
+			} else {
+				guard = "block"
+			}
+		}
 		switch cmd {
-		case GuardBlockCommand:
-			guard = "block"
-		case GuardAskCommand:
-			guard = "ask"
 		case PreserveManualCommand:
 			preserve = "manual"
 		case PreserveAutoCommand:
@@ -218,6 +232,51 @@ func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) (
 		return "", ""
 	}
 	return InferModes(parsed)
+}
+
+// InferPushGuardFromCommands returns the push-guard mode ("block"/"ask") parsed from a
+// guard hook command's `--push-guard <mode>` flag, or "" if absent.
+func InferPushGuardFromCommands(commands []string) string {
+	for _, cmd := range commands {
+		if !strings.HasPrefix(cmd, GuardBlockCommand) {
+			continue
+		}
+		const flag = "--push-guard "
+		if i := strings.Index(cmd, flag); i >= 0 {
+			if fields := strings.Fields(cmd[i+len(flag):]); len(fields) > 0 {
+				return fields[0]
+			}
+		}
+	}
+	return ""
+}
+
+// InferPushGuardFromSettings reads .claude/settings.json under dir and returns the
+// push-guard mode from its guard hook command, or "" when absent/unreadable.
+func InferPushGuardFromSettings(readFile func(string) ([]byte, error), dir string) string {
+	data, err := readFile(filepath.Join(dir, ".claude", "settings.json"))
+	if err != nil {
+		return ""
+	}
+	parsed, err := ParseOrderedObject(data)
+	if err != nil {
+		return ""
+	}
+	hooksRaw, ok := parsed.Get("hooks")
+	if !ok {
+		return ""
+	}
+	var hooks HooksConfig
+	if err := json.Unmarshal(hooksRaw, &hooks); err != nil {
+		return ""
+	}
+	var commands []string
+	for _, entry := range hooks.PreToolUse {
+		for _, h := range entry.Hooks {
+			commands = append(commands, HookCommand(h))
+		}
+	}
+	return InferPushGuardFromCommands(commands)
 }
 
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.

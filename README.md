@@ -50,6 +50,7 @@ pk setup                       # Default: block guard, manual preserve
 pk setup --baseline            # Anchor pk changelog with v0.0.0 tag
 pk setup --guard ask           # Prompt instead of blocking on protected branches
 pk setup --guard off           # No branch protection hooks
+pk setup --push-guard block    # Block agent git push on any branch (default: off)
 pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
 pk setup --preserve off        # No plan preservation hooks
 ```
@@ -66,7 +67,7 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
 | `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
 | `pk release` | Tag, merge to release branch, validate, and push. [Details](docs/pk-release.md) |
-| `pk guard` | Block git mutations on protected branches. [Details](docs/pk-guard.md) |
+| `pk guard` | Block git mutations on protected branches; guard `git push` against unbidden pushes. [Details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan. [Details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/. [Details](docs/pk-protect.md) |
 | `pk pin` | Update pinned version in a file. [Details](docs/pk-pin.md) |

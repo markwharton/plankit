@@ -34,7 +34,8 @@ After setup, restart Claude Code to apply changes.
 
 ## Flags
 
-- **--guard** — Guard mode: `block`, `ask`, or `off` (default: `block`). Controls whether `pk guard` blocks git mutations outright, prompts the user to confirm, or is disabled entirely.
+- **--guard** — Guard mode: `block`, `ask`, or `off` (default: `block`). Controls whether `pk guard` blocks git mutations outright, prompts the user to confirm, or is disabled entirely on protected branches.
+- **--push-guard** — Push-guard mode: `block`, `ask`, or `off` (default: `off`). Controls whether `pk guard` denies, prompts on, or allows `git push` on any branch (independent of the branch list). Rides the same guard hook, so it has no effect when `--guard off`. See [pk guard](pk-guard.md).
 - **--preserve** — Plan preservation mode: `manual`, `auto`, or `off` (default: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.

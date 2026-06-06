@@ -271,6 +271,11 @@ func TestIsGitMutation(t *testing.T) {
 		{"ls -la", false},
 		{"git commit", true},
 		{"git push", true},
+		// Global options before the subcommand must not evade detection (hardening).
+		{"git -C /tmp/x push", true},
+		{"git -c user.name=x commit -m y", true},
+		{"git --git-dir=.git push origin main", true},
+		{"git -C /tmp/x status", false},
 		// Compound commands.
 		{"git checkout main && git merge dev", true},
 		{"git status && git commit -m 'test'", true},
@@ -345,6 +350,88 @@ func TestRun_revParseFailureAllowsThrough(t *testing.T) {
 	}
 	if stdout.Len() > 0 {
 		t.Errorf("stdout = %q, want empty (should not block when rev-parse fails)", stdout.String())
+	}
+}
+
+// decision runs guard for a single command and returns its stdout (the permission
+// decision JSON, or "" when allowed). Command must not contain double quotes.
+func decision(t *testing.T, command, pkjson, branch string, ask bool, pushGuard string) string {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	cfg := Config{
+		Stdin:     strings.NewReader(`{"tool_input":{"command":"` + command + `"},"cwd":"/project"}`),
+		Stdout:    &stdout,
+		Stderr:    &stderr,
+		Env:       func(string) string { return "" },
+		ReadFile:  func(string) ([]byte, error) { return []byte(pkjson), nil },
+		GitExec:   func(string, ...string) (string, error) { return branch + "\n", nil },
+		Ask:       ask,
+		PushGuard: pushGuard,
+	}
+	Run(cfg)
+	return stdout.String()
+}
+
+const guardMainOnly = `{"guard":{"branches":["main"]}}`
+
+func TestRun_pushGuardBlocksPushOnUnprotectedBranch(t *testing.T) {
+	out := decision(t, "git push origin feature", guardMainOnly, "feature", false, "block")
+	if !strings.Contains(out, `"permissionDecision":"deny"`) {
+		t.Errorf("out = %q, want deny", out)
+	}
+}
+
+func TestRun_pushGuardAsksOnUnprotectedBranch(t *testing.T) {
+	out := decision(t, "git push", guardMainOnly, "feature", false, "ask")
+	if !strings.Contains(out, `"permissionDecision":"ask"`) {
+		t.Errorf("out = %q, want ask", out)
+	}
+}
+
+func TestRun_pushGuardOffAllowsPush(t *testing.T) {
+	if out := decision(t, "git push", guardMainOnly, "feature", false, "off"); out != "" {
+		t.Errorf("out = %q, want empty (push-guard off)", out)
+	}
+}
+
+func TestRun_pushGuardIgnoresCommit(t *testing.T) {
+	if out := decision(t, "git commit -m x", guardMainOnly, "feature", false, "block"); out != "" {
+		t.Errorf("out = %q, want empty (push policy must not touch commit)", out)
+	}
+}
+
+func TestRun_pushGuardDetectsDashCPush(t *testing.T) {
+	out := decision(t, "git -C sub push", guardMainOnly, "feature", false, "block")
+	if !strings.Contains(out, `"permissionDecision":"deny"`) {
+		t.Errorf("out = %q, want deny (git -C push hardening)", out)
+	}
+}
+
+func TestRun_protectedPushIsStrongest(t *testing.T) {
+	// Branch ask + push block on a protected-branch push: strongest (deny) wins.
+	out := decision(t, "git push", guardMainOnly, "main", true, "block")
+	if !strings.Contains(out, `"permissionDecision":"deny"`) {
+		t.Errorf("out = %q, want deny (strongest of branch-ask and push-block)", out)
+	}
+}
+
+func TestIsGitPush(t *testing.T) {
+	tests := []struct {
+		cmd  string
+		want bool
+	}{
+		{"git push", true},
+		{"git push origin main", true},
+		{"git -C dir push", true},
+		{"git commit -m x && git push", true},
+		{"git commit", false},
+		{"git status", false},
+		{"echo git push", false},
+	}
+	for _, tt := range tests {
+		if got := isGitPush(tt.cmd); got != tt.want {
+			t.Errorf("isGitPush(%q) = %v, want %v", tt.cmd, got, tt.want)
+		}
 	}
 }
 

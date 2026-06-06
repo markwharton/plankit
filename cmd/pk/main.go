@@ -86,11 +86,21 @@ func runProtect(args []string) {
 
 func runGuard(args []string) {
 	fs := flag.NewFlagSet("guard", flag.ExitOnError)
-	ask := fs.Bool("ask", false, "Prompt user instead of blocking")
+	ask := fs.Bool("ask", false, "Prompt user instead of blocking (branch policy)")
+	pushGuard := fs.String("push-guard", "off", "Push policy regardless of branch: block, ask, or off")
 	fs.Parse(args)
+
+	switch *pushGuard {
+	case "block", "ask", "off":
+		// Valid.
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --push-guard mode %q (must be block, ask, or off)\n", *pushGuard)
+		os.Exit(1)
+	}
 
 	cfg := guard.DefaultConfig()
 	cfg.Ask = *ask
+	cfg.PushGuard = *pushGuard
 	os.Exit(guard.Run(cfg))
 }
 
@@ -177,6 +187,7 @@ func runSetup(args []string) {
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual, auto, or off")
 	guardMode := fs.String("guard", "block", "Guard mode: block, ask, or off")
+	pushGuardMode := fs.String("push-guard", "off", "Push-guard mode: block, ask, or off")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	allowNonGit := fs.Bool("allow-non-git", false, "Proceed even if the project directory is not a git repository")
 	baseline := fs.Bool("baseline", false, "Anchor pk changelog by creating a v0.0.0 tag if none exists")
@@ -189,13 +200,15 @@ func runSetup(args []string) {
 	// Preserve existing modes on re-run. When --guard or --preserve is not
 	// explicitly passed, infer the current mode from settings.json so that
 	// upgrading pk doesn't silently reset the user's configuration.
-	guardExplicit, preserveExplicit := false, false
+	guardExplicit, preserveExplicit, pushGuardExplicit := false, false, false
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "guard":
 			guardExplicit = true
 		case "preserve":
 			preserveExplicit = true
+		case "push-guard":
+			pushGuardExplicit = true
 		}
 	})
 	if !guardExplicit || !preserveExplicit {
@@ -205,6 +218,11 @@ func runSetup(args []string) {
 		}
 		if !preserveExplicit && p != "" {
 			*preserveMode = p
+		}
+	}
+	if !pushGuardExplicit {
+		if pg := setup.InferPushGuardFromSettings(os.ReadFile, dir); pg != "" {
+			*pushGuardMode = pg
 		}
 	}
 
@@ -226,6 +244,15 @@ func runSetup(args []string) {
 		os.Exit(1)
 	}
 
+	// Validate push-guard mode.
+	switch *pushGuardMode {
+	case "block", "ask", "off":
+		// Valid.
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid --push-guard mode %q (must be block, ask, or off)\n", *pushGuardMode)
+		os.Exit(1)
+	}
+
 	// --at and --push are modifiers of --baseline; reject on their own.
 	if !*baseline {
 		if *baselineAt != "" {
@@ -242,6 +269,7 @@ func runSetup(args []string) {
 	cfg.ProjectDir = dir
 	cfg.PreserveMode = *preserveMode
 	cfg.GuardMode = *guardMode
+	cfg.PushGuardMode = *pushGuardMode
 	cfg.Force = *force
 	cfg.AllowNonGit = *allowNonGit
 	cfg.Version = version.Version()
@@ -388,7 +416,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "pk - Plan-driven development toolkit for Claude Code")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Hook commands (called by Claude Code, not directly):")
-	fmt.Fprintln(os.Stderr, "  pk guard [--ask]                    Block git mutations on protected branches (PreToolUse hook)")
+	fmt.Fprintln(os.Stderr, "  pk guard [--ask] [--push-guard block|ask|off]")
+	fmt.Fprintln(os.Stderr, "                                      Block git mutations on protected branches; guard pushes (PreToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
 	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
 	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
@@ -402,7 +431,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk rules [--lint [--strict]] [--dry-run] [--project-dir <dir>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate RULES.md and report context footprint; --lint scans for hidden chars")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
-	fmt.Fprintln(os.Stderr, "           [--baseline [--at <ref>] [--push]]")
+	fmt.Fprintln(os.Stderr, "           [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills; optionally anchor pk changelog")
 	fmt.Fprintln(os.Stderr, "  pk status [--brief] [--project-dir <dir>]")
 	fmt.Fprintln(os.Stderr, "                                      Report plankit configuration state")

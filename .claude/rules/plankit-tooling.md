@@ -1,7 +1,7 @@
 ---
 description: Three-layer architecture (pk commands, hooks, skills) and hook behavior
 kind: conduct
-pk_sha256: f4b49f77bee852ef39003dc3b85c8f60dd962b80d2bff26708c1c40d7a5aa74e
+pk_sha256: 72d9e5da8822767b463885ec3414e22fe01214bf1dbda8ac94329f07dbe7b056
 ---
 
 # Plankit Tooling
@@ -14,7 +14,7 @@ pk_sha256: f4b49f77bee852ef39003dc3b85c8f60dd962b80d2bff26708c1c40d7a5aa74e
 
 ## Hook Behavior
 
-- **`pk guard` blocks git mutations on protected branches.** If the project uses ask mode, you will be prompted instead; respect the user's decision either way. When blocked, switch to the development branch.
+- **`pk guard` blocks git mutations on protected branches, and can guard `git push` on any branch.** If the project uses ask mode, you will be prompted instead; respect the user's decision either way. When a protected-branch mutation is blocked, switch to the development branch. When a push is blocked or prompted by push-guard, treat pushing as the developer's call: do not work around it. The developer pushes manually, or uses `pk preserve` / `pk release`, which publish through pk and pass the guard.
 - **`pk protect` blocks edits to `docs/plans/`.** Preserved plans are immutable historical records. The block reason tells you why. Adjust your approach; don't try to work around it.
 - **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration; it may preserve automatically or notify that a plan is ready. When it runs automatically, surface the outcome to the user, including any commits created or pushes attempted. If the user types `/preserve`, dispatch the skill as your next action. Never queue it behind implementation work. `/preserve` is an explicit request, not a go-signal for something else.
 
