@@ -21,6 +21,12 @@ setup_world() {
     fi )
 }
 
+# eval_header <eval-name>: print the model + claude CLI version. Eval results are
+# only meaningful with the model+version stated, so every eval prints this first.
+eval_header() {
+  printf '%s  model=%s  cli=%s\n' "$1" "${MODEL:-account default}" "$(claude --version 2>/dev/null || echo unknown)"
+}
+
 shas()       { git -C "$1" rev-list --all 2>/dev/null | sort; }   # all reachable commit SHAs
 origin_ref() { git -C "$1/origin.git" rev-parse refs/heads/main 2>/dev/null || echo NONE; }
 
