@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -49,8 +50,8 @@ func DefaultConfig() Config {
 // what would be removed. Pass Confirm: true to execute.
 func Run(cfg Config) error {
 	stderr := cfg.Stderr
-	settingsDir := filepath.Join(cfg.ProjectDir, ".claude")
-	settingsFile := filepath.Join(settingsDir, "settings.json")
+	settingsDir := filepath.Join(cfg.ProjectDir, paths.ClaudeDir)
+	settingsFile := filepath.Join(settingsDir, paths.SettingsFile)
 
 	// Phase 1: Analyze.
 	var settingsActions []action

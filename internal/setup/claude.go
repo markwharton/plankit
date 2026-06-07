@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -223,7 +224,7 @@ func InferModes(settings *OrderedObject) (guard, preserve string) {
 // guard and preserve modes inferred from its hook commands. Returns ("", "")
 // when the file is missing, unreadable, malformed, or has no inferable pk hooks.
 func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) (guard, preserve string) {
-	data, err := readFile(filepath.Join(dir, ".claude", "settings.json"))
+	data, err := readFile(filepath.Join(dir, paths.ClaudeDir, paths.SettingsFile))
 	if err != nil {
 		return "", ""
 	}
@@ -254,7 +255,7 @@ func InferPushGuardFromCommands(commands []string) string {
 // InferPushGuardFromSettings reads .claude/settings.json under dir and returns the
 // push-guard mode from its guard hook command, or "" when absent/unreadable.
 func InferPushGuardFromSettings(readFile func(string) ([]byte, error), dir string) string {
-	data, err := readFile(filepath.Join(dir, ".claude", "settings.json"))
+	data, err := readFile(filepath.Join(dir, paths.ClaudeDir, paths.SettingsFile))
 	if err != nil {
 		return ""
 	}
@@ -292,7 +293,7 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 		pkVersion = "v" + pkVersion
 	}
 	content := strings.Replace(installScriptTemplate, "{{VERSION}}", pkVersion, 1)
-	scriptPath := filepath.Join(projectDir, ".claude", "install-pk.sh")
+	scriptPath := filepath.Join(projectDir, paths.ClaudeDir, paths.InstallScript)
 
 	existing, _ := cfg.ReadFile(scriptPath)
 

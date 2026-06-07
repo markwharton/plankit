@@ -13,6 +13,7 @@ import (
 
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -54,8 +55,8 @@ type hookSummary struct {
 // and error is nil — callers can use this to decide exit code behavior.
 func Run(cfg Config) (bool, error) {
 	stderr := cfg.Stderr
-	settingsDir := filepath.Join(cfg.ProjectDir, ".claude")
-	settingsFile := filepath.Join(settingsDir, "settings.json")
+	settingsDir := filepath.Join(cfg.ProjectDir, paths.ClaudeDir)
+	settingsFile := filepath.Join(settingsDir, paths.SettingsFile)
 
 	// Detect git repository.
 	isGit := isGitRepo(cfg, cfg.ProjectDir)
@@ -234,7 +235,7 @@ func isGitRepo(cfg Config, dir string) bool {
 // Returns (config, exists, error). If the file doesn't exist, returns zero
 // values with exists=false. Parse errors propagate.
 func loadPKConfig(cfg Config) (config.PkConfig, bool, error) {
-	path := filepath.Join(cfg.ProjectDir, ".pk.json")
+	path := filepath.Join(cfg.ProjectDir, paths.PkConfig)
 	// Check existence: config.Load treats any readFile error as "missing".
 	if _, err := cfg.ReadFile(path); err != nil {
 		return config.PkConfig{}, false, nil

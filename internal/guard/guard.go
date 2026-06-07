@@ -12,6 +12,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/paths"
 )
 
 // Config holds the dependencies for the guard command.
@@ -232,7 +233,7 @@ func gitSubcommand(cmd string) string {
 // loadGuardConfig reads .pk.json from the project directory and returns the guard config.
 // Returns an error if the file exists but contains malformed JSON.
 func loadGuardConfig(readFile func(string) ([]byte, error), projectDir string) (config.GuardConfig, error) {
-	pk, err := config.Load(readFile, filepath.Join(projectDir, ".pk.json"))
+	pk, err := config.Load(readFile, filepath.Join(projectDir, paths.PkConfig))
 	if err != nil {
 		return config.GuardConfig{}, err
 	}

@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -66,7 +67,7 @@ func Run(cfg Config) int {
 	}
 
 	if len(rs) == 0 {
-		fmt.Fprintf(cfg.Stderr, "pk rules: no rules found in %s\n", filepath.Join(".claude", "rules"))
+		fmt.Fprintf(cfg.Stderr, "pk rules: no rules found in %s\n", filepath.Join(paths.ClaudeDir, paths.RulesDir))
 		return 0
 	}
 
@@ -80,7 +81,7 @@ func Run(cfg Config) int {
 // across duplicate stems. A missing rules directory yields an empty slice, not an
 // error.
 func collectRules(cfg Config) ([]rule, error) {
-	root := filepath.Join(cfg.ProjectDir, ".claude", "rules")
+	root := filepath.Join(cfg.ProjectDir, paths.ClaudeDir, paths.RulesDir)
 	var rs []rule
 	if err := walkRules(cfg, root, "", &rs); err != nil {
 		return nil, err

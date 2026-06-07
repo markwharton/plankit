@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/paths"
 )
 
 // Config holds the dependencies for the protect command.
@@ -61,7 +62,7 @@ func Run(cfg Config) int {
 // isUnderPlansDir checks whether filePath is under projectDir/docs/plans/.
 // Resolves symlinks to prevent bypass via symbolic links.
 func isUnderPlansDir(filePath, projectDir string) bool {
-	plansDir := filepath.Join(projectDir, "docs", "plans")
+	plansDir := paths.Plans(projectDir)
 
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(projectDir, filePath)

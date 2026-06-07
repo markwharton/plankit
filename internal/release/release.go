@@ -17,6 +17,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/paths"
 )
 
 // Config holds injectable dependencies for testing.
@@ -52,7 +53,7 @@ func Run(cfg Config) int {
 	sourceBranch = strings.TrimSpace(sourceBranch)
 
 	// 2. Load release config from the repository root.
-	releaseConf, err := loadReleaseConfig(cfg.ReadFile, filepath.Join(cfg.Dir, ".pk.json"))
+	releaseConf, err := loadReleaseConfig(cfg.ReadFile, filepath.Join(cfg.Dir, paths.PkConfig))
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1

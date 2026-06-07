@@ -18,6 +18,7 @@ import (
 
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/paths"
 )
 
 // Config holds injectable dependencies for testing.
@@ -166,7 +167,7 @@ func Run(cfg Config) int {
 	if slug == "" {
 		slug = "untitled"
 	}
-	destDir := filepath.Join(projectDir, "docs", "plans")
+	destDir := paths.Plans(projectDir)
 
 	// Scan destination directory for duplicates and next sequence number.
 	// scanDestDir handles a missing directory gracefully (returns "", 1).
@@ -180,7 +181,7 @@ func Run(cfg Config) int {
 
 	// Dry-run mode: preview without writing, committing, or pushing.
 	if cfg.DryRun {
-		relPath := filepath.Join("docs", "plans", filename)
+		relPath := paths.PlansRel(filename)
 		fmt.Fprintf(cfg.Stderr, "pk preserve --dry-run:\n")
 		fmt.Fprintf(cfg.Stderr, "  Plan:   %s\n", title)
 		fmt.Fprintf(cfg.Stderr, "  File:   %s\n", relPath)
@@ -204,7 +205,7 @@ func Run(cfg Config) int {
 	}
 
 	// Git add.
-	relPath := filepath.Join("docs", "plans", filename)
+	relPath := paths.PlansRel(filename)
 	if _, err := cfg.GitExec(projectDir, "add", relPath); err != nil {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: git add failed: %v\n", err)
 		return 0

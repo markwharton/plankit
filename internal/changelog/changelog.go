@@ -18,6 +18,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -109,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 // Run executes the changelog command. Returns the process exit code.
 func Run(cfg Config) int {
 	// 0. Load config from the repository root.
-	fullConfig, err := LoadFullConfig(cfg.ReadFile, filepath.Join(cfg.Dir, ".pk.json"))
+	fullConfig, err := LoadFullConfig(cfg.ReadFile, filepath.Join(cfg.Dir, paths.PkConfig))
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
 		return 1

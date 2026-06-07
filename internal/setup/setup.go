@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -180,8 +181,8 @@ func Run(cfg Config) error {
 	stderr := cfg.Stderr
 	preserveMode := cfg.PreserveMode
 	force := cfg.Force
-	settingsDir := filepath.Join(projectDir, ".claude")
-	settingsFile := filepath.Join(settingsDir, "settings.json")
+	settingsDir := filepath.Join(projectDir, paths.ClaudeDir)
+	settingsFile := filepath.Join(settingsDir, paths.SettingsFile)
 
 	// Refuse to install outside a git working tree unless explicitly allowed.
 	// pk requires git for most commands (guard, changelog, release, preserve),
@@ -361,7 +362,7 @@ func Run(cfg Config) error {
 	// project re-running setup on an upgrade is not nagged. Without release.branch,
 	// pk release silently falls back to trunk flow.
 	if inGitRepo {
-		if _, err := cfg.Stat(filepath.Join(projectDir, ".pk.json")); errors.Is(err, os.ErrNotExist) {
+		if _, err := cfg.Stat(filepath.Join(projectDir, paths.PkConfig)); errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintln(stderr, "No .pk.json found. Run /conventions in Claude Code to set release and guard branches.")
 			fmt.Fprintln(stderr, "  Without it, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
 		}
