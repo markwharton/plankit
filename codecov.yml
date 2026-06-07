@@ -9,6 +9,7 @@ ignore:
   - ".claude/**"
   - ".github/**"
   - "cmd/pk/**"
+  - "evals/**"
   - "docs/**"
   - "**/*.md"
   - "**/*.sh"

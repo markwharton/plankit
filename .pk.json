@@ -17,7 +17,7 @@
       {"type": "plan", "section": "Plans", "hidden": true}
     ],
     "hooks": {
-      "preCommit": "pk pin --file .claude/install-pk.sh $VERSION"
+      "preCommit": "pk pin --file .claude/install-pk.sh $VERSION && go run ./evals/footprint"
     }
   },
   "guard": {

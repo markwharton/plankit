@@ -68,6 +68,8 @@ pk release                        # read Release-Tag trailer, tag, merge to main
 
 `pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
 
+**The release flow needs the Go toolchain on PATH**, not only for `make build`. Two release hooks compile from source: `pk changelog`'s `preCommit` runs `go run ./evals/footprint` (refreshes the always-on rules footprint line in the README so it lands in the release commit), and `pk release`'s `preRelease` runs `go test -race ./...`. So a release can't be cut on a machine without Go, even though the published binary itself has no runtime dependencies.
+
 See [pk changelog](docs/pk-changelog.md) and [pk release](docs/pk-release.md) for details.
 
 Monitor at: https://github.com/markwharton/plankit/actions

@@ -77,7 +77,7 @@ When `true`, the conventional commit scope is included in changelog entries as a
 Lifecycle hooks that run as shell commands during the changelog process. The `VERSION` environment variable is set to the new version without the `v` prefix (e.g., `0.8.1`).
 
 - **postVersion** — runs after version files are updated, before CHANGELOG.md is written. Use case: propagate the version to config files not covered by `versionFiles`.
-- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, pin versions in source files via `pk pin`.
+- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, pin versions in source files via `pk pin`. Chain steps with `&&` (hooks run through a shell); files the hook modifies are staged automatically.
 
 If a hook fails, the changelog process is aborted.
 

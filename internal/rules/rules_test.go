@@ -57,7 +57,7 @@ func setupProject(t *testing.T, claudeMD string, files map[string]string) (Confi
 	return cfg, buf
 }
 
-func TestGenerateDocument(t *testing.T) {
+func TestFootprintReport(t *testing.T) {
 	cfg, buf := setupProject(t, "# Project\n\nsome claude rules\n", map[string]string{
 		"git-discipline.md":        managedRule("Git stuff", "craft", "# Git Discipline\n\n- commit with purpose\n"),
 		"development-standards.md": managedRule("Dev stuff", "craft", "# Development Standards\n\n- fail fast\n"),
@@ -67,76 +67,37 @@ func TestGenerateDocument(t *testing.T) {
 	if code := Run(cfg); code != 0 {
 		t.Fatalf("Run returned %d, want 0; stderr=%s", code, buf.String())
 	}
-
-	data, err := os.ReadFile(filepath.Join(cfg.ProjectDir, "RULES.md"))
-	if err != nil {
-		t.Fatalf("RULES.md not written: %v", err)
-	}
-	doc := string(data)
-
-	// Version header.
-	if !strings.Contains(doc, "<!-- plankit v1.2.3 -->") {
-		t.Error("missing version header")
-	}
-	// Provenance: 2 managed, 0 modified, 1 local.
-	if !strings.Contains(doc, "Provenance: 2 managed (pristine), 0 modified, 1 user-authored.") {
-		t.Errorf("wrong provenance tally:\n%s", doc)
-	}
-	// Alphabetical order by filename: development-standards before git-discipline before local-extra.
-	iDev := strings.Index(doc, "## Development Standards")
-	iGit := strings.Index(doc, "## Git Discipline")
-	iLocal := strings.Index(doc, "## Local Extra")
-	if !(iDev < iGit && iGit < iLocal) {
-		t.Errorf("sections not alphabetical by filename: dev=%d git=%d local=%d", iDev, iGit, iLocal)
-	}
-	// Provenance + kind tags in the TOC.
-	if !strings.Contains(doc, "[managed] (kind: craft") {
-		t.Error("missing managed/craft tag in TOC")
-	}
-	if !strings.Contains(doc, "[local] (kind: unclassified") {
-		t.Error("local rule without kind should show unclassified")
-	}
-	// Body H1 stripped (no leftover "# Git Discipline" under the "## Git Discipline" heading).
-	if strings.Contains(doc, "\n# Git Discipline\n") {
-		t.Error("body H1 should be stripped")
-	}
-
-	// Footprint to stderr names the file count and a tally.
 	out := buf.String()
-	if !strings.Contains(out, "Wrote RULES.md") {
-		t.Error("missing wrote confirmation")
-	}
-	if !strings.Contains(out, "4 files") { // CLAUDE.md + 3 rules
-		t.Errorf("footprint file count wrong:\n%s", out)
-	}
-}
 
-func TestMissingDescriptionShown(t *testing.T) {
-	cfg, _ := setupProject(t, "", map[string]string{
-		"no-desc.md": "---\nkind: craft\n---\n# No Desc\n\n- body\n",
-	})
-	if code := Run(cfg); code != 0 {
-		t.Fatalf("Run returned %d", code)
-	}
-	data, _ := os.ReadFile(filepath.Join(cfg.ProjectDir, "RULES.md"))
-	if !strings.Contains(string(data), "(no description)") {
-		t.Errorf("missing-description placeholder absent:\n%s", data)
-	}
-}
-
-func TestDryRunWritesNothing(t *testing.T) {
-	cfg, buf := setupProject(t, "", map[string]string{
-		"a.md": managedRule("A", "craft", "# A\n\n- x\n"),
-	})
-	cfg.DryRun = true
-	if code := Run(cfg); code != 0 {
-		t.Fatalf("Run returned %d", code)
-	}
+	// pk rules writes no file.
 	if _, err := os.Stat(filepath.Join(cfg.ProjectDir, "RULES.md")); !os.IsNotExist(err) {
-		t.Error("dry-run must not write RULES.md")
+		t.Error("pk rules must not write any file")
 	}
-	if !strings.Contains(buf.String(), "(dry-run) RULES.md not written") {
-		t.Errorf("missing dry-run notice:\n%s", buf.String())
+	// Totals line: CLAUDE.md + 3 rules = 4 files.
+	if !strings.Contains(out, "Always-on context: 4 files") {
+		t.Errorf("footprint totals wrong:\n%s", out)
+	}
+	// CLAUDE.md is counted.
+	if !strings.Contains(out, "CLAUDE.md") {
+		t.Errorf("CLAUDE.md not in report:\n%s", out)
+	}
+	// Per-rule rows carry provenance + kind tags.
+	if !strings.Contains(out, ".claude/rules/git-discipline.md") || !strings.Contains(out, "[managed] craft") {
+		t.Errorf("missing per-rule row with provenance/kind:\n%s", out)
+	}
+	if !strings.Contains(out, "[local] unclassified") {
+		t.Errorf("local rule without kind should show [local] unclassified:\n%s", out)
+	}
+	// Provenance tally: 2 managed, 0 modified, 1 user-authored.
+	if !strings.Contains(out, "Provenance: 2 managed (pristine), 0 modified, 1 user-authored.") {
+		t.Errorf("wrong provenance tally:\n%s", out)
+	}
+	// Rows sorted by filename: development-standards < git-discipline < local-extra.
+	iDev := strings.Index(out, "development-standards.md")
+	iGit := strings.Index(out, "git-discipline.md")
+	iLocal := strings.Index(out, "local-extra.md")
+	if !(iDev < iGit && iGit < iLocal) {
+		t.Errorf("rows not sorted by filename: dev=%d git=%d local=%d\n%s", iDev, iGit, iLocal, out)
 	}
 }
 
@@ -151,9 +112,6 @@ func TestNoRulesDirectory(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "no rules found") {
 		t.Errorf("expected no-rules message, got: %s", buf.String())
-	}
-	if _, err := os.Stat(filepath.Join(dir, "RULES.md")); !os.IsNotExist(err) {
-		t.Error("should not write RULES.md when there are no rules")
 	}
 }
 
@@ -198,14 +156,26 @@ func TestParseFrontmatter(t *testing.T) {
 }
 
 func TestEstimateTokens(t *testing.T) {
-	if got := estimateTokens(""); got != 0 {
-		t.Errorf("empty = %d", got)
+	// Expected values track the calibrated charsPerToken ratio: round(runes / ratio).
+	if got := EstimateTokens(""); got != 0 {
+		t.Errorf("EstimateTokens(empty) = %d, want 0", got)
 	}
-	if got := estimateTokens("abcd"); got != 1 {
-		t.Errorf("4 chars = %d, want 1", got)
+	for _, runes := range []int{4, 5, 100} {
+		want := int(float64(runes)/charsPerToken + 0.5)
+		if got := EstimateTokens(strings.Repeat("x", runes)); got != want {
+			t.Errorf("EstimateTokens(%d chars) = %d, want %d", runes, got, want)
+		}
 	}
-	if got := estimateTokens("abcde"); got != 2 {
-		t.Errorf("5 chars = %d, want 2", got)
+}
+
+func TestTokenLabel(t *testing.T) {
+	got := TokenLabel()
+	if calibrated {
+		if want := "estimated, calibrated against " + calibrationModel; got != want {
+			t.Errorf("tokenLabel() = %q, want %q", got, want)
+		}
+	} else if got != "estimated" {
+		t.Errorf("tokenLabel() = %q, want %q (uncalibrated)", got, "estimated")
 	}
 }
 

@@ -11,7 +11,7 @@
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
 //	pk release     Merge to release branch, validate, and push
-//	pk rules       Generate RULES.md from .claude/rules/ and report context footprint
+//	pk rules       Report the always-on context footprint of .claude/rules/ and CLAUDE.md
 //	pk setup       Configure a project's .claude/settings.json
 //	pk status      Report plankit configuration state of a project
 //	pk teardown    Remove plankit hooks, skills, and rules from a project
@@ -163,9 +163,8 @@ func runRelease(args []string) {
 func runRules(args []string) {
 	fs := flag.NewFlagSet("rules", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
-	lint := fs.Bool("lint", false, "Scan rules for hidden/Trojan-source characters instead of generating RULES.md")
+	lint := fs.Bool("lint", false, "Scan rules for hidden/Trojan-source characters instead of reporting the footprint")
 	strict := fs.Bool("strict", false, "With --lint: also run plankit house-style checks (requires --lint)")
-	dryRun := fs.Bool("dry-run", false, "Print the footprint summary without writing RULES.md")
 	fs.Parse(args)
 
 	if *strict && !*lint {
@@ -178,7 +177,6 @@ func runRules(args []string) {
 	cfg.Version = version.Version()
 	cfg.Lint = *lint
 	cfg.Strict = *strict
-	cfg.DryRun = *dryRun
 	os.Exit(rules.Run(cfg))
 }
 
@@ -428,8 +426,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
 	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
 	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
-	fmt.Fprintln(os.Stderr, "  pk rules [--lint [--strict]] [--dry-run] [--project-dir <dir>]")
-	fmt.Fprintln(os.Stderr, "                                      Generate RULES.md and report context footprint; --lint scans for hidden chars")
+	fmt.Fprintln(os.Stderr, "  pk rules [--lint [--strict]] [--project-dir <dir>]")
+	fmt.Fprintln(os.Stderr, "                                      Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars")
 	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
 	fmt.Fprintln(os.Stderr, "           [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]")
 	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills; optionally anchor pk changelog")

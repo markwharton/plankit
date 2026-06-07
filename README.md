@@ -15,10 +15,15 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 
 `pk setup` installs the pieces that make plan-driven development work with Claude Code:
 
-- **Installs rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
-- **Adds Claude Code skills:** `/conventions`, `/preserve`, `/ship`
-- **Preserves approved plans:** saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
-- **Guards protected branches:** git mutations blocked via hooks, locally, before the damage happens
+- **Rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` for model behavior, development standards, and git discipline
+- **Claude Code skills:** `/conventions`, `/preserve`, `/ship`
+- **Plan preservation:** approved plans saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
+- **Branch protection:** git mutations blocked via hooks, locally, before the damage happens
+- **Release management:** automated changelogs and tagged releases from your commit history
+
+<!-- shipped-footprint:start -->
+Always-on rules footprint: ≈4,822 tokens (estimated, calibrated against claude-opus-4-8) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
+<!-- shipped-footprint:end -->
 
 After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk release` with preview+confirm at each step.
 
@@ -63,7 +68,7 @@ Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly
 |---------|-------------|
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
 | `pk status` | Report plankit configuration state. [Details](docs/pk-status.md) |
-| `pk rules` | Aggregate `.claude/rules/` into RULES.md and report context footprint. [Details](docs/pk-rules.md) |
+| `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
 | `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
 | `pk release` | Tag, merge to release branch, validate, and push. [Details](docs/pk-release.md) |

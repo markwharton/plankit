@@ -1,12 +1,11 @@
-// Package rules implements the `pk rules` command. It aggregates the project's
-// .claude/rules/ files into a single, predictable-format RULES.md document with
-// a context-footprint summary, and offers an opt-in lint pass (--lint, and
-// --lint --strict for house-style checks).
+// Package rules implements the `pk rules` command. It reports the always-on
+// context footprint of the project's .claude/rules/ files plus CLAUDE.md (size,
+// estimated tokens, per-rule provenance and craft/conduct kind), and offers an
+// opt-in lint pass (--lint, and --lint --strict for house-style checks).
 //
-// RULES.md is built to be pasted into a Claude session for review of the rule
-// set as a whole: it carries per-rule provenance (pristine plankit-managed,
-// modified, or user-authored), the pk version that shipped the managed rules,
-// an estimated context cost, and an optional craft/conduct classification.
+// pk rules only reports; it writes no files. Whole-rule-set review (overlap,
+// gaps, drift, altitude) is the job of the /review-rules skill, which reads the
+// source rules directly.
 package rules
 
 import (
@@ -24,40 +23,36 @@ import (
 type Config struct {
 	Stderr     io.Writer
 	ProjectDir string
-	Version    string // pk version, recorded in the RULES.md header
-	Lint       bool   // run the safety scan instead of generating RULES.md
+	Version    string // pk version (reserved for report context)
+	Lint       bool   // run the safety scan instead of the footprint report
 	Strict     bool   // with Lint: also run house-style checks
-	DryRun     bool   // print the footprint summary without writing RULES.md
 	ReadFile   func(string) ([]byte, error)
-	WriteFile  func(string, []byte, os.FileMode) error
 	ReadDir    func(string) ([]os.DirEntry, error)
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
 func DefaultConfig() Config {
 	return Config{
-		Stderr:    os.Stderr,
-		ReadFile:  os.ReadFile,
-		WriteFile: os.WriteFile,
-		ReadDir:   os.ReadDir,
+		Stderr:   os.Stderr,
+		ReadFile: os.ReadFile,
+		ReadDir:  os.ReadDir,
 	}
 }
 
-// rule is a single .claude/rules/ file with its parsed metadata.
+// rule is a single .claude/rules/ file with the metadata the footprint report and
+// lint pass need.
 type rule struct {
-	name        string // filename without .md, e.g. "git-discipline"
+	name        string // filename without .md, e.g. "git-discipline" (sort key)
 	displayPath string // ".claude/rules/git-discipline.md"
-	title       string // H1 from the body, e.g. "Git Discipline"
-	body        string // content after the frontmatter block
 	content     string // full file content (what Claude Code loads)
-	description string // frontmatter description, or ""
 	kind        string // frontmatter kind, or "unclassified"
 	provenance  string // "managed", "modified", or "local"
 	bytes       int
 	tokens      int
 }
 
-// Run generates RULES.md (or runs the lint pass) and returns a process exit code.
+// Run reports the always-on footprint (or runs the lint pass) and returns a
+// process exit code. It writes no files.
 func Run(cfg Config) int {
 	rs, err := collectRules(cfg)
 	if err != nil {
@@ -74,19 +69,7 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	doc := buildDocument(cfg, rs)
-
-	if cfg.DryRun {
-		writeFootprint(cfg, rs, false)
-		return 0
-	}
-
-	out := filepath.Join(cfg.ProjectDir, "RULES.md")
-	if err := cfg.WriteFile(out, []byte(doc), 0644); err != nil {
-		fmt.Fprintln(cfg.Stderr, "Error:", fmt.Errorf("failed to write RULES.md: %w", err))
-		return 1
-	}
-	writeFootprint(cfg, rs, true)
+	writeFootprint(cfg, rs)
 	return 0
 }
 
@@ -113,8 +96,7 @@ func collectRules(cfg Config) ([]rule, error) {
 			return nil, fmt.Errorf("failed to read %s: %w", path, err)
 		}
 		content := normalizeLF(string(data))
-		body, fields := parseFrontmatter(content)
-		name := strings.TrimSuffix(e.Name(), ".md")
+		_, fields := parseFrontmatter(content)
 
 		kind := fields["kind"]
 		if kind == "" {
@@ -122,16 +104,13 @@ func collectRules(cfg Config) ([]rule, error) {
 		}
 
 		rs = append(rs, rule{
-			name:        name,
+			name:        strings.TrimSuffix(e.Name(), ".md"),
 			displayPath: ".claude/rules/" + e.Name(),
-			title:       titleFromBody(body, name),
-			body:        body,
 			content:     content,
-			description: fields["description"],
 			kind:        kind,
 			provenance:  provenanceOf(content),
 			bytes:       len(content),
-			tokens:      estimateTokens(content),
+			tokens:      EstimateTokens(content),
 		})
 	}
 
@@ -178,21 +157,45 @@ func parseFrontmatter(content string) (body string, fields map[string]string) {
 	return body, fields
 }
 
-// titleFromBody returns the first markdown H1 ("# Title") in body, falling back
-// to a title-cased form of the filename.
-func titleFromBody(body, name string) string {
-	for _, line := range strings.Split(body, "\n") {
-		if strings.HasPrefix(line, "# ") {
-			return strings.TrimSpace(line[2:])
-		}
+// Token-estimate calibration. There is no tokenizer in the standard library, so
+// EstimateTokens approximates token counts from character counts using a single
+// calibrated ratio. The ratio is model-specific (tokenization differs per model),
+// so it is measured against a named model by evals/calibrate (which calls the
+// count_tokens endpoint) and written here by its --write flag. The calibrated
+// flag gates the "(estimated, calibrated against <model>)" wording, so the label
+// claims calibration only when the ratio came from a real measurement rather than
+// the provisional seed.
+const (
+	// calibrationModel is the model whose tokenizer charsPerToken was measured against.
+	calibrationModel = "claude-opus-4-8"
+	// charsPerToken is the calibrated characters-per-token ratio for plankit's
+	// shipped markdown. chars/4 runs ~25% low for this content; ~3 is closer.
+	charsPerToken = 2.93
+	// calibrated reports whether charsPerToken came from a real count_tokens
+	// measurement (evals/calibrate --write) rather than the provisional seed.
+	// It gates the "calibrated against <model>" wording in the footprint label.
+	calibrated = true
+)
+
+// EstimateTokens approximates the token count of s using the calibrated
+// characters-per-token ratio. Figures are labelled as estimates (see TokenLabel).
+// Exported so the maintainer-only evals/footprint tool reports the shipped-rule
+// cost with the same ratio the live `pk rules` footprint uses.
+func EstimateTokens(s string) int {
+	if s == "" {
+		return 0
 	}
-	return strings.ReplaceAll(name, "-", " ")
+	return int(float64(len([]rune(s)))/charsPerToken + 0.5)
 }
 
-// estimateTokens is a documented rough heuristic (~4 chars per token). There is
-// no tokenizer in the standard library; figures are labelled as estimates.
-func estimateTokens(s string) int {
-	return (len([]rune(s)) + 3) / 4
+// TokenLabel returns the parenthetical qualifier for token figures. It claims
+// calibration only once charsPerToken has been measured (calibrated == true),
+// keeping the wording honest while the constant is still the provisional seed.
+func TokenLabel() string {
+	if calibrated {
+		return "estimated, calibrated against " + calibrationModel
+	}
+	return "estimated"
 }
 
 // normalizeLF collapses CRLF and lone CR to LF so parsing is newline-consistent.

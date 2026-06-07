@@ -1,9 +1,9 @@
 # Build output
 dist/
 /pk
-
-# Generated artifacts (regenerate with `pk rules`)
-RULES.md
+# Stray binaries from `go build ./evals/<tool>` (use `go run`); the main-package name lands at root
+/calibrate
+/footprint
 
 # Sketches
 _sketch*
