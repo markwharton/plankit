@@ -324,16 +324,17 @@ func inferModes(hooks []hookSummary) (string, string) {
 }
 
 // scanManaged scans a directory for pk-managed files and returns them sorted.
-// If nested is true, looks for <dir>/<subdir>/SKILL.md (skills layout);
-// otherwise looks for <dir>/<name>.md (rules layout).
+// If nested is true, looks for <dir>/<subdir>/SKILL.md (skills layout); otherwise
+// scans every <name>.md under dir recursively (rules layout), so pk-managed rules
+// installed under .claude/rules/plankit/ are found. Subdir rules carry their path
+// relative to dir as the label (e.g. "plankit/git-discipline.md").
 func scanManaged(cfg Config, dir string, nested bool) []managedFile {
-	entries, err := cfg.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-
 	var files []managedFile
 	if nested {
+		entries, err := cfg.ReadDir(dir)
+		if err != nil {
+			return nil
+		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
@@ -345,19 +346,43 @@ func scanManaged(cfg Config, dir string, nested bool) []managedFile {
 			}
 		}
 	} else {
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name())
-			if mf := checkSingleFile(cfg, path, entry.Name()); mf != nil {
-				files = append(files, *mf)
-			}
-		}
+		scanRulesDir(cfg, dir, "", &files)
 	}
 
 	sort.Slice(files, func(i, j int) bool { return files[i].label < files[j].label })
 	return files
+}
+
+// scanRulesDir appends every pk-managed *.md under dir to files, recursing into
+// subdirectories. rel is dir's slash-separated path relative to the rules root
+// ("" at the root), used to build each file's label. A missing or unreadable
+// directory contributes nothing.
+func scanRulesDir(cfg Config, dir, rel string, files *[]managedFile) {
+	entries, err := cfg.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			sub := name
+			if rel != "" {
+				sub = rel + "/" + name
+			}
+			scanRulesDir(cfg, filepath.Join(dir, name), sub, files)
+			continue
+		}
+		if !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		label := name
+		if rel != "" {
+			label = rel + "/" + name
+		}
+		if mf := checkSingleFile(cfg, filepath.Join(dir, name), label); mf != nil {
+			*files = append(*files, *mf)
+		}
+	}
 }
 
 // checkSingleFile returns a managedFile if the file has a pk_sha256 marker,

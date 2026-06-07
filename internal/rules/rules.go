@@ -43,10 +43,11 @@ func DefaultConfig() Config {
 // lint pass need.
 type rule struct {
 	name        string // filename without .md, e.g. "git-discipline" (sort key)
-	displayPath string // ".claude/rules/git-discipline.md"
+	displayPath string // path relative to the repo, e.g. ".claude/rules/plankit/git-discipline.md"
 	content     string // full file content (what Claude Code loads)
 	kind        string // frontmatter kind, or "unclassified"
 	provenance  string // "managed", "modified", or "local"
+	conditional bool   // has paths: frontmatter, so Claude loads it only on matching files
 	bytes       int
 	tokens      int
 }
@@ -73,49 +74,86 @@ func Run(cfg Config) int {
 	return 0
 }
 
-// collectRules reads and parses every .md file under .claude/rules/, sorted by
-// filename. A missing rules directory yields an empty slice, not an error.
+// collectRules reads and parses every .md file under .claude/rules/, recursing
+// into subdirectories (Claude Code discovers rules recursively, so the footprint
+// must too). Results are sorted by rule name, then by path for a stable order
+// across duplicate stems. A missing rules directory yields an empty slice, not an
+// error.
 func collectRules(cfg Config) ([]rule, error) {
-	dir := filepath.Join(cfg.ProjectDir, ".claude", "rules")
+	root := filepath.Join(cfg.ProjectDir, ".claude", "rules")
+	var rs []rule
+	if err := walkRules(cfg, root, "", &rs); err != nil {
+		return nil, err
+	}
+	sort.Slice(rs, func(i, j int) bool {
+		if rs[i].name != rs[j].name {
+			return rs[i].name < rs[j].name
+		}
+		return rs[i].displayPath < rs[j].displayPath
+	})
+	return rs, nil
+}
+
+// walkRules appends a rule for every .md file under dir, descending into
+// subdirectories. rel is the slash-separated path of dir relative to .claude/rules
+// ("" at the root), used to build each rule's displayPath. A missing directory is
+// not an error (yields nothing), matching the previous flat behavior.
+func walkRules(cfg Config, dir, rel string, rs *[]rule) error {
 	entries, err := cfg.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil
 		}
-		return nil, err
+		return err
 	}
-
-	var rs []rule
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+		name := e.Name()
+		if e.IsDir() {
+			sub := name
+			if rel != "" {
+				sub = rel + "/" + name
+			}
+			if err := walkRules(cfg, filepath.Join(dir, name), sub, rs); err != nil {
+				return err
+			}
 			continue
 		}
-		path := filepath.Join(dir, e.Name())
-		data, err := cfg.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read %s: %w", path, err)
+		if !strings.HasSuffix(name, ".md") {
+			continue
 		}
-		content := normalizeLF(string(data))
+		full := filepath.Join(dir, name)
+		data, err := cfg.ReadFile(full)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", full, err)
+		}
+		content := NormalizeLF(string(data))
 		_, fields := parseFrontmatter(content)
 
 		kind := fields["kind"]
 		if kind == "" {
 			kind = "unclassified"
 		}
+		// A paths: key (any value) marks a conditional rule: Claude Code loads it
+		// only when a matching file is read, so it is not part of the always-on cost.
+		_, conditional := fields["paths"]
 
-		rs = append(rs, rule{
-			name:        strings.TrimSuffix(e.Name(), ".md"),
-			displayPath: ".claude/rules/" + e.Name(),
+		relName := name
+		if rel != "" {
+			relName = rel + "/" + name
+		}
+
+		*rs = append(*rs, rule{
+			name:        strings.TrimSuffix(name, ".md"),
+			displayPath: ".claude/rules/" + relName,
 			content:     content,
 			kind:        kind,
 			provenance:  provenanceOf(content),
+			conditional: conditional,
 			bytes:       len(content),
 			tokens:      EstimateTokens(content),
 		})
 	}
-
-	sort.Slice(rs, func(i, j int) bool { return rs[i].name < rs[j].name })
-	return rs, nil
+	return nil
 }
 
 // provenanceOf classifies a rule file the same way pk status does: pk-managed and
@@ -198,8 +236,10 @@ func TokenLabel() string {
 	return "estimated"
 }
 
-// normalizeLF collapses CRLF and lone CR to LF so parsing is newline-consistent.
-func normalizeLF(s string) string {
+// NormalizeLF collapses CRLF and lone CR to LF so parsing is newline-consistent.
+// Exported so evals/footprint measures byte/token counts on identically-normalized
+// content, keeping the maintainer footprint tool and live `pk rules` in agreement.
+func NormalizeLF(s string) string {
 	if !strings.Contains(s, "\r") {
 		return s
 	}

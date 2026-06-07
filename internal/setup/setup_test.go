@@ -94,9 +94,9 @@ func TestRun_freshProject(t *testing.T) {
 		}
 	}
 
-	// Verify rules were created with SHA markers.
+	// Verify rules were created with SHA markers under the plankit/ subdirectory.
 	for _, name := range []string{"model-behavior", "development-standards", "git-discipline", "plankit-tooling"} {
-		ruleFile := filepath.Join(projectDir, ".claude", "rules", name+".md")
+		ruleFile := filepath.Join(projectDir, ".claude", "rules", "plankit", name+".md")
 		data, err := os.ReadFile(ruleFile)
 		if err != nil {
 			t.Fatalf("rule %s not created: %v", name, err)
@@ -122,6 +122,75 @@ func TestRun_freshProject(t *testing.T) {
 	// Verify stderr output.
 	if !strings.Contains(stderr.String(), "guard mode: block, preserve mode: auto") {
 		t.Errorf("stderr = %q, want guard and preserve modes mentioned", stderr.String())
+	}
+}
+
+// TestRun_migratesFlatRulesToSubdir verifies that setup moves rules into
+// .claude/rules/plankit/ and cleans up pre-subdir installs: a pristine pk rule at
+// the old flat location is removed, while a user-modified one and the user's own
+// rule are preserved.
+func TestRun_migratesFlatRulesToSubdir(t *testing.T) {
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".claude", "rules")
+	if err := os.MkdirAll(rulesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// An old pristine pk-managed rule at the flat top-level (marker matches body).
+	pristineBody := "# Old Pristine\n\n- body\n"
+	pristine := embedSHA("---\ndescription: old\n---\n"+pristineBody, ContentSHA(pristineBody))
+	if err := os.WriteFile(filepath.Join(rulesDir, "git-discipline.md"), []byte(pristine), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// A user-modified pk-managed rule at the top-level (marker no longer matches body).
+	modifiedBody := "# Modified\n\n- changed by user\n"
+	modified := embedSHA("---\ndescription: mod\n---\n"+modifiedBody, ContentSHA("a different body"))
+	if err := os.WriteFile(filepath.Join(rulesDir, "model-behavior.md"), []byte(modified), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// A user's own rule (no pk marker) at the top-level.
+	if err := os.WriteFile(filepath.Join(rulesDir, "my-own.md"), []byte("# Mine\n\n- keep me\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, PreserveMode: "auto", GuardMode: "block", AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	// New subdir copies exist.
+	for _, name := range []string{"git-discipline", "model-behavior", "development-standards", "plankit-tooling"} {
+		if _, err := os.Stat(filepath.Join(rulesDir, "plankit", name+".md")); err != nil {
+			t.Errorf("subdir rule %s not installed: %v", name, err)
+		}
+	}
+	// Old pristine top-level rule removed by the migration sweep.
+	if _, err := os.Stat(filepath.Join(rulesDir, "git-discipline.md")); !os.IsNotExist(err) {
+		t.Errorf("old pristine top-level git-discipline.md should be removed (stat err=%v)", err)
+	}
+	// User-modified top-level rule preserved (with a warning); user's own rule preserved.
+	if _, err := os.Stat(filepath.Join(rulesDir, "model-behavior.md")); err != nil {
+		t.Errorf("user-modified top-level rule should be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(rulesDir, "my-own.md")); err != nil {
+		t.Errorf("user's own rule should be preserved: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "preserved") {
+		t.Errorf("expected a preserved warning for the modified rule; stderr=%s", stderr.String())
+	}
+
+	// Idempotent: a second run leaves the subdir copy byte-identical.
+	subFile := filepath.Join(rulesDir, "plankit", "git-discipline.md")
+	before, _ := os.ReadFile(subFile)
+	stderr.Reset()
+	if err := Run(cfg); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+	after, _ := os.ReadFile(subFile)
+	if string(before) != string(after) {
+		t.Error("second setup changed the subdir rule; expected idempotent")
 	}
 }
 

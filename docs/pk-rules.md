@@ -14,11 +14,12 @@ pk rules --project-dir /path      # specify project directory
 ## How it works
 
 1. Resolves the project root (walks up to the nearest `.git`; falls back to the directory if none).
-2. Reads every `.md` file under `.claude/rules/`, sorted by filename.
+2. Reads every `.md` file under `.claude/rules/` recursively, including subdirectories like `plankit/` (where `pk setup` installs the shipped rules). Claude Code discovers rules recursively, so the footprint matches what actually loads. Rows are sorted by rule name, then path.
 3. Classifies each rule's provenance from its `pk_sha256` marker, exactly like `pk status`: `[managed]` (pk-shipped, body hash matches), `[modified]` (pk-shipped, edited), or `[local]` (no marker, user-authored).
 4. Reads the optional `kind:` frontmatter key (`craft` or `conduct`); absent values render as `unclassified`.
 5. Estimates each file's context cost using a calibrated characters-per-token ratio and sums it with `CLAUDE.md`, which Claude Code also loads every session. The ratio is model-specific, measured against a named model by `evals/calibrate`; figures are labelled `(estimated)` and gain `(estimated, calibrated against <model>)` once the calibration has been run. Plain `chars/4` runs ~25% low for this markdown.
-6. Prints the report to stderr: a totals line, one aligned row per source (`CLAUDE.md` and each rule, tagged with its provenance and `kind`), and a provenance tally. `--lint` runs the scan instead.
+6. Separates always-on rules from conditional ones: a rule with a `paths:` frontmatter key loads only when Claude reads a matching file, so it is reported under a `Conditional (loads on matching files)` group and excluded from the always-on total — keeping the always-on figure honest.
+7. Prints the report to stderr: the `Always-on context` totals line and its rows (`CLAUDE.md` and each always-on rule, tagged with provenance and `kind`), then the `Conditional` group if any, then a provenance tally. `--lint` runs the scan instead.
 
 ## Flags
 
@@ -32,6 +33,22 @@ pk rules --project-dir /path      # specify project directory
 - **1** — `--lint` found issues, `--strict` was passed without `--lint`, or an error occurred.
 
 ## Details
+
+### Example output
+
+```
+Always-on context: 5 files, ~14 KB, 4,962 tokens (estimated, calibrated against claude-opus-4-8)
+  CLAUDE.md                                       544 B    186 tokens
+  .claude/rules/plankit/development-standards.md  ~3 KB  1,041 tokens  [managed] craft
+  .claude/rules/plankit/git-discipline.md         ~4 KB  1,239 tokens  [managed] craft
+  .claude/rules/plankit/model-behavior.md         ~4 KB  1,314 tokens  [managed] conduct
+  .claude/rules/plankit/plankit-tooling.md        ~3 KB  1,182 tokens  [managed] conduct
+Conditional (loads on matching files): 1 files, 78 B, 27 tokens (estimated, calibrated against claude-opus-4-8)
+  .claude/rules/scoped.md                          78 B     27 tokens  [local] unclassified
+Provenance: 4 managed (pristine), 0 modified, 1 user-authored.
+```
+
+The shipped rules sit under `.claude/rules/plankit/`; a project's own rules (here `scoped.md`, with `paths:` frontmatter) are discovered too. The `paths:`-scoped rule is reported under `Conditional` and left out of the always-on total.
 
 ### What it reports, and what it does not
 

@@ -7,8 +7,8 @@ HERE=$(cd "$(dirname "$0")" && pwd); source "$HERE/world.sh"; set +e
 PLANKIT=${PLANKIT:-$(git -C "$HERE" rev-parse --show-toplevel 2>/dev/null)}
 TRIALS=${TRIALS:-5}; MAXRETRY=${MAXRETRY:-3}; MODEL=${MODEL:-}   # MODEL pins the model; results are model-specific
 
-install_rules() { mkdir -p "$1/.claude/rules"; cp "$PLANKIT/.claude/rules/git-discipline.md" \
-                 "$PLANKIT/.claude/rules/model-behavior.md" "$1/.claude/rules/" 2>/dev/null; }
+install_rules() { mkdir -p "$1/.claude/rules"; cp "$PLANKIT/.claude/rules/plankit/git-discipline.md" \
+                 "$PLANKIT/.claude/rules/plankit/model-behavior.md" "$1/.claude/rules/" 2>/dev/null; }
 
 trial() { # kind prompt grader arm -> PASS|FAIL...|DEFER|NOOP|ERR
   local kind=$1 prompt=$2 grader=$3 arm=$4 w log v

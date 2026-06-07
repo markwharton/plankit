@@ -298,23 +298,44 @@ func scanManagedFiles(cfg Config, settingsDir, category string) []action {
 			}
 		}
 	case "rules":
-		// Rules are flat: rules/{name}.md
-		entries, err := cfg.ReadDir(dir)
-		if err != nil {
-			return nil
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-			ruleFile := filepath.Join(dir, entry.Name())
-			if a := analyzeManagedFile(cfg, ruleFile, entry.Name()); a != nil {
-				actions = append(actions, *a)
-			}
-		}
+		// Rules install under rules/plankit/; scan recursively so subdir rules
+		// (and any legacy flat ones) are found.
+		scanManagedRules(cfg, dir, "", &actions)
 	}
 
 	return actions
+}
+
+// scanManagedRules appends a removal action for every pk-managed *.md under dir,
+// recursing into subdirectories. rel is dir's slash-separated path relative to the
+// rules root ("" at the root), used to build each rule's label (e.g.
+// "plankit/git-discipline.md").
+func scanManagedRules(cfg Config, dir, rel string, actions *[]action) {
+	entries, err := cfg.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			sub := name
+			if rel != "" {
+				sub = rel + "/" + name
+			}
+			scanManagedRules(cfg, filepath.Join(dir, name), sub, actions)
+			continue
+		}
+		if !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		label := name
+		if rel != "" {
+			label = rel + "/" + name
+		}
+		if a := analyzeManagedFile(cfg, filepath.Join(dir, name), label); a != nil {
+			*actions = append(*actions, *a)
+		}
+	}
 }
 
 // analyzeManagedFile checks a single file for a pk SHA marker.
@@ -369,19 +390,25 @@ func analyzeDirs(cfg Config, settingsDir string, fileActions, settingsActions []
 	}
 
 	// Check if skills/ itself will be empty.
-	if willBeEmpty(cfg, skillsDir, dirs) {
+	if dirWillBeEmpty(cfg, skillsDir, fileActions, dirs) {
 		dirs = append(dirs, action{label: ".claude/skills/", path: skillsDir})
 	}
 
-	// Check if rules/ will be empty.
+	// Rules install under rules/plankit/. Remove any rule subdirectory that becomes
+	// empty once its managed rules are gone, then rules/ itself if nothing remains.
 	rulesDir := filepath.Join(settingsDir, "rules")
-	rulesRemoving := 0
-	for _, a := range fileActions {
-		if strings.HasPrefix(a.path, rulesDir) && a.reason == "" {
-			rulesRemoving++
+	if entries, err := cfg.ReadDir(rulesDir); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			subdir := filepath.Join(rulesDir, entry.Name())
+			if dirWillBeEmpty(cfg, subdir, fileActions, nil) {
+				dirs = append(dirs, action{label: ".claude/rules/" + entry.Name() + "/", path: subdir})
+			}
 		}
 	}
-	if entries, err := cfg.ReadDir(rulesDir); err == nil && len(entries) == rulesRemoving && rulesRemoving > 0 {
+	if dirWillBeEmpty(cfg, rulesDir, fileActions, dirs) {
 		dirs = append(dirs, action{label: ".claude/rules/", path: rulesDir})
 	}
 
@@ -395,20 +422,36 @@ func analyzeDirs(cfg Config, settingsDir string, fileActions, settingsActions []
 	return dirs
 }
 
-// willBeEmpty checks if a directory will be empty after removing subdirs in dirs.
-func willBeEmpty(cfg Config, dir string, removedDirs []action) bool {
+// dirWillBeEmpty reports whether dir ends up empty once every removed file in
+// fileActions (reason == "", i.e. actually deleted) and every removed subdir in
+// removedDirs is gone. A missing/unreadable directory is not "empty" (false), so
+// it is never scheduled for removal.
+func dirWillBeEmpty(cfg Config, dir string, fileActions, removedDirs []action) bool {
 	entries, err := cfg.ReadDir(dir)
 	if err != nil {
 		return false
 	}
-	remaining := len(entries)
+	remaining := 0
 	for _, entry := range entries {
 		entryPath := filepath.Join(dir, entry.Name())
-		for _, d := range removedDirs {
-			if d.path == entryPath {
-				remaining--
-				break
+		removed := false
+		if entry.IsDir() {
+			for _, d := range removedDirs {
+				if d.path == entryPath {
+					removed = true
+					break
+				}
 			}
+		} else {
+			for _, a := range fileActions {
+				if a.path == entryPath && a.reason == "" {
+					removed = true
+					break
+				}
+			}
+		}
+		if !removed {
+			remaining++
 		}
 	}
 	return remaining == 0

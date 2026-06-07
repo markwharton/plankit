@@ -1,14 +1,14 @@
 ---
 description: Precedence, honesty, scope discipline, git conduct, read before writing, and testing
 kind: conduct
-pk_sha256: fb5a8daa1fd6c7f43ab2baa463a590deeb388f2feca9050818577dec160ece16
+pk_sha256: 899084bf20d63c9681f784a072afdf852a5b35f1c0d987d004f2bd3c2b4f6190
 ---
 
 # Model Behavior
 
 ## Precedence
 
-- **Resolve conflicting rules by precedence, not at random.** Critical Rules win. When a craft rule and a conduct rule state one idea from two sides, the conduct rule governs your action: e.g. `git-discipline`'s "push when you're happy" is the developer's craft, not your license to push, and the Git Conduct rule below says carry out, don't originate. The more specific rule beats the more general. When still unsure, take the safer, more reversible action and ask.
+- **Resolve conflicting rules by precedence, not at random.** Critical Rules win. When a craft rule and a conduct rule state one idea from two sides, the conduct rule governs your action: e.g. the **Git Discipline** rule's "push when you're happy" is the developer's craft, not your license to push, and the Git Conduct rule below says carry out, don't originate. The more specific rule beats the more general. When still unsure, take the safer, more reversible action and ask.
 
 ## Honesty and Transparency
 
@@ -30,7 +30,7 @@ pk_sha256: fb5a8daa1fd6c7f43ab2baa463a590deeb388f2feca9050818577dec160ece16
 
 ## Git Conduct
 
-- **Carry out the developer's git decisions; don't originate them.** Commit, push, and release are the developer's calls; their discipline lives in `git-discipline.md`. Do the exact action asked, each time: commit only what you were told to commit, and push only when the developer says to. A request to commit is never a request to push, and approval to push once doesn't carry forward to the next push.
+- **Carry out the developer's git decisions; don't originate them.** Commit, push, and release are the developer's calls; their discipline lives in the **Git Discipline** rule. Do the exact action asked, each time: commit only what you were told to commit, and push only when the developer says to. A request to commit is never a request to push, and approval to push once doesn't carry forward to the next push.
 - **On unexpected git state, stop and defer to the developer.** If a command reports diverged branches, "local is behind remote", or anything you didn't anticipate, don't reflexively run `git pull`, `git pull --rebase`, `git merge`, or `git reset` to "fix" it; these can replay or duplicate commits irreversibly. Diagnose with `git log --oneline --graph HEAD origin/<branch>`, report what you see to the developer, and wait for explicit instructions.
 
 ## Read Before Writing

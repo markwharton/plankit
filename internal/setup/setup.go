@@ -284,15 +284,19 @@ func Run(cfg Config) error {
 		anyChanged = true
 	}
 
-	// Install rules.
+	// Install rules into a plankit/ subdirectory. A flat .claude/rules/ is a shared
+	// namespace, so a same-named adopter rule would silently shadow ours; the subdir
+	// makes collisions impossible. Claude Code discovers .claude/rules/ recursively,
+	// so the rules still load every session.
 	rulesList, err := rules()
 	if err != nil {
 		return fmt.Errorf("failed to load embedded rules: %w", err)
 	}
 	fmt.Fprintln(stderr, "Rules:")
 	keptRules := map[string]bool{}
+	rulesSubdir := filepath.Join(settingsDir, "rules", "plankit")
 	for _, rule := range rulesList {
-		ruleFile := filepath.Join(settingsDir, "rules", rule.Name+".md")
+		ruleFile := filepath.Join(rulesSubdir, rule.Name+".md")
 		changed, err := writeManaged(cfg, ruleFile, rule.Content, force)
 		if err != nil {
 			return err
@@ -300,7 +304,15 @@ func Run(cfg Config) error {
 		anyChanged = anyChanged || changed
 		keptRules[rule.Name] = true
 	}
-	if pruneRules(cfg, filepath.Join(settingsDir, "rules"), keptRules) {
+	if pruneRules(cfg, rulesSubdir, keptRules) {
+		anyChanged = true
+	}
+	// Migration: remove pristine pk-managed rules left at the old flat top-level
+	// location by pre-subdir installs. The empty kept-set means every pristine pk
+	// rule there is pruned; user-modified rules are preserved (with a warning) and
+	// non-pk files (plankit-development.md, the adopter's own rules) are skipped.
+	// pruneRules skips subdirectories, so the plankit/ subdir is untouched here.
+	if pruneRules(cfg, filepath.Join(settingsDir, "rules"), map[string]bool{}) {
 		anyChanged = true
 	}
 

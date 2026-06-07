@@ -21,7 +21,7 @@ func setupProject(t *testing.T) string {
 	os.MkdirAll(filepath.Join(claudeDir, "skills", "init"), 0755)
 	os.MkdirAll(filepath.Join(claudeDir, "skills", "preserve"), 0755)
 	os.MkdirAll(filepath.Join(claudeDir, "skills", "release"), 0755)
-	os.MkdirAll(filepath.Join(claudeDir, "rules"), 0755)
+	os.MkdirAll(filepath.Join(claudeDir, "rules", "plankit"), 0755)
 
 	// Write managed skills with pk_sha256 markers.
 	for _, name := range []string{"changelog", "init", "preserve", "release"} {
@@ -31,12 +31,12 @@ func setupProject(t *testing.T) string {
 		os.WriteFile(filepath.Join(claudeDir, "skills", name, "SKILL.md"), []byte(content), 0644)
 	}
 
-	// Write managed rules with pk_sha256 markers.
+	// Write managed rules with pk_sha256 markers under the plankit/ subdirectory.
 	for _, name := range []string{"development-standards", "git-discipline", "model-behavior", "plankit-tooling"} {
 		body := "# " + name + "\n"
 		sha := setup.ContentSHA(body)
 		content := "---\ndescription: " + name + "\npk_sha256: " + sha + "\n---\n" + body
-		os.WriteFile(filepath.Join(claudeDir, "rules", name+".md"), []byte(content), 0644)
+		os.WriteFile(filepath.Join(claudeDir, "rules", "plankit", name+".md"), []byte(content), 0644)
 	}
 
 	// Write settings.json with hooks and permission.
@@ -114,10 +114,14 @@ func TestRun_fullCycle(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"development-standards", "git-discipline", "model-behavior", "plankit-tooling"} {
-		path := filepath.Join(dir, ".claude", "rules", name+".md")
+		path := filepath.Join(dir, ".claude", "rules", "plankit", name+".md")
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("rule %s still exists", name)
 		}
+	}
+	// The plankit/ subdir and rules/ should both be cleaned up.
+	if _, err := os.Stat(filepath.Join(dir, ".claude", "rules", "plankit")); !os.IsNotExist(err) {
+		t.Error(".claude/rules/plankit/ still exists")
 	}
 
 	// CLAUDE.md should be removed (pristine).

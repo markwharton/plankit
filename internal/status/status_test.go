@@ -19,7 +19,7 @@ func setupProject(t *testing.T) string {
 	claudeDir := filepath.Join(dir, ".claude")
 	os.MkdirAll(filepath.Join(claudeDir, "skills", "changelog"), 0755)
 	os.MkdirAll(filepath.Join(claudeDir, "skills", "init"), 0755)
-	os.MkdirAll(filepath.Join(claudeDir, "rules"), 0755)
+	os.MkdirAll(filepath.Join(claudeDir, "rules", "plankit"), 0755)
 
 	for _, name := range []string{"changelog", "init"} {
 		body := "# " + name + " skill\n"
@@ -28,11 +28,12 @@ func setupProject(t *testing.T) string {
 		os.WriteFile(filepath.Join(claudeDir, "skills", name, "SKILL.md"), []byte(content), 0644)
 	}
 
+	// Managed rules install under .claude/rules/plankit/; status must find them recursively.
 	for _, name := range []string{"development-standards", "git-discipline"} {
 		body := "# " + name + "\n"
 		sha := setup.ContentSHA(body)
 		content := "---\ndescription: " + name + "\npk_sha256: " + sha + "\n---\n" + body
-		os.WriteFile(filepath.Join(claudeDir, "rules", name+".md"), []byte(content), 0644)
+		os.WriteFile(filepath.Join(claudeDir, "rules", "plankit", name+".md"), []byte(content), 0644)
 	}
 
 	settings := map[string]interface{}{
@@ -152,8 +153,8 @@ func TestRun_fullyConfigured(t *testing.T) {
 func TestRun_modifiedFiles(t *testing.T) {
 	dir := setupProject(t)
 
-	// Modify a rule.
-	rulePath := filepath.Join(dir, ".claude", "rules", "development-standards.md")
+	// Modify a rule (managed rules live under the plankit/ subdir).
+	rulePath := filepath.Join(dir, ".claude", "rules", "plankit", "development-standards.md")
 	data, _ := os.ReadFile(rulePath)
 	os.WriteFile(rulePath, []byte(string(data)+"\n# User edits\n"), 0644)
 
@@ -170,8 +171,9 @@ func TestRun_modifiedFiles(t *testing.T) {
 	if !strings.Contains(output, "1 modified") {
 		t.Errorf("expected modified count, got: %s", output)
 	}
-	if !strings.Contains(output, "development-standards.md (modified by user)") {
-		t.Errorf("expected modified file listed, got: %s", output)
+	// The label carries the subdir path, proving recursive discovery.
+	if !strings.Contains(output, "plankit/development-standards.md (modified by user)") {
+		t.Errorf("expected modified subdir rule listed with relative path, got: %s", output)
 	}
 }
 

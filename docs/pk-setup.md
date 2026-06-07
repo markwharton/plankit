@@ -25,7 +25,7 @@ Setup refuses to install outside a git working tree by default — most pk comma
 
 1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** with critical rules if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
-3. **Installs rules** to `.claude/rules/`: model-behavior, development-standards, git-discipline. These contain the detailed guidelines that Claude Code loads automatically.
+3. **Installs rules** to `.claude/rules/plankit/`: development-standards, git-discipline, model-behavior, plankit-tooling. They go under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files; Claude Code discovers rules recursively, so they still load automatically. These contain the detailed guidelines.
 4. **Installs skills** to `.claude/skills/`: `/conventions`, `/preserve`, `/ship`. User-modified skills are skipped unless `--force` is used.
 5. **Writes `.claude/install-pk.sh`** — a bootstrap script that downloads `pk` into cloud sandboxes (Claude Code on the web). The script is pinned to the running `pk` version and is a no-op when `pk` is already on PATH. Skipped for development builds.
 6. **Checks PATH** and warns if `pk` is not found.
@@ -52,7 +52,7 @@ pk is designed for git repositories, but parts of it work without git. When `--a
 
 | Feature | Without git |
 |---------|-------------|
-| Rules (`.claude/rules/`) | Fully functional — Claude Code loads them regardless |
+| Rules (`.claude/rules/plankit/`) | Fully functional — Claude Code loads them regardless |
 | `pk protect` | Fully functional — checks file paths only |
 | `pk guard` hook | Silent no-op — nothing to guard |
 | `pk preserve` hook | Silent skip — plan is not saved |
@@ -63,7 +63,7 @@ The common non-git use case is getting pk's rules and skills in a scratch direct
 
 ### CLAUDE.md
 
-The CLAUDE.md installed by `pk setup` contains critical rules — the non-negotiable behaviors that prevent the most common issues. Detailed guidelines for model behavior, development standards, and git discipline are installed as `.claude/rules/` files, which Claude Code loads automatically alongside CLAUDE.md.
+The CLAUDE.md installed by `pk setup` contains critical rules — the non-negotiable behaviors that prevent the most common issues. Detailed guidelines for model behavior, development standards, and git discipline are installed as `.claude/rules/plankit/` files, which Claude Code loads automatically alongside CLAUDE.md.
 
 Add a `## Project Conventions` section to make Claude productive from the first message of every session. Without project conventions, Claude follows the rules but has to rediscover the project each session. With them, it knows the project from the start.
 

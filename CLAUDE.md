@@ -57,7 +57,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (conventions, preserve, ship).
-- `.claude/rules/` — managed rules (development-standards, git-discipline, model-behavior, plankit-tooling).
+- `.claude/rules/plankit/` — managed rules (development-standards, git-discipline, model-behavior, plankit-tooling), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
 - `site/` — landing page.
 
 ### Design

@@ -165,7 +165,7 @@ func skillFiles(skillsDir string) ([]file, error) {
 }
 
 func stat(label string, data []byte) file {
-	content := normalizeLF(string(data))
+	content := rules.NormalizeLF(string(data))
 	return file{label: label, bytes: len(content), tokens: rules.EstimateTokens(content)}
 }
 
@@ -181,7 +181,7 @@ func totals(fs []file) (bytes, tokens int) {
 func footprintLine(tokens int) string {
 	return fmt.Sprintf(
 		"Always-on rules footprint: ≈%s tokens (%s) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.",
-		humanInt(tokens), rules.TokenLabel(),
+		rules.HumanInt(tokens), rules.TokenLabel(),
 	)
 }
 
@@ -217,52 +217,20 @@ func report(w *os.File, always, skills []file) {
 func writeBlock(b *strings.Builder, heading string, fs []file) {
 	tb, tt := totals(fs)
 	fmt.Fprintf(b, "%s: %d files, %s, %s tokens (%s)\n",
-		heading, len(fs), formatBytes(tb), humanInt(tt), rules.TokenLabel())
+		heading, len(fs), rules.FormatBytes(tb), rules.HumanInt(tt), rules.TokenLabel())
 
 	labelW, sizeW, tokenW := 0, 0, 0
 	for _, f := range fs {
 		labelW = max(labelW, len(f.label))
-		sizeW = max(sizeW, len(formatBytes(f.bytes)))
-		tokenW = max(tokenW, len(humanInt(f.tokens)))
+		sizeW = max(sizeW, len(rules.FormatBytes(f.bytes)))
+		tokenW = max(tokenW, len(rules.HumanInt(f.tokens)))
 	}
 	for _, f := range fs {
 		fmt.Fprintf(b, "  %-*s  %*s  %*s tokens\n",
-			labelW, f.label, sizeW, formatBytes(f.bytes), tokenW, humanInt(f.tokens))
+			labelW, f.label, sizeW, rules.FormatBytes(f.bytes), tokenW, rules.HumanInt(f.tokens))
 	}
 }
 
-// formatBytes renders a byte count as a compact, approximate size.
-func formatBytes(n int) string {
-	if n < 1024 {
-		return fmt.Sprintf("%d B", n)
-	}
-	return fmt.Sprintf("~%d KB", (n+512)/1024)
-}
-
-// humanInt formats an integer with thousands separators (e.g. 5800 -> "5,800").
-func humanInt(n int) string {
-	s := fmt.Sprintf("%d", n)
-	if len(s) <= 3 {
-		return s
-	}
-	var b strings.Builder
-	pre := len(s) % 3
-	if pre > 0 {
-		b.WriteString(s[:pre])
-	}
-	for i := pre; i < len(s); i += 3 {
-		if b.Len() > 0 {
-			b.WriteByte(',')
-		}
-		b.WriteString(s[i : i+3])
-	}
-	return b.String()
-}
-
-// normalizeLF collapses CRLF and lone CR to LF so counts match internal/rules.
-func normalizeLF(s string) string {
-	if !strings.Contains(s, "\r") {
-		return s
-	}
-	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
-}
+// Byte/token formatting and newline normalization are shared with the live
+// `pk rules` footprint via internal/rules (FormatBytes, HumanInt, NormalizeLF), so
+// this tool and the command always render and measure identically.
