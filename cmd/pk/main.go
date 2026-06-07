@@ -90,13 +90,7 @@ func runGuard(args []string) {
 	pushGuard := fs.String("push-guard", "off", "Push policy regardless of branch: block, ask, or off")
 	fs.Parse(args)
 
-	switch *pushGuard {
-	case "block", "ask", "off":
-		// Valid.
-	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --push-guard mode %q (must be block, ask, or off)\n", *pushGuard)
-		os.Exit(1)
-	}
+	validateMode(*pushGuard, "--push-guard", "block", "ask", "off")
 
 	cfg := guard.DefaultConfig()
 	cfg.Ask = *ask
@@ -224,32 +218,9 @@ func runSetup(args []string) {
 		}
 	}
 
-	// Validate preserve mode.
-	switch *preserveMode {
-	case "auto", "manual", "off":
-		// Valid.
-	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --preserve mode %q (must be auto, manual, or off)\n", *preserveMode)
-		os.Exit(1)
-	}
-
-	// Validate guard mode.
-	switch *guardMode {
-	case "block", "ask", "off":
-		// Valid.
-	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --guard mode %q (must be block, ask, or off)\n", *guardMode)
-		os.Exit(1)
-	}
-
-	// Validate push-guard mode.
-	switch *pushGuardMode {
-	case "block", "ask", "off":
-		// Valid.
-	default:
-		fmt.Fprintf(os.Stderr, "Error: invalid --push-guard mode %q (must be block, ask, or off)\n", *pushGuardMode)
-		os.Exit(1)
-	}
+	validateMode(*preserveMode, "--preserve", "auto", "manual", "off")
+	validateMode(*guardMode, "--guard", "block", "ask", "off")
+	validateMode(*pushGuardMode, "--push-guard", "block", "ask", "off")
 
 	// --at and --push are modifiers of --baseline; reject on their own.
 	if !*baseline {
@@ -394,6 +365,32 @@ func resolveDir(dir string) string {
 		os.Exit(1)
 	}
 	return abs
+}
+
+// validateMode exits with an "Error: invalid <flag> mode ... (must be a, b, or c)"
+// message if value is not one of valid.
+func validateMode(value, flagName string, valid ...string) {
+	for _, v := range valid {
+		if value == v {
+			return
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Error: invalid %s mode %q (must be %s)\n", flagName, value, orList(valid))
+	os.Exit(1)
+}
+
+// orList renders a slice as an English "a, b, or c" list (Oxford comma).
+func orList(items []string) string {
+	switch len(items) {
+	case 0:
+		return ""
+	case 1:
+		return items[0]
+	case 2:
+		return items[0] + " or " + items[1]
+	default:
+		return strings.Join(items[:len(items)-1], ", ") + ", or " + items[len(items)-1]
+	}
 }
 
 func resolveProjectDir(dir string) string {
