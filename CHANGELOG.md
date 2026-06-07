@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.22.0] - 2026-06-07
+
+### Added
+
+- add pk rules command (5ac6a6b)
+- add push-guard dial to pk guard (9d71e9a)
+- shipped-rules footprint transparency (2e7473f)
+
+### Documentation
+
+- add a precedence rule for resolving conflicting rules (2b62ea4)
+
+### Maintenance
+
+- add /review-rules skill for deep rule-set analysis (19aa8d5)
+- enable push-guard (block) for plankit's own sessions (8de191e)
+- add behavioral eval harness for rules and guard (evals/) (8d46fc0)
+- stamp model+version into evals (f4f7d9e)
+
 ## [v0.21.1] - 2026-06-04
 
 ### Fixed
@@ -848,3 +867,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.20.3]: https://github.com/markwharton/plankit/compare/v0.20.2...v0.20.3
 [v0.21.0]: https://github.com/markwharton/plankit/compare/v0.20.3...v0.21.0
 [v0.21.1]: https://github.com/markwharton/plankit/compare/v0.21.0...v0.21.1
+[v0.22.0]: https://github.com/markwharton/plankit/compare/v0.21.1...v0.22.0
