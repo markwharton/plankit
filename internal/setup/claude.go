@@ -160,11 +160,23 @@ func preserveHookEntry(command, statusMessage string, async bool, timeout int) [
 	}
 }
 
-// InferModesFromCommands returns guard and preserve modes from a list of hook
-// command strings. Returns ("", "") when no plankit hooks are found (fresh
-// project). Returns "off" for a mode when plankit hooks exist but that
-// specific mode's command is absent (explicitly disabled).
-func InferModesFromCommands(commands []string) (guard, preserve string) {
+// Modes is the set of plankit modes inferred from a project's hook commands.
+// An empty Guard/Preserve means the mode is not inferable (no plankit hooks);
+// "off" means plankit hooks exist but that mode's command is absent. PushGuard
+// is only meaningful when Guard is "block" or "ask", and is "" when the guard
+// command carries no --push-guard flag.
+type Modes struct {
+	Guard     string // "block" | "ask" | "off" | ""
+	Preserve  string // "auto" | "manual" | "off" | ""
+	PushGuard string // "block" | "ask" | ""
+}
+
+// InferModesFromCommands returns the modes inferred from a list of hook command
+// strings. Returns a zero Modes when no plankit hooks are found (fresh project).
+// Returns "off" for guard/preserve when plankit hooks exist but that mode's
+// command is absent (explicitly disabled).
+func InferModesFromCommands(commands []string) Modes {
+	var m Modes
 	hasPlankit := false
 	for _, cmd := range commands {
 		if IsPlankitHook(cmd) {
@@ -172,42 +184,58 @@ func InferModesFromCommands(commands []string) (guard, preserve string) {
 		}
 		// Guard command may carry flags (--ask, --push-guard <mode>), so match by
 		// prefix and read the branch mode from --ask rather than exact-matching.
+		// push-guard rides on the same command, so read it here too.
 		if strings.HasPrefix(cmd, GuardBlockCommand) {
 			if strings.Contains(cmd, " --ask") {
-				guard = "ask"
+				m.Guard = "ask"
 			} else {
-				guard = "block"
+				m.Guard = "block"
+			}
+			if pg := parsePushGuard(cmd); pg != "" {
+				m.PushGuard = pg
 			}
 		}
 		switch cmd {
 		case PreserveManualCommand:
-			preserve = "manual"
+			m.Preserve = "manual"
 		case PreserveAutoCommand:
-			preserve = "auto"
+			m.Preserve = "auto"
 		}
 	}
 	if hasPlankit {
-		if guard == "" {
-			guard = "off"
+		if m.Guard == "" {
+			m.Guard = "off"
 		}
-		if preserve == "" {
-			preserve = "off"
+		if m.Preserve == "" {
+			m.Preserve = "off"
 		}
 	}
-	return guard, preserve
+	return m
+}
+
+// parsePushGuard returns the push-guard mode from a guard command's
+// `--push-guard <mode>` flag, or "" if absent.
+func parsePushGuard(cmd string) string {
+	const flag = "--push-guard "
+	if i := strings.Index(cmd, flag); i >= 0 {
+		if fields := strings.Fields(cmd[i+len(flag):]); len(fields) > 0 {
+			return fields[0]
+		}
+	}
+	return ""
 }
 
 // InferModes reads hook commands from a parsed settings object and returns the
-// current guard and preserve modes. Returns ("", "") when modes cannot be
-// inferred (no hooks, no pk commands, or malformed JSON).
-func InferModes(settings *OrderedObject) (guard, preserve string) {
+// inferred modes. Returns a zero Modes when modes cannot be inferred (no hooks,
+// no pk commands, or malformed JSON).
+func InferModes(settings *OrderedObject) Modes {
 	hooksRaw, ok := settings.Get("hooks")
 	if !ok {
-		return "", ""
+		return Modes{}
 	}
 	var hooks HooksConfig
 	if err := json.Unmarshal(hooksRaw, &hooks); err != nil {
-		return "", ""
+		return Modes{}
 	}
 	var commands []string
 	for _, entries := range [][]HookEntry{hooks.PreToolUse, hooks.PostToolUse, hooks.SessionStart} {
@@ -221,63 +249,18 @@ func InferModes(settings *OrderedObject) (guard, preserve string) {
 }
 
 // InferModesFromSettings reads .claude/settings.json under dir and returns the
-// guard and preserve modes inferred from its hook commands. Returns ("", "")
-// when the file is missing, unreadable, malformed, or has no inferable pk hooks.
-func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) (guard, preserve string) {
+// modes inferred from its hook commands. Returns a zero Modes when the file is
+// missing, unreadable, malformed, or has no inferable pk hooks.
+func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) Modes {
 	data, err := readFile(filepath.Join(dir, paths.ClaudeDir, paths.SettingsFile))
 	if err != nil {
-		return "", ""
+		return Modes{}
 	}
 	parsed, err := ParseOrderedObject(data)
 	if err != nil {
-		return "", ""
+		return Modes{}
 	}
 	return InferModes(parsed)
-}
-
-// InferPushGuardFromCommands returns the push-guard mode ("block"/"ask") parsed from a
-// guard hook command's `--push-guard <mode>` flag, or "" if absent.
-func InferPushGuardFromCommands(commands []string) string {
-	for _, cmd := range commands {
-		if !strings.HasPrefix(cmd, GuardBlockCommand) {
-			continue
-		}
-		const flag = "--push-guard "
-		if i := strings.Index(cmd, flag); i >= 0 {
-			if fields := strings.Fields(cmd[i+len(flag):]); len(fields) > 0 {
-				return fields[0]
-			}
-		}
-	}
-	return ""
-}
-
-// InferPushGuardFromSettings reads .claude/settings.json under dir and returns the
-// push-guard mode from its guard hook command, or "" when absent/unreadable.
-func InferPushGuardFromSettings(readFile func(string) ([]byte, error), dir string) string {
-	data, err := readFile(filepath.Join(dir, paths.ClaudeDir, paths.SettingsFile))
-	if err != nil {
-		return ""
-	}
-	parsed, err := ParseOrderedObject(data)
-	if err != nil {
-		return ""
-	}
-	hooksRaw, ok := parsed.Get("hooks")
-	if !ok {
-		return ""
-	}
-	var hooks HooksConfig
-	if err := json.Unmarshal(hooksRaw, &hooks); err != nil {
-		return ""
-	}
-	var commands []string
-	for _, entry := range hooks.PreToolUse {
-		for _, h := range entry.Hooks {
-			commands = append(commands, HookCommand(h))
-		}
-	}
-	return InferPushGuardFromCommands(commands)
 }
 
 // writeInstallScript writes the cloud-sandbox bootstrap script to .claude/install-pk.sh.

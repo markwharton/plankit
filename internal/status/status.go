@@ -129,14 +129,23 @@ func Run(cfg Config) (bool, error) {
 	}
 
 	// Modes (inferred from hook commands).
-	guardMode, preserveMode := inferModes(hooks)
-	if guardMode != "" || preserveMode != "" {
+	modes := inferModes(hooks)
+	if modes.Guard != "" || modes.Preserve != "" {
 		fmt.Fprintln(stderr, "Modes:")
-		if guardMode != "" {
-			fmt.Fprintf(stderr, "  guard:    %s\n", guardMode)
+		if modes.Guard != "" {
+			fmt.Fprintf(stderr, "  guard:    %s\n", modes.Guard)
 		}
-		if preserveMode != "" {
-			fmt.Fprintf(stderr, "  preserve: %s\n", preserveMode)
+		// push-guard rides on the guard command; surface it only when guard is
+		// active (block/ask). Show "off" when guard is on but no --push-guard flag.
+		if modes.Guard == "block" || modes.Guard == "ask" {
+			push := modes.PushGuard
+			if push == "" {
+				push = "off"
+			}
+			fmt.Fprintf(stderr, "  push:     %s\n", push)
+		}
+		if modes.Preserve != "" {
+			fmt.Fprintf(stderr, "  preserve: %s\n", modes.Preserve)
 		}
 		fmt.Fprintln(stderr, "")
 	}
@@ -210,13 +219,16 @@ func runBrief(cfg Config, configured bool, hooks []hookSummary, isGit bool) (boo
 		fmt.Fprintf(stderr, "plankit: not configured%s\n", note)
 		return false, nil
 	}
-	guardMode, preserveMode := inferModes(hooks)
+	modes := inferModes(hooks)
 	parts := []string{"configured"}
-	if guardMode != "" {
-		parts = append(parts, "guard="+guardMode)
+	if modes.Guard != "" {
+		parts = append(parts, "guard="+modes.Guard)
 	}
-	if preserveMode != "" {
-		parts = append(parts, "preserve="+preserveMode)
+	if modes.PushGuard != "" {
+		parts = append(parts, "push="+modes.PushGuard)
+	}
+	if modes.Preserve != "" {
+		parts = append(parts, "preserve="+modes.Preserve)
 	}
 	if !isGit {
 		parts = append(parts, "not-a-git-repo")
@@ -314,9 +326,9 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 	return false
 }
 
-// inferModes determines guard and preserve modes from hook commands.
-// Returns ("", "") if not inferable.
-func inferModes(hooks []hookSummary) (string, string) {
+// inferModes determines plankit modes from hook commands.
+// Returns a zero setup.Modes if not inferable.
+func inferModes(hooks []hookSummary) setup.Modes {
 	var commands []string
 	for _, h := range hooks {
 		commands = append(commands, h.commands...)

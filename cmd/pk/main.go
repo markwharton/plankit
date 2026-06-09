@@ -203,18 +203,16 @@ func runSetup(args []string) {
 			pushGuardExplicit = true
 		}
 	})
-	if !guardExplicit || !preserveExplicit {
-		g, p := setup.InferModesFromSettings(os.ReadFile, dir)
-		if !guardExplicit && g != "" {
-			*guardMode = g
+	if !guardExplicit || !preserveExplicit || !pushGuardExplicit {
+		m := setup.InferModesFromSettings(os.ReadFile, dir)
+		if !guardExplicit && m.Guard != "" {
+			*guardMode = m.Guard
 		}
-		if !preserveExplicit && p != "" {
-			*preserveMode = p
+		if !preserveExplicit && m.Preserve != "" {
+			*preserveMode = m.Preserve
 		}
-	}
-	if !pushGuardExplicit {
-		if pg := setup.InferPushGuardFromSettings(os.ReadFile, dir); pg != "" {
-			*pushGuardMode = pg
+		if !pushGuardExplicit && m.PushGuard != "" {
+			*pushGuardMode = m.PushGuard
 		}
 	}
 

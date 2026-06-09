@@ -41,7 +41,7 @@ func setupProject(t *testing.T) string {
 			"PreToolUse": []interface{}{
 				map[string]interface{}{
 					"matcher": "Bash",
-					"hooks":   []interface{}{map[string]interface{}{"type": "command", "command": "pk guard", "timeout": 5}},
+					"hooks":   []interface{}{map[string]interface{}{"type": "command", "command": "pk guard --push-guard block", "timeout": 5}},
 				},
 				map[string]interface{}{
 					"matcher": "Edit",
@@ -124,6 +124,7 @@ func TestRun_fullyConfigured(t *testing.T) {
 		"Modes:",
 		"guard:",
 		"block",
+		"push:",
 		"preserve:",
 		"manual",
 		"Hooks:",
@@ -232,6 +233,69 @@ func TestRun_autoPreserveMode(t *testing.T) {
 	output := stderr.String()
 	if !strings.Contains(output, "preserve:") || !strings.Contains(output, "auto") {
 		t.Errorf("expected preserve: auto mode, got: %s", output)
+	}
+}
+
+func TestRun_pushGuardBrief(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	os.MkdirAll(claudeDir, 0755)
+
+	settings := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"PreToolUse": []interface{}{
+				map[string]interface{}{
+					"matcher": "Bash",
+					"hooks":   []interface{}{map[string]interface{}{"type": "command", "command": "pk guard --push-guard block", "timeout": 5}},
+				},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(settings, "", "  ")
+	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644)
+
+	cfg, stderr := testConfig(dir)
+	cfg.Brief = true
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	output := stderr.String()
+	if !strings.Contains(output, "guard=block") {
+		t.Errorf("expected guard=block in brief output, got: %s", output)
+	}
+	if !strings.Contains(output, "push=block") {
+		t.Errorf("expected push=block in brief output, got: %s", output)
+	}
+}
+
+func TestRun_noPushLineWhenGuardOff(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	os.MkdirAll(claudeDir, 0755)
+
+	// Preserve hook only — guard is off, so no push line should appear.
+	settings := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"PostToolUse": []interface{}{
+				map[string]interface{}{
+					"matcher": "ExitPlanMode",
+					"hooks":   []interface{}{map[string]interface{}{"type": "command", "command": "pk preserve", "timeout": 60}},
+				},
+			},
+		},
+	}
+	data, _ := json.MarshalIndent(settings, "", "  ")
+	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644)
+
+	cfg, stderr := testConfig(dir)
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	output := stderr.String()
+	if strings.Contains(output, "push:") {
+		t.Errorf("expected no push line when guard inactive, got: %s", output)
 	}
 }
 

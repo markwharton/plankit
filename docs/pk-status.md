@@ -14,7 +14,7 @@ pk status --project-dir /path     # specify project directory
 
 1. Detects whether the directory is a git repository. Warns if not — pk requires git for most commands.
 2. Reads `.claude/settings.json` and identifies plankit hooks and the `Bash(pk:*)` permission.
-3. Infers guard mode (block, ask, or off) and preserve mode (auto, manual, or off) from hook commands.
+3. Infers guard mode (block, ask, or off), push-guard mode (block, ask, or off — shown only when guard is active), and preserve mode (auto, manual, or off) from hook commands.
 4. Scans `.claude/skills/` and `.claude/rules/` for files with `pk_sha256` markers and checks if they match (pristine) or have been modified.
 5. Checks `CLAUDE.md` for a plankit SHA marker.
 6. Checks for `.claude/install-pk.sh`.
@@ -46,16 +46,21 @@ plankit is reported as configured if any of the following are present:
 
 ### Mode inference
 
-Guard and preserve modes are not stored explicitly — they're inferred from the hook commands in `settings.json`:
+Guard, push-guard, and preserve modes are not stored explicitly — they're inferred from the hook commands in `settings.json`:
 
 | Command | Mode |
 |---------|------|
 | `pk guard` | guard: block |
 | `pk guard --ask` | guard: ask |
 | (absent, other pk hooks present) | guard: off |
+| `pk guard --push-guard block` | push: block |
+| `pk guard --push-guard ask` | push: ask |
+| (guard active, no `--push-guard`) | push: off |
 | `pk preserve` | preserve: auto |
 | `pk preserve --notify` | preserve: manual |
 | (absent, other pk hooks present) | preserve: off |
+
+Push-guard rides on the guard command, so the `push:` line appears only when guard is active (block or ask); when guard is off, push-guard is moot and not shown.
 
 ### Related commands
 

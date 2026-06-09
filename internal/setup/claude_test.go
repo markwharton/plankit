@@ -374,36 +374,36 @@ func TestWriteInstallScript_fixesPermissions(t *testing.T) {
 }
 
 func TestInferModesFromCommands_blockAndManual(t *testing.T) {
-	guard, preserve := InferModesFromCommands([]string{
+	m := InferModesFromCommands([]string{
 		GuardBlockCommand, "pk protect", PreserveManualCommand,
 	})
-	if guard != "block" {
-		t.Errorf("guard = %q, want %q", guard, "block")
+	if m.Guard != "block" {
+		t.Errorf("guard = %q, want %q", m.Guard, "block")
 	}
-	if preserve != "manual" {
-		t.Errorf("preserve = %q, want %q", preserve, "manual")
+	if m.Preserve != "manual" {
+		t.Errorf("preserve = %q, want %q", m.Preserve, "manual")
 	}
 }
 
 func TestInferModesFromCommands_askAndAuto(t *testing.T) {
-	guard, preserve := InferModesFromCommands([]string{
+	m := InferModesFromCommands([]string{
 		GuardAskCommand, "pk protect", PreserveAutoCommand,
 	})
-	if guard != "ask" {
-		t.Errorf("guard = %q, want %q", guard, "ask")
+	if m.Guard != "ask" {
+		t.Errorf("guard = %q, want %q", m.Guard, "ask")
 	}
-	if preserve != "auto" {
-		t.Errorf("preserve = %q, want %q", preserve, "auto")
+	if m.Preserve != "auto" {
+		t.Errorf("preserve = %q, want %q", m.Preserve, "auto")
 	}
 }
 
 func TestInferModesFromCommands_empty(t *testing.T) {
-	guard, preserve := InferModesFromCommands(nil)
-	if guard != "" {
-		t.Errorf("guard = %q, want empty", guard)
+	m := InferModesFromCommands(nil)
+	if m.Guard != "" {
+		t.Errorf("guard = %q, want empty", m.Guard)
 	}
-	if preserve != "" {
-		t.Errorf("preserve = %q, want empty", preserve)
+	if m.Preserve != "" {
+		t.Errorf("preserve = %q, want empty", m.Preserve)
 	}
 }
 
@@ -428,12 +428,12 @@ func TestInferModes_roundTrip(t *testing.T) {
 			if err := mergeHooks(settings, hooks); err != nil {
 				t.Fatalf("mergeHooks() error = %v", err)
 			}
-			guard, preserve := InferModes(settings)
-			if guard != tt.wantGuard {
-				t.Errorf("guard = %q, want %q", guard, tt.wantGuard)
+			m := InferModes(settings)
+			if m.Guard != tt.wantGuard {
+				t.Errorf("guard = %q, want %q", m.Guard, tt.wantGuard)
 			}
-			if preserve != tt.wantPreserve {
-				t.Errorf("preserve = %q, want %q", preserve, tt.wantPreserve)
+			if m.Preserve != tt.wantPreserve {
+				t.Errorf("preserve = %q, want %q", m.Preserve, tt.wantPreserve)
 			}
 		})
 	}
@@ -441,27 +441,27 @@ func TestInferModes_roundTrip(t *testing.T) {
 
 func TestInferModes_noHooks(t *testing.T) {
 	settings := NewOrderedObject()
-	guard, preserve := InferModes(settings)
-	if guard != "" || preserve != "" {
-		t.Errorf("expected empty for no hooks, got guard=%q preserve=%q", guard, preserve)
+	m := InferModes(settings)
+	if m.Guard != "" || m.Preserve != "" {
+		t.Errorf("expected empty for no hooks, got guard=%q preserve=%q", m.Guard, m.Preserve)
 	}
 }
 
 func TestInferModes_corruptHooks(t *testing.T) {
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(`{invalid`))
-	guard, preserve := InferModes(settings)
-	if guard != "" || preserve != "" {
-		t.Errorf("expected empty for corrupt hooks, got guard=%q preserve=%q", guard, preserve)
+	m := InferModes(settings)
+	if m.Guard != "" || m.Preserve != "" {
+		t.Errorf("expected empty for corrupt hooks, got guard=%q preserve=%q", m.Guard, m.Preserve)
 	}
 }
 
 func TestInferModes_userHooksOnly(t *testing.T) {
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(`{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-custom-hook"}]}]}`))
-	guard, preserve := InferModes(settings)
-	if guard != "" || preserve != "" {
-		t.Errorf("expected empty for user-only hooks, got guard=%q preserve=%q", guard, preserve)
+	m := InferModes(settings)
+	if m.Guard != "" || m.Preserve != "" {
+		t.Errorf("expected empty for user-only hooks, got guard=%q preserve=%q", m.Guard, m.Preserve)
 	}
 }
 
@@ -481,17 +481,17 @@ func TestInferModesFromSettings(t *testing.T) {
 
 	t.Run("missing file returns empty", func(t *testing.T) {
 		readFile := func(string) ([]byte, error) { return nil, os.ErrNotExist }
-		guard, preserve := InferModesFromSettings(readFile, "proj")
-		if guard != "" || preserve != "" {
-			t.Errorf("got guard=%q preserve=%q, want empty", guard, preserve)
+		m := InferModesFromSettings(readFile, "proj")
+		if m.Guard != "" || m.Preserve != "" {
+			t.Errorf("got guard=%q preserve=%q, want empty", m.Guard, m.Preserve)
 		}
 	})
 
 	t.Run("malformed JSON returns empty", func(t *testing.T) {
 		readFile := func(string) ([]byte, error) { return []byte("{not json"), nil }
-		guard, preserve := InferModesFromSettings(readFile, "proj")
-		if guard != "" || preserve != "" {
-			t.Errorf("got guard=%q preserve=%q, want empty", guard, preserve)
+		m := InferModesFromSettings(readFile, "proj")
+		if m.Guard != "" || m.Preserve != "" {
+			t.Errorf("got guard=%q preserve=%q, want empty", m.Guard, m.Preserve)
 		}
 	})
 
@@ -504,18 +504,18 @@ func TestInferModesFromSettings(t *testing.T) {
 			}
 			return data, nil
 		}
-		guard, preserve := InferModesFromSettings(readFile, "proj")
-		if guard != "block" || preserve != "manual" {
-			t.Errorf("got guard=%q preserve=%q, want block/manual", guard, preserve)
+		m := InferModesFromSettings(readFile, "proj")
+		if m.Guard != "block" || m.Preserve != "manual" {
+			t.Errorf("got guard=%q preserve=%q, want block/manual", m.Guard, m.Preserve)
 		}
 	})
 
 	t.Run("guard command absent infers off", func(t *testing.T) {
 		data := settingsBytes(t, "manual", "off")
 		readFile := func(string) ([]byte, error) { return data, nil }
-		guard, preserve := InferModesFromSettings(readFile, "proj")
-		if guard != "off" || preserve != "manual" {
-			t.Errorf("got guard=%q preserve=%q, want off/manual", guard, preserve)
+		m := InferModesFromSettings(readFile, "proj")
+		if m.Guard != "off" || m.Preserve != "manual" {
+			t.Errorf("got guard=%q preserve=%q, want off/manual", m.Guard, m.Preserve)
 		}
 	})
 }
@@ -544,27 +544,27 @@ func TestPushGuardWiring(t *testing.T) {
 	})
 
 	t.Run("guard mode still inferred when push flag present", func(t *testing.T) {
-		if guard, _ := InferModesFromCommands([]string{"pk guard --ask --push-guard block", "pk protect"}); guard != "ask" {
-			t.Errorf("guard = %q, want ask (must parse despite --push-guard)", guard)
+		if m := InferModesFromCommands([]string{"pk guard --ask --push-guard block", "pk protect"}); m.Guard != "ask" {
+			t.Errorf("guard = %q, want ask (must parse despite --push-guard)", m.Guard)
 		}
-		if guard, _ := InferModesFromCommands([]string{"pk guard --push-guard block"}); guard != "block" {
-			t.Errorf("guard = %q, want block", guard)
-		}
-	})
-
-	t.Run("InferPushGuardFromCommands", func(t *testing.T) {
-		if got := InferPushGuardFromCommands([]string{"pk guard --ask --push-guard block"}); got != "block" {
-			t.Errorf("got %q, want block", got)
-		}
-		if got := InferPushGuardFromCommands([]string{"pk guard --ask"}); got != "" {
-			t.Errorf("got %q, want empty (no flag)", got)
-		}
-		if got := InferPushGuardFromCommands([]string{"pk protect"}); got != "" {
-			t.Errorf("got %q, want empty (not a guard command)", got)
+		if m := InferModesFromCommands([]string{"pk guard --push-guard block"}); m.Guard != "block" {
+			t.Errorf("guard = %q, want block", m.Guard)
 		}
 	})
 
-	t.Run("InferPushGuardFromSettings round-trips", func(t *testing.T) {
+	t.Run("push-guard parsed from commands", func(t *testing.T) {
+		if m := InferModesFromCommands([]string{"pk guard --ask --push-guard block"}); m.PushGuard != "block" {
+			t.Errorf("PushGuard = %q, want block", m.PushGuard)
+		}
+		if m := InferModesFromCommands([]string{"pk guard --ask"}); m.PushGuard != "" {
+			t.Errorf("PushGuard = %q, want empty (no flag)", m.PushGuard)
+		}
+		if m := InferModesFromCommands([]string{"pk protect"}); m.PushGuard != "" {
+			t.Errorf("PushGuard = %q, want empty (not a guard command)", m.PushGuard)
+		}
+	})
+
+	t.Run("push-guard round-trips through settings", func(t *testing.T) {
 		settings := NewOrderedObject()
 		if err := mergeHooks(settings, buildHookConfigWithPush("manual", "ask", "block")); err != nil {
 			t.Fatalf("mergeHooks() error = %v", err)
@@ -574,8 +574,8 @@ func TestPushGuardWiring(t *testing.T) {
 			t.Fatalf("Marshal() error = %v", err)
 		}
 		readFile := func(string) ([]byte, error) { return data, nil }
-		if got := InferPushGuardFromSettings(readFile, "proj"); got != "block" {
-			t.Errorf("got %q, want block", got)
+		if m := InferModesFromSettings(readFile, "proj"); m.PushGuard != "block" {
+			t.Errorf("PushGuard = %q, want block", m.PushGuard)
 		}
 	})
 }
@@ -617,12 +617,12 @@ func TestBuildHookConfig_bothOff(t *testing.T) {
 }
 
 func TestInferModesFromCommands_protectOnly(t *testing.T) {
-	guard, preserve := InferModesFromCommands([]string{"pk protect"})
-	if guard != "off" {
-		t.Errorf("guard = %q, want %q", guard, "off")
+	m := InferModesFromCommands([]string{"pk protect"})
+	if m.Guard != "off" {
+		t.Errorf("guard = %q, want %q", m.Guard, "off")
 	}
-	if preserve != "off" {
-		t.Errorf("preserve = %q, want %q", preserve, "off")
+	if m.Preserve != "off" {
+		t.Errorf("preserve = %q, want %q", m.Preserve, "off")
 	}
 }
 
