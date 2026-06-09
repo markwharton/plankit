@@ -104,11 +104,20 @@ This layer builds on three conventions:
 
 **When:** Switching from commit-and-tag-version, standard-version, semantic-release, or similar tools.
 
-**Existing CHANGELOG.md.** `pk changelog` writes [Keep a Changelog](https://keepachangelog.com/) format. It appends new entries from the baseline tag forward, preserving prior content below.
+**Existing CHANGELOG.md — leave it as is.** `pk changelog` writes [Keep a Changelog](https://keepachangelog.com/) format and appends new entries *above* your existing content, which stays untouched: new releases in plankit's format, old entries unchanged. This is the simplest, lossless path. Rewriting older entries into plankit's format is optional and **lossy** — anything plankit omits by design (e.g. per-commit SHA links) is dropped — so only do it if you want a uniform file.
 
 **Baseline tag placement.** Where you anchor `v0.0.0` determines what appears in your first pk-generated changelog entry. Use `--at` to include prior history or omit it to start fresh. See [Baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk-changelog) for the three scenarios.
 
 **Commit type mapping.** The default types cover the standard Conventional Commits set. Add `changelog.types` to `.pk.json` only if your project uses custom types or needs different section names. See [pk changelog](pk-changelog.md#configuration).
+
+**Version propagation.** plankit reads the version from git tags, so many projects need nothing here. Configure it only when a file other than the tag carries the version:
+
+- **JSON manifests/lockfiles** (`package.json`, nested/workspace `package.json`, `package-lock.json`) → list them in `changelog.versionFiles` (JSON only).
+- **Non-JSON version strings** (`pyproject.toml`, Python `__version__`, a Go `const version`, a shell script) → bump with `pk pin --file <path> [--name <ident>] $VERSION` chained in `changelog.hooks.preCommit`; `versionFiles` can't touch non-JSON. See [pk pin](pk-pin.md).
+- **Files derived from the bump** (lockfiles, generated docs, monorepo cross-refs) → regenerate them in `preCommit`. pk auto-stages `CHANGELOG.md`, every `versionFiles` entry, and any already-tracked file a hook modifies (`git add -u`); add an explicit `git add` in the hook only for newly created/untracked output (e.g. generated docs).
+- **`release.hooks.preRelease`** → an optional validation gate run before publishing, e.g. `npm ci && npm run lint && npm test && npm run build`.
+
+Both `postVersion` and `preCommit` hooks receive `$VERSION`. See [pk changelog](pk-changelog.md#configuration) for the full schema.
 
 **NPM projects.** Replace existing release scripts in `package.json`:
 
@@ -122,6 +131,39 @@ This layer builds on three conventions:
 ```
 
 **Remove the old tool.** Disable or uninstall the previous release tool from CI and dev dependencies before switching, to avoid conflicting tag or changelog writes.
+
+### Migration checklist
+
+Everything that can connect into a plankit release — most projects wire up only a few:
+
+- [ ] **Baseline tag** — a semver `v*` tag for `pk changelog` to diff from (`pk setup --baseline`, `--at <ref>` to fold prior history).
+- [ ] **`guard.branches` / `release.branch`** — protected branch and release target in `.pk.json`.
+- [ ] **`CHANGELOG.md`** — leave as-is (pk appends above it) or, if you want uniformity, reconcile older entries to Keep a Changelog (lossy).
+- [ ] **`changelog.types`** — only for custom commit-type → section mapping; defaults cover the standard set.
+- [ ] **`changelog.showScope`** — include the commit scope in changelog entries.
+- [ ] **`changelog.versionFiles`** — JSON files (manifests, lockfiles) whose version string pk should bump.
+- [ ] **`changelog.hooks.postVersion`** — runs after the bump, before the changelog is written; receives `$VERSION`.
+- [ ] **`changelog.hooks.preCommit`** — regenerate/pin files derived from the bump just before the release commit; receives `$VERSION`.
+- [ ] **`pk pin`** — bump version strings in non-JSON files (`pyproject.toml`, a Go `const`, Python `__version__`, a shell script like `install-pk.sh`) from inside `preCommit`.
+- [ ] **`release.hooks.preRelease`** — validation gate (lint/test/build) run before publishing.
+- [ ] **`$VERSION`** — the new version, available as an env var to the `postVersion`, `preCommit`, and `preRelease` hooks.
+- [ ] **Remove the old tool** — disable commit-and-tag-version / standard-version / semantic-release in devDependencies and CI.
+
+### A prompt you can hand to Claude
+
+Migration is judgment-heavy — it depends on your build, your dependency graph, and your existing changelog — so it suits an experienced developer working with Claude interactively rather than a fixed command. Paste this prompt into Claude Code (inside the repo, after `pk setup`):
+
+```text
+Migrate this established repo onto plankit (pk). `pk setup` has already run. Work through these steps; confirm with me before any write, and stay advisory on anything that tags or pushes.
+
+1. Baseline tag — run `git tag --list 'v*' --sort=-v:refname`. If there's no semver tag, `pk changelog` has nothing to diff from. Offer `pk setup --baseline --at <ref>` (fold prior history into the first entry) or `pk setup --baseline` (start fresh from HEAD); recommend one and let me run it.
+
+2. CHANGELOG.md — default to leaving it untouched (pk appends new entries above old ones, lossless). Offer a rewrite into plankit's format only if I ask, and warn it drops anything pk omits by design (e.g. per-commit SHA links).
+
+3. Version propagation (needs my knowledge of the build) — first decide if it's even needed: if only the git tag carries the version, configure nothing. Otherwise, per version-bearing file: JSON manifests/lockfiles → `changelog.versionFiles`; non-JSON (pyproject.toml, Python `__version__`, Go `const version`, a shell script) → `pk pin --file <f> [--name <id>] $VERSION` in `changelog.hooks.preCommit` (versionFiles is JSON-only); files derived from the bump (lockfiles, generated docs, workspace refs) → regenerate in `preCommit`. pk auto-stages CHANGELOG.md, every versionFiles entry, and already-tracked files a hook changes (`git add -u`) — add an explicit `git add` only for newly created files. Optionally add a `release.hooks.preRelease` gate (e.g. `npm ci && npm run lint && npm test && npm run build`). Show me the merged `.pk.json` (preserve existing keys, sort top-level) before writing.
+
+4. Remove the old tool — find commit-and-tag-version / standard-version / semantic-release in devDependencies and CI and tell me where to disable them so they don't fight pk over tags or the changelog.
+```
 
 ## When pk is not installed
 
