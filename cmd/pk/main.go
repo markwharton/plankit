@@ -28,6 +28,7 @@ import (
 	"github.com/markwharton/plankit/internal/changelog"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/guard"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
@@ -71,14 +72,40 @@ func main() {
 	case "help", "--help", "-h":
 		printUsage()
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
+		msg.Errorf(os.Stderr, "unknown command %q", os.Args[1])
+		fmt.Fprintln(os.Stderr, "")
 		printUsage()
 		os.Exit(1)
 	}
 }
 
+// usageFor returns a flag.Usage function that prints the command's flags in
+// the documented --kebab-case form; Go's default prints single-dash.
+func usageFor(fs *flag.FlagSet, header string) func() {
+	return func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s\n", header)
+		fs.VisitAll(func(f *flag.Flag) {
+			name, usage := flag.UnquoteUsage(f)
+			line := "  --" + f.Name
+			if name != "" {
+				line += " " + name
+			}
+			fmt.Fprintf(os.Stderr, "%s\n        %s", line, usage)
+			if f.DefValue != "" && f.DefValue != "false" {
+				if name == "string" {
+					fmt.Fprintf(os.Stderr, " (default %q)", f.DefValue)
+				} else {
+					fmt.Fprintf(os.Stderr, " (default %s)", f.DefValue)
+				}
+			}
+			fmt.Fprintln(os.Stderr)
+		})
+	}
+}
+
 func runProtect(args []string) {
 	fs := flag.NewFlagSet("protect", flag.ExitOnError)
+	fs.Usage = usageFor(fs, "pk protect")
 	fs.Parse(args)
 
 	os.Exit(protect.Run(protect.DefaultConfig()))
@@ -91,6 +118,7 @@ func runGuard(args []string) {
 	// hook still passes them, so existing installs keep working until re-setup.
 	ask := fs.Bool("ask", false, "[deprecated] force ask mode; set guard.mode in .pk.json")
 	pushGuard := fs.String("push-guard", "", "[deprecated] force push policy; set guard.push in .pk.json")
+	fs.Usage = usageFor(fs, "pk guard [flags]")
 	fs.Parse(args)
 
 	cfg := guard.DefaultConfig()
@@ -112,6 +140,7 @@ func runChangelog(args []string) {
 	dryRun := fs.Bool("dry-run", false, "Preview without writing or committing")
 	undo := fs.Bool("undo", false, "Unwind the last pk changelog commit (must be unpushed)")
 	exclude := fs.String("exclude", "", "Comma-separated commit SHAs to drop from the section (as they appear in CHANGELOG.md parentheses)")
+	fs.Usage = usageFor(fs, "pk changelog [flags]")
 	fs.Parse(args)
 
 	cfg := changelog.DefaultConfig()
@@ -133,6 +162,7 @@ func runPreserve(args []string) {
 	notify := fs.Bool("notify", false, "[deprecated] force manual (notify) mode; set preserve.mode in .pk.json")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing, committing, or pushing")
 	push := fs.Bool("push", false, "Push to origin after committing")
+	fs.Usage = usageFor(fs, "pk preserve [flags]")
 	fs.Parse(args)
 
 	cfg := preserve.DefaultConfig()
@@ -153,6 +183,7 @@ func runPreserve(args []string) {
 func runRelease(args []string) {
 	fs := flag.NewFlagSet("release", flag.ExitOnError)
 	dryRun := fs.Bool("dry-run", false, "Validate without merging or pushing")
+	fs.Usage = usageFor(fs, "pk release [flags]")
 	fs.Parse(args)
 
 	cfg := release.DefaultConfig()
@@ -167,10 +198,11 @@ func runRules(args []string) {
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	lint := fs.Bool("lint", false, "Scan rules for hidden/Trojan-source characters instead of reporting the footprint")
 	strict := fs.Bool("strict", false, "With --lint: also run plankit house-style checks (requires --lint)")
+	fs.Usage = usageFor(fs, "pk rules [flags]")
 	fs.Parse(args)
 
 	if *strict && !*lint {
-		fmt.Fprintln(os.Stderr, "Error: --strict requires --lint")
+		msg.Errorf(os.Stderr, "--strict requires --lint")
 		os.Exit(1)
 	}
 
@@ -193,6 +225,7 @@ func runSetup(args []string) {
 	baseline := fs.Bool("baseline", false, "Anchor pk changelog by creating a v0.0.0 tag if none exists")
 	baselineAt := fs.String("at", "", "Ref to tag as v0.0.0 (requires --baseline; defaults to HEAD)")
 	push := fs.Bool("push", false, "Push the baseline tag to origin (requires --baseline)")
+	fs.Usage = usageFor(fs, "pk setup [flags]")
 	fs.Parse(args)
 
 	dir := resolveProjectDir(*projectDir)
@@ -212,11 +245,11 @@ func runSetup(args []string) {
 	// --at and --push are modifiers of --baseline; reject on their own.
 	if !*baseline {
 		if *baselineAt != "" {
-			fmt.Fprintln(os.Stderr, "Error: --at requires --baseline")
+			msg.Errorf(os.Stderr, "--at requires --baseline")
 			os.Exit(1)
 		}
 		if *push {
-			fmt.Fprintln(os.Stderr, "Error: --push requires --baseline")
+			msg.Errorf(os.Stderr, "--push requires --baseline")
 			os.Exit(1)
 		}
 	}
@@ -233,7 +266,7 @@ func runSetup(args []string) {
 	cfg.BaselineAt = *baselineAt
 	cfg.Push = *push
 	if err := setup.Run(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 
@@ -244,6 +277,7 @@ func runStatus(args []string) {
 	fs := flag.NewFlagSet("status", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	brief := fs.Bool("brief", false, "One-line summary (useful for scripting)")
+	fs.Usage = usageFor(fs, "pk status [flags]")
 	fs.Parse(args)
 
 	dir := resolveProjectDir(*projectDir)
@@ -253,7 +287,7 @@ func runStatus(args []string) {
 	cfg.Brief = *brief
 	configured, err := status.Run(cfg)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 	if !configured {
@@ -265,6 +299,7 @@ func runTeardown(args []string) {
 	fs := flag.NewFlagSet("teardown", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	confirm := fs.Bool("confirm", false, "Actually remove (default: preview only)")
+	fs.Usage = usageFor(fs, "pk teardown [flags]")
 	fs.Parse(args)
 
 	dir := resolveProjectDir(*projectDir)
@@ -273,7 +308,7 @@ func runTeardown(args []string) {
 	cfg.ProjectDir = dir
 	cfg.Confirm = *confirm
 	if err := teardown.Run(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 }
@@ -282,13 +317,14 @@ func runPin(args []string) {
 	fs := flag.NewFlagSet("pin", flag.ExitOnError)
 	file := fs.String("file", "", "File containing the version pin (required)")
 	name := fs.String("name", "", "Identifier to match (e.g., version, __version__)")
+	fs.Usage = usageFor(fs, "pk pin --file <path> [--name <identifier>] <version>")
 	fs.Parse(args)
 	if *file == "" || fs.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: pk pin --file <path> [--name <identifier>] <version>")
+		fs.Usage()
 		os.Exit(1)
 	}
 	if _, ok := version.ParseSemver(fs.Arg(0)); !ok {
-		fmt.Fprintf(os.Stderr, "Error: %q is not valid semver\n", fs.Arg(0))
+		msg.Errorf(os.Stderr, "%q is not valid semver", fs.Arg(0))
 		os.Exit(1)
 	}
 	var updated bool
@@ -299,7 +335,7 @@ func runPin(args []string) {
 		updated, err = setup.PinVersion(os.ReadFile, os.WriteFile, *file, fs.Arg(0))
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 	if updated {
@@ -310,6 +346,7 @@ func runPin(args []string) {
 func runVersion(args []string) {
 	fs := flag.NewFlagSet("version", flag.ExitOnError)
 	verbose := fs.Bool("verbose", false, "Show build date and Go version")
+	fs.Usage = usageFor(fs, "pk version [flags]")
 	fs.Parse(args)
 
 	fmt.Fprintf(os.Stderr, "pk %s\n", version.Version())
@@ -326,9 +363,11 @@ func runVersion(args []string) {
 			pinnedSemver, pok := version.ParseSemver(pinned)
 			runningSemver, rok := version.ParseSemver(running)
 			if pok && rok && pinnedSemver.Compare(runningSemver) > 0 {
-				fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — run 'go install github.com/markwharton/plankit/cmd/pk@latest' to update\n", scriptVer, running)
+				msg.Notef(os.Stderr, ".claude/install-pk.sh pins %s but you're running %s", scriptVer, running)
+				msg.Hintf(os.Stderr, "To update: go install github.com/markwharton/plankit/cmd/pk@latest")
 			} else {
-				fmt.Fprintf(os.Stderr, "Note: .claude/install-pk.sh pins %s but you're running %s — re-run 'pk setup' to update\n", scriptVer, running)
+				msg.Notef(os.Stderr, ".claude/install-pk.sh pins %s but you're running %s", scriptVer, running)
+				msg.Hintf(os.Stderr, "To refresh it: pk setup")
 			}
 		}
 	}
@@ -339,7 +378,7 @@ func runVersion(args []string) {
 func mustGitRoot() string {
 	root, ok := pkgit.RepoRoot(os.Stat, resolveDir("."))
 	if !ok {
-		fmt.Fprintln(os.Stderr, "Error: not a git repository")
+		msg.Errorf(os.Stderr, "not a git repository")
 		os.Exit(1)
 	}
 	return root
@@ -348,7 +387,7 @@ func mustGitRoot() string {
 func resolveDir(dir string) string {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
+		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 	return abs
@@ -362,7 +401,7 @@ func validateMode(value, flagName string, valid ...string) {
 			return
 		}
 	}
-	fmt.Fprintf(os.Stderr, "Error: invalid %s mode %q (must be %s)\n", flagName, value, orList(valid))
+	msg.Errorf(os.Stderr, "invalid %s mode %q (must be %s)", flagName, value, orList(valid))
 	os.Exit(1)
 }
 
@@ -395,32 +434,33 @@ func printUpdateNotice() {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "pk - Plan-driven development toolkit for Claude Code")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "Hook commands (called by Claude Code, not directly):")
-	fmt.Fprintln(os.Stderr, "  pk guard [--ask] [--push-guard block|ask|off]")
-	fmt.Fprintln(os.Stderr, "                                      Block git mutations on protected branches; guard pushes (PreToolUse hook)")
-	fmt.Fprintln(os.Stderr, "  pk preserve [--dry-run] [--push] [--notify]")
-	fmt.Fprintln(os.Stderr, "                                      Preserve approved plan (PostToolUse hook)")
-	fmt.Fprintln(os.Stderr, "  pk protect                          Block edits to docs/plans/ (PreToolUse hook)")
-	fmt.Fprintln(os.Stderr, "  pk pin --file <path> [--name <id>] <version>")
-	fmt.Fprintln(os.Stderr, "                                      Update pinned version in a file (preCommit hook)")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "User commands:")
-	fmt.Fprintln(os.Stderr, "  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]")
-	fmt.Fprintln(os.Stderr, "                                      Generate changelog, commit, and tag version")
-	fmt.Fprintln(os.Stderr, "  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push")
-	fmt.Fprintln(os.Stderr, "  pk rules [--lint [--strict]] [--project-dir <dir>]")
-	fmt.Fprintln(os.Stderr, "                                      Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars")
-	fmt.Fprintln(os.Stderr, "  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]")
-	fmt.Fprintln(os.Stderr, "           [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]")
-	fmt.Fprintln(os.Stderr, "                                      Configure project hooks and skills; optionally anchor pk changelog")
-	fmt.Fprintln(os.Stderr, "  pk status [--brief] [--project-dir <dir>]")
-	fmt.Fprintln(os.Stderr, "                                      Report plankit configuration state")
-	fmt.Fprintln(os.Stderr, "  pk teardown [--confirm] [--project-dir <dir>]")
-	fmt.Fprintln(os.Stderr, "                                      Remove plankit hooks, skills, and rules")
-	fmt.Fprintln(os.Stderr, "  pk version [--verbose]              Print version and check for updates")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "Hook commands read JSON from stdin and write JSON to stdout.")
-	fmt.Fprintln(os.Stderr, "They are designed to be called by Claude Code, not directly.")
+	fmt.Fprint(os.Stderr, `pk - Plan-driven development toolkit for Claude Code
+
+Hook commands (called by Claude Code, not directly):
+  pk guard [--ask] [--push-guard block|ask|off]
+                                      Block git mutations on protected branches; guard pushes (PreToolUse hook)
+  pk preserve [--dry-run] [--push] [--notify]
+                                      Preserve approved plan (PostToolUse hook)
+  pk protect                          Block edits to docs/plans/ (PreToolUse hook)
+  pk pin --file <path> [--name <id>] <version>
+                                      Update pinned version in a file (preCommit hook)
+
+User commands:
+  pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]
+                                      Generate changelog, commit, and tag version
+  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push
+  pk rules [--lint [--strict]] [--project-dir <dir>]
+                                      Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars
+  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]
+           [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]
+                                      Configure project hooks and skills; optionally anchor pk changelog
+  pk status [--brief] [--project-dir <dir>]
+                                      Report plankit configuration state
+  pk teardown [--confirm] [--project-dir <dir>]
+                                      Remove plankit hooks, skills, and rules
+  pk version [--verbose]              Print version and check for updates
+
+Hook commands read JSON from stdin and write JSON to stdout.
+They are designed to be called by Claude Code, not directly.
+`)
 }
