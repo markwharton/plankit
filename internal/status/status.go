@@ -15,6 +15,7 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
+	"github.com/markwharton/plankit/internal/readiness"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -26,6 +27,7 @@ type Config struct {
 	ReadFile   func(string) ([]byte, error)
 	Stat       func(string) (os.FileInfo, error)
 	ReadDir    func(string) ([]os.DirEntry, error)
+	GitExec    func(dir string, args ...string) (string, error)
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -35,6 +37,7 @@ func DefaultConfig() Config {
 		ReadFile: os.ReadFile,
 		Stat:     os.Stat,
 		ReadDir:  os.ReadDir,
+		GitExec:  git.Exec,
 	}
 }
 
@@ -99,9 +102,16 @@ func Run(cfg Config) (bool, error) {
 	configured := len(hooks) > 0 || hasPermission || claudeMD != nil ||
 		len(rules) > 0 || len(skills) > 0 || hasInstallScript
 
+	// Readiness: release-readiness checks, evaluated when plankit hooks are
+	// installed in a git repository (offline; local refs only).
+	var checks []readiness.Check
+	if isGit && len(hooks) > 0 && cfg.GitExec != nil {
+		checks = readiness.Evaluate(cfg.GitExec, cfg.ProjectDir, pkConf)
+	}
+
 	// Brief mode: one-line summary.
 	if cfg.Brief {
-		return runBrief(cfg, configured, pkConf, len(hooks) > 0, isGit)
+		return runBrief(cfg, configured, pkConf, len(hooks) > 0, isGit, checks)
 	}
 
 	if !configured {
@@ -195,12 +205,46 @@ func Run(cfg Config) (bool, error) {
 		}
 	}
 
+	printReadiness(stderr, hasPKConfig, checks)
+
 	return true, nil
+}
+
+// printReadiness renders the release-readiness checks. All-pass collapses to
+// a single line; failed checks carry their next-step hint (and git
+// equivalent) indented beneath them.
+func printReadiness(stderr io.Writer, afterConfig bool, checks []readiness.Check) {
+	if len(checks) == 0 {
+		return
+	}
+	if afterConfig {
+		fmt.Fprintln(stderr, "")
+	}
+	if readiness.Ready(checks) {
+		fmt.Fprintln(stderr, "Readiness: ready for pk changelog / pk release")
+		return
+	}
+	width := 0
+	for _, c := range checks {
+		if len(c.Label) > width {
+			width = len(c.Label)
+		}
+	}
+	msg.Section(stderr, "Readiness")
+	for _, c := range checks {
+		msg.Itemf(stderr, "%-*s   %s", width, c.Label, c.Value)
+		if c.Hint != "" {
+			msg.Itemf(stderr, "  %s", c.Hint)
+		}
+		if c.Or != "" {
+			msg.Itemf(stderr, "  or: %s", c.Or)
+		}
+	}
 }
 
 // runBrief prints a one-line status summary. Useful for scripting.
 // Returns (configured, error). configured mirrors the input so Run can return runBrief's tuple directly.
-func runBrief(cfg Config, configured bool, pkConf config.PkConfig, hasHooks bool, isGit bool) (bool, error) {
+func runBrief(cfg Config, configured bool, pkConf config.PkConfig, hasHooks bool, isGit bool, checks []readiness.Check) (bool, error) {
 	stderr := cfg.Stderr
 	if !configured {
 		note := ""
@@ -221,6 +265,13 @@ func runBrief(cfg Config, configured bool, pkConf config.PkConfig, hasHooks bool
 	}
 	if !isGit {
 		parts = append(parts, "not-a-git-repo")
+	}
+	if len(checks) > 0 {
+		if readiness.Ready(checks) {
+			parts = append(parts, "ready")
+		} else {
+			parts = append(parts, "not-ready")
+		}
 	}
 	fmt.Fprintf(stderr, "plankit: %s\n", strings.Join(parts, ", "))
 	return true, nil

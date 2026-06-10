@@ -524,3 +524,106 @@ func TestRun_partialSetup(t *testing.T) {
 		t.Error("expected pk guard listed")
 	}
 }
+
+// fakeGit returns a GitExec answering from canned responses keyed by the
+// joined argument list; unknown commands error like a missing ref.
+func fakeGit(responses map[string]string) func(string, ...string) (string, error) {
+	return func(dir string, args ...string) (string, error) {
+		if out, ok := responses[strings.Join(args, " ")]; ok {
+			return out, nil
+		}
+		return "", os.ErrNotExist
+	}
+}
+
+func TestRun_readinessConfiguredButNotReady(t *testing.T) {
+	// release.branch set, but the user sits on main with no develop and no
+	// baseline tag: status must surface the gaps, not report configured-only.
+	dir := setupProject(t)
+	os.MkdirAll(filepath.Join(dir, ".git"), 0755)
+	os.WriteFile(filepath.Join(dir, ".pk.json"),
+		[]byte(`{"guard":{"branches":["main"]},"release":{"branch":"main"}}`), 0644)
+
+	cfg, stderr := testConfig(dir)
+	cfg.GitExec = fakeGit(map[string]string{
+		"branch --show-current": "main\n",
+	})
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	output := stderr.String()
+	expected := []string{
+		"Readiness:",
+		"baseline tag",
+		"missing",
+		"To anchor at v0.0.0: pk setup --baseline --push",
+		"working branch",
+		"on release branch main",
+		"To start one: git switch -c develop && git push -u origin develop",
+	}
+	for _, want := range expected {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q\nFull output:\n%s", want, output)
+		}
+	}
+}
+
+func TestRun_readinessReady(t *testing.T) {
+	dir := setupProject(t)
+	os.MkdirAll(filepath.Join(dir, ".git"), 0755)
+	os.WriteFile(filepath.Join(dir, ".pk.json"),
+		[]byte(`{"release":{"branch":"main"}}`), 0644)
+
+	cfg, stderr := testConfig(dir)
+	cfg.GitExec = fakeGit(map[string]string{
+		"tag --list v* --sort=-v:refname":                        "v1.0.0\n",
+		"branch --show-current":                                  "develop\n",
+		"rev-parse --verify --quiet refs/remotes/origin/develop": "abc\n",
+		"rev-parse --verify --quiet refs/remotes/origin/main":    "def\n",
+	})
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	output := stderr.String()
+	if !strings.Contains(output, "Readiness: ready for pk changelog / pk release") {
+		t.Errorf("missing collapsed ready line, got:\n%s", output)
+	}
+	if strings.Contains(output, "missing") {
+		t.Errorf("unexpected failed check in ready output:\n%s", output)
+	}
+}
+
+func TestRun_readinessSkippedWithoutGit(t *testing.T) {
+	// Non-git project: no readiness section even with hooks installed.
+	dir := setupProject(t)
+
+	cfg, stderr := testConfig(dir)
+	cfg.GitExec = fakeGit(nil)
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if strings.Contains(stderr.String(), "Readiness") {
+		t.Errorf("unexpected readiness section for non-git project:\n%s", stderr.String())
+	}
+}
+
+func TestRun_brief_readiness(t *testing.T) {
+	dir := setupProject(t)
+	os.MkdirAll(filepath.Join(dir, ".git"), 0755)
+	os.WriteFile(filepath.Join(dir, ".pk.json"),
+		[]byte(`{"release":{"branch":"main"}}`), 0644)
+
+	cfg, stderr := testConfig(dir)
+	cfg.Brief = true
+	cfg.GitExec = fakeGit(map[string]string{
+		"branch --show-current": "main\n",
+	})
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "not-ready") {
+		t.Errorf("brief output missing not-ready, got: %s", stderr.String())
+	}
+}
