@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/safety"
 )
 
@@ -36,13 +37,13 @@ func runLint(cfg Config, rs []rule) int {
 		if cfg.Strict {
 			scope = "safety + house-style checks"
 		}
-		fmt.Fprintf(cfg.Stderr, "pk rules --lint: no issues found (%s).\n", scope)
+		fmt.Fprintf(cfg.Stderr, "No issues found (%s)\n", scope)
 		return 0
 	}
 
-	fmt.Fprintf(cfg.Stderr, "pk rules --lint found %d issue(s):\n", len(findings))
+	fmt.Fprintf(cfg.Stderr, "Found %d issue(s):\n", len(findings))
 	for _, f := range findings {
-		fmt.Fprintf(cfg.Stderr, "  %s: %s [%s]\n", f.file, f.msg, f.tier)
+		msg.Itemf(cfg.Stderr, "%s: %s [%s]", f.file, f.msg, f.tier)
 	}
 	return 1
 }

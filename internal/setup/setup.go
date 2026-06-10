@@ -16,6 +16,7 @@ import (
 
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -210,7 +211,7 @@ func Run(cfg Config) error {
 		if !cfg.AllowNonGit {
 			return fmt.Errorf("this is not a git repository. pk requires git for most commands.\n\nRun `git init` first, or pass --allow-non-git to proceed anyway")
 		}
-		fmt.Fprintln(stderr, "Warning: this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.")
+		msg.Warnf(stderr, "this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.")
 	}
 
 	// Read existing settings or start fresh. OrderedObject preserves the
@@ -310,7 +311,7 @@ func Run(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to load embedded skills: %w", err)
 	}
-	fmt.Fprintln(stderr, "Skills:")
+	msg.Section(stderr, "Skills")
 	keptSkills := map[string]bool{}
 	for _, skill := range skillsList {
 		skillFile := filepath.Join(settingsDir, "skills", skill.Name, "SKILL.md")
@@ -333,7 +334,7 @@ func Run(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to load embedded rules: %w", err)
 	}
-	fmt.Fprintln(stderr, "Rules:")
+	msg.Section(stderr, "Rules")
 	keptRules := map[string]bool{}
 	rulesSubdir := filepath.Join(settingsDir, "rules", "plankit")
 	for _, rule := range rulesList {
@@ -358,7 +359,7 @@ func Run(cfg Config) error {
 	}
 
 	// Install bootstrap script for cloud sandboxes.
-	fmt.Fprintln(stderr, "Bootstrap:")
+	msg.Section(stderr, "Bootstrap")
 	changed, err = writeInstallScript(cfg, projectDir, cfg.Version)
 	if err != nil {
 		return err
@@ -367,7 +368,7 @@ func Run(cfg Config) error {
 
 	// Check if pk is in PATH.
 	if _, err := cfg.LookPath("pk"); err != nil {
-		fmt.Fprintln(stderr, "Warning: pk is not in your PATH. Hooks will silently skip until it is installed.")
+		msg.Warnf(stderr, "pk is not in your PATH. Hooks will silently skip until it is installed.")
 	}
 
 	// Baseline tag or discoverability tip.
@@ -382,8 +383,8 @@ func Run(cfg Config) error {
 	} else if inGitRepo {
 		if _, ok := hasValidSemverTag(cfg, projectDir); !ok {
 			fmt.Fprintln(stderr, "No version tags found. If you plan to use pk changelog / pk release, anchor with:")
-			fmt.Fprintln(stderr, "  pk setup --baseline --push")
-			fmt.Fprintln(stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
+			msg.Hintf(stderr, "pk setup --baseline --push")
+			msg.Or(stderr, "git tag v0.0.0 && git push origin v0.0.0")
 		}
 	}
 
@@ -395,7 +396,7 @@ func Run(cfg Config) error {
 			tipVersion = "v" + tipVersion
 		}
 		fmt.Fprintln(stderr, "Commit these updates on their own:")
-		fmt.Fprintf(stderr, "  git commit -m \"chore: update pk-managed files for %s\"\n", tipVersion)
+		msg.Hintf(stderr, "git commit -m %q", "chore: update pk-managed files for "+tipVersion)
 	}
 
 	// Conventions reminder: shown only when no .pk.json exists, so a configured
@@ -403,7 +404,7 @@ func Run(cfg Config) error {
 	// pk release silently falls back to trunk flow.
 	if inGitRepo && pkConf.Release.Branch == "" {
 		fmt.Fprintln(stderr, "No release branch in .pk.json. Run /conventions in Claude Code to set guard.branches and release.branch.")
-		fmt.Fprintln(stderr, "  Without release.branch, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
+		msg.Itemf(stderr, "Without release.branch, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")

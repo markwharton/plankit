@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/markwharton/plankit/internal/msg"
 )
 
 //go:embed skills/*/SKILL.md
@@ -185,7 +187,7 @@ func shouldUpdate(readFile func(string) ([]byte, error), path string, newContent
 func writeManaged(cfg Config, path string, content string, force bool) (bool, error) {
 	update, reason := shouldUpdate(cfg.ReadFile, path, content, force)
 	if !update {
-		fmt.Fprintf(cfg.Stderr, "  %s: %s\n", displayName(path), reason)
+		msg.Itemf(cfg.Stderr, "%s: %s", displayName(path), reason)
 		return false, nil
 	}
 
@@ -218,7 +220,7 @@ func writeManaged(cfg Config, path string, content string, force bool) (bool, er
 	if err := cfg.WriteFile(path, []byte(managed), 0644); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", path, err)
 	}
-	fmt.Fprintf(cfg.Stderr, "  %s: %s\n", displayName(path), reason)
+	msg.Itemf(cfg.Stderr, "%s: %s", displayName(path), reason)
 	return string(existing) != managed, nil
 }
 
@@ -259,12 +261,12 @@ func pruneSkills(cfg Config, skillsDir string, kept map[string]bool) bool {
 		switch evaluateRemoval(cfg.ReadFile, skillFile) {
 		case "remove":
 			if err := cfg.Remove(skillFile); err == nil {
-				fmt.Fprintf(cfg.Stderr, "  %s/SKILL.md: removed\n", entry.Name())
+				msg.Itemf(cfg.Stderr, "%s/SKILL.md: removed", entry.Name())
 				cfg.Remove(filepath.Join(skillsDir, entry.Name()))
 				removed = true
 			}
 		case "preserve":
-			fmt.Fprintf(cfg.Stderr, "  %s/SKILL.md: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+			msg.Itemf(cfg.Stderr, "%s/SKILL.md: preserved (modified locally; pk no longer manages it; remove manually if no longer needed)", entry.Name())
 		}
 	}
 	return removed
@@ -291,11 +293,11 @@ func pruneRules(cfg Config, rulesDir string, kept map[string]bool) bool {
 		switch evaluateRemoval(cfg.ReadFile, ruleFile) {
 		case "remove":
 			if err := cfg.Remove(ruleFile); err == nil {
-				fmt.Fprintf(cfg.Stderr, "  %s: removed\n", entry.Name())
+				msg.Itemf(cfg.Stderr, "%s: removed", entry.Name())
 				removed = true
 			}
 		case "preserve":
-			fmt.Fprintf(cfg.Stderr, "  %s: preserved (modified locally; pk no longer manages it — remove manually if no longer needed)\n", entry.Name())
+			msg.Itemf(cfg.Stderr, "%s: preserved (modified locally; pk no longer manages it; remove manually if no longer needed)", entry.Name())
 		}
 	}
 	return removed

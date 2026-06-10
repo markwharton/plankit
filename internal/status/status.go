@@ -13,6 +13,7 @@ import (
 
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
@@ -105,11 +106,10 @@ func Run(cfg Config) (bool, error) {
 
 	if !configured {
 		fmt.Fprintln(stderr, "plankit is not configured in this project.")
-		fmt.Fprintln(stderr, "")
-		fmt.Fprintln(stderr, "Run `pk setup` to install.")
+		msg.Hintf(stderr, "To install: pk setup")
 		if !isGit {
 			fmt.Fprintln(stderr, "")
-			fmt.Fprintln(stderr, "Note: this is not a git repository. pk requires git for most commands.")
+			msg.Notef(stderr, "this is not a git repository; pk requires git for most commands")
 		}
 		return false, nil
 	}
@@ -119,9 +119,9 @@ func Run(cfg Config) (bool, error) {
 	if !isGit {
 		fmt.Fprintln(stderr, "plankit is configured, but this is not a git repository.")
 		fmt.Fprintln(stderr, "")
-		fmt.Fprintln(stderr, "Most pk commands will not work here. To fix:")
-		fmt.Fprintln(stderr, "  - Run `git init` to make this a git repository, or")
-		fmt.Fprintln(stderr, "  - Run `pk teardown --confirm` to remove plankit from this directory.")
+		fmt.Fprintln(stderr, "Most pk commands will not work here.")
+		msg.Hintf(stderr, "To make this a git repository: git init")
+		msg.Hintf(stderr, "To remove plankit instead: pk teardown --confirm")
 		fmt.Fprintln(stderr, "")
 	} else {
 		fmt.Fprintln(stderr, "plankit is configured in this project.")
@@ -132,7 +132,7 @@ func Run(cfg Config) (bool, error) {
 	// are installed. push is surfaced only when guard is active (block/ask).
 	if len(hooks) > 0 {
 		guardMode := pkConf.Guard.ResolvedMode()
-		fmt.Fprintln(stderr, "Modes:")
+		msg.Section(stderr, "Modes")
 		fmt.Fprintf(stderr, "  guard:    %s\n", guardMode)
 		if guardMode == "block" || guardMode == "ask" {
 			fmt.Fprintf(stderr, "  push:     %s\n", pkConf.Guard.ResolvedPush())
@@ -143,7 +143,7 @@ func Run(cfg Config) (bool, error) {
 
 	// Hooks.
 	if len(hooks) > 0 {
-		fmt.Fprintln(stderr, "Hooks:")
+		msg.Section(stderr, "Hooks")
 		for _, h := range hooks {
 			fmt.Fprintf(stderr, "  %-13s %s\n", h.category+":", strings.Join(h.commands, ", "))
 		}
@@ -154,7 +154,7 @@ func Run(cfg Config) (bool, error) {
 	}
 
 	// Managed files.
-	fmt.Fprintln(stderr, "Managed files:")
+	msg.Section(stderr, "Managed files")
 	if claudeMD != nil {
 		printFileStatus(stderr, "CLAUDE.md", claudeMD.modified)
 	}
@@ -167,14 +167,14 @@ func Run(cfg Config) (bool, error) {
 
 	// Permission.
 	if hasPermission {
-		fmt.Fprintln(stderr, "Permission:")
+		msg.Section(stderr, "Permission")
 		fmt.Fprintln(stderr, "  Bash(pk:*)             allowed")
 		fmt.Fprintln(stderr, "")
 	}
 
 	// Config (.pk.json) — show key fields.
 	if hasPKConfig {
-		fmt.Fprintln(stderr, "Config (.pk.json):")
+		msg.Section(stderr, "Config (.pk.json)")
 		if n := len(pkConf.Changelog.Types); n > 0 {
 			fmt.Fprintf(stderr, "  changelog.types:  %d configured\n", n)
 		}

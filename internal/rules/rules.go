@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
@@ -58,7 +59,7 @@ type rule struct {
 func Run(cfg Config) int {
 	rs, err := collectRules(cfg)
 	if err != nil {
-		fmt.Fprintln(cfg.Stderr, "Error:", err)
+		msg.Errorf(cfg.Stderr, "%v", err)
 		return 1
 	}
 
@@ -67,7 +68,7 @@ func Run(cfg Config) int {
 	}
 
 	if len(rs) == 0 {
-		fmt.Fprintf(cfg.Stderr, "pk rules: no rules found in %s\n", filepath.Join(paths.ClaudeDir, paths.RulesDir))
+		fmt.Fprintf(cfg.Stderr, "No rules found in %s\n", filepath.Join(paths.ClaudeDir, paths.RulesDir))
 		return 0
 	}
 

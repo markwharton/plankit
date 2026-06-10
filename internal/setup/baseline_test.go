@@ -113,8 +113,8 @@ func TestRun_baseline_noOpWhenTagExists(t *testing.T) {
 	}
 
 	assertCallNotMade(t, fake.calls, "tag v0.0.0 HEAD")
-	if !strings.Contains(stderr.String(), "Found tag v1.2.3 — already anchored") {
-		t.Errorf("stderr = %q, want 'Found tag v1.2.3 — already anchored'", stderr.String())
+	if !strings.Contains(stderr.String(), "Found tag v1.2.3; already anchored") {
+		t.Errorf("stderr = %q, want 'Found tag v1.2.3; already anchored'", stderr.String())
 	}
 }
 

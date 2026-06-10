@@ -167,7 +167,7 @@ func TestNoRulesDirectory(t *testing.T) {
 	if code := Run(cfg); code != 0 {
 		t.Fatalf("Run returned %d, want 0", code)
 	}
-	if !strings.Contains(buf.String(), "no rules found") {
+	if !strings.Contains(buf.String(), "No rules found") {
 		t.Errorf("expected no-rules message, got: %s", buf.String())
 	}
 }

@@ -16,7 +16,7 @@ func TestLintSafetyScan(t *testing.T) {
 	if code := Run(cfg); code != 0 {
 		t.Fatalf("clean --lint returned %d, want 0", code)
 	}
-	if !strings.Contains(buf.String(), "no issues found") {
+	if !strings.Contains(buf.String(), "No issues found") {
 		t.Errorf("expected clean message, got: %s", buf.String())
 	}
 

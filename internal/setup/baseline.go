@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -31,7 +32,7 @@ func hasValidSemverTag(cfg Config, projectDir string) (string, bool) {
 // If cfg.Push is set, also pushes the tag to origin.
 func runBaseline(cfg Config, projectDir string) error {
 	if existing, ok := hasValidSemverTag(cfg, projectDir); ok {
-		fmt.Fprintf(cfg.Stderr, "Found tag %s — already anchored\n", existing)
+		fmt.Fprintf(cfg.Stderr, "Found tag %s; already anchored\n", existing)
 		return nil
 	}
 	target := "HEAD"
@@ -41,9 +42,9 @@ func runBaseline(cfg Config, projectDir string) error {
 		}
 		target = cfg.BaselineAt
 	} else if _, err := cfg.GitExec(projectDir, "rev-parse", "HEAD"); err != nil {
-		fmt.Fprintln(cfg.Stderr, "No commits yet — commit first, then anchor with:")
-		fmt.Fprintln(cfg.Stderr, "  pk setup --baseline")
-		fmt.Fprintln(cfg.Stderr, "  or: git tag v0.0.0")
+		fmt.Fprintln(cfg.Stderr, "No commits yet; commit first, then anchor with:")
+		msg.Hintf(cfg.Stderr, "pk setup --baseline")
+		msg.Or(cfg.Stderr, "git tag v0.0.0")
 		return nil
 	}
 	if _, err := cfg.GitExec(projectDir, "tag", "v0.0.0", target); err != nil {
@@ -69,7 +70,8 @@ func runBaseline(cfg Config, projectDir string) error {
 			fmt.Fprintln(cfg.Stderr, "Pushed v0.0.0 to origin")
 		}
 	} else {
-		fmt.Fprintln(cfg.Stderr, "Run 'pk setup --baseline --push' to publish, or 'git push origin v0.0.0'")
+		msg.Hintf(cfg.Stderr, "To publish: pk setup --baseline --push")
+		msg.Or(cfg.Stderr, "git push origin v0.0.0")
 	}
 	return nil
 }

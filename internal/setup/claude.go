@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -240,7 +241,7 @@ func InferModesFromSettings(readFile func(string) ([]byte, error), dir string) M
 // Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
 func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, error) {
 	if version.IsDevBuild(pkVersion) {
-		fmt.Fprintln(cfg.Stderr, "  install-pk.sh: skipped (development build)")
+		msg.Itemf(cfg.Stderr, "install-pk.sh: skipped (development build)")
 		return false, nil
 	}
 	if !strings.HasPrefix(pkVersion, "v") {
@@ -259,7 +260,7 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 	if err := cfg.WriteFile(scriptPath, []byte(content), 0755); err != nil {
 		return false, fmt.Errorf("failed to write %s: %w", scriptPath, err)
 	}
-	fmt.Fprintf(cfg.Stderr, "  install-pk.sh: updated (pinned %s)\n", pkVersion)
+	msg.Itemf(cfg.Stderr, "install-pk.sh: updated (pinned %s)", pkVersion)
 	return string(existing) != content, nil
 }
 

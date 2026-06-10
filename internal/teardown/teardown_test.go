@@ -164,7 +164,7 @@ func TestRun_previewOnly(t *testing.T) {
 	}
 
 	output := stderr.String()
-	if !strings.Contains(output, "Run with --confirm to apply") {
+	if !strings.Contains(output, "To apply these changes: pk teardown --confirm") {
 		t.Error("missing --confirm hint in preview output")
 	}
 

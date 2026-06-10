@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/setup"
 )
@@ -120,9 +121,9 @@ func Run(cfg Config) error {
 	}
 
 	if len(settingsActions) > 0 {
-		fmt.Fprintln(stderr, "Settings (.claude/settings.json):")
+		msg.Section(stderr, "Settings (.claude/settings.json)")
 		for _, a := range settingsActions {
-			fmt.Fprintf(stderr, "  %s ... %s\n", a.label, removeVerb)
+			msg.Itemf(stderr, "%s ... %s", a.label, removeVerb)
 		}
 	}
 
@@ -139,20 +140,20 @@ func Run(cfg Config) error {
 	})
 
 	if len(dirActions) > 0 {
-		fmt.Fprintln(stderr, "Directories:")
+		msg.Section(stderr, "Directories")
 		for _, a := range dirActions {
-			fmt.Fprintf(stderr, "  %s ... %s\n", a.label, removeVerb)
+			msg.Itemf(stderr, "%s ... %s", a.label, removeVerb)
 		}
 	}
 
 	if !cfg.Confirm {
 		fmt.Fprintln(stderr, "")
-		fmt.Fprintln(stderr, "Run with --confirm to apply these changes.")
+		fmt.Fprintln(stderr, "To apply these changes: pk teardown --confirm")
 		if len(skippedPaths) > 0 {
 			fmt.Fprintln(stderr, "")
 			fmt.Fprintln(stderr, "Skipped files were modified after setup. To remove manually:")
 			for _, p := range skippedPaths {
-				fmt.Fprintf(stderr, "  rm %s\n", p)
+				msg.Hintf(stderr, "rm %s", p)
 			}
 		}
 		return nil
@@ -205,7 +206,7 @@ func Run(cfg Config) error {
 		fmt.Fprintln(stderr, "")
 		fmt.Fprintln(stderr, "Skipped files were modified after setup. To remove manually:")
 		for _, p := range skippedPaths {
-			fmt.Fprintf(stderr, "  rm %s\n", p)
+			msg.Hintf(stderr, "rm %s", p)
 		}
 	}
 
@@ -258,7 +259,7 @@ func findPKHooksInCategory(hooks *setup.OrderedObject, category string, stderr i
 	}
 	var entries []setup.HookEntry
 	if err := json.Unmarshal(raw, &entries); err != nil {
-		fmt.Fprintf(stderr, "pk teardown: skipping hooks.%s in %s — malformed JSON: %v\n", category, settingsFile, err)
+		msg.Warnf(stderr, "skipping hooks.%s in %s; malformed JSON: %v", category, settingsFile, err)
 		return nil
 	}
 	var actions []action
@@ -655,12 +656,12 @@ func printFileGroup(w io.Writer, header string, actions []action, removeVerb, sk
 	if len(matched) == 0 {
 		return
 	}
-	fmt.Fprintln(w, header+":")
+	msg.Section(w, header)
 	for _, a := range matched {
 		if a.reason != "" {
-			fmt.Fprintf(w, "  %s ... %s (%s)\n", a.label, skipVerb, a.reason)
+			msg.Itemf(w, "%s ... %s (%s)", a.label, skipVerb, a.reason)
 		} else {
-			fmt.Fprintf(w, "  %s ... %s\n", a.label, removeVerb)
+			msg.Itemf(w, "%s ... %s", a.label, removeVerb)
 		}
 	}
 }
