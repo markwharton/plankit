@@ -1893,7 +1893,7 @@ func TestRun_excludeUnknownSHA(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "warning: --exclude deadbee did not match any commit") {
+	if !strings.Contains(stderr.String(), "Warning: --exclude deadbee did not match any commit") {
 		t.Errorf("stderr missing unknown-sha warning: %s", stderr.String())
 	}
 	// Unknown SHA should not block the release.

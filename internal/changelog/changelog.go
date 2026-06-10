@@ -18,6 +18,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -112,7 +113,7 @@ func Run(cfg Config) int {
 	// 0. Load config from the repository root.
 	fullConfig, err := LoadFullConfig(cfg.ReadFile, filepath.Join(cfg.Dir, paths.PkConfig))
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		msg.Errorf(cfg.Stderr, "%v", err)
 		return 1
 	}
 	config := fullConfig.ChangelogConfig
@@ -122,7 +123,7 @@ func Run(cfg Config) int {
 	// fix the tree before worrying about which branch you're on.
 	if !cfg.DryRun {
 		if err := pkgit.CheckCleanTree(cfg.GitExec, cfg.Dir); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+			msg.Errorf(cfg.Stderr, "%v", err)
 			return 1
 		}
 	}
@@ -132,7 +133,7 @@ func Run(cfg Config) int {
 		branch = strings.TrimSpace(branch)
 		for _, protected := range fullConfig.Guard.Branches {
 			if branch == protected {
-				fmt.Fprintf(cfg.Stderr, "Error: you're on %q which is a protected branch — switch to your development branch first\n", branch)
+				msg.Errorf(cfg.Stderr, "you're on %q which is a protected branch; switch to your development branch first", branch)
 				return 1
 			}
 		}
@@ -145,7 +146,8 @@ func Run(cfg Config) int {
 		branch = strings.TrimSpace(branch)
 		if branch != "" {
 			if _, err := cfg.GitExec(cfg.Dir, "ls-remote", "--exit-code", "--heads", "origin", branch); err != nil {
-				fmt.Fprintf(cfg.Stderr, "Error: %s does not exist on origin — push it first:\n  git push -u origin %s\n", branch, branch)
+				msg.Errorf(cfg.Stderr, "%s does not exist on origin", branch)
+				msg.Hintf(cfg.Stderr, "To push it: git push -u origin %s", branch)
 				return 1
 			}
 		}
@@ -154,7 +156,7 @@ func Run(cfg Config) int {
 	// 5. Get latest tag.
 	tagOutput, err := cfg.GitExec(cfg.Dir, "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: failed to list tags: %v\n", err)
+		msg.Errorf(cfg.Stderr, "failed to list tags: %v", err)
 		return 1
 	}
 	latestTag, baseVersion, found := latestSemverTag(tagOutput)
@@ -162,20 +164,20 @@ func Run(cfg Config) int {
 		// Origin has tags, local doesn't — common in shallow-clone sandboxes
 		// that fetch only the working branch. Point at fetch, not baseline.
 		if remoteTags, err := cfg.GitExec(cfg.Dir, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
-			fmt.Fprintln(cfg.Stderr, "Error: no version tags found locally")
-			fmt.Fprintln(cfg.Stderr, "  Origin has tags — fetch them: git fetch --tags")
+			msg.Errorf(cfg.Stderr, "no version tags found locally")
+			msg.Hintf(cfg.Stderr, "Origin has tags; fetch them: git fetch --tags")
 			return 1
 		}
-		fmt.Fprintln(cfg.Stderr, "Error: no version tags found")
-		fmt.Fprintln(cfg.Stderr, "  To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push")
-		fmt.Fprintln(cfg.Stderr, "  or: git tag v0.0.0 && git push origin v0.0.0")
+		msg.Errorf(cfg.Stderr, "no version tags found")
+		msg.Hintf(cfg.Stderr, "To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push")
+		msg.Or(cfg.Stderr, "git tag v0.0.0 && git push origin v0.0.0")
 		return 1
 	}
 
 	// 5. Get commits since tag.
 	logOutput, err := cfg.GitExec(cfg.Dir, "log", "--format=%h%x00%s%x00%b%x00", latestTag+"..HEAD", "--reverse")
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: failed to read git log: %v\n", err)
+		msg.Errorf(cfg.Stderr, "failed to read git log: %v", err)
 		return 1
 	}
 
@@ -200,7 +202,7 @@ func Run(cfg Config) int {
 	// 8. Determine bump.
 	bump, err := resolveBump(cfg.Bump, commits)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		msg.Errorf(cfg.Stderr, "%v", err)
 		return 1
 	}
 
@@ -213,9 +215,9 @@ func Run(cfg Config) int {
 	if !cfg.DryRun {
 		_, trailerTag, err := ReadReleaseTagTrailer(cfg.GitExec, cfg.Dir)
 		if err == nil {
-			fmt.Fprintf(cfg.Stderr, "Error: changelog for %s is already pending (HEAD has Release-Tag: %s)\n", trailerTag, trailerTag)
-			fmt.Fprintln(cfg.Stderr, "  To complete the release: pk release")
-			fmt.Fprintln(cfg.Stderr, "  To undo and start over:  pk changelog --undo")
+			msg.Errorf(cfg.Stderr, "changelog for %s is already pending (HEAD has Release-Tag: %s)", trailerTag, trailerTag)
+			msg.Hintf(cfg.Stderr, "To complete the release: pk release")
+			msg.Hintf(cfg.Stderr, "To undo and start over:  pk changelog --undo")
 			return 1
 		}
 	}
@@ -242,12 +244,12 @@ func Run(cfg Config) int {
 	// 13. Update version files (paths in config are relative to repo root).
 	for _, vf := range config.VersionFiles {
 		if vf.Type != "" && vf.Type != "json" {
-			fmt.Fprintf(cfg.Stderr, "Error: unsupported versionFile type %q for %s (only \"json\" is supported)\n", vf.Type, vf.Path)
+			msg.Errorf(cfg.Stderr, "unsupported versionFile type %q for %s (only \"json\" is supported)", vf.Type, vf.Path)
 			return 1
 		}
 		absPath := filepath.Join(cfg.Dir, vf.Path)
 		if err := updateVersionFile(cfg.ReadFile, cfg.WriteFile, absPath, ver); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: failed to update %s: %v\n", vf.Path, err)
+			msg.Errorf(cfg.Stderr, "failed to update %s: %v", vf.Path, err)
 			return 1
 		}
 		fmt.Fprintf(cfg.Stderr, "Updated %s\n", vf.Path)
@@ -257,7 +259,7 @@ func Run(cfg Config) int {
 	if config.Hooks.PostVersion != "" {
 		fmt.Fprintf(cfg.Stderr, "Running postVersion hook...\n")
 		if err := cfg.RunScript(cfg.Dir, config.Hooks.PostVersion, map[string]string{"VERSION": ver}); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: postVersion hook failed: %v\n", err)
+			msg.Errorf(cfg.Stderr, "postVersion hook failed: %v", err)
 			return 1
 		}
 	}
@@ -281,7 +283,7 @@ func Run(cfg Config) int {
 
 	// 18. Write CHANGELOG.md.
 	if err := cfg.WriteFile(changelogPath, []byte(updated), 0644); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: failed to write CHANGELOG.md: %v\n", err)
+		msg.Errorf(cfg.Stderr, "failed to write CHANGELOG.md: %v", err)
 		return 1
 	}
 
@@ -289,7 +291,7 @@ func Run(cfg Config) int {
 	if config.Hooks.PreCommit != "" {
 		fmt.Fprintf(cfg.Stderr, "Running preCommit hook...\n")
 		if err := cfg.RunScript(cfg.Dir, config.Hooks.PreCommit, map[string]string{"VERSION": ver}); err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: preCommit hook failed: %v\n", err)
+			msg.Errorf(cfg.Stderr, "preCommit hook failed: %v", err)
 			return 1
 		}
 	}
@@ -302,22 +304,23 @@ func Run(cfg Config) int {
 		addFiles = append(addFiles, filepath.Join(cfg.Dir, vf.Path))
 	}
 	if _, err := cfg.GitExec(cfg.Dir, addFiles...); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git add failed: %v\n", err)
+		msg.Errorf(cfg.Stderr, "git add failed: %v", err)
 		return 1
 	}
 	// Also stage any tracked files modified by hooks.
 	if _, err := cfg.GitExec(cfg.Dir, "add", "-u"); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git add failed: %v\n", err)
+		msg.Errorf(cfg.Stderr, "git add failed: %v", err)
 		return 1
 	}
 	commitMsg := fmt.Sprintf("chore: release %s", nextTag)
 	trailer := fmt.Sprintf("Release-Tag: %s", nextTag)
 	if _, err := cfg.GitExec(cfg.Dir, "commit", "-m", commitMsg, "--trailer", trailer); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git commit failed: %v\n", err)
+		msg.Errorf(cfg.Stderr, "git commit failed: %v", err)
 		return 1
 	}
 
-	fmt.Fprintf(cfg.Stderr, "Committed %s (run 'pk release' to tag and push)\n", nextTag)
+	fmt.Fprintf(cfg.Stderr, "Committed %s\n", nextTag)
+	msg.Hintf(cfg.Stderr, "To tag and push: pk release")
 
 	return 0
 }
@@ -334,13 +337,13 @@ func Undo(cfg Config) int {
 	// 1. Read Release-Tag trailer from HEAD.
 	_, trailerValue, err := ReadReleaseTagTrailer(cfg.GitExec, cfg.Dir)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		msg.Errorf(cfg.Stderr, "%v", err)
 		return 1
 	}
 
 	// 2. Working tree must be clean.
 	if err := pkgit.CheckCleanTree(cfg.GitExec, cfg.Dir); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: %v\n", err)
+		msg.Errorf(cfg.Stderr, "%v", err)
 		return 1
 	}
 
@@ -351,18 +354,18 @@ func Undo(cfg Config) int {
 		// Upstream exists — check HEAD is strictly ahead of it.
 		ahead, err := cfg.GitExec(cfg.Dir, "log", "@{u}..HEAD", "--oneline")
 		if err != nil {
-			fmt.Fprintf(cfg.Stderr, "Error: git log @{u}..HEAD failed: %v\n", err)
+			msg.Errorf(cfg.Stderr, "git log @{u}..HEAD failed: %v", err)
 			return 1
 		}
 		if strings.TrimSpace(ahead) == "" {
-			fmt.Fprintln(cfg.Stderr, "Error: HEAD is already on the remote — cannot undo a pushed commit")
+			msg.Errorf(cfg.Stderr, "HEAD is already on the remote; cannot undo a pushed commit")
 			return 1
 		}
 	}
 
 	// 4. Reset.
 	if _, err := cfg.GitExec(cfg.Dir, "reset", "--hard", "HEAD~1"); err != nil {
-		fmt.Fprintf(cfg.Stderr, "Error: git reset failed: %v\n", err)
+		msg.Errorf(cfg.Stderr, "git reset failed: %v", err)
 		return 1
 	}
 
@@ -454,7 +457,7 @@ func applyExclude(stderr io.Writer, commits []Commit, excludes []string) []Commi
 	}
 	for sha, matched := range wanted {
 		if !matched {
-			fmt.Fprintf(stderr, "warning: --exclude %s did not match any commit\n", sha)
+			msg.Warnf(stderr, "--exclude %s did not match any commit", sha)
 		}
 	}
 	return kept
