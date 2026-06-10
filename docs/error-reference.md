@@ -31,11 +31,12 @@ Error: no version tags found locally
 
 ```
 Error: you're on "main" which is a protected branch; switch to your development branch first
+  To start one: git switch -c develop && git push -u origin develop
 ```
 
 **Cause:** `pk changelog` refuses to create release commits on branches listed in `guard.branches`.
 
-**Fix:** Switch to your development branch (`git switch develop`).
+**Fix:** Switch to your development branch (`git switch develop`). The create hint appears only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
 
 ### branch not on origin
 
@@ -96,11 +97,24 @@ Error: no Release-Tag trailer on HEAD; run pk changelog first
 
 ```
 Error: you're on the release branch "main"; switch to your working branch first
+  To start one: git switch -c develop && git push -u origin develop
+  Then: pk changelog && pk release
 ```
 
 **Cause:** `pk release` merges from the source branch into the release branch. Running it directly on the release branch would skip the merge.
 
-**Fix:** Switch to your working branch (`git switch develop`).
+**Fix:** Switch to your working branch (`git switch develop`). The create hints appear only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
+
+### release branch missing
+
+```
+Error: release branch main does not exist locally or on origin
+  To create it: git branch main && git push -u origin main
+```
+
+**Cause:** `.pk.json` names a `release.branch` that resolves neither as a local branch nor as a remote-tracking ref. Without this pre-flight check the failure would surface as a raw `git switch` error mid-release.
+
+**Fix:** Create the branch and publish it, or correct `release.branch` in `.pk.json`.
 
 ### tag already exists
 

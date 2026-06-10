@@ -100,6 +100,45 @@ This layer builds on three conventions:
 
 **GitHub CLI is optional but useful.** pk commands use git directly, not `gh`. But `gh` helps with the workflow around releases: monitoring CI runs, creating PRs, checking workflow status. See [Resources](resources.md#github-cli) for common commands.
 
+## Moving between setups
+
+The layers describe what to install; this section covers changing how you work — most commonly from loose pushes to `main` to a protected `main` with a `develop` working branch and release management.
+
+**`pk status` is the dashboard.** Its Readiness section evaluates the gap between what `.pk.json` declares and what the repository can actually do (baseline tag, branches on origin), and names the exact command that closes each gap. Re-run it after each step; when it reports `ready for pk changelog / pk release`, the transition is done. See [pk status](pk-status.md#readiness).
+
+**`/conventions` walks the transition.** It detects the current setup (branches, remotes, tags, unpushed commits), asks where you want to land, writes `.pk.json`, and offers to create and publish a missing working branch — previewing the exact commands and acting only on your confirmation.
+
+### Main-only to main/develop
+
+Starting point: everything on `main`, pushed straight to origin. Target: `main` protected and release-managed, day-to-day work on `develop`.
+
+1. **Configure the target** in `.pk.json` (or let `/conventions` do it):
+
+   ```json
+   {
+     "guard": { "branches": ["main"] },
+     "release": { "branch": "main" }
+   }
+   ```
+
+2. **Create and publish `develop`.** One judgment call first: if local `main` is ahead of `origin/main`, decide where `develop` starts. Branching from local `main` carries the unpushed commits onto `develop` (they reach `main` again at the next release); branching from `origin/main` leaves them on `main`, which is now protected — so carrying them is usually what you want. Check with `git log origin/main..main --oneline`, then:
+
+   ```bash
+   git branch develop main      # or: git branch develop origin/main
+   git switch develop
+   git push -u origin develop
+   ```
+
+3. **Anchor the baseline tag** if there is none: `pk setup --baseline --push` (see [Layer 3](#layer-3-release-management) for `--at` placement).
+
+4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release`. From here, work lands on `develop` and `/ship` publishes releases to `main`.
+
+Until the transition is complete, the release commands point at the next step rather than dead-ending: `pk changelog` on a protected `main` with no other branch suggests creating `develop`, and `pk release` refuses with the same hint when the working branch is missing.
+
+### Trunk flow to merge flow
+
+Already releasing from a single branch (no `release.branch`)? Adding `release.branch` to `.pk.json` switches `pk release` from tag-and-push-current-branch to merge-then-tag-then-push. The steps are the same as above: add the config, create the working branch, confirm with `pk status`. Releases published from trunk flow remain valid; the next release simply merges instead.
+
 ## Layer 4: Migration
 
 **When:** Switching from commit-and-tag-version, standard-version, semantic-release, or similar tools.

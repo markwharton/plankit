@@ -406,6 +406,7 @@ func Run(cfg Config) error {
 	if inGitRepo && pkConf.Release.Branch == "" {
 		fmt.Fprintln(stderr, "No release branch in .pk.json. Run /conventions in Claude Code to set guard.branches and release.branch.")
 		msg.Itemf(stderr, "Without release.branch, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
+		msg.Hintf(stderr, "To check what's configured and ready: pk status")
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")

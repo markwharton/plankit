@@ -67,7 +67,7 @@ Modes live in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook com
 | Command | Description |
 |---------|-------------|
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
-| `pk status` | Report plankit configuration state. [Details](docs/pk-status.md) |
+| `pk status` | Report plankit configuration state and release readiness. [Details](docs/pk-status.md) |
 | `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
 | `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
@@ -92,7 +92,7 @@ Skills add a preview+confirm cycle and handle the sequencing. The underlying pk 
 
 ## Documentation
 
-- [Adoption](docs/adoption.md): layered adoption from foundation to release management
+- [Adoption](docs/adoption.md): layered adoption from foundation to release management, and moving between setups
 - [Anti-Patterns](docs/anti-patterns.md): failure modes identified through real project experience
 - [Architecture](docs/architecture.md): three-layer model, provider boundaries, multi-environment design
 - [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
