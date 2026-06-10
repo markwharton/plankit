@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.23.0] - 2026-06-10
+
+### Added
+
+- namespace shipped rules under .claude/rules/plankit/ (887cd14)
+- show push-guard mode in pk status (c8d1694)
+- move guard/preserve modes into .pk.json; bare hook commands (c376623)
+
+### Changed
+
+- extract mode-validation helper in main (ed1644f)
+- centralize repeated path literals in internal/paths (a719a9b)
+
+### Documentation
+
+- add established-repo migration guidance to adoption guide (7bbf9c9)
+- document .pk.json modes; conventions skill field-merges guard (1c9169f)
+
+### Maintenance
+
+- recalibrate footprint to claude-fable-5; guard-eval tests the .pk.json push path (22bae88)
+
 ## [v0.22.0] - 2026-06-07
 
 ### Added
@@ -868,3 +890,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.21.0]: https://github.com/markwharton/plankit/compare/v0.20.3...v0.21.0
 [v0.21.1]: https://github.com/markwharton/plankit/compare/v0.21.0...v0.21.1
 [v0.22.0]: https://github.com/markwharton/plankit/compare/v0.21.1...v0.22.0
+[v0.23.0]: https://github.com/markwharton/plankit/compare/v0.22.0...v0.23.0
