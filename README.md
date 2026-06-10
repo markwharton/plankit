@@ -22,7 +22,7 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 - **Release management:** automated changelogs and tagged releases from your commit history
 
 <!-- shipped-footprint:start -->
-Always-on rules footprint: ≈4,829 tokens (estimated, calibrated against claude-opus-4-8) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
+Always-on rules footprint: ≈4,829 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
 <!-- shipped-footprint:end -->
 
 After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk release` with preview+confirm at each step.

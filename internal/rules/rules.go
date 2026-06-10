@@ -206,9 +206,10 @@ func parseFrontmatter(content string) (body string, fields map[string]string) {
 // the provisional seed.
 const (
 	// calibrationModel is the model whose tokenizer charsPerToken was measured against.
-	calibrationModel = "claude-opus-4-8"
+	calibrationModel = "claude-fable-5"
 	// charsPerToken is the calibrated characters-per-token ratio for plankit's
 	// shipped markdown. chars/4 runs ~25% low for this content; ~3 is closer.
+	// Measured identical (2.93) on claude-opus-4-8 and claude-fable-5.
 	charsPerToken = 2.93
 	// calibrated reports whether charsPerToken came from a real count_tokens
 	// measurement (evals/calibrate --write) rather than the provisional seed.
