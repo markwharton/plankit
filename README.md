@@ -51,16 +51,16 @@ This configures `.claude/settings.json` with hooks and installs skills. Restart 
 ### Modes
 
 ```bash
-pk setup                       # Default: block guard, manual preserve
+pk setup                       # Defaults: guard block, push-guard block, preserve manual
 pk setup --baseline            # Anchor pk changelog with v0.0.0 tag
 pk setup --guard ask           # Prompt instead of blocking on protected branches
-pk setup --guard off           # No branch protection hooks
-pk setup --push-guard block    # Block agent git push on any branch (default: off)
-pk setup --preserve auto       # Auto: preserve plans on ExitPlanMode
-pk setup --preserve off        # No plan preservation hooks
+pk setup --guard off           # Disable branch protection
+pk setup --push-guard off      # Allow the agent to git push (default: block)
+pk setup --preserve auto       # Auto-preserve plans on ExitPlanMode
+pk setup --preserve off        # Disable plan preservation
 ```
 
-Re-run setup to upgrade managed files. Pass `--guard` or `--preserve` explicitly to change modes.
+Modes live in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook commands are bare. Re-run setup to upgrade managed files; pass `--guard`/`--push-guard`/`--preserve` to change a mode, or edit `.pk.json` directly.
 
 ## Commands
 

@@ -10,46 +10,40 @@ Block git mutations on protected branches, and guard `git push` against unbidden
 
 1. Reads the Bash command from the hook payload.
 2. Splits compound commands (`&&`, `||`, `;`) and parses each subcommand's git operation, skipping git global options so `git -C dir push` and `git -c k=v commit` are recognized (not just `git push`/`git commit`).
-3. **Branch policy:** if any subcommand mutates (`commit`, `push`, `merge`, `rebase`, `reset`), reads `guard.branches` from `.pk.json`, gets the current branch (`git rev-parse --abbrev-ref HEAD`), and if it is protected, decides per the branch mode (`--ask` → ask, else deny).
-4. **Push policy:** if any subcommand is a `git push`, decides per `--push-guard` (`block` → deny, `ask` → ask, `off` → allow) regardless of branch.
+3. **Branch policy:** if any subcommand mutates (`commit`, `push`, `merge`, `rebase`, `reset`), reads `guard.branches` and `guard.mode` from `.pk.json`, gets the current branch (`git rev-parse --abbrev-ref HEAD`), and if it is protected, decides per `guard.mode` (`block` → deny, `ask` → ask, `off` → allow; default `block`).
+4. **Push policy:** if any subcommand is a `git push`, decides per `guard.push` from `.pk.json` (`block` → deny, `ask` → ask, `off` → allow; default `block`) regardless of branch.
 5. **Strongest wins:** when both policies apply (e.g. a push on a protected branch), the strongest decision is emitted (deny > ask > allow), so a protected-branch push is never downgraded.
 
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) and non-git commands are always allowed.
 
-The branch policy defaults to blocking outright; with `--ask` it prompts instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The push policy is independent and off unless `--push-guard` is set.
+The branch policy defaults to `block`; `guard.mode: ask` prompts instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The push policy is independent and also defaults to `block`.
 
 **pk-mediated pushes pass through.** `pk release`, `pk preserve --push`, and `pk setup --baseline --push` reach the hook as the command `pk release` etc. (not `git push`), so they are allowed; their internal push is a child process of `pk` via `exec.Command`, not a Bash tool call, so it is never hooked. The agent cannot hand-push under `--push-guard block`; pk's deliberate publish flows still work.
 
 ## Flags
 
-- **--ask** — Branch policy: prompt the user instead of blocking on a protected branch. Use this for teams that want emergency override capability without disabling the hook.
-- **--push-guard `<block|ask|off>`** — Push policy for `git push` on any branch: `block` denies, `ask` prompts, `off` (default) allows. Set it via `pk setup --push-guard`.
+`pk guard` reads its modes from `.pk.json`. These flags are **deprecated** overrides, kept only so an old hook that still passes them keeps working until `pk setup` rewrites the hook bare. Set `guard.mode` / `guard.push` in `.pk.json` instead.
+
+- **--ask** *(deprecated)* — Force ask mode for the branch policy. Use `guard.mode: "ask"`.
+- **--push-guard `<block|ask|off>`** *(deprecated)* — Force the push policy. Use `guard.push`.
 
 ## Configuration
 
-Add a `guard` key to `.pk.json` in the project root:
+The `guard` key in `.pk.json` holds the branches plus the two modes (`pk setup` writes `mode`/`push`; `/conventions` or you set `branches`):
 
 ```json
 {
   "guard": {
-    "branches": ["main"]
+    "branches": ["main", "production"],
+    "mode": "block",
+    "push": "block"
   }
 }
 ```
 
-Multiple branches can be protected:
+Any absent key falls back to its default (`mode` `block`, `push` `block`); `"off"` is an explicit, distinct value. With no `guard.branches`, the **branch** policy is a no-op, but the **push** policy still applies (default `block`), so the agent's `git push` is blocked unless `guard.push` is `"off"`.
 
-```json
-{
-  "guard": {
-    "branches": ["main", "production"]
-  }
-}
-```
-
-If `.pk.json` does not exist or has no `guard` key, `pk guard` is a no-op — the hook exits silently and allows all commands.
-
-The `/conventions` skill can configure guard for you. When you specify protected branches, it creates the `.pk.json` guard configuration automatically.
+The `/conventions` skill can set `guard.branches` for you, field-merging it into the `guard` object without disturbing the modes.
 
 ## Hook protocol
 

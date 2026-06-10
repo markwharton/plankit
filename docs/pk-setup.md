@@ -23,7 +23,7 @@ Setup refuses to install outside a git working tree by default — most pk comma
 
 ## How it works
 
-1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. Existing user hooks are preserved — only plankit hooks are added or updated.
+1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. The hook commands are **bare** — guard/preserve behavior modes live in `.pk.json`, not the command. `pk setup` writes those modes (`guard.mode`, `guard.push`, `preserve.mode`) to `.pk.json`, resolved by precedence: your flag → existing `.pk.json` value → migrated from an old flag-bearing hook → default (`block`/`block`/`manual`); your other `.pk.json` keys (`guard.branches`, `release`, `changelog`) are field-merged, never replaced. Existing user hooks are preserved too — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** with critical rules if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
 3. **Installs rules** to `.claude/rules/plankit/`: development-standards, git-discipline, model-behavior, plankit-tooling. They go under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files; Claude Code discovers rules recursively, so they still load automatically. These contain the detailed guidelines.
 4. **Installs skills** to `.claude/skills/`: `/conventions`, `/preserve`, `/ship`. User-modified skills are skipped unless `--force` is used.
@@ -34,9 +34,11 @@ After setup, restart Claude Code to apply changes.
 
 ## Flags
 
-- **--guard** — Guard mode: `block`, `ask`, or `off` (default: `block`). Controls whether `pk guard` blocks git mutations outright, prompts the user to confirm, or is disabled entirely on protected branches.
-- **--push-guard** — Push-guard mode: `block`, `ask`, or `off` (default: `off`). Controls whether `pk guard` denies, prompts on, or allows `git push` on any branch (independent of the branch list). Rides the same guard hook, so it has no effect when `--guard off`. See [pk guard](pk-guard.md).
-- **--preserve** — Plan preservation mode: `manual`, `auto`, or `off` (default: `manual`).
+These three mode flags are written to `.pk.json` (not the hook command). When omitted, the mode is resolved from your existing `.pk.json`, migrated from an old hook, or the default — so a re-run never silently resets a mode.
+
+- **--guard** — Guard mode written to `guard.mode`: `block`, `ask`, or `off` (default when unset: `block`). Whether `pk guard` blocks git mutations outright, prompts, or does nothing on protected branches.
+- **--push-guard** — Push-guard mode written to `guard.push`: `block`, `ask`, or `off` (default when unset: `block`). Whether `pk guard` denies, prompts on, or allows `git push` on any branch (independent of the branch list). See [pk guard](pk-guard.md).
+- **--preserve** — Plan preservation mode written to `preserve.mode`: `auto`, `manual`, or `off` (default when unset: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
 - **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
 - **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.

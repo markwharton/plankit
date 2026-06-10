@@ -2,7 +2,7 @@
 name: conventions
 description: Discover project conventions and configure .pk.json by analyzing the codebase
 disable-model-invocation: true
-pk_sha256: f0d419bbe02a5e853760be8842b0daac66c91c93ef69b6998030c2f22b11af22
+pk_sha256: c7066f9f38f16a07738fc397473e9eef27e0b3d1f8f4003998fc5a27b6e0dff2
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
@@ -42,7 +42,7 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    - Are there branches that should never receive direct commits? (e.g., `main`, `production`)
    - Should releases merge into a separate branch before pushing? Which one? (e.g., `main`)
    - Custom changelog commit types beyond the defaults, or use the defaults?
-5. Create or update `.pk.json` based on step 4 answers. If the user specified no protected branches, no release branch, and no custom changelog types, skip this step — do not create an empty `.pk.json`. Otherwise include only the opted-in keys: `{"guard": {"branches": [...]}}`, `{"release": {"branch": "..."}}`, `{"changelog": {"types": [...]}}`. If `.pk.json` already exists, merge the keys — do not overwrite existing config. Sort top-level keys alphabetically.
+5. Create or update `.pk.json` based on step 4 answers. If the user specified no protected branches, no release branch, and no custom changelog types, skip this step — do not create an empty `.pk.json`. Otherwise include only the opted-in keys: `{"guard": {"branches": [...]}}`, `{"release": {"branch": "..."}}`, `{"changelog": {"types": [...]}}`. If `.pk.json` already exists, merge the keys — do not overwrite existing config. **Field-merge the `guard` object:** `pk setup` writes `guard.mode` and `guard.push` (and `preserve.mode`) into `.pk.json`, so when you add `guard.branches` merge it into the existing `guard` object and keep those mode fields — never replace the whole object. Sort top-level keys alphabetically.
 6. Draft a `## Project Conventions` section with the discovered conventions. Each convention should be a concise bullet point. Group technical conventions and business/domain rules under separate subheadings. Only include a "never commit directly to X" convention if the user specified protected branches in step 4.
 7. Show the proposed section to the user and ask for confirmation before writing.
 8. Offer a baseline nudge if versioned releases are planned. If the user opted into release or changelog customization in step 4 (non-"none" answer to either), check for a version tag by running `git tag --list 'v*' --sort=-v:refname`. If the output is empty or nothing parses as semver, tell the user: "No version tags found. To anchor `pk changelog`, run `pk setup --baseline --push`. Use `--at <ref>` to fold prior commits into the first changelog entry." This is advisory — do not run the command from the skill. Remote state changes belong in explicit user-invoked commands.

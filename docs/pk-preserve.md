@@ -26,7 +26,17 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 
 - **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. When no plan is found, prints a diagnostic to stderr explaining why (e.g., path didn't match the `.claude/plans/*.md` pattern, file not found).
 - **--push** — Push to origin after committing. By default, `pk preserve` commits only — push when you're ready.
-- **--notify** — Output a notification about the plan without preserving it. Used in manual mode to remind the user to run `/preserve` when ready. The response includes `additionalContext` so Claude is aware of the plan and can inform the user.
+- **--notify** *(deprecated)* — Force manual (notify) mode: output a notification about the plan without preserving it. The mode now lives in `.pk.json` (`preserve.mode`); this flag is kept only so an old `pk preserve --notify` hook keeps working until `pk setup` rewrites it bare.
+
+## Configuration
+
+`preserve.mode` in `.pk.json` controls how the automatic `ExitPlanMode` hook behaves:
+
+- **auto** — commit the plan to `docs/plans/` immediately.
+- **manual** *(default)* — notify you to run `/preserve` when ready; nothing is committed.
+- **off** — do nothing.
+
+An explicit `/preserve` always commits, regardless of the mode. Set it with `pk setup --preserve <mode>`. See [.pk.json](pk-json.md#preserve).
 
 ## Hook protocol
 

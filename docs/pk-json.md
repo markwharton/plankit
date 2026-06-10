@@ -4,18 +4,19 @@ Project-level configuration for pk. Each top-level key maps to a pk subcommand.
 
 ## Location
 
-`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned: `pk setup` does not create or modify it, `pk teardown` does not remove it. The `/conventions` skill can generate it for you during project setup.
+`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned and hand-editable. `pk setup` writes the **behavior modes** (`guard.mode`, `guard.push`, `preserve.mode`) into it but never touches your other keys; `pk teardown` does not remove it. The `/conventions` skill fills in the **targets** (`guard.branches`, `release.branch`, changelog config).
 
-If `.pk.json` does not exist, all commands use their defaults. An empty file (`{}`) is equivalent to no file.
+If `.pk.json` does not exist, all commands use their defaults. An empty file (`{}`) is equivalent to no file. Any mode key that is absent falls back to its default; `"off"` is an explicit value, distinct from absence.
 
 ## Schema
 
-Three top-level keys, each optional:
+Four top-level keys, each optional:
 
 ```json
 {
   "changelog": { ... },
   "guard": { ... },
+  "preserve": { ... },
   "release": { ... }
 }
 ```
@@ -85,20 +86,46 @@ pk pre-expands `$VERSION` before passing the command to the shell, so hooks work
 
 ## guard
 
-Configuration for `pk guard`. All fields are optional.
+Configuration for `pk guard`. All fields are optional. `pk setup` writes `mode` and `push`; `/conventions` (or you) sets `branches`.
+
+### guard.mode
+
+How the branch policy acts on a git mutation on a protected branch: `block` (deny), `ask` (prompt), or `off` (do nothing). Defaults to `block`. Set it with `pk setup --guard <mode>`.
+
+### guard.push
+
+The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt), or `off` (allow). Defaults to `block`. This blocks the *agent's* direct pushes within a Claude Code session; your own terminal pushes and pk's publish flows (`pk release`, `pk preserve --push`) are unaffected. Set it with `pk setup --push-guard <mode>`.
 
 ### guard.branches
 
-Array of branch names where git mutations are blocked. When the current branch matches any entry, `pk guard` blocks (or prompts, in ask mode) git mutations like `commit`, `push`, `merge`, and `rebase`.
+Array of branch names where git mutations are blocked (subject to `guard.mode`). When the current branch matches any entry, `pk guard` blocks (or prompts, in ask mode) git mutations like `commit`, `push`, `merge`, and `rebase`.
 
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) are always allowed.
 
-If omitted or empty, `pk guard` is a no-op.
+If omitted or empty, the branch policy is a no-op (no branches to protect); `guard.push` still applies.
 
 ```json
 {
   "guard": {
-    "branches": ["main", "production"]
+    "branches": ["main", "production"],
+    "mode": "block",
+    "push": "block"
+  }
+}
+```
+
+## preserve
+
+Configuration for `pk preserve`. `pk setup` writes `mode`.
+
+### preserve.mode
+
+How the automatic plan-preservation hook behaves when you exit plan mode: `auto` (commit the plan to `docs/plans/`), `manual` (notify you to run `/preserve`), or `off` (do nothing). Defaults to `manual`. Set it with `pk setup --preserve <mode>`. An explicit `/preserve` always commits, regardless of this mode.
+
+```json
+{
+  "preserve": {
+    "mode": "manual"
   }
 }
 ```
@@ -146,12 +173,17 @@ No `.pk.json` needed. `pk changelog` and `pk release` work on the current branch
 
 ### Merge flow (develop + main)
 
-Uses all 14 default types (no `types` key needed):
+Uses all 14 default types (no `types` key needed). `mode`/`push`/`preserve.mode` are what `pk setup` writes by default:
 
 ```json
 {
   "guard": {
-    "branches": ["main"]
+    "branches": ["main"],
+    "mode": "block",
+    "push": "block"
+  },
+  "preserve": {
+    "mode": "manual"
   },
   "release": {
     "branch": "main"

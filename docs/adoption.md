@@ -43,7 +43,7 @@ pk setup
 - **Three skills:** `/conventions` (project conventions), `/preserve` (plan preservation), `/ship` (release workflow)
 - **Hooks:** branch guard, plan protection, plan preservation
 
-**No configuration needed.** No `.pk.json`, no tags, no additional setup. Guard is installed but is a no-op without branches to protect. Preserve works in manual mode by default; pass `--preserve auto` to `pk setup` to preserve plans automatically on exit from plan mode. Pass `--guard off` or `--preserve off` to disable features you don't need.
+**Sensible defaults, no decisions required.** `pk setup` writes the behavior modes to `.pk.json` (`guard.mode: block`, `guard.push: block`, `preserve.mode: manual`) and nothing else — no branches, no tags. The branch guard stays a no-op until you add `guard.branches`, but **push-guard is active by default**: within a Claude Code session the agent can't `git push` directly (you push from your terminal, or via `pk release` / `pk preserve`). Preserve notifies you to run `/preserve` on plan approval. Change any mode with `pk setup --guard/--push-guard/--preserve <mode>` or by editing `.pk.json`; pass `off` to disable a feature.
 
 **Safe for existing projects.** `pk setup` never overwrites files it didn't create. Files without pk's SHA marker are skipped. Existing hooks in `.claude/settings.json` are preserved. See [Managed file protection](pk-setup.md#managed-file-protection) for details.
 
@@ -138,6 +138,7 @@ Everything that can connect into a plankit release — most projects wire up onl
 
 - [ ] **Baseline tag** — a semver `v*` tag for `pk changelog` to diff from (`pk setup --baseline`, `--at <ref>` to fold prior history).
 - [ ] **`guard.branches` / `release.branch`** — protected branch and release target in `.pk.json`.
+- [ ] **`guard.mode` / `guard.push` / `preserve.mode`** — behavior modes in `.pk.json` (block/ask/off, auto/manual/off); `pk setup` writes them, or set via `pk setup --guard/--push-guard/--preserve`.
 - [ ] **`CHANGELOG.md`** — leave as-is (pk appends above it) or, if you want uniformity, reconcile older entries to Keep a Changelog (lossy).
 - [ ] **`changelog.types`** — only for custom commit-type → section mapping; defaults cover the standard set.
 - [ ] **`changelog.showScope`** — include the commit scope in changelog entries.
