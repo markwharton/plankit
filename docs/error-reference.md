@@ -9,7 +9,7 @@ Common errors from pk commands, what causes them, and how to recover.
 ```
 Error: no version tags found
   To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push
-  Or tag a specific version manually (e.g., git tag v0.0.0 && git push origin v0.0.0)
+  or: git tag v0.0.0 && git push origin v0.0.0
 ```
 
 **Cause:** `pk changelog` scans commits since the most recent semver tag. Without a tag, there is no starting point.
@@ -20,7 +20,7 @@ Error: no version tags found
 
 ```
 Error: no version tags found locally
-  Origin has tags — fetch them: git fetch --tags
+  Origin has tags; fetch them: git fetch --tags
 ```
 
 **Cause:** The remote has tags but they are not present locally. Common in shallow-clone cloud sandboxes.
@@ -30,7 +30,7 @@ Error: no version tags found locally
 ### protected branch
 
 ```
-Error: you're on "main" which is a protected branch — switch to your development branch first
+Error: you're on "main" which is a protected branch; switch to your development branch first
 ```
 
 **Cause:** `pk changelog` refuses to create release commits on branches listed in `guard.branches`.
@@ -40,8 +40,8 @@ Error: you're on "main" which is a protected branch — switch to your developme
 ### branch not on origin
 
 ```
-Error: develop does not exist on origin — push it first:
-  git push -u origin develop
+Error: develop does not exist on origin
+  To push it: git push -u origin develop
 ```
 
 **Cause:** `pk changelog` checks that the current branch exists on the remote before committing. Without this, `pk changelog` succeeds but `pk release` fails, leaving a Release-Tag commit that requires a manual push to continue.
@@ -51,7 +51,7 @@ Error: develop does not exist on origin — push it first:
 ### working tree not clean
 
 ```
-Error: working tree is not clean — commit or stash changes first
+Error: working tree is not clean; commit or stash changes first
 ```
 
 **Cause:** `pk changelog` and `pk release` require a clean working tree before proceeding.
@@ -61,7 +61,7 @@ Error: working tree is not clean — commit or stash changes first
 ### HEAD already pushed (--undo)
 
 ```
-Error: HEAD is already on the remote — cannot undo a pushed commit
+Error: HEAD is already on the remote; cannot undo a pushed commit
 ```
 
 **Cause:** `pk changelog --undo` only rewinds unpushed commits to avoid rewriting shared history.
@@ -85,7 +85,7 @@ Error: changelog for v0.19.9 is already pending (HEAD has Release-Tag: v0.19.9)
 ### no Release-Tag trailer
 
 ```
-Error: no Release-Tag trailer on HEAD — run 'pk changelog' first
+Error: no Release-Tag trailer on HEAD; run pk changelog first
 ```
 
 **Cause:** `pk release` reads the version from a git trailer on HEAD that `pk changelog` writes.
@@ -95,7 +95,7 @@ Error: no Release-Tag trailer on HEAD — run 'pk changelog' first
 ### on the release branch
 
 ```
-Error: you're on the release branch "main" — switch to your working branch first
+Error: you're on the release branch "main"; switch to your working branch first
 ```
 
 **Cause:** `pk release` merges from the source branch into the release branch. Running it directly on the release branch would skip the merge.
@@ -105,7 +105,7 @@ Error: you're on the release branch "main" — switch to your working branch fir
 ### tag already exists
 
 ```
-Error: tag v0.8.1 already exists locally — nothing to release
+Error: tag v0.8.1 already exists locally; nothing to release
 ```
 
 **Cause:** The tag from the `Release-Tag` trailer already exists. The release was already completed or partially completed.
@@ -115,8 +115,8 @@ Error: tag v0.8.1 already exists locally — nothing to release
 ### branch not on origin
 
 ```
-Error: develop does not exist on origin — push it first:
-  git push -u origin develop
+Error: develop does not exist on origin
+  To push it: git push -u origin develop
 ```
 
 **Cause:** `pk release` verifies the source branch exists on the remote before proceeding.
@@ -126,7 +126,7 @@ Error: develop does not exist on origin — push it first:
 ### behind remote
 
 ```
-Error: local develop is behind origin/develop — pull first
+Error: local develop is behind origin/develop; pull first
 ```
 
 **Cause:** Someone pushed commits to the branch since your last pull.
@@ -136,8 +136,7 @@ Error: local develop is behind origin/develop — pull first
 ### not fast-forward
 
 ```
-Error: merge failed — main has diverged from develop (not fast-forward).
-Resolve on main manually, then try again.
+Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
 
 **Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
@@ -205,7 +204,7 @@ Error: --strict requires --lint
 ### lint findings
 
 ```
-pk rules --lint found 2 issue(s):
+Found 2 issue(s):
   .claude/rules/example.md: 12:3 hidden/format U+200B [safety]
   .claude/rules/example.md: line 40: em dash (U+2014) [style]
 ```
@@ -265,7 +264,8 @@ pk preserve: not a git repository: /path/to/project
 ### pinned version mismatch (binary behind)
 
 ```
-Note: .claude/install-pk.sh pins v0.19.2 but you're running 0.19.1 — run 'go install github.com/markwharton/plankit/cmd/pk@latest' to update
+Note: .claude/install-pk.sh pins v0.19.2 but you're running 0.19.1
+  To update: go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
 **Cause:** A newer version was released and the bootstrap script was updated, but the local binary hasn't been reinstalled yet.
@@ -275,7 +275,8 @@ Note: .claude/install-pk.sh pins v0.19.2 but you're running 0.19.1 — run 'go i
 ### pinned version mismatch (script behind)
 
 ```
-Note: .claude/install-pk.sh pins v0.18.0 but you're running 0.19.0 — re-run 'pk setup' to update
+Note: .claude/install-pk.sh pins v0.18.0 but you're running 0.19.0
+  To refresh it: pk setup
 ```
 
 **Cause:** The local binary is newer than the version pinned in the bootstrap script. Cloud sandboxes will install the pinned version, not the version running locally.
