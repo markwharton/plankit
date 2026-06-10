@@ -100,7 +100,7 @@ func Run(cfg Config) (bool, error) {
 
 	// Brief mode: one-line summary.
 	if cfg.Brief {
-		return runBrief(cfg, configured, hooks, isGit)
+		return runBrief(cfg, configured, pkConf, len(hooks) > 0, isGit)
 	}
 
 	if !configured {
@@ -128,25 +128,16 @@ func Run(cfg Config) (bool, error) {
 		fmt.Fprintln(stderr, "")
 	}
 
-	// Modes (inferred from hook commands).
-	modes := inferModes(hooks)
-	if modes.Guard != "" || modes.Preserve != "" {
+	// Modes (from .pk.json, with defaults resolved). Shown when plankit hooks
+	// are installed. push is surfaced only when guard is active (block/ask).
+	if len(hooks) > 0 {
+		guardMode := pkConf.Guard.ResolvedMode()
 		fmt.Fprintln(stderr, "Modes:")
-		if modes.Guard != "" {
-			fmt.Fprintf(stderr, "  guard:    %s\n", modes.Guard)
+		fmt.Fprintf(stderr, "  guard:    %s\n", guardMode)
+		if guardMode == "block" || guardMode == "ask" {
+			fmt.Fprintf(stderr, "  push:     %s\n", pkConf.Guard.ResolvedPush())
 		}
-		// push-guard rides on the guard command; surface it only when guard is
-		// active (block/ask). Show "off" when guard is on but no --push-guard flag.
-		if modes.Guard == "block" || modes.Guard == "ask" {
-			push := modes.PushGuard
-			if push == "" {
-				push = "off"
-			}
-			fmt.Fprintf(stderr, "  push:     %s\n", push)
-		}
-		if modes.Preserve != "" {
-			fmt.Fprintf(stderr, "  preserve: %s\n", modes.Preserve)
-		}
+		fmt.Fprintf(stderr, "  preserve: %s\n", pkConf.Preserve.ResolvedMode())
 		fmt.Fprintln(stderr, "")
 	}
 
@@ -209,7 +200,7 @@ func Run(cfg Config) (bool, error) {
 
 // runBrief prints a one-line status summary. Useful for scripting.
 // Returns (configured, error). configured mirrors the input so Run can return runBrief's tuple directly.
-func runBrief(cfg Config, configured bool, hooks []hookSummary, isGit bool) (bool, error) {
+func runBrief(cfg Config, configured bool, pkConf config.PkConfig, hasHooks bool, isGit bool) (bool, error) {
 	stderr := cfg.Stderr
 	if !configured {
 		note := ""
@@ -219,16 +210,14 @@ func runBrief(cfg Config, configured bool, hooks []hookSummary, isGit bool) (boo
 		fmt.Fprintf(stderr, "plankit: not configured%s\n", note)
 		return false, nil
 	}
-	modes := inferModes(hooks)
 	parts := []string{"configured"}
-	if modes.Guard != "" {
-		parts = append(parts, "guard="+modes.Guard)
-	}
-	if modes.PushGuard != "" {
-		parts = append(parts, "push="+modes.PushGuard)
-	}
-	if modes.Preserve != "" {
-		parts = append(parts, "preserve="+modes.Preserve)
+	if hasHooks {
+		guardMode := pkConf.Guard.ResolvedMode()
+		parts = append(parts, "guard="+guardMode)
+		if guardMode == "block" || guardMode == "ask" {
+			parts = append(parts, "push="+pkConf.Guard.ResolvedPush())
+		}
+		parts = append(parts, "preserve="+pkConf.Preserve.ResolvedMode())
 	}
 	if !isGit {
 		parts = append(parts, "not-a-git-repo")
@@ -324,16 +313,6 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 		}
 	}
 	return false
-}
-
-// inferModes determines plankit modes from hook commands.
-// Returns a zero setup.Modes if not inferable.
-func inferModes(hooks []hookSummary) setup.Modes {
-	var commands []string
-	for _, h := range hooks {
-		commands = append(commands, h.commands...)
-	}
-	return setup.InferModesFromCommands(commands)
 }
 
 // scanManaged scans a directory for pk-managed files and returns them sorted.

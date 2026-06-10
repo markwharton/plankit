@@ -400,6 +400,45 @@ func TestRun_pushGuardIgnoresCommit(t *testing.T) {
 	}
 }
 
+// The following tests drive modes from .pk.json (no flag override): ask=false
+// and pushGuard="" mean "read guard.mode / guard.push from config".
+
+func TestRun_guardModeOffFromConfig(t *testing.T) {
+	cfg := `{"guard":{"branches":["main"],"mode":"off"}}`
+	if out := decision(t, "git commit -m x", cfg, "main", false, ""); out != "" {
+		t.Errorf("out = %q, want empty (guard mode off in .pk.json)", out)
+	}
+}
+
+func TestRun_guardModeAskFromConfig(t *testing.T) {
+	cfg := `{"guard":{"branches":["main"],"mode":"ask"}}`
+	out := decision(t, "git commit -m x", cfg, "main", false, "")
+	if !strings.Contains(out, `"permissionDecision":"ask"`) {
+		t.Errorf("out = %q, want ask (guard.mode ask from config)", out)
+	}
+}
+
+func TestRun_pushFromConfig(t *testing.T) {
+	if out := decision(t, "git push", `{"guard":{"branches":["main"],"push":"block"}}`, "feature", false, ""); !strings.Contains(out, `"deny"`) {
+		t.Errorf("out = %q, want deny (guard.push block from config)", out)
+	}
+	if out := decision(t, "git push", `{"guard":{"branches":["main"],"push":"off"}}`, "feature", false, ""); out != "" {
+		t.Errorf("out = %q, want empty (guard.push off from config)", out)
+	}
+}
+
+func TestRun_deprecatedFlagsOverrideConfig(t *testing.T) {
+	// --ask forces branch ask even when guard.mode says block.
+	out := decision(t, "git commit -m x", `{"guard":{"branches":["main"],"mode":"block"}}`, "main", true, "")
+	if !strings.Contains(out, `"permissionDecision":"ask"`) {
+		t.Errorf("out = %q, want ask (--ask overrides config)", out)
+	}
+	// --push-guard block forces deny even when guard.push says off.
+	if out := decision(t, "git push", `{"guard":{"branches":["main"],"push":"off"}}`, "feature", false, "block"); !strings.Contains(out, `"deny"`) {
+		t.Errorf("out = %q, want deny (--push-guard overrides config)", out)
+	}
+}
+
 func TestRun_pushGuardDetectsDashCPush(t *testing.T) {
 	out := decision(t, "git -C sub push", guardMainOnly, "feature", false, "block")
 	if !strings.Contains(out, `"permissionDecision":"deny"`) {

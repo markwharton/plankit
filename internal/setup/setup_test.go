@@ -120,8 +120,67 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify stderr output.
-	if !strings.Contains(stderr.String(), "guard mode: block, preserve mode: auto") {
-		t.Errorf("stderr = %q, want guard and preserve modes mentioned", stderr.String())
+	if !strings.Contains(stderr.String(), "guard: block, push: block, preserve: auto") {
+		t.Errorf("stderr = %q, want resolved modes mentioned", stderr.String())
+	}
+}
+
+// TestRun_migratesModesToPkJSON verifies a re-run lifts modes out of old-style
+// (flag-bearing) hooks into .pk.json, preserves the existing guard.branches and
+// release keys (field-merge), and rewrites the hooks bare.
+func TestRun_migratesModesToPkJSON(t *testing.T) {
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	oldSettings := `{"hooks":{"PreToolUse":[{"matcher":"Bash|PowerShell","hooks":[{"type":"command","command":"pk guard --ask --push-guard block"}]}],"PostToolUse":[{"matcher":"ExitPlanMode","hooks":[{"type":"command","command":"pk preserve --notify"}]}]}}`
+	os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(oldSettings), 0644)
+	os.WriteFile(filepath.Join(projectDir, ".pk.json"), []byte(`{"guard":{"branches":["main"]},"release":{"branch":"main"}}`), 0644)
+
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	pk, _ := os.ReadFile(filepath.Join(projectDir, ".pk.json"))
+	for _, want := range []string{`"mode": "ask"`, `"push": "block"`, `"branches"`, `"manual"`, `"release"`} {
+		if !strings.Contains(string(pk), want) {
+			t.Errorf(".pk.json missing %q\n%s", want, string(pk))
+		}
+	}
+
+	settingsData, _ := os.ReadFile(filepath.Join(claudeDir, "settings.json"))
+	for _, flag := range []string{"--ask", "--push-guard", "--notify"} {
+		if strings.Contains(string(settingsData), flag) {
+			t.Errorf("settings.json still carries %q after migration:\n%s", flag, string(settingsData))
+		}
+	}
+}
+
+// TestRun_bareGuardMigratesPushOff verifies an existing bare `pk guard` (push
+// off in the old encoding) migrates to push:"off" — preserved, not flipped to
+// the new block default.
+func TestRun_bareGuardMigratesPushOff(t *testing.T) {
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(claudeDir, "settings.json"),
+		[]byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash|PowerShell","hooks":[{"type":"command","command":"pk guard"}]}]}}`), 0644)
+
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	pk, _ := os.ReadFile(filepath.Join(projectDir, ".pk.json"))
+	if !strings.Contains(string(pk), `"push": "off"`) {
+		t.Errorf("bare pk guard should migrate to push off, got:\n%s", string(pk))
 	}
 }
 
@@ -497,17 +556,29 @@ func TestRun_manualMode(t *testing.T) {
 		t.Fatalf("PostToolUse = %v, want 1 entry", hooks["PostToolUse"])
 	}
 
-	// Verify the command uses --notify and is synchronous (no async field).
+	// The hook is bare (mode lives in .pk.json) and synchronous (no async field).
 	hookData, _ := json.Marshal(postToolUse[0])
-	if !strings.Contains(string(hookData), "--notify") {
-		t.Errorf("PostToolUse hook = %s, want to contain --notify", string(hookData))
+	if !strings.Contains(string(hookData), `"pk preserve"`) {
+		t.Errorf("PostToolUse hook = %s, want bare \"pk preserve\"", string(hookData))
+	}
+	if strings.Contains(string(hookData), "--notify") {
+		t.Errorf("PostToolUse hook = %s, modes must not be encoded in the command", string(hookData))
 	}
 	if strings.Contains(string(hookData), "async") {
-		t.Errorf("PostToolUse hook = %s, manual mode should not be async", string(hookData))
+		t.Errorf("PostToolUse hook = %s, preserve hook should not be async", string(hookData))
 	}
 
-	if !strings.Contains(stderr.String(), "guard mode: block, preserve mode: manual") {
-		t.Errorf("stderr = %q, want guard and preserve modes mentioned", stderr.String())
+	// Manual mode is recorded in .pk.json, not the hook command.
+	pkData, err := os.ReadFile(filepath.Join(projectDir, ".pk.json"))
+	if err != nil {
+		t.Fatalf(".pk.json not written: %v", err)
+	}
+	if !strings.Contains(string(pkData), `"mode": "manual"`) {
+		t.Errorf(".pk.json = %s, want preserve mode manual", string(pkData))
+	}
+
+	if !strings.Contains(stderr.String(), "guard: block, push: block, preserve: manual") {
+		t.Errorf("stderr = %q, want resolved modes mentioned", stderr.String())
 	}
 }
 

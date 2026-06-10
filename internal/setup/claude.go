@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -102,61 +103,25 @@ const (
 	PreserveManualCommand = "pk preserve --notify"
 )
 
-// buildHookConfig returns the hook configuration for the given modes.
-func buildHookConfig(preserveMode, guardMode string) HooksConfig {
-	return buildHookConfigWithPush(preserveMode, guardMode, "off")
-}
-
-// buildHookConfigWithPush is buildHookConfig plus a push-guard mode appended to the
-// guard command as `--push-guard <mode>` when the mode is not "off".
-func buildHookConfigWithPush(preserveMode, guardMode, pushGuardMode string) HooksConfig {
-	var preToolUse []HookEntry
-
-	if guardMode != "off" {
-		guardCommand := GuardBlockCommand
-		if guardMode == "ask" {
-			guardCommand = GuardAskCommand
-		}
-		if pushGuardMode != "" && pushGuardMode != "off" {
-			guardCommand += " --push-guard " + pushGuardMode
-		}
-		preToolUse = append(preToolUse, NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: guardCommand, Shell: "bash", Timeout: 5}))
-	}
-
-	preToolUse = append(preToolUse,
-		NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
-		NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
-	)
-
-	config := HooksConfig{
-		PreToolUse: preToolUse,
-	}
-
-	switch preserveMode {
-	case "auto":
-		config.PostToolUse = preserveHookEntry(PreserveAutoCommand, "Preserving approved plan...", true, 60)
-	case "manual":
-		config.PostToolUse = preserveHookEntry(PreserveManualCommand, "Checking plan...", false, 10)
-	}
-
-	config.SessionStart = []HookEntry{
-		NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Shell: "bash", Timeout: 30}),
-	}
-
-	return config
-}
-
-// preserveHookEntry builds a PostToolUse entry for the given preserve command.
-func preserveHookEntry(command, statusMessage string, async bool, timeout int) []HookEntry {
-	return []HookEntry{
-		NewHookEntry("ExitPlanMode", Hook{
-			Type:          "command",
-			Command:       command,
-			Async:         async,
-			Shell:         "bash",
-			Timeout:       timeout,
-			StatusMessage: statusMessage,
-		}),
+// buildHooks returns the static plankit hook set. Commands are bare — the
+// guard/preserve modes live in .pk.json, not in the hook command — so the same
+// wiring is written for every project regardless of mode. The bare hooks always
+// run; each command resolves its own behavior (including "off") from .pk.json at
+// runtime. The preserve entry is sync with a 30s timeout: committing one plan
+// file is fast, and sync keeps the manual-mode notify message surfacing reliably.
+func buildHooks() HooksConfig {
+	return HooksConfig{
+		PreToolUse: []HookEntry{
+			NewHookEntry("Bash|PowerShell", Hook{Type: "command", Command: GuardBlockCommand, Shell: "bash", Timeout: 5}),
+			NewHookEntry("Edit", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
+			NewHookEntry("Write", Hook{Type: "command", Command: "pk protect", Shell: "bash", Timeout: 5}),
+		},
+		PostToolUse: []HookEntry{
+			NewHookEntry("ExitPlanMode", Hook{Type: "command", Command: PreserveAutoCommand, Shell: "bash", Timeout: 30, StatusMessage: "Preserving plan..."}),
+		},
+		SessionStart: []HookEntry{
+			NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Shell: "bash", Timeout: 30}),
+		},
 	}
 }
 
@@ -208,6 +173,12 @@ func InferModesFromCommands(commands []string) Modes {
 		}
 		if m.Preserve == "" {
 			m.Preserve = "off"
+		}
+		// Old encoding: a guard hook with no --push-guard flag meant push off.
+		// Decode it as "off" (not "") so migration preserves the existing state
+		// rather than falling through to the new block default.
+		if (m.Guard == "block" || m.Guard == "ask") && m.PushGuard == "" {
+			m.PushGuard = "off"
 		}
 	}
 	return m
@@ -331,6 +302,73 @@ func addPermission(settings *OrderedObject, perm string) error {
 	}
 	settings.Set("permissions", json.RawMessage(permsJSON))
 
+	return nil
+}
+
+// writePkModes writes guard.mode / guard.push / preserve.mode into .pk.json,
+// field-merging so existing keys (guard.branches, release, changelog) are
+// preserved. Top-level keys are sorted alphabetically to match the conventions
+// skill. .pk.json is user-owned, so no SHA marker is embedded. Returns whether
+// the file's bytes changed.
+func writePkModes(cfg Config, projectDir, guardMode, guardPush, preserveMode string) (bool, error) {
+	path := filepath.Join(projectDir, paths.PkConfig)
+	existing, readErr := cfg.ReadFile(path)
+	pk := NewOrderedObject()
+	if readErr == nil {
+		parsed, err := ParseOrderedObject(existing)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse %s: %w", path, err)
+		}
+		pk = parsed
+	}
+
+	if err := setNested(pk, "guard", "mode", guardMode); err != nil {
+		return false, err
+	}
+	if err := setNested(pk, "guard", "push", guardPush); err != nil {
+		return false, err
+	}
+	if err := setNested(pk, "preserve", "mode", preserveMode); err != nil {
+		return false, err
+	}
+	pk.SortKeys()
+
+	output, err := json.MarshalIndent(pk, "", "  ")
+	if err != nil {
+		return false, err
+	}
+	output = append(output, '\n')
+	if readErr == nil && bytes.Equal(existing, output) {
+		return false, nil
+	}
+	if err := cfg.WriteFile(path, output, 0644); err != nil {
+		return false, fmt.Errorf("failed to write %s: %w", path, err)
+	}
+	return true, nil
+}
+
+// setNested sets obj[field] = value (a JSON string) inside the nested object at
+// pk[objKey], creating the nested object if absent and preserving its other
+// fields and their order.
+func setNested(pk *OrderedObject, objKey, field, value string) error {
+	obj := NewOrderedObject()
+	if raw, ok := pk.Get(objKey); ok {
+		parsed, err := ParseOrderedObject(raw)
+		if err != nil {
+			return err
+		}
+		obj = parsed
+	}
+	v, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	obj.Set(field, json.RawMessage(v))
+	objJSON, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	pk.Set(objKey, json.RawMessage(objJSON))
 	return nil
 }
 

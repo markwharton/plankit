@@ -215,15 +215,30 @@ func TestExtractTitle(t *testing.T) {
 	}
 }
 
-// withFS sets the filesystem dependencies to real os implementations.
+// withFS sets the filesystem dependencies to real os implementations. The test
+// project defaults to preserve.mode "auto" (so the commit path is exercised)
+// unless a test writes its own .pk.json; notify tests use the Notify override.
 func withFS(cfg *Config) {
 	cfg.HomeDir = os.UserHomeDir
-	cfg.ReadFile = os.ReadFile
+	cfg.ReadFile = autoReadFile
 	cfg.WriteFile = os.WriteFile
 	cfg.Stat = os.Stat
 	cfg.MkdirAll = os.MkdirAll
 	cfg.ReadDir = os.ReadDir
 	cfg.Remove = os.Remove
+}
+
+// autoReadFile is os.ReadFile but defaults a missing .pk.json to preserve.mode
+// "auto", so tests exercise the commit path without each writing a config file.
+// A real .pk.json on disk still wins, so tests can opt into manual/off.
+func autoReadFile(path string) ([]byte, error) {
+	if strings.HasSuffix(path, ".pk.json") {
+		if data, err := os.ReadFile(path); err == nil {
+			return data, nil
+		}
+		return []byte(`{"preserve":{"mode":"auto"}}`), nil
+	}
+	return os.ReadFile(path)
 }
 
 func TestRun(t *testing.T) {
@@ -1515,7 +1530,7 @@ func TestRun_mkdirAllFailure(t *testing.T) {
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
 		HomeDir:   os.UserHomeDir,
-		ReadFile:  os.ReadFile,
+		ReadFile:  autoReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
 		Remove:    os.Remove,
@@ -1554,7 +1569,7 @@ func TestRun_writeFileFailure(t *testing.T) {
 		Now:       func() time.Time { return fixedTime },
 		GitExec:   func(dir string, args ...string) (string, error) { return "", nil },
 		HomeDir:   os.UserHomeDir,
-		ReadFile:  os.ReadFile,
+		ReadFile:  autoReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
 		Remove:    os.Remove,
@@ -1597,7 +1612,7 @@ func TestRun_gitAddFailure(t *testing.T) {
 			return "", nil
 		},
 		HomeDir:   os.UserHomeDir,
-		ReadFile:  os.ReadFile,
+		ReadFile:  autoReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
 		Remove:    os.Remove,
@@ -1643,7 +1658,7 @@ func TestRun_gitCommitFailure(t *testing.T) {
 			return "", nil
 		},
 		HomeDir:   os.UserHomeDir,
-		ReadFile:  os.ReadFile,
+		ReadFile:  autoReadFile,
 		Stat:      os.Stat,
 		ReadDir:   os.ReadDir,
 		Remove:    os.Remove,

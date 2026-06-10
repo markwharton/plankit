@@ -16,6 +16,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
 	"github.com/markwharton/plankit/internal/paths"
@@ -39,7 +40,9 @@ type Config struct {
 	ReadDir   func(string) ([]os.DirEntry, error)
 	Remove    func(string) error
 
-	// Notify outputs a systemMessage prompt without preserving.
+	// Notify is a DEPRECATED flag override. The preserve mode now lives in
+	// .pk.json (preserve.mode); --notify is honored only when an old hook still
+	// passes it, forcing manual (notify) mode. Removed in a later release.
 	Notify bool
 	// DryRun previews the preserve without writing, committing, or pushing.
 	DryRun bool
@@ -96,6 +99,11 @@ func Run(cfg Config) int {
 	}
 	projectDir := resolveProjectDir(cfg, inputCWD)
 
+	// A valid stdin payload means this is the automatic ExitPlanMode hook, which
+	// honors .pk.json preserve.mode. No payload means an explicit /preserve
+	// invocation (pointer-based), which always commits regardless of mode.
+	hookInvocation := err == nil
+
 	if err != nil {
 		// stdin has no hook payload (e.g., /preserve skill invocation).
 		// Use the project-local pointer written by --notify.
@@ -136,8 +144,22 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Notify-only mode: output plan title, record the pointer for later /preserve, don't commit.
-	if cfg.Notify {
+	// Resolve the preserve mode. The automatic hook honors .pk.json preserve.mode;
+	// an explicit /preserve invocation always commits (auto).
+	mode := "auto"
+	if hookInvocation {
+		preserveCfg, _ := loadPreserveConfig(cfg.ReadFile, projectDir)
+		mode = preserveCfg.ResolvedMode()
+		if cfg.Notify { // deprecated override
+			mode = "manual"
+		}
+	}
+	switch mode {
+	case "off":
+		// The automatic hook does nothing in off mode.
+		return 0
+	case "manual":
+		// Notify-only: output plan title, record the pointer for later /preserve, don't commit.
 		title := extractTitle(string(content))
 		if projectDir != "" {
 			writePointer(cfg, projectDir, planPath)
@@ -148,6 +170,7 @@ func Run(cfg Config) int {
 		)
 		return 0
 	}
+	// auto: commit (and optionally push) below.
 
 	if projectDir == "" {
 		fmt.Fprintf(cfg.Stderr, "pk preserve: could not determine project directory\n")
@@ -250,6 +273,17 @@ func resolveProjectDir(cfg Config, inputCWD string) string {
 		}
 	}
 	return projectDir
+}
+
+// loadPreserveConfig reads the preserve section of .pk.json from the project
+// directory. Returns a zero PreserveConfig (which resolves to manual) when the
+// file is missing; propagates parse errors.
+func loadPreserveConfig(readFile func(string) ([]byte, error), projectDir string) (config.PreserveConfig, error) {
+	pk, err := config.Load(readFile, filepath.Join(projectDir, paths.PkConfig))
+	if err != nil {
+		return config.PreserveConfig{}, err
+	}
+	return pk.Preserve, nil
 }
 
 // pointerPath returns the absolute path to the pending-plan pointer for a repo.

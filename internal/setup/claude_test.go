@@ -11,7 +11,7 @@ import (
 
 func TestMergeHooks_freshSettings(t *testing.T) {
 	settings := NewOrderedObject()
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -33,7 +33,7 @@ func TestMergeHooks_existingUserHooks(t *testing.T) {
 	existing := `{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"my-checker","timeout":5}]}]}`
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(existing))
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -63,7 +63,7 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(existing))
 	// Re-setup with manual mode — should replace old plankit hooks.
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -78,12 +78,12 @@ func TestMergeHooks_existingPlankitHooks(t *testing.T) {
 		t.Errorf("PreToolUse = %d entries, want 3", len(result.PreToolUse))
 	}
 
-	// PostToolUse should have the manual mode hook (--notify), not the old auto one.
+	// PostToolUse should have the bare preserve hook (mode now lives in .pk.json).
 	if len(result.PostToolUse) != 1 {
 		t.Fatalf("PostToolUse = %d entries, want 1", len(result.PostToolUse))
 	}
-	if cmd := HookCommand(result.PostToolUse[0].Hooks[0]); !strings.Contains(cmd, "--notify") {
-		t.Errorf("PostToolUse command = %q, want --notify", cmd)
+	if cmd := HookCommand(result.PostToolUse[0].Hooks[0]); cmd != "pk preserve" {
+		t.Errorf("PostToolUse command = %q, want %q", cmd, "pk preserve")
 	}
 }
 
@@ -92,7 +92,7 @@ func TestMergeHooks_mixedHooks(t *testing.T) {
 	existing := `{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"pk protect","timeout":5},{"type":"command","command":"my-linter","timeout":10}]}]}`
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(existing))
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -123,7 +123,7 @@ func TestMergeHooks_existingSessionStart(t *testing.T) {
 	existing := `{"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":".claude/install-pk.sh","timeout":30}]}]}`
 	settings := NewOrderedObject()
 	settings.Set("hooks", json.RawMessage(existing))
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -149,7 +149,7 @@ func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
 			"UserPromptSubmit": [{"matcher":"","hooks":[{"type":"command","command":"entire hooks claude-code user-prompt-submit"}]}]
 		}`))
 
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
@@ -190,7 +190,7 @@ func TestMergeHooks_noTimeoutZero(t *testing.T) {
 			"PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}]
 		}`))
 
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}
@@ -407,30 +407,70 @@ func TestInferModesFromCommands_empty(t *testing.T) {
 	}
 }
 
+// oldStyleSettings builds a settings.json body in the PRE-migration format,
+// where guard/preserve modes were encoded in the hook commands (off = the hook
+// or flag is omitted). Used to test InferModes* as the migration reader.
+func oldStyleSettings(t *testing.T, preserveMode, guardMode, pushGuard string) []byte {
+	t.Helper()
+	entry := func(matcher, command string) map[string]any {
+		return map[string]any{
+			"matcher": matcher,
+			"hooks":   []any{map[string]any{"type": "command", "command": command}},
+		}
+	}
+	var pre []any
+	if guardMode != "off" {
+		cmd := "pk guard"
+		if guardMode == "ask" {
+			cmd = "pk guard --ask"
+		}
+		if pushGuard != "" && pushGuard != "off" {
+			cmd += " --push-guard " + pushGuard
+		}
+		pre = append(pre, entry("Bash|PowerShell", cmd))
+	}
+	pre = append(pre, entry("Edit", "pk protect"))
+	var post []any
+	switch preserveMode {
+	case "auto":
+		post = append(post, entry("ExitPlanMode", "pk preserve"))
+	case "manual":
+		post = append(post, entry("ExitPlanMode", "pk preserve --notify"))
+	}
+	settings := map[string]any{"hooks": map[string]any{"PreToolUse": pre, "PostToolUse": post}}
+	data, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatalf("marshal old-style settings: %v", err)
+	}
+	return data
+}
+
+// TestInferModes_roundTrip checks the migration reader recovers the modes from
+// old-style (flag-bearing) hooks, including the absent-push-flag → "off" decode.
 func TestInferModes_roundTrip(t *testing.T) {
 	tests := []struct {
-		name         string
-		preserveMode string
-		guardMode    string
-		wantGuard    string
-		wantPreserve string
+		name                               string
+		preserveMode, guardMode, pushGuard string
+		wantGuard, wantPush, wantPreserve  string
 	}{
-		{"block and manual", "manual", "block", "block", "manual"},
-		{"ask and auto", "auto", "ask", "ask", "auto"},
-		{"guard off", "manual", "off", "off", "manual"},
-		{"preserve off", "off", "block", "block", "off"},
-		{"both off", "off", "off", "off", "off"},
+		{"block, manual, no push flag", "manual", "block", "", "block", "off", "manual"},
+		{"ask, auto, push block", "auto", "ask", "block", "ask", "block", "auto"},
+		{"guard off", "manual", "off", "", "off", "", "manual"},
+		{"preserve off", "off", "block", "", "block", "off", "off"},
+		{"both off", "off", "off", "", "off", "", "off"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			settings := NewOrderedObject()
-			hooks := buildHookConfig(tt.preserveMode, tt.guardMode)
-			if err := mergeHooks(settings, hooks); err != nil {
-				t.Fatalf("mergeHooks() error = %v", err)
+			settings, err := ParseOrderedObject(oldStyleSettings(t, tt.preserveMode, tt.guardMode, tt.pushGuard))
+			if err != nil {
+				t.Fatalf("ParseOrderedObject() error = %v", err)
 			}
 			m := InferModes(settings)
 			if m.Guard != tt.wantGuard {
 				t.Errorf("guard = %q, want %q", m.Guard, tt.wantGuard)
+			}
+			if m.PushGuard != tt.wantPush {
+				t.Errorf("push = %q, want %q", m.PushGuard, tt.wantPush)
 			}
 			if m.Preserve != tt.wantPreserve {
 				t.Errorf("preserve = %q, want %q", m.Preserve, tt.wantPreserve)
@@ -466,19 +506,6 @@ func TestInferModes_userHooksOnly(t *testing.T) {
 }
 
 func TestInferModesFromSettings(t *testing.T) {
-	settingsBytes := func(t *testing.T, preserveMode, guardMode string) []byte {
-		t.Helper()
-		settings := NewOrderedObject()
-		if err := mergeHooks(settings, buildHookConfig(preserveMode, guardMode)); err != nil {
-			t.Fatalf("mergeHooks() error = %v", err)
-		}
-		data, err := json.Marshal(settings)
-		if err != nil {
-			t.Fatalf("Marshal() error = %v", err)
-		}
-		return data
-	}
-
 	t.Run("missing file returns empty", func(t *testing.T) {
 		readFile := func(string) ([]byte, error) { return nil, os.ErrNotExist }
 		m := InferModesFromSettings(readFile, "proj")
@@ -495,8 +522,8 @@ func TestInferModesFromSettings(t *testing.T) {
 		}
 	})
 
-	t.Run("reads block and manual from settings path", func(t *testing.T) {
-		data := settingsBytes(t, "manual", "block")
+	t.Run("reads block/manual (push off) from settings path", func(t *testing.T) {
+		data := oldStyleSettings(t, "manual", "block", "")
 		wantPath := filepath.Join("proj", ".claude", "settings.json")
 		readFile := func(path string) ([]byte, error) {
 			if path != wantPath {
@@ -505,13 +532,13 @@ func TestInferModesFromSettings(t *testing.T) {
 			return data, nil
 		}
 		m := InferModesFromSettings(readFile, "proj")
-		if m.Guard != "block" || m.Preserve != "manual" {
-			t.Errorf("got guard=%q preserve=%q, want block/manual", m.Guard, m.Preserve)
+		if m.Guard != "block" || m.PushGuard != "off" || m.Preserve != "manual" {
+			t.Errorf("got guard=%q push=%q preserve=%q, want block/off/manual", m.Guard, m.PushGuard, m.Preserve)
 		}
 	})
 
 	t.Run("guard command absent infers off", func(t *testing.T) {
-		data := settingsBytes(t, "manual", "off")
+		data := oldStyleSettings(t, "manual", "off", "")
 		readFile := func(string) ([]byte, error) { return data, nil }
 		m := InferModesFromSettings(readFile, "proj")
 		if m.Guard != "off" || m.Preserve != "manual" {
@@ -521,28 +548,6 @@ func TestInferModesFromSettings(t *testing.T) {
 }
 
 func TestPushGuardWiring(t *testing.T) {
-	guardCmd := func(t *testing.T, hooks HooksConfig) string {
-		t.Helper()
-		for _, e := range hooks.PreToolUse {
-			if e.Matcher == "Bash|PowerShell" {
-				return HookCommand(e.Hooks[0])
-			}
-		}
-		return ""
-	}
-
-	t.Run("buildHookConfigWithPush appends the flag", func(t *testing.T) {
-		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "block", "block")); cmd != "pk guard --push-guard block" {
-			t.Errorf("guard command = %q, want %q", cmd, "pk guard --push-guard block")
-		}
-		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "ask", "ask")); cmd != "pk guard --ask --push-guard ask" {
-			t.Errorf("guard command = %q, want %q", cmd, "pk guard --ask --push-guard ask")
-		}
-		if cmd := guardCmd(t, buildHookConfigWithPush("manual", "block", "off")); cmd != "pk guard" {
-			t.Errorf("guard command = %q, want %q (off omits flag)", cmd, "pk guard")
-		}
-	})
-
 	t.Run("guard mode still inferred when push flag present", func(t *testing.T) {
 		if m := InferModesFromCommands([]string{"pk guard --ask --push-guard block", "pk protect"}); m.Guard != "ask" {
 			t.Errorf("guard = %q, want ask (must parse despite --push-guard)", m.Guard)
@@ -552,67 +557,54 @@ func TestPushGuardWiring(t *testing.T) {
 		}
 	})
 
-	t.Run("push-guard parsed from commands", func(t *testing.T) {
+	t.Run("push-guard parsed, absent decodes to off", func(t *testing.T) {
 		if m := InferModesFromCommands([]string{"pk guard --ask --push-guard block"}); m.PushGuard != "block" {
 			t.Errorf("PushGuard = %q, want block", m.PushGuard)
 		}
-		if m := InferModesFromCommands([]string{"pk guard --ask"}); m.PushGuard != "" {
-			t.Errorf("PushGuard = %q, want empty (no flag)", m.PushGuard)
+		// Guard present, no --push-guard flag: old encoding meant push off.
+		if m := InferModesFromCommands([]string{"pk guard --ask"}); m.PushGuard != "off" {
+			t.Errorf("PushGuard = %q, want off (absent flag decodes to off)", m.PushGuard)
 		}
+		// No guard command at all: push is moot, stays empty.
 		if m := InferModesFromCommands([]string{"pk protect"}); m.PushGuard != "" {
-			t.Errorf("PushGuard = %q, want empty (not a guard command)", m.PushGuard)
+			t.Errorf("PushGuard = %q, want empty (guard off, push moot)", m.PushGuard)
 		}
 	})
 
-	t.Run("push-guard round-trips through settings", func(t *testing.T) {
-		settings := NewOrderedObject()
-		if err := mergeHooks(settings, buildHookConfigWithPush("manual", "ask", "block")); err != nil {
-			t.Fatalf("mergeHooks() error = %v", err)
-		}
-		data, err := json.Marshal(settings)
-		if err != nil {
-			t.Fatalf("Marshal() error = %v", err)
-		}
-		readFile := func(string) ([]byte, error) { return data, nil }
+	t.Run("push-guard round-trips through old-style settings", func(t *testing.T) {
+		readFile := func(string) ([]byte, error) { return oldStyleSettings(t, "manual", "ask", "block"), nil }
 		if m := InferModesFromSettings(readFile, "proj"); m.PushGuard != "block" {
 			t.Errorf("PushGuard = %q, want block", m.PushGuard)
 		}
 	})
 }
 
-func TestBuildHookConfig_guardOff(t *testing.T) {
-	hooks := buildHookConfig("manual", "off")
-	if len(hooks.PreToolUse) != 2 {
-		t.Fatalf("PreToolUse = %d entries, want 2 (protect only)", len(hooks.PreToolUse))
-	}
-	if hooks.PreToolUse[0].Matcher != "Edit" {
-		t.Errorf("first matcher = %q, want Edit", hooks.PreToolUse[0].Matcher)
-	}
-	if hooks.PreToolUse[1].Matcher != "Write" {
-		t.Errorf("second matcher = %q, want Write", hooks.PreToolUse[1].Matcher)
+// TestBuildHooks_static verifies the hook set is fixed and bare regardless of
+// mode — guard, protect (Edit+Write), preserve, and the session bootstrap are
+// always present, with no mode flags on any command (modes live in .pk.json).
+func TestBuildHooks_static(t *testing.T) {
+	hooks := buildHooks()
+	if len(hooks.PreToolUse) != 3 {
+		t.Fatalf("PreToolUse = %d entries, want 3 (guard + Edit/protect + Write/protect)", len(hooks.PreToolUse))
 	}
 	if len(hooks.PostToolUse) != 1 {
-		t.Errorf("PostToolUse = %d entries, want 1 (preserve still active)", len(hooks.PostToolUse))
+		t.Errorf("PostToolUse = %d entries, want 1 (preserve)", len(hooks.PostToolUse))
 	}
-}
-
-func TestBuildHookConfig_preserveOff(t *testing.T) {
-	hooks := buildHookConfig("off", "block")
-	if len(hooks.PreToolUse) != 3 {
-		t.Errorf("PreToolUse = %d entries, want 3 (guard + protect)", len(hooks.PreToolUse))
+	if len(hooks.SessionStart) != 1 {
+		t.Errorf("SessionStart = %d entries, want 1 (install-pk.sh)", len(hooks.SessionStart))
 	}
-	if len(hooks.PostToolUse) != 0 {
-		t.Errorf("PostToolUse = %d entries, want 0", len(hooks.PostToolUse))
+	wantCmds := map[string]string{
+		"Bash|PowerShell": "pk guard",
+		"ExitPlanMode":    "pk preserve",
 	}
-}
-
-func TestBuildHookConfig_bothOff(t *testing.T) {
-	hooks := buildHookConfig("off", "off")
-	if len(hooks.PreToolUse) != 2 {
-		t.Fatalf("PreToolUse = %d entries, want 2 (protect only)", len(hooks.PreToolUse))
-	}
-	if len(hooks.PostToolUse) != 0 {
-		t.Errorf("PostToolUse = %d entries, want 0", len(hooks.PostToolUse))
+	for _, e := range append(append([]HookEntry{}, hooks.PreToolUse...), hooks.PostToolUse...) {
+		cmd := HookCommand(e.Hooks[0])
+		if strings.Contains(cmd, "--") {
+			t.Errorf("hook command %q carries a flag; modes must live in .pk.json", cmd)
+		}
+		if want, ok := wantCmds[e.Matcher]; ok && cmd != want {
+			t.Errorf("matcher %q command = %q, want %q", e.Matcher, cmd, want)
+		}
 	}
 }
 
@@ -627,7 +619,7 @@ func TestInferModesFromCommands_protectOnly(t *testing.T) {
 }
 
 func TestBuildHookConfig_shellBash(t *testing.T) {
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 	settings := NewOrderedObject()
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
@@ -640,7 +632,7 @@ func TestBuildHookConfig_shellBash(t *testing.T) {
 }
 
 func TestBuildHookConfig_guardMatcherIncludesPowerShell(t *testing.T) {
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 	if hooks.PreToolUse[0].Matcher != "Bash|PowerShell" {
 		t.Errorf("guard matcher = %q, want %q", hooks.PreToolUse[0].Matcher, "Bash|PowerShell")
 	}
@@ -651,7 +643,7 @@ func TestMergeHooks_noShellOnUserHooks(t *testing.T) {
 	settings.Set("hooks", json.RawMessage(`{
 			"PostToolUse": [{"matcher":"Task","hooks":[{"type":"command","command":"user-hook"}]}]
 		}`))
-	hooks := buildHookConfig("manual", "block")
+	hooks := buildHooks()
 	if err := mergeHooks(settings, hooks); err != nil {
 		t.Fatalf("mergeHooks() error = %v", err)
 	}

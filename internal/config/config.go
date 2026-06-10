@@ -8,9 +8,50 @@ import (
 	"os"
 )
 
+// Default modes applied when a .pk.json key is absent. These are the single
+// source of truth for the fallback values — referenced by both the runtime
+// (guard/preserve, when a key is omitted) and pk setup (what it writes
+// explicitly). The literal lives exactly once, here.
+const (
+	DefaultGuardMode    = "block"  // guard.mode
+	DefaultGuardPush    = "block"  // guard.push
+	DefaultPreserveMode = "manual" // preserve.mode
+)
+
 // GuardConfig holds the guard section of .pk.json.
 type GuardConfig struct {
 	Branches []string `json:"branches,omitempty"`
+	Mode     string   `json:"mode,omitempty"` // block | ask | off
+	Push     string   `json:"push,omitempty"` // block | ask | off
+}
+
+// ResolvedMode returns the branch-guard mode, applying DefaultGuardMode when unset.
+func (g GuardConfig) ResolvedMode() string {
+	if g.Mode == "" {
+		return DefaultGuardMode
+	}
+	return g.Mode
+}
+
+// ResolvedPush returns the push-guard mode, applying DefaultGuardPush when unset.
+func (g GuardConfig) ResolvedPush() string {
+	if g.Push == "" {
+		return DefaultGuardPush
+	}
+	return g.Push
+}
+
+// PreserveConfig holds the preserve section of .pk.json.
+type PreserveConfig struct {
+	Mode string `json:"mode,omitempty"` // auto | manual | off
+}
+
+// ResolvedMode returns the preserve mode, applying DefaultPreserveMode when unset.
+func (p PreserveConfig) ResolvedMode() string {
+	if p.Mode == "" {
+		return DefaultPreserveMode
+	}
+	return p.Mode
 }
 
 // TypeConfig maps a conventional commit type to a changelog section.
@@ -56,6 +97,7 @@ type ReleaseSection struct {
 type PkConfig struct {
 	Changelog ChangelogConfig `json:"changelog,omitempty"`
 	Guard     GuardConfig     `json:"guard,omitempty"`
+	Preserve  PreserveConfig  `json:"preserve,omitempty"`
 	Release   ReleaseSection  `json:"release,omitempty"`
 }
 

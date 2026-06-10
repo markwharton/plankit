@@ -7,6 +7,41 @@ import (
 	"testing"
 )
 
+func TestResolvers_defaultsWhenUnset(t *testing.T) {
+	var g GuardConfig
+	if got := g.ResolvedMode(); got != DefaultGuardMode {
+		t.Errorf("ResolvedMode() = %q, want %q", got, DefaultGuardMode)
+	}
+	if got := g.ResolvedPush(); got != DefaultGuardPush {
+		t.Errorf("ResolvedPush() = %q, want %q", got, DefaultGuardPush)
+	}
+	if got := (PreserveConfig{}).ResolvedMode(); got != DefaultPreserveMode {
+		t.Errorf("ResolvedMode() = %q, want %q", got, DefaultPreserveMode)
+	}
+}
+
+func TestResolvers_explicitValuesWin(t *testing.T) {
+	g := GuardConfig{Mode: "ask", Push: "off"}
+	if g.ResolvedMode() != "ask" || g.ResolvedPush() != "off" {
+		t.Errorf("got mode=%q push=%q, want ask/off", g.ResolvedMode(), g.ResolvedPush())
+	}
+	if got := (PreserveConfig{Mode: "off"}).ResolvedMode(); got != "off" {
+		t.Errorf("ResolvedMode() = %q, want off", got)
+	}
+}
+
+func TestLoad_modeFields(t *testing.T) {
+	cfg, err := Load(func(string) ([]byte, error) {
+		return []byte(`{"guard":{"branches":["main"],"mode":"ask","push":"off"},"preserve":{"mode":"auto"}}`), nil
+	}, ".pk.json")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Guard.Mode != "ask" || cfg.Guard.Push != "off" || cfg.Preserve.Mode != "auto" {
+		t.Errorf("parsed = %+v, want guard ask/off, preserve auto", cfg)
+	}
+}
+
 func TestLoad_missingFile(t *testing.T) {
 	cfg, err := Load(func(string) ([]byte, error) {
 		return nil, os.ErrNotExist

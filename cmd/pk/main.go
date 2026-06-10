@@ -86,15 +86,23 @@ func runProtect(args []string) {
 
 func runGuard(args []string) {
 	fs := flag.NewFlagSet("guard", flag.ExitOnError)
-	ask := fs.Bool("ask", false, "Prompt user instead of blocking (branch policy)")
-	pushGuard := fs.String("push-guard", "off", "Push policy regardless of branch: block, ask, or off")
+	// --ask and --push-guard are DEPRECATED: modes now live in .pk.json
+	// (guard.mode, guard.push). They are honored as overrides only when an old
+	// hook still passes them, so existing installs keep working until re-setup.
+	ask := fs.Bool("ask", false, "[deprecated] force ask mode; set guard.mode in .pk.json")
+	pushGuard := fs.String("push-guard", "", "[deprecated] force push policy; set guard.push in .pk.json")
 	fs.Parse(args)
 
-	validateMode(*pushGuard, "--push-guard", "block", "ask", "off")
-
 	cfg := guard.DefaultConfig()
-	cfg.Ask = *ask
-	cfg.PushGuard = *pushGuard
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "ask":
+			cfg.Ask = *ask
+		case "push-guard":
+			validateMode(*pushGuard, "--push-guard", "block", "ask", "off")
+			cfg.PushGuard = *pushGuard
+		}
+	})
 	os.Exit(guard.Run(cfg))
 }
 
@@ -122,7 +130,7 @@ func runChangelog(args []string) {
 
 func runPreserve(args []string) {
 	fs := flag.NewFlagSet("preserve", flag.ExitOnError)
-	notify := fs.Bool("notify", false, "Notify only, do not preserve")
+	notify := fs.Bool("notify", false, "[deprecated] force manual (notify) mode; set preserve.mode in .pk.json")
 	dryRun := fs.Bool("dry-run", false, "Preview without writing, committing, or pushing")
 	push := fs.Bool("push", false, "Push to origin after committing")
 	fs.Parse(args)
@@ -177,9 +185,9 @@ func runRules(args []string) {
 func runSetup(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
-	preserveMode := fs.String("preserve", "manual", "Plan preservation mode: manual, auto, or off")
-	guardMode := fs.String("guard", "block", "Guard mode: block, ask, or off")
-	pushGuardMode := fs.String("push-guard", "off", "Push-guard mode: block, ask, or off")
+	preserveMode := fs.String("preserve", "", "Plan preservation mode: auto, manual, or off (default: keep existing, else manual)")
+	guardMode := fs.String("guard", "", "Guard mode: block, ask, or off (default: keep existing, else block)")
+	pushGuardMode := fs.String("push-guard", "", "Push-guard mode: block, ask, or off (default: keep existing, else block)")
 	force := fs.Bool("force", false, "Overwrite all managed files regardless of modifications")
 	allowNonGit := fs.Bool("allow-non-git", false, "Proceed even if the project directory is not a git repository")
 	baseline := fs.Bool("baseline", false, "Anchor pk changelog by creating a v0.0.0 tag if none exists")
@@ -189,36 +197,17 @@ func runSetup(args []string) {
 
 	dir := resolveProjectDir(*projectDir)
 
-	// Preserve existing modes on re-run. When --guard or --preserve is not
-	// explicitly passed, infer the current mode from settings.json so that
-	// upgrading pk doesn't silently reset the user's configuration.
-	guardExplicit, preserveExplicit, pushGuardExplicit := false, false, false
-	fs.Visit(func(f *flag.Flag) {
-		switch f.Name {
-		case "guard":
-			guardExplicit = true
-		case "preserve":
-			preserveExplicit = true
-		case "push-guard":
-			pushGuardExplicit = true
-		}
-	})
-	if !guardExplicit || !preserveExplicit || !pushGuardExplicit {
-		m := setup.InferModesFromSettings(os.ReadFile, dir)
-		if !guardExplicit && m.Guard != "" {
-			*guardMode = m.Guard
-		}
-		if !preserveExplicit && m.Preserve != "" {
-			*preserveMode = m.Preserve
-		}
-		if !pushGuardExplicit && m.PushGuard != "" {
-			*pushGuardMode = m.PushGuard
-		}
+	// Validate explicitly-provided modes. An empty value means "not specified" —
+	// pk setup resolves it (existing .pk.json > migrated from old hooks > default).
+	if *preserveMode != "" {
+		validateMode(*preserveMode, "--preserve", "auto", "manual", "off")
 	}
-
-	validateMode(*preserveMode, "--preserve", "auto", "manual", "off")
-	validateMode(*guardMode, "--guard", "block", "ask", "off")
-	validateMode(*pushGuardMode, "--push-guard", "block", "ask", "off")
+	if *guardMode != "" {
+		validateMode(*guardMode, "--guard", "block", "ask", "off")
+	}
+	if *pushGuardMode != "" {
+		validateMode(*pushGuardMode, "--push-guard", "block", "ask", "off")
+	}
 
 	// --at and --push are modifiers of --baseline; reject on their own.
 	if !*baseline {

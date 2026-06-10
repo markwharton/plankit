@@ -24,11 +24,14 @@ type Config struct {
 	ReadFile func(string) ([]byte, error)
 	GitExec  func(projectDir string, args ...string) (string, error)
 
-	// Ask prompts the user instead of blocking outright (branch policy).
+	// Ask and PushGuard are DEPRECATED flag overrides. Modes now live in
+	// .pk.json (guard.mode, guard.push); these are honored only when an old
+	// hook still passes --ask / --push-guard, so existing installs keep working
+	// until re-setup normalizes their hooks. Removed in a later release.
+	//
+	// Ask, when true, forces ask mode (overrides guard.mode).
 	Ask bool
-
-	// PushGuard is the policy for `git push` regardless of branch:
-	// "block", "ask", or "off"/"" (no push guard).
+	// PushGuard, when non-empty, forces the push policy (overrides guard.push).
 	PushGuard string
 }
 
@@ -80,10 +83,20 @@ func Run(cfg Config) int {
 		return 0
 	}
 
-	// Branch policy: a mutation on a protected branch.
+	// Resolve modes from .pk.json, honoring the deprecated flag overrides.
+	mode := guardCfg.ResolvedMode()
+	if cfg.Ask {
+		mode = "ask"
+	}
+	push := guardCfg.ResolvedPush()
+	if cfg.PushGuard != "" {
+		push = cfg.PushGuard
+	}
+
+	// Branch policy: a mutation on a protected branch (skipped when mode is off).
 	branchDeny, branchAsk := false, false
 	var protectedBranch string
-	if len(guardCfg.Branches) > 0 {
+	if mode != "off" && len(guardCfg.Branches) > 0 {
 		branch, err := cfg.GitExec(projectDir, "rev-parse", "--abbrev-ref", "HEAD")
 		if err != nil {
 			return 0
@@ -92,7 +105,7 @@ func Run(cfg Config) int {
 		for _, protected := range guardCfg.Branches {
 			if branch == protected {
 				protectedBranch = branch
-				if cfg.Ask {
+				if mode == "ask" {
 					branchAsk = true
 				} else {
 					branchDeny = true
@@ -105,7 +118,7 @@ func Run(cfg Config) int {
 	// Push policy: any `git push`, regardless of branch.
 	pushDeny, pushAsk := false, false
 	if isGitPush(command) {
-		switch cfg.PushGuard {
+		switch push {
 		case "block":
 			pushDeny = true
 		case "ask":

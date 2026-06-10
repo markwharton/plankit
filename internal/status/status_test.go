@@ -195,6 +195,7 @@ func TestRun_askGuardMode(t *testing.T) {
 	}
 	data, _ := json.MarshalIndent(settings, "", "  ")
 	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644)
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte(`{"guard":{"mode":"ask"}}`), 0644)
 
 	cfg, stderr := testConfig(dir)
 	if _, err := Run(cfg); err != nil {
@@ -224,6 +225,7 @@ func TestRun_autoPreserveMode(t *testing.T) {
 	}
 	data, _ := json.MarshalIndent(settings, "", "  ")
 	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644)
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte(`{"preserve":{"mode":"auto"}}`), 0644)
 
 	cfg, stderr := testConfig(dir)
 	if _, err := Run(cfg); err != nil {
@@ -274,7 +276,7 @@ func TestRun_noPushLineWhenGuardOff(t *testing.T) {
 	claudeDir := filepath.Join(dir, ".claude")
 	os.MkdirAll(claudeDir, 0755)
 
-	// Preserve hook only — guard is off, so no push line should appear.
+	// guard.mode off in .pk.json → no push line should appear.
 	settings := map[string]interface{}{
 		"hooks": map[string]interface{}{
 			"PostToolUse": []interface{}{
@@ -287,6 +289,7 @@ func TestRun_noPushLineWhenGuardOff(t *testing.T) {
 	}
 	data, _ := json.MarshalIndent(settings, "", "  ")
 	os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644)
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte(`{"guard":{"mode":"off"}}`), 0644)
 
 	cfg, stderr := testConfig(dir)
 	if _, err := Run(cfg); err != nil {

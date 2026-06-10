@@ -5,15 +5,16 @@ package setup
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/version"
@@ -109,6 +110,23 @@ func (oo *OrderedObject) Delete(key string) {
 // Len returns the number of keys.
 func (oo *OrderedObject) Len() int {
 	return len(oo.keys)
+}
+
+// SortKeys sorts the object's top-level keys alphabetically. Used when writing
+// .pk.json so pk setup and the conventions skill agree on key order.
+func (oo *OrderedObject) SortKeys() {
+	sort.Strings(oo.keys)
+}
+
+// resolveMode returns the first non-empty value, applying the precedence the
+// caller passes (explicit flag > existing .pk.json > migrated > default).
+func resolveMode(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // MarshalJSON emits the object with keys in their preserved order. The output
@@ -207,9 +225,21 @@ func Run(cfg Config) error {
 		settings = parsed
 	}
 
-	// Merge plankit hooks with any existing user hooks.
-	guardMode := cfg.GuardMode
-	hookConfig := buildHookConfigWithPush(preserveMode, guardMode, cfg.PushGuardMode)
+	// Capture the project's current modes from the existing (possibly old-style,
+	// flag-bearing) hooks before we overwrite them — this is how a re-run migrates
+	// modes into .pk.json. Resolve each final mode by precedence: explicit setup
+	// flag > existing .pk.json value > migrated from old hook > default const.
+	oldModes := InferModes(settings)
+	pkConf, err := config.Load(cfg.ReadFile, filepath.Join(projectDir, paths.PkConfig))
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", paths.PkConfig, err)
+	}
+	guardMode := resolveMode(cfg.GuardMode, pkConf.Guard.Mode, oldModes.Guard, config.DefaultGuardMode)
+	guardPush := resolveMode(cfg.PushGuardMode, pkConf.Guard.Push, oldModes.PushGuard, config.DefaultGuardPush)
+	preserveMode = resolveMode(cfg.PreserveMode, pkConf.Preserve.Mode, oldModes.Preserve, config.DefaultPreserveMode)
+
+	// Merge the static, bare plankit hooks (modes now live in .pk.json).
+	hookConfig := buildHooks()
 	if version.IsDevBuild(cfg.Version) {
 		hookConfig.SessionStart = nil
 	}
@@ -251,7 +281,17 @@ func Run(cfg Config) error {
 	// is only printed when there's something for the user to commit.
 	anyChanged := !bytes.Equal(data, output)
 
-	fmt.Fprintf(stderr, "Configured plankit in %s (guard mode: %s, preserve mode: %s)\n", settingsFile, guardMode, preserveMode)
+	fmt.Fprintf(stderr, "Configured plankit in %s (guard: %s, push: %s, preserve: %s)\n", settingsFile, guardMode, guardPush, preserveMode)
+
+	// Write the resolved modes into .pk.json (field-merge; user-owned, no SHA).
+	pkChanged, err := writePkModes(cfg, projectDir, guardMode, guardPush, preserveMode)
+	if err != nil {
+		return err
+	}
+	if pkChanged {
+		fmt.Fprintf(stderr, "Wrote guard/preserve modes to %s\n", paths.PkConfig)
+	}
+	anyChanged = anyChanged || pkChanged
 
 	// Install CLAUDE.md if none exists or if pristine (never forced — CLAUDE.md is user-owned once customized).
 	claudeTemplate, err := fs.ReadFile(templateFS, "template/CLAUDE.md")
@@ -361,11 +401,9 @@ func Run(cfg Config) error {
 	// Conventions reminder: shown only when no .pk.json exists, so a configured
 	// project re-running setup on an upgrade is not nagged. Without release.branch,
 	// pk release silently falls back to trunk flow.
-	if inGitRepo {
-		if _, err := cfg.Stat(filepath.Join(projectDir, paths.PkConfig)); errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintln(stderr, "No .pk.json found. Run /conventions in Claude Code to set release and guard branches.")
-			fmt.Fprintln(stderr, "  Without it, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
-		}
+	if inGitRepo && pkConf.Release.Branch == "" {
+		fmt.Fprintln(stderr, "No release branch in .pk.json. Run /conventions in Claude Code to set guard.branches and release.branch.")
+		fmt.Fprintln(stderr, "  Without release.branch, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
 	}
 
 	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")
