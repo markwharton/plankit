@@ -184,6 +184,61 @@ func TestRun_bareGuardMigratesPushOff(t *testing.T) {
 	}
 }
 
+func TestResolveMode_precedence(t *testing.T) {
+	if got := resolveMode("flag", "existing", "migrated", "default"); got != "flag" {
+		t.Errorf("got %q, want flag (first non-empty)", got)
+	}
+	if got := resolveMode("", "existing", "migrated", "default"); got != "existing" {
+		t.Errorf("got %q, want existing", got)
+	}
+	if got := resolveMode("", "", "migrated", "default"); got != "migrated" {
+		t.Errorf("got %q, want migrated", got)
+	}
+	if got := resolveMode("", "", "", "default"); got != "default" {
+		t.Errorf("got %q, want default", got)
+	}
+	if got := resolveMode("", "", ""); got != "" {
+		t.Errorf("got %q, want empty (all empty)", got)
+	}
+}
+
+func TestWritePkModes_errorPaths(t *testing.T) {
+	// Malformed existing .pk.json -> top-level parse error.
+	d1 := t.TempDir()
+	os.WriteFile(filepath.Join(d1, ".pk.json"), []byte("{not json"), 0644)
+	if _, err := writePkModes(Config{ReadFile: os.ReadFile, WriteFile: os.WriteFile}, d1, "block", "block", "manual"); err == nil {
+		t.Error("expected parse error for malformed .pk.json")
+	}
+
+	// A malformed nested guard value -> setNested parse error.
+	d2 := t.TempDir()
+	os.WriteFile(filepath.Join(d2, ".pk.json"), []byte(`{"guard":"not-an-object"}`), 0644)
+	if _, err := writePkModes(Config{ReadFile: os.ReadFile, WriteFile: os.WriteFile}, d2, "block", "block", "manual"); err == nil {
+		t.Error("expected setNested parse error for malformed guard object")
+	}
+
+	// WriteFile failure -> write error.
+	d3 := t.TempDir()
+	failWrite := func(string, []byte, os.FileMode) error { return os.ErrPermission }
+	if _, err := writePkModes(Config{ReadFile: os.ReadFile, WriteFile: failWrite}, d3, "block", "block", "manual"); err == nil {
+		t.Error("expected write error")
+	}
+
+	// Idempotent: an identical second write reports no change (the bytes.Equal path).
+	d4 := t.TempDir()
+	cfg := Config{ReadFile: os.ReadFile, WriteFile: os.WriteFile}
+	if _, err := writePkModes(cfg, d4, "block", "block", "manual"); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	changed, err := writePkModes(cfg, d4, "block", "block", "manual")
+	if err != nil {
+		t.Fatalf("second write: %v", err)
+	}
+	if changed {
+		t.Error("expected no change on identical re-write")
+	}
+}
+
 // TestRun_migratesFlatRulesToSubdir verifies that setup moves rules into
 // .claude/rules/plankit/ and cleans up pre-subdir installs: a pristine pk rule at
 // the old flat location is removed, while a user-modified one and the user's own

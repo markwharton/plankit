@@ -228,6 +228,14 @@ func withFS(cfg *Config) {
 	cfg.Remove = os.Remove
 }
 
+func TestLoadPreserveConfig_malformed(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte("{bad json"), 0644)
+	if _, err := loadPreserveConfig(os.ReadFile, dir); err == nil {
+		t.Error("expected error for malformed .pk.json")
+	}
+}
+
 // autoReadFile is os.ReadFile but defaults a missing .pk.json to preserve.mode
 // "auto", so tests exercise the commit path without each writing a config file.
 // A real .pk.json on disk still wins, so tests can opt into manual/off.
