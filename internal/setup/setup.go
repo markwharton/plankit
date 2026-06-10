@@ -18,6 +18,7 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
+	"github.com/markwharton/plankit/internal/readiness"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -381,7 +382,7 @@ func Run(cfg Config) error {
 			return err
 		}
 	} else if inGitRepo {
-		if _, ok := hasValidSemverTag(cfg, projectDir); !ok {
+		if _, ok := readiness.ValidSemverTag(cfg.GitExec, projectDir); !ok {
 			fmt.Fprintln(stderr, "No version tags found. If you plan to use pk changelog / pk release, anchor with:")
 			msg.Hintf(stderr, "pk setup --baseline --push")
 			msg.Or(stderr, "git tag v0.0.0 && git push origin v0.0.0")

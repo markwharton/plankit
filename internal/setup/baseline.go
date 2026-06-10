@@ -2,36 +2,16 @@ package setup
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/markwharton/plankit/internal/msg"
-	"github.com/markwharton/plankit/internal/version"
+	"github.com/markwharton/plankit/internal/readiness"
 )
-
-// hasValidSemverTag returns the first tag matching "v*" that parses as a valid
-// semver (per pk changelog's acceptance rule), or "", false if none exists.
-func hasValidSemverTag(cfg Config, projectDir string) (string, bool) {
-	output, err := cfg.GitExec(projectDir, "tag", "--list", "v*", "--sort=-v:refname")
-	if err != nil || output == "" {
-		return "", false
-	}
-	for _, line := range strings.Split(output, "\n") {
-		tag := strings.TrimSpace(line)
-		if tag == "" {
-			continue
-		}
-		if _, ok := version.ParseSemver(tag); ok {
-			return tag, true
-		}
-	}
-	return "", false
-}
 
 // runBaseline creates a v0.0.0 baseline tag if no valid semver tag exists.
 // If cfg.BaselineAt is set, tags that ref; otherwise tags HEAD.
 // If cfg.Push is set, also pushes the tag to origin.
 func runBaseline(cfg Config, projectDir string) error {
-	if existing, ok := hasValidSemverTag(cfg, projectDir); ok {
+	if existing, ok := readiness.ValidSemverTag(cfg.GitExec, projectDir); ok {
 		fmt.Fprintf(cfg.Stderr, "Found tag %s; already anchored\n", existing)
 		return nil
 	}
