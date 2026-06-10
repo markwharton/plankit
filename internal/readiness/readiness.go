@@ -92,6 +92,22 @@ func originCheck(gitExec func(dir string, args ...string) (string, error), dir, 
 	return c
 }
 
+// HasOtherLocalBranch reports whether the repository has a local branch
+// besides branch. Failure-point hints use it to decide between "switch to
+// your working branch" (one exists) and "create one" (none does).
+func HasOtherLocalBranch(gitExec func(dir string, args ...string) (string, error), dir, branch string) bool {
+	out, err := gitExec(dir, "branch", "--format=%(refname:short)")
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if name := strings.TrimSpace(line); name != "" && name != branch {
+			return true
+		}
+	}
+	return false
+}
+
 // currentBranch returns the checked-out branch name, or "" when detached or
 // on error.
 func currentBranch(gitExec func(dir string, args ...string) (string, error), dir string) string {

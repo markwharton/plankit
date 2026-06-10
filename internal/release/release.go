@@ -19,6 +19,7 @@ import (
 	"github.com/markwharton/plankit/internal/hooks"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
+	"github.com/markwharton/plankit/internal/readiness"
 )
 
 // Config holds injectable dependencies for testing.
@@ -63,8 +64,15 @@ func Run(cfg Config) int {
 	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
 
 	// 3. If releaseBranch is configured and we're already on it, refuse.
+	// With no other local branch this is the main-only dead-end: the user
+	// configured merge flow but never created a working branch, so point at
+	// the way out instead of an instruction they can't follow.
 	if releaseBranch != "" && sourceBranch == releaseBranch {
 		msg.Errorf(cfg.Stderr, "you're on the release branch %q; switch to your working branch first", releaseBranch)
+		if !readiness.HasOtherLocalBranch(cfg.GitExec, cfg.Dir, releaseBranch) {
+			msg.Hintf(cfg.Stderr, "To start one: git switch -c develop && git push -u origin develop")
+			msg.Hintf(cfg.Stderr, "Then: pk changelog && pk release")
+		}
 		return 1
 	}
 
@@ -139,6 +147,21 @@ func Run(cfg Config) int {
 		return 1
 	}
 	msg.Itemf(cfg.Stderr, "Not behind origin/%s", sourceBranch)
+
+	// Pre-flight: the release branch must resolve locally or on origin before
+	// the merge flow tries to switch to it; otherwise the failure surfaces as
+	// a raw git switch error (or a misleading not-fast-forward in dry-run).
+	if needsMerge {
+		_, localErr := cfg.GitExec(cfg.Dir, "rev-parse", "--verify", "--quiet", "refs/heads/"+releaseBranch)
+		_, remoteErr := cfg.GitExec(cfg.Dir, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+releaseBranch)
+		if localErr != nil && remoteErr != nil {
+			msg.Errorf(cfg.Stderr, "release branch %s does not exist locally or on origin", releaseBranch)
+			msg.Hintf(cfg.Stderr, "To create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
+			return 1
+		}
+		msg.Itemf(cfg.Stderr, "%s exists", releaseBranch)
+	}
+
 	msg.Itemf(cfg.Stderr, "Release-Tag trailer: %s", tag)
 
 	// 8. Merge flow.

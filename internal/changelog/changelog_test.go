@@ -1962,3 +1962,57 @@ func TestRun_excludeBreaking_fallsFromMajor(t *testing.T) {
 		t.Errorf("bump should not have stayed at major v2.0.0")
 	}
 }
+
+func TestRun_guardedBranchCreateHintWhenOnlyBranch(t *testing.T) {
+	// main-only repo with main protected: the switch instruction is
+	// unfollowable, so the error carries the create-develop hint.
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				if args[1] == "--show-current" {
+					return "main\n", nil
+				}
+				return "main\n", nil // --format: only one local branch
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
+		},
+		Now: fixedTime,
+	}
+	if code := Run(cfg); code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "To start one: git switch -c develop && git push -u origin develop") {
+		t.Errorf("stderr = %q, want create-develop hint", stderr.String())
+	}
+}
+
+func TestRun_guardedBranchNoCreateHintWithOtherBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				if args[1] == "--show-current" {
+					return "main\n", nil
+				}
+				return "main\ndevelop\n", nil // --format: develop exists
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"guard":{"branches":["main"]}}`), nil
+		},
+		Now: fixedTime,
+	}
+	if code := Run(cfg); code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+	if strings.Contains(stderr.String(), "To start one:") {
+		t.Errorf("stderr = %q, want no create hint when develop exists", stderr.String())
+	}
+}

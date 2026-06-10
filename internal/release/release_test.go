@@ -765,3 +765,104 @@ func TestRun_branchCheckFailure(t *testing.T) {
 		t.Errorf("stderr = %q, want branch failure message", stderr.String())
 	}
 }
+
+func TestRun_onReleaseBranchCreateHintWhenOnlyBranch(t *testing.T) {
+	// main-only repo with release.branch main: refusal carries the
+	// create-develop hints because there is no working branch to switch to.
+	var stderr bytes.Buffer
+	git := happyGit("v1.2.3", "main")
+	git["branch"] = func(args ...string) (string, error) {
+		if args[1] == "--show-current" {
+			return "main", nil
+		}
+		return "main\n", nil // --format: only one local branch
+	}
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+	if code := Run(cfg); code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	out := stderr.String()
+	for _, want := range []string{
+		"you're on the release branch",
+		"To start one: git switch -c develop && git push -u origin develop",
+		"Then: pk changelog && pk release",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stderr missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestRun_onReleaseBranchNoCreateHintWithOtherBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	git := happyGit("v1.2.3", "main")
+	git["branch"] = func(args ...string) (string, error) {
+		if args[1] == "--show-current" {
+			return "main", nil
+		}
+		return "main\ndevelop\n", nil
+	}
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+	if code := Run(cfg); code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "To start one:") {
+		t.Errorf("stderr = %q, want no create hint when develop exists", stderr.String())
+	}
+}
+
+func TestRun_releaseBranchMissingPreflight(t *testing.T) {
+	// Merge flow where the release branch resolves neither locally nor on
+	// origin: pre-flight fails with a create hint instead of a raw git
+	// switch error later.
+	var stderr bytes.Buffer
+	git := happyGitMerge("v1.2.3", "develop", "main")
+	git["rev-parse"] = func(args ...string) (string, error) {
+		if args[1] == "--verify" {
+			return "", fmt.Errorf("exit status 1") // no refs resolve
+		}
+		return "abc123", nil
+	}
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+	if code := Run(cfg); code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	out := stderr.String()
+	for _, want := range []string{
+		"release branch main does not exist locally or on origin",
+		"To create it: git branch main && git push -u origin main",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stderr missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestRun_releaseBranchPreflightPasses(t *testing.T) {
+	// Merge flow with the release branch resolvable: pre-flight reports it.
+	var stderr bytes.Buffer
+	git := happyGitMerge("v1.2.3", "develop", "main")
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+	if code := Run(cfg); code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "main exists") {
+		t.Errorf("stderr missing release-branch pre-flight item:\n%s", stderr.String())
+	}
+}

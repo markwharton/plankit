@@ -20,6 +20,7 @@ import (
 	"github.com/markwharton/plankit/internal/hooks"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
+	"github.com/markwharton/plankit/internal/readiness"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -134,6 +135,9 @@ func Run(cfg Config) int {
 		for _, protected := range fullConfig.Guard.Branches {
 			if branch == protected {
 				msg.Errorf(cfg.Stderr, "you're on %q which is a protected branch; switch to your development branch first", branch)
+				if !readiness.HasOtherLocalBranch(cfg.GitExec, cfg.Dir, branch) {
+					msg.Hintf(cfg.Stderr, "To start one: git switch -c develop && git push -u origin develop")
+				}
 				return 1
 			}
 		}
