@@ -3,7 +3,6 @@
 package protect
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 )
 
@@ -37,7 +37,7 @@ func DefaultConfig() Config {
 func Run(cfg Config) int {
 	input, err := hooks.ReadInput(cfg.Stdin)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk protect: failed to read input: %v\n", err)
+		msg.Hookf(cfg.Stderr, "protect", "failed to read input: %v", err)
 		return 0
 	}
 
@@ -52,7 +52,7 @@ func Run(cfg Config) int {
 
 	if isUnderPlansDir(input.ToolInput.FilePath, projectDir) {
 		if err := hooks.WritePermissionDecision(cfg.Stdout, hooks.PermissionDeny, "docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation."); err != nil {
-			fmt.Fprintf(cfg.Stderr, "pk protect: write error: %v\n", err)
+			msg.Hookf(cfg.Stderr, "protect", "write error: %v", err)
 		}
 	}
 

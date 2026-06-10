@@ -12,6 +12,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 )
 
@@ -55,7 +56,7 @@ func DefaultConfig() Config {
 func Run(cfg Config) int {
 	input, err := hooks.ReadInput(cfg.Stdin)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk guard: failed to read input: %v\n", err)
+		msg.Hookf(cfg.Stderr, "guard", "failed to read input: %v", err)
 		return 0
 	}
 
@@ -79,7 +80,7 @@ func Run(cfg Config) int {
 	// Load guard config.
 	guardCfg, err := loadGuardConfig(cfg.ReadFile, projectDir)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk guard: %v\n", err)
+		msg.Hookf(cfg.Stderr, "guard", "%v", err)
 		return 0
 	}
 
@@ -146,7 +147,7 @@ func Run(cfg Config) int {
 // writeDecision emits a PreToolUse permission decision, logging write errors.
 func writeDecision(cfg Config, decision, reason string) {
 	if err := hooks.WritePermissionDecision(cfg.Stdout, decision, reason); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk guard: write error: %v\n", err)
+		msg.Hookf(cfg.Stderr, "guard", "write error: %v", err)
 	}
 }
 

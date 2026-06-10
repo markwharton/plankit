@@ -19,6 +19,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hooks"
+	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/paths"
 )
 
@@ -127,7 +128,7 @@ func Run(cfg Config) int {
 
 	if planPath == "" {
 		if cfg.DryRun {
-			fmt.Fprintf(cfg.Stderr, "pk preserve --dry-run: no plan found (%s)\n", reason)
+			msg.Hookf(cfg.Stderr, "preserve --dry-run", "no plan found (%s)", reason)
 		}
 		return 0
 	}
@@ -135,7 +136,7 @@ func Run(cfg Config) int {
 	// Read plan content.
 	content, err := cfg.ReadFile(planPath)
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to read plan: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "failed to read plan: %v", err)
 		return 0
 	}
 
@@ -173,13 +174,13 @@ func Run(cfg Config) int {
 	// auto: commit (and optionally push) below.
 
 	if projectDir == "" {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: could not determine project directory\n")
+		msg.Hookf(cfg.Stderr, "preserve", "could not determine project directory")
 		return 0
 	}
 
 	// Verify git repo.
 	if _, err := cfg.GitExec(projectDir, "rev-parse", "--is-inside-work-tree"); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: not a git repository: %s\n", projectDir)
+		msg.Hookf(cfg.Stderr, "preserve", "not a git repository: %s", projectDir)
 		return 0
 	}
 
@@ -217,20 +218,20 @@ func Run(cfg Config) int {
 
 	// Create directory before writing.
 	if err := cfg.MkdirAll(destDir, 0755); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to create directory: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "failed to create directory: %v", err)
 		return 0
 	}
 
 	destFile := filepath.Join(destDir, filename)
 	if err := cfg.WriteFile(destFile, content, 0644); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write plan: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "failed to write plan: %v", err)
 		return 0
 	}
 
 	// Git add.
 	relPath := paths.PlansRel(filename)
 	if _, err := cfg.GitExec(projectDir, "add", relPath); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: git add failed: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "git add failed: %v", err)
 		return 0
 	}
 
@@ -244,7 +245,7 @@ func Run(cfg Config) int {
 	// Git commit.
 	commitMsg := fmt.Sprintf("plan: %s [skip ci]", title)
 	if _, err := cfg.GitExec(projectDir, "commit", "-m", commitMsg); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: git commit failed: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "git commit failed: %v", err)
 		return 0
 	}
 	removePointer(cfg, projectDir)
@@ -318,7 +319,7 @@ func readPointer(cfg Config, projectDir string) (string, bool) {
 func writePointer(cfg Config, projectDir, planPath string) {
 	path := pointerPath(projectDir)
 	if err := cfg.WriteFile(path, []byte(planPath+"\n"), 0644); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: failed to write pending-plan pointer: %v\n", err)
+		msg.Hookf(cfg.Stderr, "preserve", "failed to write pending-plan pointer: %v", err)
 	}
 }
 
@@ -462,19 +463,19 @@ func fileExists(cfg Config, path string) bool {
 
 // writeSystemMessage outputs a hook systemMessage JSON to stdout.
 // If CheckUpdate is configured and returns a notice, it is appended.
-func (cfg Config) writeSystemMessage(msg string) {
-	cfg.writeHookResponse(msg, "")
+func (cfg Config) writeSystemMessage(message string) {
+	cfg.writeHookResponse(message, "")
 }
 
 // writeHookResponse outputs a hook response with both systemMessage (shown to user)
 // and additionalContext (injected into Claude's next turn).
-func (cfg Config) writeHookResponse(msg, context string) {
+func (cfg Config) writeHookResponse(message, context string) {
 	if cfg.CheckUpdate != nil {
 		if notice := cfg.CheckUpdate(); notice != "" {
-			msg += " | " + notice
+			message += " | " + notice
 		}
 	}
-	if err := hooks.WritePostToolUse(cfg.Stdout, msg, context); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pk preserve: write error: %v\n", err)
+	if err := hooks.WritePostToolUse(cfg.Stdout, message, context); err != nil {
+		msg.Hookf(cfg.Stderr, "preserve", "write error: %v", err)
 	}
 }
