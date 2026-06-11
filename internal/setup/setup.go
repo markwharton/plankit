@@ -132,7 +132,7 @@ func resolveMode(values ...string) string {
 }
 
 // MarshalJSON emits the object with keys in their preserved order. The output
-// is compact; json.MarshalIndent at the top level re-indents the whole tree.
+// is compact; MarshalIndentNoHTML at the top level re-indents the whole tree.
 func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
@@ -140,7 +140,7 @@ func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		kJSON, err := json.Marshal(k)
+		kJSON, err := MarshalNoHTML(k)
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +150,38 @@ func (oo *OrderedObject) MarshalJSON() ([]byte, error) {
 	}
 	buf.WriteByte('}')
 	return buf.Bytes(), nil
+}
+
+// encodeNoHTML encodes v without HTML escaping, so & < > stay literal in the
+// user-edited files pk writes (.pk.json, .claude/settings.json). Plain
+// json.Marshal escapes them to \u0026 etc., even inside bytes returned by a
+// custom MarshalJSON, so every marshal feeding those files must come through
+// here. Encode appends a trailing newline; wrappers decide whether to keep it.
+func encodeNoHTML(v any, indent string) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", indent)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// MarshalNoHTML is json.Marshal without HTML escaping: compact, no trailing
+// newline, for embedding as json.RawMessage values.
+func MarshalNoHTML(v any) ([]byte, error) {
+	data, err := encodeNoHTML(v, "")
+	if err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(data, []byte("\n")), nil
+}
+
+// MarshalIndentNoHTML is json.MarshalIndent without HTML escaping: two-space
+// indent, trailing newline kept, for writing files.
+func MarshalIndentNoHTML(v any) ([]byte, error) {
+	return encodeNoHTML(v, "  ")
 }
 
 // Config holds the dependencies for the setup command.
@@ -269,11 +301,10 @@ func Run(cfg Config) error {
 	}
 
 	// Write new settings.
-	output, err := json.MarshalIndent(settings, "", "  ")
+	output, err := MarshalIndentNoHTML(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
-	output = append(output, '\n')
 
 	if err := cfg.WriteFile(settingsFile, output, 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", settingsFile, err)

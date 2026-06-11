@@ -239,6 +239,100 @@ func TestWritePkModes_errorPaths(t *testing.T) {
 	}
 }
 
+// TestMarshalNoHTML verifies the helpers keep & < > literal (no HTML escaping)
+// while JSON-mandated escapes like \" remain, and that only the indent variant
+// carries a trailing newline.
+func TestMarshalNoHTML(t *testing.T) {
+	out, err := MarshalNoHTML("a && b < c > d \"quoted\"")
+	if err != nil {
+		t.Fatalf("MarshalNoHTML() error = %v", err)
+	}
+	want := `"a && b < c > d \"quoted\""`
+	if string(out) != want {
+		t.Errorf("MarshalNoHTML() = %s, want %s", out, want)
+	}
+
+	indented, err := MarshalIndentNoHTML(map[string]string{"k": "a && b"})
+	if err != nil {
+		t.Fatalf("MarshalIndentNoHTML() error = %v", err)
+	}
+	if !bytes.Contains(indented, []byte("a && b")) {
+		t.Errorf("MarshalIndentNoHTML() = %s, want literal &&", indented)
+	}
+	if !bytes.HasSuffix(indented, []byte("\"\n}\n")) {
+		t.Errorf("MarshalIndentNoHTML() = %q, want single trailing newline after }", indented)
+	}
+}
+
+// TestWritePkModes_keepsAmpersandsLiteral is a regression test: a user-written
+// hook command containing && must round-trip through the field-merge rewrite
+// without being HTML-escaped to \u0026\u0026.
+func TestWritePkModes_keepsAmpersandsLiteral(t *testing.T) {
+	dir := t.TempDir()
+	existing := `{
+  "changelog": {
+    "hooks": {
+      "preCommit": "pk pin --file .claude/install-pk.sh $VERSION && go run ./evals/footprint"
+    }
+  }
+}
+`
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte(existing), 0644)
+	if _, err := writePkModes(Config{ReadFile: os.ReadFile, WriteFile: os.WriteFile}, dir, "block", "block", "manual"); err != nil {
+		t.Fatalf("writePkModes() error = %v", err)
+	}
+	out, err := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	if err != nil {
+		t.Fatalf("read .pk.json: %v", err)
+	}
+	if !bytes.Contains(out, []byte("$VERSION && go run")) {
+		t.Errorf(".pk.json = %s, want literal &&", out)
+	}
+	if bytes.Contains(out, []byte("\\u0026")) {
+		t.Errorf(".pk.json = %s, want no \\u0026 escapes", out)
+	}
+}
+
+// TestRun_keepsUserHookAmpersandsLiteral verifies a user hook command in
+// settings.json containing && survives the merge + rewrite unescaped.
+func TestRun_keepsUserHookAmpersandsLiteral(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(settingsDir, 0755)
+	existing := `{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {"type": "command", "command": "make lint && make test"}
+        ]
+      }
+    ]
+  }
+}
+`
+	os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(existing), 0644)
+
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	out, err := os.ReadFile(filepath.Join(settingsDir, "settings.json"))
+	if err != nil {
+		t.Fatalf("read settings.json: %v", err)
+	}
+	if !bytes.Contains(out, []byte("make lint && make test")) {
+		t.Errorf("settings.json = %s, want user hook with literal &&", out)
+	}
+	if bytes.Contains(out, []byte("\\u0026")) {
+		t.Errorf("settings.json = %s, want no \\u0026 escapes", out)
+	}
+}
+
 // TestRun_migratesFlatRulesToSubdir verifies that setup moves rules into
 // .claude/rules/plankit/ and cleans up pre-subdir installs: a pristine pk rule at
 // the old flat location is removed, while a user-modified one and the user's own

@@ -176,11 +176,10 @@ func Run(cfg Config) error {
 				return fmt.Errorf("failed to remove %s: %w", settingsFile, err)
 			}
 		} else {
-			output, err := json.MarshalIndent(settings, "", "  ")
+			output, err := setup.MarshalIndentNoHTML(settings)
 			if err != nil {
 				return fmt.Errorf("failed to marshal settings: %w", err)
 			}
-			output = append(output, '\n')
 			if err := cfg.WriteFile(settingsFile, output, 0644); err != nil {
 				return fmt.Errorf("failed to write %s: %w", settingsFile, err)
 			}
@@ -551,7 +550,7 @@ func removeHooks(settings *setup.OrderedObject) {
 		return
 	}
 
-	hooksJSON, err := json.Marshal(hooks)
+	hooksJSON, err := setup.MarshalNoHTML(hooks)
 	if err != nil {
 		return
 	}
@@ -574,7 +573,7 @@ func filterCategoryKey(hooks *setup.OrderedObject, key string) {
 		hooks.Delete(key)
 		return
 	}
-	filteredJSON, err := json.Marshal(filtered)
+	filteredJSON, err := setup.MarshalNoHTML(filtered)
 	if err != nil {
 		return
 	}
@@ -633,14 +632,14 @@ func removePermission(settings *setup.OrderedObject, perm string) {
 	if len(filtered) == 0 {
 		perms.Delete("allow")
 	} else {
-		allowJSON, _ := json.Marshal(filtered)
+		allowJSON, _ := setup.MarshalNoHTML(filtered)
 		perms.Set("allow", json.RawMessage(allowJSON))
 	}
 
 	if perms.Len() == 0 {
 		settings.Delete("permissions")
 	} else {
-		permsJSON, _ := json.Marshal(perms)
+		permsJSON, _ := setup.MarshalNoHTML(perms)
 		settings.Set("permissions", json.RawMessage(permsJSON))
 	}
 }

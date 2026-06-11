@@ -51,7 +51,7 @@ type HookEntry struct {
 func NewHookEntry(matcher string, hooks ...Hook) HookEntry {
 	raw := make([]json.RawMessage, len(hooks))
 	for i, h := range hooks {
-		data, _ := json.Marshal(h)
+		data, _ := MarshalNoHTML(h)
 		raw[i] = data
 	}
 	return HookEntry{Matcher: matcher, Hooks: raw}
@@ -291,13 +291,13 @@ func addPermission(settings *OrderedObject, perm string) error {
 	}
 
 	allowList = append(allowList, perm)
-	allowJSON, err := json.Marshal(allowList)
+	allowJSON, err := MarshalNoHTML(allowList)
 	if err != nil {
 		return err
 	}
 	perms.Set("allow", json.RawMessage(allowJSON))
 
-	permsJSON, err := json.Marshal(perms)
+	permsJSON, err := MarshalNoHTML(perms)
 	if err != nil {
 		return err
 	}
@@ -334,11 +334,10 @@ func writePkModes(cfg Config, projectDir, guardMode, guardPush, preserveMode str
 	}
 	pk.SortKeys()
 
-	output, err := json.MarshalIndent(pk, "", "  ")
+	output, err := MarshalIndentNoHTML(pk)
 	if err != nil {
 		return false, err
 	}
-	output = append(output, '\n')
 	if readErr == nil && bytes.Equal(existing, output) {
 		return false, nil
 	}
@@ -360,12 +359,12 @@ func setNested(pk *OrderedObject, objKey, field, value string) error {
 		}
 		obj = parsed
 	}
-	v, err := json.Marshal(value)
+	v, err := MarshalNoHTML(value)
 	if err != nil {
 		return err
 	}
 	obj.Set(field, json.RawMessage(v))
-	objJSON, err := json.Marshal(obj)
+	objJSON, err := MarshalNoHTML(obj)
 	if err != nil {
 		return err
 	}
@@ -399,7 +398,7 @@ func mergeHooks(settings *OrderedObject, newHooks HooksConfig) error {
 		settings.Delete("hooks")
 		return nil
 	}
-	hooksJSON, err := json.Marshal(existing)
+	hooksJSON, err := MarshalNoHTML(existing)
 	if err != nil {
 		return err
 	}
@@ -422,7 +421,7 @@ func mergeCategory(existing *OrderedObject, key string, newEntries []HookEntry) 
 		existing.Delete(key)
 		return nil
 	}
-	mergedJSON, err := json.Marshal(merged)
+	mergedJSON, err := MarshalNoHTML(merged)
 	if err != nil {
 		return err
 	}
