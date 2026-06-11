@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.24.0] - 2026-06-12
+
+### Added
+
+- add internal/msg and the runtime message style rule (6281de6)
+- add internal/readiness for release-readiness checks (5c3a6cc)
+- pk status reports release readiness (bb5bcc2)
+- failure-point hints for the missing working branch (1df8b92)
+- /conventions guides the branch-strategy transition (f685cd5)
+
+### Fixed
+
+- advertise off modes and drop deprecated flags in pk --help (bd1c574)
+- stop HTML-escaping & < > in pk-written JSON (f4fd4d5)
+
+### Changed
+
+- double-dash flag help and msg-standard output in cmd/pk (3ab3451)
+- hook diagnostics through msg.Hookf (564db86)
+- setup, teardown, status, and rules output through internal/msg (ebd7a41)
+- changelog and release output through internal/msg (2572de9)
+
+### Documentation
+
+- sync error reference with the msg-standard output (4dc30f6)
+- moving-between-setups guide; status readiness reference (9204767)
+
+### Maintenance
+
+- cover error paths in writePkModes/setNested/resolveMode/loadPreserveConfig (7e85b0a)
+
 ## [v0.23.0] - 2026-06-10
 
 ### Added
@@ -891,3 +922,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.21.1]: https://github.com/markwharton/plankit/compare/v0.21.0...v0.21.1
 [v0.22.0]: https://github.com/markwharton/plankit/compare/v0.21.1...v0.22.0
 [v0.23.0]: https://github.com/markwharton/plankit/compare/v0.22.0...v0.23.0
+[v0.24.0]: https://github.com/markwharton/plankit/compare/v0.23.0...v0.24.0
