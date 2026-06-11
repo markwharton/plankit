@@ -437,10 +437,8 @@ func printUsage() {
 	fmt.Fprint(os.Stderr, `pk - Plan-driven development toolkit for Claude Code
 
 Hook commands (called by Claude Code, not directly):
-  pk guard [--ask] [--push-guard block|ask|off]
-                                      Block git mutations on protected branches; guard pushes (PreToolUse hook)
-  pk preserve [--dry-run] [--push] [--notify]
-                                      Preserve approved plan (PostToolUse hook)
+  pk guard                            Block git mutations on protected branches; guard pushes (PreToolUse hook)
+  pk preserve [--dry-run] [--push]    Preserve approved plan (PostToolUse hook)
   pk protect                          Block edits to docs/plans/ (PreToolUse hook)
   pk pin --file <path> [--name <id>] <version>
                                       Update pinned version in a file (preCommit hook)
@@ -451,8 +449,8 @@ User commands:
   pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push
   pk rules [--lint [--strict]] [--project-dir <dir>]
                                       Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars
-  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask] [--preserve auto|manual]
-           [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]
+  pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask|off]
+           [--preserve auto|manual|off] [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]
                                       Configure project hooks and skills; optionally anchor pk changelog
   pk status [--brief] [--project-dir <dir>]
                                       Report plankit configuration state
