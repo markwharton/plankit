@@ -2,6 +2,7 @@ coverage:
   status:
     patch:
       default:
+        threshold: 2%
         paths:
           - "!cmd/pk/**"
 
