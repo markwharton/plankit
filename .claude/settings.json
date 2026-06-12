@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pk guard --push-guard block",
+            "command": "pk guard",
             "shell": "bash",
             "timeout": 5
           }
@@ -41,10 +41,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pk preserve --notify",
+            "command": "pk preserve",
             "shell": "bash",
-            "timeout": 10,
-            "statusMessage": "Checking plan..."
+            "timeout": 30,
+            "statusMessage": "Preserving plan..."
           }
         ]
       }

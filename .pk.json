@@ -1,27 +1,77 @@
 {
   "changelog": {
     "types": [
-      {"type": "feat", "section": "Added"},
-      {"type": "fix", "section": "Fixed"},
-      {"type": "deprecate", "section": "Deprecated"},
-      {"type": "revert", "section": "Removed"},
-      {"type": "security", "section": "Security"},
-      {"type": "refactor", "section": "Changed"},
-      {"type": "perf", "section": "Changed"},
-      {"type": "docs", "section": "Documentation"},
-      {"type": "chore", "section": "Maintenance"},
-      {"type": "test", "section": "Maintenance"},
-      {"type": "build", "section": "Maintenance"},
-      {"type": "ci", "section": "Maintenance"},
-      {"type": "style", "section": "Maintenance"},
-      {"type": "plan", "section": "Plans", "hidden": true}
+      {
+        "type": "feat",
+        "section": "Added"
+      },
+      {
+        "type": "fix",
+        "section": "Fixed"
+      },
+      {
+        "type": "deprecate",
+        "section": "Deprecated"
+      },
+      {
+        "type": "revert",
+        "section": "Removed"
+      },
+      {
+        "type": "security",
+        "section": "Security"
+      },
+      {
+        "type": "refactor",
+        "section": "Changed"
+      },
+      {
+        "type": "perf",
+        "section": "Changed"
+      },
+      {
+        "type": "docs",
+        "section": "Documentation"
+      },
+      {
+        "type": "chore",
+        "section": "Maintenance"
+      },
+      {
+        "type": "test",
+        "section": "Maintenance"
+      },
+      {
+        "type": "build",
+        "section": "Maintenance"
+      },
+      {
+        "type": "ci",
+        "section": "Maintenance"
+      },
+      {
+        "type": "style",
+        "section": "Maintenance"
+      },
+      {
+        "type": "plan",
+        "section": "Plans",
+        "hidden": true
+      }
     ],
     "hooks": {
       "preCommit": "pk pin --file .claude/install-pk.sh $VERSION && go run ./evals/footprint"
     }
   },
   "guard": {
-    "branches": ["main"]
+    "branches": [
+      "main"
+    ],
+    "mode": "block",
+    "push": "block"
+  },
+  "preserve": {
+    "mode": "manual"
   },
   "release": {
     "branch": "main",
