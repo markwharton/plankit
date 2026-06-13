@@ -54,6 +54,7 @@ jobs:
         with:
           name: pk-${{ matrix.suffix }}
           path: pk-${{ matrix.suffix }}${{ matrix.ext }}
+          retention-days: 1
 
   release:
     needs: build
