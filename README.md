@@ -97,7 +97,7 @@ Skills add a preview+confirm cycle and handle the sequencing. The underlying pk 
 - [Architecture](docs/architecture.md): three-layer model, provider boundaries, multi-environment design
 - [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
 - [Resources](docs/resources.md): Claude Code best practices, git references
-- [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts
+- [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts, and deploying a running service
 - [Working as a Team](docs/working-as-a-team.md): applying the methodology
 
 ### Reference

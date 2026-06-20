@@ -161,7 +161,25 @@ This is also why `pk pin` exists rather than using `sed` — `sed -i` behaves di
 
 Bash-specific parameter expansion like `${VAR#pattern}` is not supported — only simple `$VAR` and `${VAR}` substitution.
 
+## After release: the tag governs a running service
+
+The tag's authority doesn't end when pk cuts the release. For a service you operate, the same tag governs what's running.
+
+**This applies to a service you operate, not a distributed artifact.** The model fits a service whose running version you can replace by redeploying a tag. It does not fit a distributed artifact — a CLI binary, a desktop or mobile app, a published package — where the shipped version lives on machines you don't control: there's no single running version to replace, and you move forward only by publishing a new release for consumers to pull. `pk` itself is the distributed case, which is why plankit ships releases and has no deploy command.
+
+**Two operations run the service, both computed from the tag list alone.**
+
+- **Deploy** — ship the latest tag.
+- **Roll back** — ship the tag before the latest.
+
+Both targets come from the tag list alone — the latest tag, and the one before it — never from what's currently deployed, so there is no deployment ledger to keep and no running version to look up. Because both operations are idempotent, either can run at any time: the end state is decided by which one you run, not by what was live when you started. Deploy always lands on the latest tag; rollback deliberately ships an older one, so it's worth gating rollback behind an explicit confirmation — so a routine deploy and a step backward aren't one careless click apart. Each run checks out its tag, verifies the build and tests against exactly what will ship, deploys, and smoke-checks that the live service reports the tag's version — the tag is the source of truth, and the check proves reality matches it.
+
+That last check assumes the service exposes its own version — a small endpoint, say `/health` returning its status and build version, is what makes "does the live version match the tag" answerable.
+
+**Backwards compatibility is what makes rollback safe.** Rolling back redeploys the previous tag's code; it does not move data back. So rollback is safe only when the previous version still works against the current state — the discipline is backwards compatibility: design each forward change so the new and previous versions coexist against the same data, then rolling back just works. Remove the old path later, in its own release, once nothing depends on it. A change that breaks that coexistence — typically a data migration — can't be undone by redeploying a tag: the older code carries no reverse, and nothing runs one. Such a change isn't a rollback candidate; instead you roll forward — cut a new release and deploy it, the same Deploy step now pointing at a newer tag. Rolling back stateful or schema changes is a discipline of its own; the Well-Architected safe-deployment references under [Resources](resources.md#well-architected-framework) cover it.
+
 ## Related
 
+- [Resources](resources.md#well-architected-framework) — Well-Architected reliability and operational excellence behind safe deploy and rollback
 - [pk changelog](pk-changelog.md) — release workflow, hooks, versionFiles configuration
 - [pk pin](pk-pin.md) — command reference
