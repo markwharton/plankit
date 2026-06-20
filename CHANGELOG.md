@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.24.1] - 2026-06-20
+
+### Documentation
+
+- cover tag-governed deploy and rollback for running services (0ab0848)
+
+### Maintenance
+
+- update pk-managed files for v0.24.0 (cad1706)
+- notify Homebrew tap on release (9d43e64)
+- add 2% threshold to codecov patch status (0109ab6)
+- set 1-day retention on release artifacts (ae2ec21)
+- bump actions/checkout from 6.0.2 to 6.0.3 (24c8ef9)
+- bump codecov/codecov-action from 6.0.1 to 7.0.0 (c5f05a7)
+
 ## [v0.24.0] - 2026-06-12
 
 ### Added
@@ -923,3 +938,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.22.0]: https://github.com/markwharton/plankit/compare/v0.21.1...v0.22.0
 [v0.23.0]: https://github.com/markwharton/plankit/compare/v0.22.0...v0.23.0
 [v0.24.0]: https://github.com/markwharton/plankit/compare/v0.23.0...v0.24.0
+[v0.24.1]: https://github.com/markwharton/plankit/compare/v0.24.0...v0.24.1
