@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.25.0] - 2026-06-24
+
+### Added
+
+- make the update notice install-aware for Homebrew (7e20146)
+
 ## [v0.24.1] - 2026-06-20
 
 ### Documentation
@@ -939,3 +945,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.23.0]: https://github.com/markwharton/plankit/compare/v0.22.0...v0.23.0
 [v0.24.0]: https://github.com/markwharton/plankit/compare/v0.23.0...v0.24.0
 [v0.24.1]: https://github.com/markwharton/plankit/compare/v0.24.0...v0.24.1
+[v0.25.0]: https://github.com/markwharton/plankit/compare/v0.24.1...v0.25.0
