@@ -29,7 +29,16 @@ After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk 
 
 ## Install
 
-Requires [Go](https://go.dev/doc/install) (for `go install`) and [Claude Code](https://code.claude.com).
+Works with [Claude Code](https://code.claude.com). Install `pk` with Homebrew, Go, or a prebuilt binary.
+
+Homebrew (macOS/Linux):
+
+```bash
+brew tap markwharton/plankit
+brew install plankit
+```
+
+With [Go](https://go.dev/doc/install):
 
 ```bash
 go install github.com/markwharton/plankit/cmd/pk@latest

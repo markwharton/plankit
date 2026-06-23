@@ -11,10 +11,33 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/markwharton/plankit/internal/version"
 )
+
+// InstallMethod identifies how the running pk binary was installed, so the
+// update notice can suggest the matching upgrade command.
+type InstallMethod int
+
+const (
+	// InstallGo is a `go install` (or downloaded release) binary. Default.
+	InstallGo InstallMethod = iota
+	// InstallHomebrew is a Homebrew keg (binary lives under a Cellar path).
+	InstallHomebrew
+)
+
+// DetectInstall classifies the install method from the running binary's
+// resolved path. The caller resolves symlinks first; a Homebrew keg lives
+// under a ".../Cellar/..." path. Anything else, including an empty path on
+// lookup failure, is InstallGo, the safe default matching the prior notice.
+func DetectInstall(exePath string) InstallMethod {
+	if strings.Contains(exePath, "/Cellar/") {
+		return InstallHomebrew
+	}
+	return InstallGo
+}
 
 // CacheEntry stores the result of a version check.
 type CacheEntry struct {
@@ -88,13 +111,19 @@ func Check(cfg Config) (latest string, available bool) {
 	return latest, isNewer(latest, cfg.CurrentVersion)
 }
 
-// FormatNotice returns a human-readable update notice.
-func FormatNotice(latest, current string) string {
+// FormatNotice returns a human-readable update notice. The install line
+// matches how the running binary was installed: `brew upgrade plankit` for a
+// Homebrew keg, `go install` otherwise.
+func FormatNotice(latest, current string, method InstallMethod) string {
+	install := "go install github.com/markwharton/plankit/cmd/pk@latest"
+	if method == InstallHomebrew {
+		install = "brew upgrade plankit"
+	}
 	return fmt.Sprintf(
 		"Update available: pk %s → %s\n"+
-			"  Install: go install github.com/markwharton/plankit/cmd/pk@latest\n"+
+			"  Install: %s\n"+
 			"  Refresh: pk setup (updates rules and skills in this project)",
-		current, latest,
+		current, latest, install,
 	)
 }
 

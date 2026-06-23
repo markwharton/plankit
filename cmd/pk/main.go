@@ -172,7 +172,7 @@ func runPreserve(args []string) {
 	cfg.CheckUpdate = func() string {
 		latest, available := update.Check(update.DefaultConfig(version.Version()))
 		if available {
-			return update.FormatNotice(latest, version.Version())
+			return update.FormatNotice(latest, version.Version(), installMethod())
 		}
 		return ""
 	}
@@ -429,8 +429,23 @@ func resolveProjectDir(dir string) string {
 
 func printUpdateNotice() {
 	if latest, available := update.Check(update.DefaultConfig(version.Version())); available {
-		fmt.Fprintf(os.Stderr, "%s\n", update.FormatNotice(latest, version.Version()))
+		fmt.Fprintf(os.Stderr, "%s\n", update.FormatNotice(latest, version.Version(), installMethod()))
 	}
+}
+
+// installMethod resolves how the running binary was installed so the update
+// notice can suggest the matching upgrade command. Symlinks are resolved
+// (Homebrew links bin/pk into a Cellar keg); any failure falls back to
+// InstallGo, the safe default.
+func installMethod() update.InstallMethod {
+	exe, err := os.Executable()
+	if err != nil {
+		return update.InstallGo
+	}
+	if resolved, e := filepath.EvalSymlinks(exe); e == nil {
+		exe = resolved
+	}
+	return update.DetectInstall(exe)
 }
 
 func printUsage() {

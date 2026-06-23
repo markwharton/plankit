@@ -238,14 +238,42 @@ func TestCheck_httpNon200(t *testing.T) {
 }
 
 func TestFormatNotice(t *testing.T) {
-	notice := FormatNotice("v2.0.0", "v1.0.0")
+	notice := FormatNotice("v2.0.0", "v1.0.0", InstallGo)
 	if !strings.Contains(notice, "v1.0.0") || !strings.Contains(notice, "v2.0.0") {
 		t.Errorf("FormatNotice() = %q, want to contain both versions", notice)
 	}
 	if !strings.Contains(notice, "go install") {
-		t.Errorf("FormatNotice() = %q, want to contain install command", notice)
+		t.Errorf("FormatNotice() = %q, want to contain go install command", notice)
 	}
 	if !strings.Contains(notice, "pk setup") {
 		t.Errorf("FormatNotice() = %q, want to contain pk setup refresh guidance", notice)
+	}
+}
+
+func TestFormatNoticeHomebrew(t *testing.T) {
+	notice := FormatNotice("v2.0.0", "v1.0.0", InstallHomebrew)
+	if !strings.Contains(notice, "brew upgrade plankit") {
+		t.Errorf("FormatNotice() = %q, want to contain brew upgrade command", notice)
+	}
+	if strings.Contains(notice, "go install") {
+		t.Errorf("FormatNotice() = %q, want no go install command for Homebrew", notice)
+	}
+}
+
+func TestDetectInstall(t *testing.T) {
+	tests := []struct {
+		path string
+		want InstallMethod
+	}{
+		{"/opt/homebrew/Cellar/plankit/0.24.1/bin/pk", InstallHomebrew},
+		{"/usr/local/Cellar/plankit/0.24.1/bin/pk", InstallHomebrew},
+		{"/Users/x/go/bin/pk", InstallGo},
+		{"/usr/local/bin/pk", InstallGo},
+		{"", InstallGo},
+	}
+	for _, tt := range tests {
+		if got := DetectInstall(tt.path); got != tt.want {
+			t.Errorf("DetectInstall(%q) = %v, want %v", tt.path, got, tt.want)
+		}
 	}
 }

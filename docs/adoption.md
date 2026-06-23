@@ -24,7 +24,7 @@ graph TD
 
 - **[Claude Code](https://code.claude.com) provides the full experience.** Hooks, rules, skills, and `/ship` all run inside Claude Code. The release CLI (`pk changelog`, `pk release`) also works standalone from any terminal.
 - **Git is required.** `pk setup` refuses to install outside a git working tree by default. Pass `--allow-non-git` for the narrow case where only rules and skills are needed before `git init`.
-- **pk is required for hook features.** Install via `go install github.com/markwharton/plankit/cmd/pk@latest` or download a binary from the [releases page](https://github.com/markwharton/plankit/releases). See [When pk is not installed](#when-pk-is-not-installed) for what happens without it.
+- **pk is required for hook features.** Install via Homebrew (`brew tap markwharton/plankit && brew install plankit`), `go install github.com/markwharton/plankit/cmd/pk@latest`, or download a binary from the [releases page](https://github.com/markwharton/plankit/releases). See [When pk is not installed](#when-pk-is-not-installed) for what happens without it.
 
 ## Layer 1: Foundation
 
