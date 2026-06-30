@@ -85,13 +85,14 @@ The trailer value is validated as strict semver: it must parse via plankit's sem
 The merge uses `git merge --ff-only`. If the release branch has diverged (e.g., someone committed directly to it from the terminal), the merge fails with:
 
 ```
-Error: merge failed — main has diverged from dev (not fast-forward).
-Resolve on main manually, then try again.
+Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
 
 ### Error recovery
 
 If any step fails after switching to the release branch (merge, hook, push), `pk release` automatically switches back to the source branch before exiting.
+
+Divergence means the release branch carries a commit that is not on the source branch, so the fast-forward merge can't proceed. Recovery is to reconcile that commit back into the source branch (`git merge origin/main`), not to drop it; if it was already pushed, never force push. When you have an unpushed `pk changelog` release commit, the order matters: undo it before the merge and regenerate it after, so the `Release-Tag` trailer stays at HEAD instead of being buried under the merge commit. See [not fast-forward](error-reference.md#not-fast-forward) for the exact ordered steps.
 
 ### Guard interaction
 

@@ -155,7 +155,12 @@ Error: merge failed; main has diverged from develop (not fast-forward). Resolve 
 
 **Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
 
-**Fix:** Merge main into your source branch first to reconcile the histories, then retry.
+**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge so the `Release-Tag` trailer ends up at the released tip rather than buried under the merge commit (`pk release` reads the trailer from HEAD only):
+
+1. `pk changelog --undo` — drop the unpushed release commit (skip if you have not run `pk changelog` yet).
+2. `git merge origin/main` — merge the release branch into your source branch to reconcile the divergent commit. That commit is already pushed and can't be dropped (never force push), so merging is how you keep it.
+3. `pk changelog` — regenerate the release commit so the `Release-Tag` trailer sits at HEAD, above the merge commit.
+4. `pk release` — fast-forwards cleanly now, pushing the release branch, source branch, and tag.
 
 ### push failed
 
