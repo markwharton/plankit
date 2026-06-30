@@ -2016,3 +2016,39 @@ func TestRun_guardedBranchNoCreateHintWithOtherBranch(t *testing.T) {
 		t.Errorf("stderr = %q, want no create hint when develop exists", stderr.String())
 	}
 }
+
+func TestEscapeSubject(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		// escaped — these change how GitHub renders the line
+		{"tag-opener < escaped", "clean URLs /join/<code> now", "clean URLs /join/&lt;code> now"},
+		{"ampersand escaped (protects entities)", "auth & sessions", "auth &amp; sessions"},
+		{"literal entity stays literal", "ship &copy; 2026", "ship &amp;copy; 2026"},
+		{"generics", "Map<K, V> helper", "Map&lt;K, V> helper"},
+		// left alone — render identically, so the raw CHANGELOG stays clean
+		{"apostrophe left alone", "don't crash", "don't crash"},
+		{"greater-than left alone", "perf: a > b wins", "perf: a > b wins"},
+		// backticks: the author's code spans are preserved verbatim
+		{"backtick span preserved", "add `/join/<code>` route", "add `/join/<code>` route"},
+		{"span kept, bare < escaped", "`<code>` and bare <id>", "`<code>` and bare &lt;id>"},
+		{"lone backtick literal, < escaped", "use ` then <x>", "use ` then &lt;x>"},
+		{"plain ascii unchanged", "plain ascii message", "plain ascii message"},
+	}
+	for _, c := range cases {
+		if got := escapeSubject(c.in); got != c.want {
+			t.Errorf("%s: escapeSubject(%q) = %q, want %q", c.name, c.in, got, c.want)
+		}
+	}
+}
+
+// formatSection must run the message and scope through escapeSubject.
+func TestFormatSection_escapesMessage(t *testing.T) {
+	groups := []CommitGroup{
+		{Heading: "Added", Items: []Commit{
+			{Hash: "abc1234", Message: "clean join URLs — /join/<code>"},
+		}},
+	}
+	got := formatSection("v1.0.0", "2026-06-30", groups, false)
+	if !strings.Contains(got, "- clean join URLs — /join/&lt;code> (abc1234)") {
+		t.Errorf("formatSection did not escape '<' in message; got:\n%s", got)
+	}
+}

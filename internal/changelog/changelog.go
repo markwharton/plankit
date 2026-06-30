@@ -563,6 +563,35 @@ func groupCommits(commits []Commit, types []TypeConfig) []CommitGroup {
 	return groups
 }
 
+// codeSpanRe matches a balanced single-backtick code span. A lone backtick won't
+// match — in GFM it renders literally, so its surrounding text is escaped.
+var codeSpanRe = regexp.MustCompile("`[^`]*`")
+
+// escapeText escapes the two characters that change meaning in GFM text: & (the
+// entity introducer) and < (the tag opener), & first so we don't double-escape.
+// >, quotes and everything else render identically whether escaped or not, so we
+// leave them — the raw CHANGELOG stays readable as plain text (don't, a > b).
+func escapeText(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	return s
+}
+
+// escapeSubject escapes the plain-text parts of a commit subject for safe GFM
+// rendering, leaving the author's backtick code spans intact (escaping inside a
+// span would surface a literal &lt;).
+func escapeSubject(s string) string {
+	var b strings.Builder
+	last := 0
+	for _, loc := range codeSpanRe.FindAllStringIndex(s, -1) {
+		b.WriteString(escapeText(s[last:loc[0]])) // outside span: escape & and <
+		b.WriteString(s[loc[0]:loc[1]])           // the span: verbatim
+		last = loc[1]
+	}
+	b.WriteString(escapeText(s[last:]))
+	return b.String()
+}
+
 // formatSection renders a version's changelog section as markdown.
 func formatSection(ver, date string, groups []CommitGroup, showScope bool) string {
 	var b strings.Builder
@@ -575,9 +604,9 @@ func formatSection(ver, date string, groups []CommitGroup, showScope bool) strin
 				prefix = "**BREAKING:** "
 			}
 			if showScope && c.Scope != "" {
-				prefix += "**" + c.Scope + ":** "
+				prefix += "**" + escapeSubject(c.Scope) + ":** "
 			}
-			fmt.Fprintf(&b, "- %s%s (%s)\n", prefix, c.Message, c.Hash)
+			fmt.Fprintf(&b, "- %s%s (%s)\n", prefix, escapeSubject(c.Message), c.Hash)
 		}
 	}
 	return b.String()
