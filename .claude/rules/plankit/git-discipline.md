@@ -1,7 +1,7 @@
 ---
 description: Verify before rewriting, commit with purpose, conventional commits, commit before risk
 kind: craft
-pk_sha256: 3f8e7b51b8079687fcf730abb9549fbad1a65811d34eb3d4a24b0c979cf8a4ab
+pk_sha256: 5ac1f991aa4b5762c28f76f3c33b736c1ccfe07d0515e26040c7b4d516054b82
 ---
 
 # Git Discipline
@@ -15,6 +15,7 @@ pk_sha256: 3f8e7b51b8079687fcf730abb9549fbad1a65811d34eb3d4a24b0c979cf8a4ab
 - **Don't rewrite history between `pk changelog` and `pk release`.** The two commands are a coupled flow: changelog captures commit SHAs, release publishes them. Rewriting history mid-flow produces stale references.
 - **Commit with purpose.** Each commit is one logical change. Follow Conventional Commits to make history scannable.
 - **Commit `pk setup` updates on their own.** When `pk setup` creates or updates managed files (skills, rules, CLAUDE.md, install-pk.sh), commit those changes separately rather than folding them into feature work. Keeps history scannable and makes pk-upgrade churn distinguishable from project changes. Suggested message: `chore: update pk-managed files for v<VERSION>` where `<VERSION>` is the installed pk version.
+- **All work happens on the source branch; the release branch advances only via `pk release`.** Features, fixes, version bumps, and `pk setup` updates all commit on the source branch (e.g. `develop`). Never `git checkout`/`git switch` to the release branch (e.g. `main`) to make a change: `pk release` fast-forward-merges the source branch into the release branch, so a commit made directly on the release branch breaks that fast-forward and the next release fails with "`<release>` has diverged from `<source>` (not fast-forward)." If that commit was already pushed it can't be dropped (never force push); recovery means reconciling it back into the source branch.
 - **Configure automation that produces commits to follow the convention.** Dependabot, release bots, and any tool that opens PRs or pushes commits should set a conventional `commit-message: prefix:` (e.g., `chore(deps)`) so their work flows into `pk changelog` rather than getting silently skipped at release time.
 - **Match message weight to change weight.** Substantive features (user-facing behavior, design decisions worth preserving) get a multi-paragraph body explaining why and shape. Focused small changes get one-line messages. Don't inherit the recent commits' style; match the message to this commit's content.
 - **Never include BREAKING CHANGE** in commit messages unless there is an actual breaking change.
