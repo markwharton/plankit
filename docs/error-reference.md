@@ -232,6 +232,25 @@ Found 2 issue(s):
 
 **Fix:** Remove the flagged characters. `[safety]` findings are genuine risks; `[style]` findings reflect plankit's house style and only appear with `--strict`.
 
+## pk guard
+
+### out of memory at startup
+
+```
+runtime: out of memory
+...
+runtime.mallocgc(0x100, ...)
+    .../src/runtime/malloc.go:1150
+...
+runtime.schedinit()
+    .../src/runtime/proc.go:878
+runtime.rt0_go()
+```
+
+**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`): the process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure; `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. This is memory pressure on the machine, not a pk leak.
+
+**Fix:** Nothing is left unguarded: Go fatal errors exit with status 2, which Claude Code treats as a blocking error for PreToolUse hooks, so the command was blocked and retrying it succeeds once memory frees. If it recurs, find what is consuming memory (on Windows, Event Viewer > System log > Event ID 2004 names the largest consumers) and check the pagefile is not disabled or capped small.
+
 ## pk pin
 
 ### invalid semver

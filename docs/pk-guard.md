@@ -49,7 +49,7 @@ The `/conventions` skill can set `guard.branches` for you, field-merging it into
 
 - **Input:** PreToolUse JSON on stdin (includes `tool_input.command` for Bash).
 - **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` on stdout to block. With `--ask`, uses `"permissionDecision":"ask"` to prompt the user instead. No output to allow. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
-- **Exit code:** Always 0.
+- **Exit code:** Always 0 by design. If the binary itself crashes before it can respond (Go fatal errors, such as running out of memory at startup, exit with status 2), Claude Code treats exit 2 as a blocking error: the command is blocked and stderr is fed back to Claude, so guard fails closed and a retry succeeds once the cause clears. A missing binary (exit 127) is non-blocking and the command proceeds unguarded — see [When pk is not installed](adoption.md#when-pk-is-not-installed). See [out of memory at startup](error-reference.md#out-of-memory-at-startup) in the error reference.
 
 ## Environment
 
