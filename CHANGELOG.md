@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.25.2] - 2026-07-03
+
+### Fixed
+
+- ship skill never mints a major or proceeds on an unanswered confirmation in auto mode (f6941ae)
+
+### Documentation
+
+- correct hook exit-code semantics and document guard OOM crash (02d8065)
+
+### Maintenance
+
+- bump softprops/action-gh-release from 3.0.0 to 3.0.1 (f56b110)
+- bump actions/checkout from 6.0.3 to 7.0.0 (a90d23b)
+- bump actions/setup-go from 6.4.0 to 6.5.0 (9a01c45)
+
 ## [v0.25.1] - 2026-07-01
 
 ### Fixed
@@ -958,3 +974,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.24.1]: https://github.com/markwharton/plankit/compare/v0.24.0...v0.24.1
 [v0.25.0]: https://github.com/markwharton/plankit/compare/v0.24.1...v0.25.0
 [v0.25.1]: https://github.com/markwharton/plankit/compare/v0.25.0...v0.25.1
+[v0.25.2]: https://github.com/markwharton/plankit/compare/v0.25.1...v0.25.2
