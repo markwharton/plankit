@@ -6,6 +6,8 @@ How pk manages version numbers across a release.
 
 Git tags are the single source of truth for version. `pk changelog` reads the latest tag, computes the next version from conventional commits, and writes that version into whatever files need it. Nothing else determines the version — not a constant in source, not a field in package.json, not a variable in a script. Those are all downstream targets that receive the version at release time.
 
+**The version flows one way.** Never read it back out of a downstream target: reading the version from package.json or a source constant at build or generate time and writing the result into committed files bakes in whatever the last release left behind, and those files lag every release. Files that must carry the version are wired into the changelog config and stamped at release time.
+
 ## Flowing the version into artifacts
 
 Several mechanisms exist for getting the tag-derived version into files. Choose based on your project's build model.
@@ -124,6 +126,8 @@ For projects where the framework has no built-in version propagation command. Yo
 ```
 
 The script handles whatever the framework requires: SPFx uses 4-part versions (`X.Y.Z.0`) spread across `package-solution.json` and multiple `*.manifest.json` files. No CLI command exists to sync these, so the script receives the version, appends `.0`, writes every manifest, and stages the results.
+
+Generated files that are committed follow the same model: regenerate them in a `preCommit` hook and stage the result, so they are built with the release version and land in the changelog commit; `pk changelog --undo` reverts them with everything else.
 
 **When to use:** The framework stores versions in a non-standard format or across multiple files with no ecosystem command to update them. `versionFiles` handles the root `package.json`; the hook script handles everything else.
 
