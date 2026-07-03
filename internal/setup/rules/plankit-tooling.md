@@ -17,6 +17,10 @@ kind: conduct
 - **`pk protect` blocks edits to `docs/plans/`.** Preserved plans are immutable historical records. The block reason tells you why. Adjust your approach; don't try to work around it.
 - **`pk preserve` runs after exiting plan mode.** Behavior depends on project configuration; it may preserve automatically or notify that a plan is ready. When it runs automatically, surface the outcome to the user, including any commits created or pushes attempted. If the user types `/preserve`, dispatch the skill as your next action. Never queue it behind implementation work. `/preserve` is an explicit request, not a go-signal for something else.
 
+## Versioning
+
+- **A task that surfaces the release version goes through release-time stamping, never a read of the current version.** Wire the file into `.pk.json`'s changelog config: `versionFiles` for a root JSON version field, `pk pin` in a hook for source constants, a hook script for anything else. Never read the version out of package.json or a source constant in code you write; versions are computed from the git tag history and written into files, never read from them.
+
 ## Session Bootstrap
 
 - **pk installs itself in cloud sandboxes.** The SessionStart hook downloads pk if it's not already available. If pk is already on PATH, the hook exits immediately. No action needed.

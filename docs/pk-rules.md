@@ -37,13 +37,13 @@ pk rules --project-dir /path      # specify project directory
 ### Example output
 
 ```
-Always-on context: 5 files, ~14 KB, 4,962 tokens (estimated, calibrated against claude-opus-4-8)
+Always-on context: 5 files, ~16 KB, 5,554 tokens (estimated, calibrated against claude-fable-5)
   CLAUDE.md                                       544 B    186 tokens
   .claude/rules/plankit/development-standards.md  ~3 KB  1,041 tokens  [managed] craft
-  .claude/rules/plankit/git-discipline.md         ~4 KB  1,239 tokens  [managed] craft
+  .claude/rules/plankit/git-discipline.md         ~5 KB  1,667 tokens  [managed] craft
   .claude/rules/plankit/model-behavior.md         ~4 KB  1,314 tokens  [managed] conduct
-  .claude/rules/plankit/plankit-tooling.md        ~3 KB  1,182 tokens  [managed] conduct
-Conditional (loads on matching files): 1 files, 78 B, 27 tokens (estimated, calibrated against claude-opus-4-8)
+  .claude/rules/plankit/plankit-tooling.md        ~4 KB  1,346 tokens  [managed] conduct
+Conditional (loads on matching files): 1 files, 78 B, 27 tokens (estimated, calibrated against claude-fable-5)
   .claude/rules/scoped.md                          78 B     27 tokens  [local] unclassified
 Provenance: 4 managed (pristine), 0 modified, 1 user-authored.
 ```
