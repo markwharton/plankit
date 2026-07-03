@@ -4,7 +4,7 @@ description: "Ship a release: changelog, tag, merge, and push in one pass"
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
 argument-hint: [auto]
-pk_sha256: 5cbe65bec52e8d90af5b05dbe5c6a7f03aa5dad6f2c70039a26be9e28f66dfa0
+pk_sha256: 8be45e5c63047181267a70bafab88c5f2d9a13a913a31fe11bb8bf5fc1ba7cbe
 ---
 
 The release workflow. `pk changelog` and `pk release` are always run in sequence when shipping a version; this skill chains them while preserving the preview+confirm gate for each step so nothing lands unreviewed.
@@ -44,6 +44,8 @@ Report the final result to the user.
 
 When invoked as `/ship auto`, proceed through each step without pausing for confirmation as long as the `--dry-run` preview shows no errors. If either dry-run produces an error or unexpected output, stop and ask before continuing.
 
+A major version bump is always "unexpected output" in auto mode, even when the dry-run is otherwise clean — especially one crossing 0.x → 1.0.0. It must be explicitly confirmed by the user before `pk changelog` runs; auto mode never mints a major unattended.
+
 Auto mode changes steps 2 and 3: run the dry-run, check for errors, and if clean, execute immediately rather than showing the preview and waiting for approval.
 
 ## Rules
@@ -56,3 +58,9 @@ Auto mode changes steps 2 and 3: run the dry-run, check for errors, and if clean
 - If `pk changelog` succeeds but `pk release` fails, the user can simply re-run `/ship` — step 1 will detect the `Release-Tag` trailer and resume at step 3.
 - If the user wants to back out after step 2 but before step 3, run `pk changelog --undo` — never `git reset`. The command refuses unless HEAD is the unpushed `pk changelog` commit and the tree is clean.
 - Never run `git push` directly. `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.
+- **An unanswered confirmation halts the flow — never proceed on a default.** If a question to the user goes unanswered (they may be away), do not substitute best judgment. End with a clear report: "ship paused — awaiting your answer on <X>", and state that re-running `/ship` resumes where it stopped (step 1's `Release-Tag` detection). Pausing costs one command; a wrong release is permanent.
+- **A surprising computed version usually means a mislabeled commit — fix the commit, not the number.** Before reaching for `--bump`, check the commits being released (e.g. an unjustified `BREAKING CHANGE` footer driving a major). How to fix depends on where you are in the flow:
+  - Before `pk changelog` has run (surprise seen in the dry-run): correct the unpushed commit's message via the soft-reset procedure from git-discipline, then re-run the dry-run.
+  - After `pk changelog` has run: first `pk changelog --undo` to unwind the changelog commit — never soft-reset through it — then fix the mislabeled commit, then re-run `pk changelog`.
+
+  `--bump` corrects the number but ships the wrong label into permanent history; use it only when the labels are right and the user deliberately wants a different bump.
