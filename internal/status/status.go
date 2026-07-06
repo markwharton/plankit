@@ -373,59 +373,21 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 // relative to dir as the label (e.g. "plankit/git-discipline.md").
 func scanManaged(cfg Config, dir string, nested bool) []managedFile {
 	var files []managedFile
+	visit := func(path, rel string) error {
+		if mf := checkSingleFile(cfg, path, rel); mf != nil {
+			files = append(files, *mf)
+		}
+		return nil
+	}
+	// Walk errors mean an unreadable directory; it contributes nothing, as before.
 	if nested {
-		entries, err := cfg.ReadDir(dir)
-		if err != nil {
-			return nil
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name(), "SKILL.md")
-			label := entry.Name() + "/SKILL.md"
-			if mf := checkSingleFile(cfg, path, label); mf != nil {
-				files = append(files, *mf)
-			}
-		}
+		_ = setup.WalkSkillFiles(cfg.ReadDir, dir, visit)
 	} else {
-		scanRulesDir(cfg, dir, "", &files)
+		_ = setup.WalkRuleFiles(cfg.ReadDir, dir, visit)
 	}
 
 	sort.Slice(files, func(i, j int) bool { return files[i].label < files[j].label })
 	return files
-}
-
-// scanRulesDir appends every pk-managed *.md under dir to files, recursing into
-// subdirectories. rel is dir's slash-separated path relative to the rules root
-// ("" at the root), used to build each file's label. A missing or unreadable
-// directory contributes nothing.
-func scanRulesDir(cfg Config, dir, rel string, files *[]managedFile) {
-	entries, err := cfg.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() {
-			sub := name
-			if rel != "" {
-				sub = rel + "/" + name
-			}
-			scanRulesDir(cfg, filepath.Join(dir, name), sub, files)
-			continue
-		}
-		if !strings.HasSuffix(name, ".md") {
-			continue
-		}
-		label := name
-		if rel != "" {
-			label = rel + "/" + name
-		}
-		if mf := checkSingleFile(cfg, filepath.Join(dir, name), label); mf != nil {
-			*files = append(*files, *mf)
-		}
-	}
 }
 
 // checkSingleFile returns a managedFile if the file has a pk_sha256 marker,

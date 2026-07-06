@@ -84,7 +84,7 @@ func Run(cfg Config) int {
 func collectRules(cfg Config) ([]rule, error) {
 	root := filepath.Join(cfg.ProjectDir, paths.ClaudeDir, paths.RulesDir)
 	var rs []rule
-	if err := walkRules(cfg, root, "", &rs); err != nil {
+	if err := walkRules(cfg, root, &rs); err != nil {
 		return nil, err
 	}
 	sort.Slice(rs, func(i, j int) bool {
@@ -97,36 +97,13 @@ func collectRules(cfg Config) ([]rule, error) {
 }
 
 // walkRules appends a rule for every .md file under dir, descending into
-// subdirectories. rel is the slash-separated path of dir relative to .claude/rules
-// ("" at the root), used to build each rule's displayPath. A missing directory is
-// not an error (yields nothing), matching the previous flat behavior.
-func walkRules(cfg Config, dir, rel string, rs *[]rule) error {
-	entries, err := cfg.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() {
-			sub := name
-			if rel != "" {
-				sub = rel + "/" + name
-			}
-			if err := walkRules(cfg, filepath.Join(dir, name), sub, rs); err != nil {
-				return err
-			}
-			continue
-		}
-		if !strings.HasSuffix(name, ".md") {
-			continue
-		}
-		full := filepath.Join(dir, name)
-		data, err := cfg.ReadFile(full)
+// subdirectories via setup.WalkRuleFiles. A missing directory is not an error
+// (yields nothing), matching the previous flat behavior.
+func walkRules(cfg Config, dir string, rs *[]rule) error {
+	return setup.WalkRuleFiles(cfg.ReadDir, dir, func(path, rel string) error {
+		data, err := cfg.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", full, err)
+			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
 		content := NormalizeLF(string(data))
 		_, fields := parseFrontmatter(content)
@@ -139,14 +116,9 @@ func walkRules(cfg Config, dir, rel string, rs *[]rule) error {
 		// only when a matching file is read, so it is not part of the always-on cost.
 		_, conditional := fields["paths"]
 
-		relName := name
-		if rel != "" {
-			relName = rel + "/" + name
-		}
-
 		*rs = append(*rs, rule{
-			name:        strings.TrimSuffix(name, ".md"),
-			displayPath: ".claude/rules/" + relName,
+			name:        strings.TrimSuffix(filepath.Base(path), ".md"),
+			displayPath: ".claude/rules/" + rel,
 			content:     content,
 			kind:        kind,
 			provenance:  provenanceOf(content),
@@ -154,8 +126,8 @@ func walkRules(cfg Config, dir, rel string, rs *[]rule) error {
 			bytes:       len(content),
 			tokens:      EstimateTokens(content),
 		})
-	}
-	return nil
+		return nil
+	})
 }
 
 // provenanceOf maps setup.Classify's result to this report's display words:

@@ -280,63 +280,24 @@ func findPKHooksInCategory(hooks *setup.OrderedObject, category string, stderr i
 func scanManagedFiles(cfg Config, settingsDir, category string) []action {
 	var actions []action
 	dir := filepath.Join(settingsDir, category)
-
+	visit := func(path, rel string) error {
+		if a := analyzeManagedFile(cfg, path, rel); a != nil {
+			actions = append(actions, *a)
+		}
+		return nil
+	}
+	// Walk errors mean an unreadable directory; it contributes nothing, as before.
 	switch category {
 	case "skills":
 		// Skills are in subdirectories: skills/{name}/SKILL.md
-		entries, err := cfg.ReadDir(dir)
-		if err != nil {
-			return nil // directory doesn't exist
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			skillFile := filepath.Join(dir, entry.Name(), "SKILL.md")
-			label := entry.Name() + "/SKILL.md"
-			if a := analyzeManagedFile(cfg, skillFile, label); a != nil {
-				actions = append(actions, *a)
-			}
-		}
+		_ = setup.WalkSkillFiles(cfg.ReadDir, dir, visit)
 	case "rules":
 		// Rules install under rules/plankit/; scan recursively so subdir rules
 		// (and any legacy flat ones) are found.
-		scanManagedRules(cfg, dir, "", &actions)
+		_ = setup.WalkRuleFiles(cfg.ReadDir, dir, visit)
 	}
 
 	return actions
-}
-
-// scanManagedRules appends a removal action for every pk-managed *.md under dir,
-// recursing into subdirectories. rel is dir's slash-separated path relative to the
-// rules root ("" at the root), used to build each rule's label (e.g.
-// "plankit/git-discipline.md").
-func scanManagedRules(cfg Config, dir, rel string, actions *[]action) {
-	entries, err := cfg.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() {
-			sub := name
-			if rel != "" {
-				sub = rel + "/" + name
-			}
-			scanManagedRules(cfg, filepath.Join(dir, name), sub, actions)
-			continue
-		}
-		if !strings.HasSuffix(name, ".md") {
-			continue
-		}
-		label := name
-		if rel != "" {
-			label = rel + "/" + name
-		}
-		if a := analyzeManagedFile(cfg, filepath.Join(dir, name), label); a != nil {
-			*actions = append(*actions, *a)
-		}
-	}
 }
 
 // analyzeManagedFile checks a single file for a pk SHA marker.
