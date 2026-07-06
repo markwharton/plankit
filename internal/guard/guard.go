@@ -53,6 +53,12 @@ func DefaultConfig() Config {
 // policy (block/ask any `git push` regardless of branch). The strongest applicable
 // decision wins (deny > ask > allow), so a push to a protected branch is never
 // downgraded. Returns the process exit code (always 0 for hooks).
+//
+// Internal errors (unreadable input, malformed .pk.json, git failures) fail
+// open: guard logs to stderr and emits no decision. This is deliberate; stdin
+// comes from the trusted harness, and failing closed would block every git
+// command while, say, .pk.json is mid-edit. Guard is a guardrail against an
+// agent following its defaults, not a security boundary against an adversary.
 func Run(cfg Config) int {
 	input, err := hooks.ReadInput(cfg.Stdin)
 	if err != nil {
@@ -163,9 +169,9 @@ func isGitMutation(command string) bool {
 	return false
 }
 
-// splitShellCommands splits a command string on shell operators (&&, ||, ;),
-// respecting single and double quotes so that operators inside quoted strings
-// are not treated as delimiters.
+// splitShellCommands splits a command string on shell operators (&&, ||, |&,
+// ;, |, and newlines), respecting single and double quotes so that operators
+// inside quoted strings are not treated as delimiters.
 func splitShellCommands(command string) []string {
 	var result []string
 	var current strings.Builder
@@ -180,13 +186,13 @@ func splitShellCommands(command string) []string {
 			inDouble = !inDouble
 			current.WriteByte(c)
 		} else if !inSingle && !inDouble {
-			if i+1 < len(command) && (command[i:i+2] == "&&" || command[i:i+2] == "||") {
+			if i+1 < len(command) && (command[i:i+2] == "&&" || command[i:i+2] == "||" || command[i:i+2] == "|&") {
 				if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
 					result = append(result, trimmed)
 				}
 				current.Reset()
 				i++
-			} else if c == ';' {
+			} else if c == ';' || c == '|' || c == '\n' {
 				if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
 					result = append(result, trimmed)
 				}
@@ -223,16 +229,24 @@ func isGitPush(command string) bool {
 	return false
 }
 
-// gitSubcommand returns the git subcommand for a single command, skipping git's
-// global options so forms like "git -C dir push" or "git -c k=v push" are recognized.
-// Returns "" if the command is not a git invocation. -C and -c take a separate-word
-// value; other global options (--git-dir=..., --work-tree=..., etc.) are self-contained.
+// gitSubcommand returns the git subcommand for a single command, skipping
+// leading VAR=value environment assignments and a leading "command" word, and
+// matching git by path basename, so forms like "GIT_DIR=. git push",
+// "command git push", and "/usr/bin/git push" are recognized. It also skips
+// git's global options so forms like "git -C dir push" or "git -c k=v push"
+// are recognized. Returns "" if the command is not a git invocation. -C and -c
+// take a separate-word value; other global options (--git-dir=...,
+// --work-tree=..., etc.) are self-contained.
 func gitSubcommand(cmd string) string {
 	fields := strings.Fields(cmd)
-	if len(fields) == 0 || fields[0] != "git" {
+	start := 0
+	for start < len(fields) && (isEnvAssignment(fields[start]) || fields[start] == "command") {
+		start++
+	}
+	if start >= len(fields) || filepath.Base(fields[start]) != "git" {
 		return ""
 	}
-	for i := 1; i < len(fields); i++ {
+	for i := start + 1; i < len(fields); i++ {
 		f := fields[i]
 		if !strings.HasPrefix(f, "-") {
 			return f
@@ -242,6 +256,29 @@ func gitSubcommand(cmd string) string {
 		}
 	}
 	return ""
+}
+
+// isEnvAssignment reports whether a word is a VAR=value environment-assignment
+// prefix (e.g. "GIT_DIR=."): a shell identifier (letters, digits, underscore,
+// not starting with a digit) followed by "=".
+func isEnvAssignment(word string) bool {
+	eq := strings.IndexByte(word, '=')
+	if eq <= 0 {
+		return false
+	}
+	for i := 0; i < eq; i++ {
+		c := word[i]
+		switch {
+		case c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z':
+		case c >= '0' && c <= '9':
+			if i == 0 {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // loadGuardConfig reads .pk.json from the project directory and returns the guard config.

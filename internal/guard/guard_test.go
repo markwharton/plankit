@@ -290,6 +290,23 @@ func TestIsGitMutation(t *testing.T) {
 		{`echo "hello; world"`, false},
 		{`git commit -m "fix: a && b || c"`, true},
 		{`echo 'no && split' && echo 'no || split'`, false},
+		// Pipes and newlines are command separators too (hardening).
+		{"true | git push origin main", true},
+		{"git status |& git push", true},
+		{"echo hello\ngit push origin main", true},
+		{"echo hello\ntrue", false},
+		{`echo "a | b"`, false},
+		{`git commit -m "line1
+line2"`, true},
+		// Prefixed git invocations must not evade detection (hardening).
+		{"/usr/bin/git push", true},
+		{"command git push", true},
+		{"GIT_DIR=. git push", true},
+		{"GIT_DIR=. A_1=b git commit -m x", true},
+		{"/usr/bin/git status", false},
+		{"grep git push file", false},
+		{"legit push", false},
+		{"1=x git push", false}, // not a valid env assignment, so not a git command
 	}
 
 	for _, tt := range tests {
@@ -466,6 +483,11 @@ func TestIsGitPush(t *testing.T) {
 		{"git commit", false},
 		{"git status", false},
 		{"echo git push", false},
+		{"true | git push", true},
+		{"echo hello\ngit push", true},
+		{"/usr/bin/git push", true},
+		{"command git push", true},
+		{"GIT_DIR=. git push", true},
 	}
 	for _, tt := range tests {
 		if got := isGitPush(tt.cmd); got != tt.want {
