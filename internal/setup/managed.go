@@ -136,6 +136,31 @@ func ExtractSHA(fileContent string) (string, string, bool) {
 	return "", "", false
 }
 
+// Provenance classifies a file's relationship to pk management.
+type Provenance int
+
+const (
+	// NotManaged means the file carries no pk SHA marker (user-authored).
+	NotManaged Provenance = iota
+	// Pristine means the file's body hashes to its stored pk SHA.
+	Pristine
+	// Modified means the file carries a pk SHA marker but the body was edited.
+	Modified
+)
+
+// Classify reports how file content relates to pk management by extracting
+// the pk SHA marker and comparing it against the body hash.
+func Classify(content string) Provenance {
+	storedSHA, body, found := ExtractSHA(content)
+	if !found {
+		return NotManaged
+	}
+	if ContentSHA(body) == storedSHA {
+		return Pristine
+	}
+	return Modified
+}
+
 // embedSHA embeds a SHA into content using the appropriate format.
 // Skills (content starting with ---) use a frontmatter field.
 // Other files use an HTML comment on the first line.
@@ -168,12 +193,10 @@ func shouldUpdate(readFile func(string) ([]byte, error), path string, newContent
 		return true, "updated (forced)"
 	}
 
-	storedSHA, hashedContent, found := ExtractSHA(string(data))
-	if !found {
+	switch Classify(string(data)) {
+	case NotManaged:
 		return false, "skipped (not managed by pk)"
-	}
-
-	if ContentSHA(hashedContent) != storedSHA {
+	case Modified:
 		return false, "skipped (modified by user)"
 	}
 
@@ -311,11 +334,10 @@ func evaluateRemoval(readFile func(string) ([]byte, error), path string) string 
 	if err != nil {
 		return "skip"
 	}
-	storedSHA, body, found := ExtractSHA(string(data))
-	if !found {
+	switch Classify(string(data)) {
+	case NotManaged:
 		return "skip"
-	}
-	if ContentSHA(body) == storedSHA {
+	case Pristine:
 		return "remove"
 	}
 	return "preserve"

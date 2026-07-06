@@ -158,17 +158,16 @@ func walkRules(cfg Config, dir, rel string, rs *[]rule) error {
 	return nil
 }
 
-// provenanceOf classifies a rule file the same way pk status does: pk-managed and
-// pristine, pk-managed but modified, or user-authored (no pk marker).
+// provenanceOf maps setup.Classify's result to this report's display words:
+// pk-managed and pristine, pk-managed but modified, or user-authored (no pk marker).
 func provenanceOf(content string) string {
-	storedSHA, body, found := setup.ExtractSHA(content)
-	if !found {
-		return "local"
-	}
-	if setup.ContentSHA(body) == storedSHA {
+	switch setup.Classify(content) {
+	case setup.Pristine:
 		return "managed"
+	case setup.Modified:
+		return "modified"
 	}
-	return "modified"
+	return "local"
 }
 
 // parseFrontmatter splits leading YAML frontmatter (--- ... ---) from the body

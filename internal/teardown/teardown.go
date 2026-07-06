@@ -347,12 +347,10 @@ func analyzeManagedFile(cfg Config, path, label string) *action {
 		return nil // doesn't exist
 	}
 
-	storedSHA, body, found := setup.ExtractSHA(string(data))
-	if !found {
+	switch setup.Classify(string(data)) {
+	case setup.NotManaged:
 		return nil // no pk marker — user-created, ignore
-	}
-
-	if setup.ContentSHA(body) != storedSHA {
+	case setup.Modified:
 		return &action{label: label, reason: "modified by user", path: path}
 	}
 

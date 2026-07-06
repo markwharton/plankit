@@ -58,6 +58,32 @@ func TestExtractSHA_noMarker(t *testing.T) {
 	}
 }
 
+func TestClassify(t *testing.T) {
+	body := "# CLAUDE.md\nContent.\n"
+	pristine := "<!-- pk:sha256:" + ContentSHA(body) + " -->\n" + body
+	skillBody := "Body content.\n"
+	pristineSkill := "---\nname: test\npk_sha256: " + ContentSHA(skillBody) + "\n---\n" + skillBody
+
+	tests := []struct {
+		name    string
+		content string
+		want    Provenance
+	}{
+		{"no marker", "# Just a file\nNo marker here.\n", NotManaged},
+		{"pristine html comment", pristine, Pristine},
+		{"pristine frontmatter", pristineSkill, Pristine},
+		{"modified body", "<!-- pk:sha256:" + ContentSHA(body) + " -->\n# CLAUDE.md\nEdited.\n", Modified},
+		{"pristine crlf", strings.ReplaceAll(pristine, "\n", "\r\n"), Pristine},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Classify(tt.content); got != tt.want {
+				t.Errorf("Classify() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestEmbedSHA_htmlComment(t *testing.T) {
 	content := "# CLAUDE.md\nContent.\n"
 	result := embedSHA(content, "abc123")

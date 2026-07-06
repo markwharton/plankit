@@ -435,14 +435,14 @@ func checkSingleFile(cfg Config, path, label string) *managedFile {
 	if err != nil {
 		return nil
 	}
-	storedSHA, body, found := setup.ExtractSHA(string(data))
-	if !found {
+	prov := setup.Classify(string(data))
+	if prov == setup.NotManaged {
 		return nil
 	}
 	return &managedFile{
 		label:    label,
 		path:     path,
-		modified: setup.ContentSHA(body) != storedSHA,
+		modified: prov == setup.Modified,
 	}
 }
 
