@@ -2,6 +2,7 @@ package setup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/readiness"
@@ -17,6 +18,11 @@ func runBaseline(cfg Config, projectDir string) error {
 	}
 	target := "HEAD"
 	if cfg.BaselineAt != "" {
+		// A ref can never start with -; refuse before it reaches git argv,
+		// where it would be parsed as an option.
+		if strings.HasPrefix(cfg.BaselineAt, "-") {
+			return fmt.Errorf("invalid --at ref %q; refs cannot start with -", cfg.BaselineAt)
+		}
 		if _, err := cfg.GitExec(projectDir, "rev-parse", "--verify", cfg.BaselineAt); err != nil {
 			return fmt.Errorf("--at ref %q does not resolve", cfg.BaselineAt)
 		}

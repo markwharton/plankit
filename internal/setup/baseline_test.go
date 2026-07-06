@@ -170,6 +170,25 @@ func TestRun_baselineAt_invalidRef(t *testing.T) {
 	assertCallNotMade(t, fake.calls, "tag v0.0.0 not-a-ref")
 }
 
+func TestRun_baselineAt_optionShapedRef(t *testing.T) {
+	dir := newGitRepoDir(t)
+	var stderr bytes.Buffer
+	fake := &fakeGitExec{}
+	cfg := baselineCfg(dir, &stderr, fake)
+	cfg.Baseline = true
+	cfg.BaselineAt = "--force"
+
+	err := Run(cfg)
+	if err == nil {
+		t.Fatal("Run() expected error for option-shaped ref, got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot start with -") {
+		t.Errorf("error = %v, want 'cannot start with -'", err)
+	}
+	assertCallNotMade(t, fake.calls, "rev-parse --verify --force")
+	assertCallNotMade(t, fake.calls, "tag v0.0.0 --force")
+}
+
 func TestRun_baselinePush_callsGitPushWithHEAD(t *testing.T) {
 	dir := newGitRepoDir(t)
 	var stderr bytes.Buffer

@@ -413,6 +413,38 @@ func TestRun_mergeFlow_happyPath(t *testing.T) {
 	}
 }
 
+func TestRun_mergeFlow_optionShapedReleaseBranch(t *testing.T) {
+	var stderr bytes.Buffer
+
+	git := happyGitMerge("v1.2.3", "dev", "main")
+	gitCalled := false
+	wrapped := stubGitExec(git)
+
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			// The current-branch lookup runs before config is loaded; anything
+			// beyond that means the option-shaped branch reached git.
+			if args[0] != "branch" {
+				gitCalled = true
+			}
+			return wrapped(dir, args...)
+		},
+		ReadFile: mergeConfig("--output=/tmp/x"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "branch names cannot start with -") {
+		t.Errorf("stderr = %q, want option-shaped branch refusal", stderr.String())
+	}
+	if gitCalled {
+		t.Error("git was invoked beyond the current-branch lookup despite invalid release.branch")
+	}
+}
+
 func TestRun_mergeFlow_missingTrailer(t *testing.T) {
 	var stderr bytes.Buffer
 

@@ -61,6 +61,12 @@ func Run(cfg Config) int {
 		return 1
 	}
 	releaseBranch := releaseConf.Branch
+	// A branch name can never start with -; refuse before it reaches git argv,
+	// where it would be parsed as an option.
+	if strings.HasPrefix(releaseBranch, "-") {
+		msg.Errorf(cfg.Stderr, "invalid release.branch %q in .pk.json; branch names cannot start with -", releaseBranch)
+		return 1
+	}
 	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
 
 	// 3. If releaseBranch is configured and we're already on it, refuse.

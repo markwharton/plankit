@@ -105,6 +105,16 @@ Error: you're on the release branch "main"; switch to your working branch first
 
 **Fix:** Switch to your working branch (`git switch develop`). The create hints appear only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
 
+### invalid release branch
+
+```
+Error: invalid release.branch "--output=/tmp/x" in .pk.json; branch names cannot start with -
+```
+
+**Cause:** `.pk.json` names a `release.branch` beginning with `-`. Git branch names can never start with `-`, and passing one to git would be read as an option rather than a branch.
+
+**Fix:** Correct `release.branch` in `.pk.json` to a real branch name.
+
 ### release branch missing
 
 ```
@@ -196,6 +206,16 @@ Error: --push requires --baseline
 **Cause:** `--at` and `--push` only apply to the baseline tag workflow.
 
 **Fix:** Add `--baseline` to the command.
+
+### invalid --at ref
+
+```
+Error: invalid --at ref "--force"; refs cannot start with -
+```
+
+**Cause:** `--at` received a value beginning with `-`. Git refs can never start with `-`, and passing one to git would be read as an option rather than a ref.
+
+**Fix:** Pass a real ref (branch, tag, or commit SHA) to `--at`.
 
 ### not a git repository
 
