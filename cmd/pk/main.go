@@ -29,6 +29,7 @@ import (
 	pkgit "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/guard"
 	"github.com/markwharton/plankit/internal/msg"
+	"github.com/markwharton/plankit/internal/paths"
 	"github.com/markwharton/plankit/internal/preserve"
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
@@ -356,7 +357,7 @@ func runVersion(args []string) {
 		}
 	}
 
-	if scriptVer, found := setup.ScriptVersion(os.ReadFile, ".claude/install-pk.sh"); found {
+	if scriptVer, found := setup.ScriptVersion(os.ReadFile, paths.InstallScriptRel); found {
 		running := version.Version()
 		pinned := strings.TrimPrefix(scriptVer, "v")
 		if !version.IsDevBuild(running) && pinned != running {

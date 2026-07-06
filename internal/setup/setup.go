@@ -282,7 +282,7 @@ func Run(cfg Config) error {
 	}
 
 	// Add pk permission for skill execution.
-	if err := addPermission(settings, "Bash(pk:*)"); err != nil {
+	if err := addPermission(settings, PkPermission); err != nil {
 		return fmt.Errorf("failed to add permission: %w", err)
 	}
 

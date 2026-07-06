@@ -88,7 +88,7 @@ func Run(cfg Config) (bool, error) {
 	claudeMD := checkSingleFile(cfg, claudeFile, "CLAUDE.md")
 
 	// Check install-pk.sh.
-	installScript := filepath.Join(settingsDir, "install-pk.sh")
+	installScript := filepath.Join(settingsDir, paths.InstallScript)
 	_, installErr := cfg.Stat(installScript)
 	hasInstallScript := installErr == nil
 
@@ -359,7 +359,7 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 		return false
 	}
 	for _, p := range allowList {
-		if p == "Bash(pk:*)" {
+		if p == setup.PkPermission {
 			return true
 		}
 	}

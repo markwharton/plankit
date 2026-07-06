@@ -11,6 +11,10 @@ const (
 	InstallScript = "install-pk.sh" // under ClaudeDir
 	RulesDir      = "rules"         // under ClaudeDir
 
+	// InstallScriptRel is InstallScript's repo-relative path, in the slash
+	// form hook commands and version checks use.
+	InstallScriptRel = ClaudeDir + "/" + InstallScript
+
 	docsDir  = "docs"
 	plansDir = "plans"
 )

@@ -121,7 +121,7 @@ func buildHooks() HooksConfig {
 			NewHookEntry("ExitPlanMode", Hook{Type: "command", Command: PreserveAutoCommand, Shell: "bash", Timeout: 30, StatusMessage: "Preserving plan..."}),
 		},
 		SessionStart: []HookEntry{
-			NewHookEntry("*", Hook{Type: "command", Command: ".claude/install-pk.sh", Shell: "bash", Timeout: 30}),
+			NewHookEntry("*", Hook{Type: "command", Command: paths.InstallScriptRel, Shell: "bash", Timeout: 30}),
 		},
 	}
 }
@@ -267,6 +267,10 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 // addPermission adds a permission string to the settings "permissions.allow" list
 // if it is not already present. Preserves existing key order in the permissions
 // object (allow, deny, ask, and any future keys).
+// PkPermission is the settings.json permission entry that allows pk commands
+// to run without prompting. setup adds it; status and teardown detect it.
+const PkPermission = "Bash(pk:*)"
+
 func addPermission(settings *OrderedObject, perm string) error {
 	perms := NewOrderedObject()
 	if raw, ok := settings.Get("permissions"); ok {
@@ -456,5 +460,5 @@ func filterNonPlankitHooks(hooks []json.RawMessage) []json.RawMessage {
 
 // IsPlankitHook reports whether a hook command is managed by plankit.
 func IsPlankitHook(command string) bool {
-	return strings.HasPrefix(command, "pk ") || command == ".claude/install-pk.sh"
+	return strings.HasPrefix(command, "pk ") || command == paths.InstallScriptRel
 }

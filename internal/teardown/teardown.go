@@ -15,6 +15,10 @@ import (
 	"github.com/markwharton/plankit/internal/setup"
 )
 
+// settingsBackup is the file name of the settings.json backup setup writes
+// and teardown removes.
+const settingsBackup = paths.SettingsFile + ".bak"
+
 // action describes what teardown will do (or did) with a file or setting.
 type action struct {
 	label  string // display label (e.g., "changelog/SKILL.md")
@@ -85,15 +89,15 @@ func Run(cfg Config) error {
 	}
 
 	// Check install-pk.sh (no SHA check).
-	installScript := filepath.Join(settingsDir, "install-pk.sh")
+	installScript := filepath.Join(settingsDir, paths.InstallScript)
 	if _, err := cfg.Stat(installScript); err == nil {
-		fileActions = append(fileActions, action{label: "install-pk.sh", path: installScript})
+		fileActions = append(fileActions, action{label: paths.InstallScript, path: installScript})
 	}
 
 	// Check settings.json.bak.
-	backupFile := settingsFile + ".bak"
+	backupFile := filepath.Join(settingsDir, settingsBackup)
 	if _, err := cfg.Stat(backupFile); err == nil {
-		fileActions = append(fileActions, action{label: "settings.json.bak", path: backupFile})
+		fileActions = append(fileActions, action{label: settingsBackup, path: backupFile})
 	}
 
 	// Nothing to do?
@@ -133,10 +137,10 @@ func Run(cfg Config) error {
 	})
 	printFileGroup(stderr, "Rules", fileActions, removeVerb, skipVerb, func(a action) bool {
 		return !strings.Contains(a.label, "SKILL.md") && a.label != "CLAUDE.md" &&
-			a.label != "install-pk.sh" && a.label != "settings.json.bak"
+			a.label != paths.InstallScript && a.label != settingsBackup
 	})
 	printFileGroup(stderr, "Files", fileActions, removeVerb, skipVerb, func(a action) bool {
-		return a.label == "CLAUDE.md" || a.label == "install-pk.sh" || a.label == "settings.json.bak"
+		return a.label == "CLAUDE.md" || a.label == paths.InstallScript || a.label == settingsBackup
 	})
 
 	if len(dirActions) > 0 {
@@ -169,7 +173,7 @@ func Run(cfg Config) error {
 	// Edit or remove settings.json first.
 	if settingsExists && len(settingsActions) > 0 {
 		removeHooks(settings)
-		removePermission(settings, "Bash(pk:*)")
+		removePermission(settings, setup.PkPermission)
 
 		if settings.Len() == 0 {
 			if err := cfg.Remove(settingsFile); err != nil && !os.IsNotExist(err) {
@@ -235,8 +239,8 @@ func analyzeSettings(settings *setup.OrderedObject, stderr io.Writer, settingsFi
 				var allowList []string
 				if json.Unmarshal(allowRaw, &allowList) == nil {
 					for _, p := range allowList {
-						if p == "Bash(pk:*)" {
-							actions = append(actions, action{label: "permissions.allow: Bash(pk:*)"})
+						if p == setup.PkPermission {
+							actions = append(actions, action{label: "permissions.allow: " + setup.PkPermission})
 						}
 					}
 				}
@@ -479,7 +483,7 @@ func settingsWillBeEmpty(cfg Config, path string) bool {
 
 	// Simulate removal.
 	removeHooks(settings)
-	removePermission(settings, "Bash(pk:*)")
+	removePermission(settings, setup.PkPermission)
 
 	return settings.Len() == 0
 }
