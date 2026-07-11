@@ -103,6 +103,8 @@ For JSON files, `pk changelog` updates the root-level `version` field using prop
 
 `pk changelog` writes versions into these files but never reads versions out of them — the git tag is always the source of truth.
 
+`versionFiles` handles JSON only. For a version string in a non-JSON file (a Go `const`, Python `__version__`, a shell script), pin it from a `preCommit` hook with [`pk pin`](pk-pin.md).
+
 ### showScope
 
 When `true`, the conventional commit scope is included in changelog entries as a bold prefix:
@@ -119,7 +121,7 @@ Defaults to `false` — scope is parsed but omitted from the output.
 Lifecycle hooks that run as shell commands during the release process. The `VERSION` environment variable is set to the new version (without `v` prefix).
 
 - **postVersion** — runs after version files are updated, before CHANGELOG.md is written. Use case: propagate the version to other config files.
-- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, format files.
+- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, format files, or pin the version into non-JSON source files via [`pk pin`](pk-pin.md).
 
 If a hook fails, the release is aborted.
 
