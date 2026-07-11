@@ -456,8 +456,10 @@ Hook commands (called by Claude Code, not directly):
   pk guard                            Block git mutations on protected branches; guard pushes (PreToolUse hook)
   pk preserve [--dry-run] [--push]    Preserve approved plan (PostToolUse hook)
   pk protect                          Block edits to docs/plans/ (PreToolUse hook)
+
+Release-time commands (invoked from .pk.json changelog.hooks, not by Claude Code):
   pk pin --file <path> [--name <id>] <version>
-                                      Update pinned version in a file (preCommit hook)
+                                      Stamp the released version into a file
 
 User commands:
   pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]
