@@ -172,6 +172,16 @@ Error: merge failed; main has diverged from develop (not fast-forward). Resolve 
 3. `pk changelog` — regenerate the release commit so the `Release-Tag` trailer sits at HEAD, above the merge commit.
 4. `pk release` — fast-forwards cleanly now, pushing the release branch, source branch, and tag.
 
+### release branch diverged from origin
+
+```
+Error: origin/main has diverged from develop; the release push would be rejected
+```
+
+**Cause:** `origin/main` carries a commit that your source branch does not, so the release push (branch + tag) would be rejected as non-fast-forward. Unlike [not fast-forward](#not-fast-forward), which is caught by the local merge, this is caught by a pre-flight check against `origin` before any tag is created. It commonly appears when the release branch was set up outside the create-new-project flow (e.g. `origin/main` was auto-created with an initial commit).
+
+**Fix:** Reconcile `origin/main` into your source branch, then retry — the same ordered steps as [not fast-forward](#not-fast-forward). In short: `pk changelog --undo` (if you have an unpushed release commit), `git merge origin/main`, `pk changelog`, `pk release`.
+
 ### push failed
 
 ```
@@ -180,7 +190,7 @@ Error: git push failed: ...
 
 **Cause:** The push was rejected by the remote (permissions, branch protection rules, or network issues).
 
-**Fix:** `pk release` automatically cleans up the local tag on push failure. Fix the underlying issue (permissions, network) and run `pk release` again.
+**Fix:** `pk release` automatically cleans up the local tag on push failure. The push is atomic (`git push --atomic`), so a rejected push updates no refs on origin — there is no stray remote tag to remove. Fix the underlying issue (permissions, network) and run `pk release` again.
 
 ## pk setup
 

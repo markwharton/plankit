@@ -158,12 +158,30 @@ func Run(cfg Config) int {
 	// the merge flow tries to switch to it; otherwise the failure surfaces as
 	// a raw git switch error (or a misleading not-fast-forward in dry-run).
 	if needsMerge {
+		// Fetch the release branch so the existence and divergence checks see
+		// current origin state. Warn-only: origin may not have it yet (first
+		// release), in which case the push creates it.
+		if _, err := cfg.GitExec(cfg.Dir, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
+			msg.Warnf(cfg.Stderr, "failed to fetch %s from origin: %v (continuing with local state)", releaseBranch, err)
+		}
+
 		_, localErr := cfg.GitExec(cfg.Dir, "rev-parse", "--verify", "--quiet", "refs/heads/"+releaseBranch)
 		_, remoteErr := cfg.GitExec(cfg.Dir, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+releaseBranch)
 		if localErr != nil && remoteErr != nil {
 			msg.Errorf(cfg.Stderr, "release branch %s does not exist locally or on origin", releaseBranch)
 			msg.Hintf(cfg.Stderr, "To create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
 			return 1
+		}
+
+		// When origin has the release branch, it must be an ancestor of HEAD or
+		// the atomic push (branch + tag) would be rejected as non-fast-forward.
+		// Catch it here, before tagging, rather than at push time.
+		if remoteErr == nil {
+			if _, err := cfg.GitExec(cfg.Dir, "merge-base", "--is-ancestor", "origin/"+releaseBranch, "HEAD"); err != nil {
+				msg.Errorf(cfg.Stderr, "origin/%s has diverged from %s; the release push would be rejected", releaseBranch, sourceBranch)
+				msg.Hintf(cfg.Stderr, "To reconcile, on %s: git merge origin/%s", sourceBranch, releaseBranch)
+				return 1
+			}
 		}
 		msg.Itemf(cfg.Stderr, "%s exists", releaseBranch)
 	}
@@ -206,11 +224,7 @@ func Run(cfg Config) int {
 			}
 			msg.Itemf(cfg.Stderr, "Would merge %s into %s (fast-forward)", sourceBranch, releaseBranch)
 		} else {
-			// Fetch release branch.
-			if _, err := cfg.GitExec(cfg.Dir, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
-				msg.Warnf(cfg.Stderr, "failed to fetch %s from origin: %v (continuing with local state)", releaseBranch, err)
-			}
-
+			// The release branch was already fetched during pre-flight.
 			// Switch to release branch. Mark switchedBack=false so the
 			// top-level defer switches back on any subsequent failure.
 			if _, err := cfg.GitExec(cfg.Dir, "switch", releaseBranch); err != nil {
@@ -281,7 +295,7 @@ func Run(cfg Config) int {
 		pushBranch = releaseBranch
 	}
 
-	if _, err := cfg.GitExec(cfg.Dir, "push", "origin", pushBranch, tag); err != nil {
+	if _, err := cfg.GitExec(cfg.Dir, "push", "--atomic", "origin", pushBranch, tag); err != nil {
 		msg.Errorf(cfg.Stderr, "git push failed: %v", err)
 		return 1
 	}

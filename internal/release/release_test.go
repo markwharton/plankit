@@ -116,9 +116,9 @@ func TestRun_happyPath(t *testing.T) {
 	if len(pushArgs) == 0 {
 		t.Fatal("push was not called")
 	}
-	// push origin main v1.2.3
-	if pushArgs[1] != "origin" || pushArgs[2] != "main" || pushArgs[3] != "v1.2.3" {
-		t.Errorf("push args = %v, want [push origin main v1.2.3]", pushArgs)
+	// push --atomic origin main v1.2.3
+	if pushArgs[1] != "--atomic" || pushArgs[2] != "origin" || pushArgs[3] != "main" || pushArgs[4] != "v1.2.3" {
+		t.Errorf("push args = %v, want [push --atomic origin main v1.2.3]", pushArgs)
 	}
 	if !strings.Contains(stderr.String(), "Pushed main and v1.2.3") {
 		t.Errorf("stderr missing push confirmation: %s", stderr.String())
@@ -400,12 +400,13 @@ func TestRun_mergeFlow_happyPath(t *testing.T) {
 	if len(pushCalls) != 2 {
 		t.Fatalf("push called %d times, want 2", len(pushCalls))
 	}
-	// First push: release branch + tag
-	if pushCalls[0][2] != "main" || pushCalls[0][3] != "v1.2.3" {
-		t.Errorf("first push = %v, want [push origin main v1.2.3]", pushCalls[0])
+	// First push: release branch + tag, atomic so a rejected branch ref can't
+	// leave the tag orphaned on origin.
+	if pushCalls[0][1] != "--atomic" || pushCalls[0][2] != "origin" || pushCalls[0][3] != "main" || pushCalls[0][4] != "v1.2.3" {
+		t.Errorf("first push = %v, want [push --atomic origin main v1.2.3]", pushCalls[0])
 	}
-	// Second push: source branch
-	if pushCalls[1][2] != "dev" {
+	// Second push: source branch, single ref, no --atomic.
+	if pushCalls[1][1] != "origin" || pushCalls[1][2] != "dev" {
 		t.Errorf("second push = %v, want [push origin dev]", pushCalls[1])
 	}
 	if !strings.Contains(stderr.String(), "Merged dev into main") {
@@ -508,6 +509,59 @@ func TestRun_tagCleanupOnPushFailure(t *testing.T) {
 	}
 	if !deleted {
 		t.Error("expected tag v1.2.3 to be cleaned up on push failure")
+	}
+}
+
+func TestRun_mergeFlow_originDiverged(t *testing.T) {
+	var stderr bytes.Buffer
+	var tagCalls [][]string
+	pushCalled := false
+
+	git := happyGitMerge("v1.2.3", "dev", "main")
+	// origin/main is not an ancestor of HEAD: the pre-flight ancestor check
+	// (merge-base --is-ancestor) fails while the not-behind check on the source
+	// branch (merge-base HEAD origin/dev) still returns a SHA.
+	git["merge-base"] = func(args ...string) (string, error) {
+		for _, a := range args {
+			if a == "--is-ancestor" {
+				return "", fmt.Errorf("not an ancestor")
+			}
+		}
+		return "abc123", nil
+	}
+	git["tag"] = func(args ...string) (string, error) {
+		tagCalls = append(tagCalls, args)
+		return "", nil
+	}
+	git["push"] = func(args ...string) (string, error) {
+		pushCalled = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "origin/main has diverged from dev") {
+		t.Errorf("stderr = %q, want origin-diverged message", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "git merge origin/main") {
+		t.Errorf("stderr = %q, want reconcile hint", stderr.String())
+	}
+	// The failure must precede tagging and pushing, so nothing can be orphaned.
+	for _, call := range tagCalls {
+		if len(call) == 2 && call[0] == "tag" && call[1] == "v1.2.3" {
+			t.Error("tag v1.2.3 was created before the divergence check failed")
+		}
+	}
+	if pushCalled {
+		t.Error("push was called despite the divergence pre-flight failing")
 	}
 }
 
@@ -767,8 +821,9 @@ func TestRun_trunkFlow_noReleaseBranch(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
 	}
-	if pushArgs[2] != "develop" {
-		t.Errorf("push branch = %q, want develop", pushArgs[2])
+	// push --atomic origin develop v1.0.0
+	if pushArgs[1] != "--atomic" || pushArgs[3] != "develop" {
+		t.Errorf("push args = %v, want branch develop at [3]", pushArgs)
 	}
 	if !strings.Contains(stderr.String(), "Trunk flow (no release.branch in .pk.json)") {
 		t.Errorf("stderr missing trunk flow label: %s", stderr.String())

@@ -16,11 +16,11 @@ When `release.branch` is configured in `.pk.json`:
 1. **Note current branch** — this is the source branch (no hard-coded name).
 2. **Read `Release-Tag:` trailer from HEAD** (written by `pk changelog`) and validate it as semver. Refuses if the trailer is missing or invalid.
 3. **Check the tag doesn't already exist locally** — refuses if it does.
-4. **Pre-flight checks** — clean working tree, source branch exists on origin, source branch not behind remote, release branch resolves locally or on origin.
+4. **Pre-flight checks** — clean working tree, source branch exists on origin, source branch not behind remote, release branch resolves locally or on origin, release branch not diverged from origin.
 5. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
 6. **Run pre-release hook** if configured.
 7. **Create the git tag** on HEAD (the fast-forwarded release branch points at the same commit as the source branch).
-8. **Push** release branch + tag to origin.
+8. **Push** release branch + tag to origin atomically (`git push --atomic`), so a rejected branch ref can never leave the tag stranded on origin.
 9. **Switch back** to source branch and push it to sync origin.
 
 When `release.branch` is NOT configured (trunk flow):
@@ -30,9 +30,9 @@ When `release.branch` is NOT configured (trunk flow):
 3. Pre-flight checks — clean working tree, current branch exists on origin, not behind remote.
 4. Run pre-release hook if configured.
 5. Create the git tag on HEAD.
-6. Push current branch + tag to origin.
+6. Push current branch + tag to origin atomically (`git push --atomic`).
 
-On any failure after the tag is created but before the push completes, `pk release` deletes the local tag automatically so the next run starts from a clean state.
+On any failure after the tag is created but before the push completes, `pk release` deletes the local tag automatically so the next run starts from a clean state. Because the push is atomic, a rejected push updates no refs on origin — there is no partial remote state to clean up.
 
 ## Flags
 
@@ -87,6 +87,8 @@ The merge uses `git merge --ff-only`. If the release branch has diverged (e.g., 
 ```
 Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
+
+That check guards the local merge. A pre-flight check guards the push target: if `origin/main` carries a commit your source branch doesn't (common when the release branch was set up outside the create-new-project flow), `pk release` fails before creating the tag with `Error: origin/main has diverged from develop; the release push would be rejected`. Both cases reconcile the same way — see [Error recovery](#error-recovery).
 
 ### Error recovery
 
