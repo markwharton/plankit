@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.26.0] - 2026-07-15
+
+### Added
+
+- ship version-source rule (tag is the single source of truth) (99f7ee8)
+
+### Fixed
+
+- split commands on pipes and newlines, recognise prefixed git (ee40591)
+- reject option-shaped release.branch and --at ref values (66e20aa)
+- move pk pin out of the Claude-Code hook group in pk --help (3cc4287)
+- make pk release push atomic and pre-check origin divergence (46ed75b)
+
+### Security
+
+- bump go toolchain to 1.26.5 for GO-2026-5856 (4fb3134)
+
+### Changed
+
+- consolidate managed-file classification into setup.Classify (9289ef5)
+- share rules and skills tree walkers in internal/setup (2ffebcd)
+- extract repeated managed-file name constants (526a560)
+
+### Documentation
+
+- state the one-way version flow in versioning.md (2ac4325)
+- drop stale site/ entry from CLAUDE.md (15d295f)
+- point pk-changelog hooks/versionFiles at pk pin for non-JSON files (1a181e8)
+
 ## [v0.25.2] - 2026-07-03
 
 ### Fixed
@@ -975,3 +1004,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.25.0]: https://github.com/markwharton/plankit/compare/v0.24.1...v0.25.0
 [v0.25.1]: https://github.com/markwharton/plankit/compare/v0.25.0...v0.25.1
 [v0.25.2]: https://github.com/markwharton/plankit/compare/v0.25.1...v0.25.2
+[v0.26.0]: https://github.com/markwharton/plankit/compare/v0.25.2...v0.26.0
