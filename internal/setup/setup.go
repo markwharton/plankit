@@ -286,33 +286,41 @@ func Run(cfg Config) error {
 		return fmt.Errorf("failed to add permission: %w", err)
 	}
 
-	// Write with backup.
-	if err := cfg.MkdirAll(settingsDir, 0755); err != nil {
-		return fmt.Errorf("failed to create .claude directory: %w", err)
-	}
-
-	// Backup existing file.
-	if _, err := cfg.Stat(settingsFile); err == nil {
-		backupFile := settingsFile + ".bak"
-		if err := cfg.Rename(settingsFile, backupFile); err != nil {
-			return fmt.Errorf("failed to create backup: %w", err)
-		}
-		fmt.Fprintf(stderr, "Backed up existing settings to %s\n", filepath.Base(backupFile))
-	}
-
-	// Write new settings.
 	output, err := MarshalIndentNoHTML(settings)
 	if err != nil {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 
-	if err := cfg.WriteFile(settingsFile, output, 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", settingsFile, err)
-	}
-
 	// Track whether anything actually changed on disk, so the commit-message tip
 	// is only printed when there's something for the user to commit.
+	//
+	// Decided before writing, not after: a re-run that resolves to the same
+	// settings must not rewrite the file, and must not replace the backup with
+	// a copy of itself. The backup exists to recover the settings pk found, so
+	// churning it on a no-op run is worse than useless. Compared against data
+	// read earlier rather than re-read via isUpToDate, because the backup
+	// rename below moves the file out from under a second read.
 	anyChanged := !bytes.Equal(data, output)
+
+	if anyChanged {
+		// Write with backup.
+		if err := cfg.MkdirAll(settingsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create .claude directory: %w", err)
+		}
+
+		// Backup existing file.
+		if _, err := cfg.Stat(settingsFile); err == nil {
+			backupFile := settingsFile + ".bak"
+			if err := cfg.Rename(settingsFile, backupFile); err != nil {
+				return fmt.Errorf("failed to create backup: %w", err)
+			}
+			fmt.Fprintf(stderr, "Backed up existing settings to %s\n", filepath.Base(backupFile))
+		}
+
+		if err := cfg.WriteFile(settingsFile, output, 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %w", settingsFile, err)
+		}
+	}
 
 	fmt.Fprintf(stderr, "Configured plankit in %s (guard: %s, push: %s, preserve: %s)\n", settingsFile, guardMode, guardPush, preserveMode)
 

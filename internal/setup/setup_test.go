@@ -1054,3 +1054,85 @@ func TestRun_conventionsReminder_hiddenWhenPkJSONPresent(t *testing.T) {
 		t.Errorf("stderr = %q, should not show /conventions reminder when .pk.json present", stderr.String())
 	}
 }
+
+func TestRun_noBackupOrRewriteWhenSettingsUnchanged(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsFile := filepath.Join(projectDir, ".claude", "settings.json")
+	backupFile := settingsFile + ".bak"
+
+	run := func() {
+		t.Helper()
+		var stderr bytes.Buffer
+		cfg := Config{Stderr: &stderr, ProjectDir: projectDir, AllowNonGit: true}
+		withFS(&cfg)
+		if err := Run(cfg); err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+	}
+
+	run()
+	// A fresh project has no prior settings, so there is nothing to back up.
+	if _, err := os.Stat(backupFile); !os.IsNotExist(err) {
+		t.Error("backup created on a fresh project with no existing settings")
+	}
+	before, err := os.Stat(settingsFile)
+	if err != nil {
+		t.Fatalf("settings.json not created: %v", err)
+	}
+
+	// Re-run resolves to identical settings: nothing to write, nothing to back up.
+	run()
+	if _, err := os.Stat(backupFile); !os.IsNotExist(err) {
+		t.Error("re-run created a backup even though settings did not change")
+	}
+	after, err := os.Stat(settingsFile)
+	if err != nil {
+		t.Fatalf("stat settings.json: %v", err)
+	}
+	if !after.ModTime().Equal(before.ModTime()) {
+		t.Error("re-run rewrote settings.json even though it did not change")
+	}
+}
+
+func TestRun_backupHoldsWhatPkFound(t *testing.T) {
+	projectDir := t.TempDir()
+	settingsDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(settingsDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	// Settings with no plankit hooks: setup has real work to do.
+	original := []byte("{\n  \"model\": \"opus\"\n}\n")
+	if err := os.WriteFile(settingsFile, original, 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr, ProjectDir: projectDir, AllowNonGit: true}
+	withFS(&cfg)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	backup, err := os.ReadFile(settingsFile + ".bak")
+	if err != nil {
+		t.Fatalf("backup not created when settings changed: %v", err)
+	}
+	// The backup must be the settings pk found, so it can actually restore them.
+	if !bytes.Equal(backup, original) {
+		t.Errorf("backup = %q, want the original settings %q", backup, original)
+	}
+	updated, err := os.ReadFile(settingsFile)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	if !strings.Contains(string(updated), "hooks") {
+		t.Error("hooks were not written")
+	}
+	if !strings.Contains(string(updated), `"opus"`) {
+		t.Error("existing user key was lost")
+	}
+	if !strings.Contains(stderr.String(), "Backed up existing settings") {
+		t.Error("backup was not reported")
+	}
+}
