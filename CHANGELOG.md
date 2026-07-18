@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.26.1] - 2026-07-19
+
+### Fixed
+
+- report managed files as unchanged when nothing changed (e0ecbaf)
+- only rewrite and back up settings.json when it changes (69ce680)
+
 ## [v0.26.0] - 2026-07-15
 
 ### Added
@@ -1005,3 +1012,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.25.1]: https://github.com/markwharton/plankit/compare/v0.25.0...v0.25.1
 [v0.25.2]: https://github.com/markwharton/plankit/compare/v0.25.1...v0.25.2
 [v0.26.0]: https://github.com/markwharton/plankit/compare/v0.25.2...v0.26.0
+[v0.26.1]: https://github.com/markwharton/plankit/compare/v0.26.0...v0.26.1
