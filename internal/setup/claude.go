@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -250,7 +249,17 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 	content := strings.Replace(installScriptTemplate, "{{VERSION}}", pkVersion, 1)
 	scriptPath := filepath.Join(projectDir, paths.ClaudeDir, paths.InstallScript)
 
-	existing, _ := cfg.ReadFile(scriptPath)
+	// Already pinned to this version: say so and leave the file alone, matching
+	// writeManaged. Rewriting identical bytes would only churn the mtime.
+	//
+	// The executable bit is part of "already correct": the SessionStart hook
+	// runs this script, so a copy that lost the bit (a Windows checkout, a
+	// core.fileMode=false clone, an unzip) must still be repaired by the
+	// rewrite below rather than passed over as unchanged.
+	if isUpToDate(cfg.ReadFile, scriptPath, []byte(content)) && isExecutable(cfg.Stat, scriptPath) {
+		msg.Itemf(cfg.Stderr, "install-pk.sh: unchanged (pinned %s)", pkVersion)
+		return false, nil
+	}
 
 	if err := cfg.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", scriptPath, err)
@@ -261,7 +270,7 @@ func writeInstallScript(cfg Config, projectDir string, pkVersion string) (bool, 
 		return false, fmt.Errorf("failed to write %s: %w", scriptPath, err)
 	}
 	msg.Itemf(cfg.Stderr, "install-pk.sh: updated (pinned %s)", pkVersion)
-	return string(existing) != content, nil
+	return true, nil
 }
 
 // addPermission adds a permission string to the settings "permissions.allow" list
@@ -342,7 +351,7 @@ func writePkModes(cfg Config, projectDir, guardMode, guardPush, preserveMode str
 	if err != nil {
 		return false, err
 	}
-	if readErr == nil && bytes.Equal(existing, output) {
+	if isUpToDate(cfg.ReadFile, path, output) {
 		return false, nil
 	}
 	if err := cfg.WriteFile(path, output, 0644); err != nil {

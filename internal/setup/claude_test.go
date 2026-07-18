@@ -653,3 +653,105 @@ func TestMergeHooks_noShellOnUserHooks(t *testing.T) {
 		t.Errorf("shell was added to user hook; JSON:\n%s", hooksJSON)
 	}
 }
+
+func TestWriteInstallScript_reportsUnchangedOnRerun(t *testing.T) {
+	dir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	changed, err := writeInstallScript(cfg, dir, "v1.2.3")
+	if err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	if !changed {
+		t.Error("first write reported no change")
+	}
+	if !strings.Contains(stderr.String(), "updated (pinned v1.2.3)") {
+		t.Errorf("first write said %q", strings.TrimSpace(stderr.String()))
+	}
+
+	stderr.Reset()
+	changed, err = writeInstallScript(cfg, dir, "v1.2.3")
+	if err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	if changed {
+		t.Error("re-run at the same version reported a change")
+	}
+	if !strings.Contains(stderr.String(), "unchanged (pinned v1.2.3)") {
+		t.Errorf("re-run said %q, want unchanged", strings.TrimSpace(stderr.String()))
+	}
+}
+
+func TestWriteInstallScript_reportsUpdatedOnVersionBump(t *testing.T) {
+	dir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	if _, err := writeInstallScript(cfg, dir, "v1.2.3"); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	stderr.Reset()
+
+	changed, err := writeInstallScript(cfg, dir, "v1.3.0")
+	if err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	if !changed {
+		t.Error("version bump reported no change")
+	}
+	if !strings.Contains(stderr.String(), "updated (pinned v1.3.0)") {
+		t.Errorf("said %q, want updated", strings.TrimSpace(stderr.String()))
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".claude", "install-pk.sh"))
+	if err != nil {
+		t.Fatalf("read script: %v", err)
+	}
+	if !strings.Contains(string(data), "v1.3.0") {
+		t.Error("new version was not pinned into the script")
+	}
+	// The 0755 mode must survive the rewrite, or the SessionStart hook cannot run it.
+	info, _ := os.Stat(filepath.Join(dir, ".claude", "install-pk.sh"))
+	if info.Mode().Perm()&0111 == 0 {
+		t.Errorf("script is not executable after rewrite: %v", info.Mode().Perm())
+	}
+}
+
+func TestWriteInstallScript_repairsPermissionsOnIdenticalContent(t *testing.T) {
+	// A clone or unzip can strip the executable bit while leaving the bytes
+	// intact. The SessionStart hook runs this script, so setup must repair it
+	// rather than reporting it as unchanged.
+	dir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	if _, err := writeInstallScript(cfg, dir, "v1.2.3"); err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	scriptPath := filepath.Join(dir, ".claude", "install-pk.sh")
+	if err := os.Chmod(scriptPath, 0644); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	stderr.Reset()
+
+	changed, err := writeInstallScript(cfg, dir, "v1.2.3")
+	if err != nil {
+		t.Fatalf("writeInstallScript() error = %v", err)
+	}
+	if !changed {
+		t.Error("permission repair reported no change")
+	}
+	info, err := os.Stat(scriptPath)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Errorf("executable bit not repaired: %v", info.Mode().Perm())
+	}
+	if strings.Contains(stderr.String(), "unchanged") {
+		t.Errorf("said %q, but the file needed repair", strings.TrimSpace(stderr.String()))
+	}
+}

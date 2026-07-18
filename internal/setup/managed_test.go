@@ -627,3 +627,161 @@ func TestShouldUpdate_pristineFrontmatter_CRLF(t *testing.T) {
 		t.Fatalf("shouldUpdate for pristine CRLF frontmatter file = false (%s), want true", reason)
 	}
 }
+
+func TestWriteManaged_reportsUnchangedOnRerun(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "CLAUDE.md")
+	content := "# CLAUDE.md\nContent here.\n"
+
+	var first bytes.Buffer
+	cfg := Config{Stderr: &first}
+	withFS(&cfg)
+	changed, err := writeManaged(cfg, path, content, false)
+	if err != nil {
+		t.Fatalf("first writeManaged() error = %v", err)
+	}
+	if !changed {
+		t.Error("first write reported no change")
+	}
+	if !strings.Contains(first.String(), "created") {
+		t.Errorf("first write said %q, want created", strings.TrimSpace(first.String()))
+	}
+
+	// Re-run with identical content: pk has not changed the file, so setup
+	// should say so rather than claiming an update.
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	var second bytes.Buffer
+	cfg.Stderr = &second
+	changed, err = writeManaged(cfg, path, content, false)
+	if err != nil {
+		t.Fatalf("second writeManaged() error = %v", err)
+	}
+	if changed {
+		t.Error("re-run reported a change for identical content")
+	}
+	if !strings.Contains(second.String(), "unchanged") {
+		t.Errorf("re-run said %q, want unchanged", strings.TrimSpace(second.String()))
+	}
+	// Nothing was rewritten, so the file was not touched.
+	if after, err := os.Stat(path); err == nil && !after.ModTime().Equal(info.ModTime()) {
+		t.Error("re-run rewrote a file whose content had not changed")
+	}
+}
+
+func TestWriteManaged_reportsUpdatedWhenContentChanges(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "CLAUDE.md")
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	if _, err := writeManaged(cfg, path, "# CLAUDE.md\nOld.\n", false); err != nil {
+		t.Fatalf("writeManaged() error = %v", err)
+	}
+	stderr.Reset()
+
+	// New embedded content, pristine file on disk: a real update.
+	changed, err := writeManaged(cfg, path, "# CLAUDE.md\nNew.\n", false)
+	if err != nil {
+		t.Fatalf("writeManaged() error = %v", err)
+	}
+	if !changed {
+		t.Error("changed content reported as no change")
+	}
+	if !strings.Contains(stderr.String(), "updated") {
+		t.Errorf("said %q, want updated", strings.TrimSpace(stderr.String()))
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "New.") {
+		t.Error("new content was not written")
+	}
+}
+
+func TestWriteManaged_forceOnIdenticalContentIsUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "SKILL.md")
+	content := "---\nname: demo\n---\n\nBody.\n"
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	if _, err := writeManaged(cfg, path, content, false); err != nil {
+		t.Fatalf("writeManaged() error = %v", err)
+	}
+	stderr.Reset()
+
+	// --force overrides the user-modification check, not physics: identical
+	// bytes are still identical.
+	changed, err := writeManaged(cfg, path, content, true)
+	if err != nil {
+		t.Fatalf("writeManaged() error = %v", err)
+	}
+	if changed {
+		t.Error("forced re-write of identical content reported a change")
+	}
+	if !strings.Contains(stderr.String(), "unchanged") {
+		t.Errorf("said %q, want unchanged", strings.TrimSpace(stderr.String()))
+	}
+}
+
+func TestIsUpToDate(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("hello\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		path string
+		want []byte
+		ok   bool
+	}{
+		{"identical", path, []byte("hello\n"), true},
+		{"different content", path, []byte("goodbye\n"), false},
+		{"trailing byte differs", path, []byte("hello"), false},
+		{"missing file", filepath.Join(dir, "absent.txt"), []byte("hello\n"), false},
+		{"empty want against real file", path, nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isUpToDate(os.ReadFile, tt.path, tt.want); got != tt.ok {
+				t.Errorf("isUpToDate() = %v, want %v", got, tt.ok)
+			}
+		})
+	}
+}
+
+func TestIsUpToDate_unreadableIsNotUpToDate(t *testing.T) {
+	// A read failure must never be mistaken for "already correct", or setup
+	// would skip repairing a file it cannot inspect.
+	failing := func(string) ([]byte, error) { return nil, os.ErrPermission }
+	if isUpToDate(failing, "anything", nil) {
+		t.Error("an unreadable file reported as up to date")
+	}
+}
+
+func TestIsExecutable(t *testing.T) {
+	dir := t.TempDir()
+	exec := filepath.Join(dir, "run.sh")
+	plain := filepath.Join(dir, "data.txt")
+	if err := os.WriteFile(exec, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := os.WriteFile(plain, []byte("x"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if !isExecutable(os.Stat, exec) {
+		t.Error("0755 file reported as not executable")
+	}
+	if isExecutable(os.Stat, plain) {
+		t.Error("0644 file reported as executable")
+	}
+	if isExecutable(os.Stat, filepath.Join(dir, "absent")) {
+		t.Error("missing file reported as executable")
+	}
+}

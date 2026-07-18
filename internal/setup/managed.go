@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -206,7 +207,9 @@ func shouldUpdate(readFile func(string) ([]byte, error), path string, newContent
 // writeManaged writes content to path with a SHA marker embedded in the file.
 // Skills with YAML frontmatter get a pk_sha256 field; other files get an HTML comment on line 1.
 // If the file exists and has been modified by the user, it is skipped unless force is true.
-// Returns (changed, error). changed is true only when the bytes actually written differ from what was on disk.
+// A file already identical to what would be written is reported as "unchanged"
+// and left alone.
+// Returns (changed, error). changed is true only when bytes were actually written.
 func writeManaged(cfg Config, path string, content string, force bool) (bool, error) {
 	update, reason := shouldUpdate(cfg.ReadFile, path, content, force)
 	if !update {
@@ -234,8 +237,15 @@ func writeManaged(cfg Config, path string, content string, force bool) (bool, er
 
 	managed := embedSHA(content, sha)
 
-	// Read existing bytes before writing so we can report whether content actually changed.
-	existing, _ := cfg.ReadFile(path)
+	// Compare against what is on disk before writing. shouldUpdate decides on
+	// classification alone, so a pristine managed file whose content pk has not
+	// changed still arrives here as "updated". Reporting that is misleading on
+	// a re-run where nothing moved, and rewriting identical bytes only churns
+	// the file's mtime.
+	if isUpToDate(cfg.ReadFile, path, []byte(managed)) {
+		msg.Itemf(cfg.Stderr, "%s: unchanged", displayName(path))
+		return false, nil
+	}
 
 	if err := cfg.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", path, err)
@@ -244,7 +254,27 @@ func writeManaged(cfg Config, path string, content string, force bool) (bool, er
 		return false, fmt.Errorf("failed to write %s: %w", path, err)
 	}
 	msg.Itemf(cfg.Stderr, "%s: %s", displayName(path), reason)
-	return string(existing) != managed, nil
+	return true, nil
+}
+
+// isUpToDate reports whether path already holds exactly want, so there is
+// nothing to write. A missing or unreadable file is not up to date.
+//
+// Every pk setup writer compares against the bytes on disk before writing, so
+// that a re-run reports "unchanged" instead of claiming an update and churning
+// the file's mtime. This is that comparison, and only that: what counts as the
+// intended bytes, what gets reported, and any further freshness condition (the
+// install script's executable bit) stay with each caller, because they differ.
+func isUpToDate(readFile func(string) ([]byte, error), path string, want []byte) bool {
+	existing, err := readFile(path)
+	return err == nil && bytes.Equal(existing, want)
+}
+
+// isExecutable reports whether path has any execute bit set. Files pk writes to
+// be run, rather than read, must keep it across a rewrite.
+func isExecutable(stat func(string) (os.FileInfo, error), path string) bool {
+	info, err := stat(path)
+	return err == nil && info.Mode().Perm()&0111 != 0
 }
 
 // displayName returns a short display name for a managed file path.
