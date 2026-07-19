@@ -55,7 +55,7 @@ func runBaseline(cfg Config, projectDir string) error {
 		} else {
 			fmt.Fprintln(cfg.Stderr, "Pushed v0.0.0 to origin")
 		}
-	} else {
+	} else if !cfg.Embedded {
 		msg.Hintf(cfg.Stderr, "To publish: pk setup --baseline --push")
 		msg.Or(cfg.Stderr, "git push origin v0.0.0")
 	}

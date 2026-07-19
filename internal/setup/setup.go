@@ -197,15 +197,20 @@ type Config struct {
 	Baseline      bool
 	BaselineAt    string
 	Push          bool
-	GitExec       func(projectDir string, args ...string) (string, error)
-	ReadFile      func(string) ([]byte, error)
-	WriteFile     func(string, []byte, os.FileMode) error
-	Stat          func(string) (os.FileInfo, error)
-	MkdirAll      func(string, os.FileMode) error
-	ReadDir       func(string) ([]os.DirEntry, error)
-	Remove        func(string) error
-	Rename        func(string, string) error
-	LookPath      func(string) (string, error)
+	// Embedded marks a Run driven by another pk command rather than by
+	// `pk setup` directly. It suppresses the closing next-step tips, which
+	// would otherwise point the user back at pk setup; the calling command
+	// owns the summary and prints tips for itself.
+	Embedded  bool
+	GitExec   func(projectDir string, args ...string) (string, error)
+	ReadFile  func(string) ([]byte, error)
+	WriteFile func(string, []byte, os.FileMode) error
+	Stat      func(string) (os.FileInfo, error)
+	MkdirAll  func(string, os.FileMode) error
+	ReadDir   func(string) ([]os.DirEntry, error)
+	Remove    func(string) error
+	Rename    func(string, string) error
+	LookPath  func(string) (string, error)
 }
 
 // DefaultConfig returns a Config wired to real OS resources.
@@ -430,7 +435,7 @@ func Run(cfg Config) error {
 
 	// Commit-message tip: shown only when something actually changed on disk
 	// and pk is a real release build (dev builds have no meaningful version to pin).
-	if anyChanged && !version.IsDevBuild(cfg.Version) {
+	if anyChanged && !version.IsDevBuild(cfg.Version) && !cfg.Embedded {
 		tipVersion := cfg.Version
 		if !strings.HasPrefix(tipVersion, "v") {
 			tipVersion = "v" + tipVersion
@@ -448,6 +453,8 @@ func Run(cfg Config) error {
 		msg.Hintf(stderr, "To check what's configured and ready: pk status")
 	}
 
-	fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")
+	if !cfg.Embedded {
+		fmt.Fprintln(stderr, "Restart Claude Code to apply changes.")
+	}
 	return nil
 }

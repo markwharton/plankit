@@ -103,6 +103,8 @@ Re-running `pk setup` preserves the existing mode configuration. Pass `--guard` 
 
 `pk changelog` reads every commit since the most recent semver tag. Without a tag, there is nothing to diff from and the command errors out. `--baseline` creates that anchor without you having to remember the raw git commands.
 
+Setting up a brand new project? [`pk init`](pk-init.md) runs this step for you, along with the branch topology and the `develop` branch. `pk setup --baseline` is for adding an anchor to a project that already exists.
+
 Three common scenarios:
 
 **1. New repo, anchor from the initial commit.**

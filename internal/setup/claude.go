@@ -364,6 +364,30 @@ func writePkModes(cfg Config, projectDir, guardMode, guardPush, preserveMode str
 // pk[objKey], creating the nested object if absent and preserving its other
 // fields and their order.
 func setNested(pk *OrderedObject, objKey, field, value string) error {
+	v, err := MarshalNoHTML(value)
+	if err != nil {
+		return err
+	}
+	return setNestedRaw(pk, objKey, field, json.RawMessage(v))
+}
+
+// hasNested reports whether pk[objKey][field] is present, so a caller can seed
+// a value only when the project has not set one.
+func hasNested(pk *OrderedObject, objKey, field string) bool {
+	raw, ok := pk.Get(objKey)
+	if !ok {
+		return false
+	}
+	obj, err := ParseOrderedObject(raw)
+	if err != nil {
+		return false
+	}
+	return obj.Has(field)
+}
+
+// setNestedRaw is setNested for a value that is already JSON — an array or
+// object, where setNested's string marshalling would be wrong.
+func setNestedRaw(pk *OrderedObject, objKey, field string, value json.RawMessage) error {
 	obj := NewOrderedObject()
 	if raw, ok := pk.Get(objKey); ok {
 		parsed, err := ParseOrderedObject(raw)
@@ -372,17 +396,66 @@ func setNested(pk *OrderedObject, objKey, field, value string) error {
 		}
 		obj = parsed
 	}
-	v, err := MarshalNoHTML(value)
-	if err != nil {
-		return err
-	}
-	obj.Set(field, json.RawMessage(v))
+	obj.Set(field, value)
 	objJSON, err := MarshalNoHTML(obj)
 	if err != nil {
 		return err
 	}
 	pk.Set(objKey, json.RawMessage(objJSON))
 	return nil
+}
+
+// WriteTopology writes the branch topology into .pk.json: guard.branches
+// naming the release branch, and release.branch naming it again. It
+// field-merges like writePkModes, so an existing .pk.json keeps its other
+// keys, and it is idempotent — an unchanged file is not rewritten.
+//
+// pk setup deliberately never writes these keys: it reconciles managed files
+// and modes, and the topology is a project decision. pk init owns that
+// decision, which is why the writer lives here but the caller does not.
+// Returns whether the file's bytes changed.
+func WriteTopology(cfg Config, projectDir, releaseBranch string) (bool, error) {
+	path := filepath.Join(projectDir, paths.PkConfig)
+	existing, readErr := cfg.ReadFile(path)
+	pk := NewOrderedObject()
+	if readErr == nil {
+		parsed, err := ParseOrderedObject(existing)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse %s: %w", path, err)
+		}
+		pk = parsed
+	}
+
+	// Seed guard.branches only when the project has not set it. A project may
+	// legitimately guard more than the release branch (["main", "production"]),
+	// and replacing that list with a single entry would silently unguard the
+	// rest. pk init fills in what is missing; it does not restate decisions the
+	// project has already made.
+	if !hasNested(pk, "guard", "branches") {
+		branches, err := MarshalNoHTML([]string{releaseBranch})
+		if err != nil {
+			return false, err
+		}
+		if err := setNestedRaw(pk, "guard", "branches", json.RawMessage(branches)); err != nil {
+			return false, err
+		}
+	}
+	if err := setNested(pk, "release", "branch", releaseBranch); err != nil {
+		return false, err
+	}
+	pk.SortKeys()
+
+	output, err := MarshalIndentNoHTML(pk)
+	if err != nil {
+		return false, err
+	}
+	if isUpToDate(cfg.ReadFile, path, output) {
+		return false, nil
+	}
+	if err := cfg.WriteFile(path, output, 0644); err != nil {
+		return false, fmt.Errorf("failed to write %s: %w", path, err)
+	}
+	return true, nil
 }
 
 // mergeHooks merges plankit hooks into existing settings, preserving user hooks

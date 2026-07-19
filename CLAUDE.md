@@ -53,7 +53,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 ### Directory Structure
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `setup`, `status`, `teardown`, `update`, `version`.
+- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (conventions, preserve, ship).
@@ -66,7 +66,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - **Three command layers, three flag patterns.**
   - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
   - **Skill-managed commands** (ship) — `/ship` handles the preview/confirm cycle for `pk changelog` and `pk release`. `--dry-run` exists for the skill to preview before executing. Power users typing `pk changelog` or `pk release` in the terminal bypass the skill and execute directly.
-  - **User-only commands** (teardown) — no skill wrapping, destructive. Preview by default, `--confirm` to execute.
+  - **User-only commands** (init, teardown) — no skill wrapping. `teardown` is destructive, so it previews by default and takes `--confirm` to execute; `init` is additive and runs immediately, with `--dry-run` to preview.
 
 ### Code Patterns
 
