@@ -51,14 +51,18 @@ Add a `release` key to `.pk.json`:
   "release": {
     "branch": "main",
     "hooks": {
-      "preRelease": "go test -race ./..."
+      "preRelease": "go test -race ./...",
+      "prePush": "sign-tag $TAG"
     }
   }
 }
 ```
 
 - **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the trunk flow (validate current branch and push).
-- **hooks.preRelease** — Shell command that runs before pushing. If the hook fails, the release is aborted and nothing is pushed.
+- **hooks.preRelease** — Shell command that runs after merge but before the tag is created. If it fails, the release is aborted and nothing is pushed. Rehearsed by `--dry-run`; the release tag does not exist yet when it runs.
+- **hooks.prePush** — Shell command that runs after tagging, before the push, so the tag ref exists (for signing or artifact builds). If it fails, the local tag is removed and nothing is pushed. Does not run under `--dry-run`.
+
+Both hooks receive `$VERSION` (no leading `v`) and `$TAG` (with it) as environment variables.
 
 ## Details
 

@@ -255,12 +255,24 @@ func Run(cfg Config) int {
 		msg.Itemf(cfg.Stderr, "On %s branch", sourceBranch)
 	}
 
-	// 9. Run preRelease hook if configured.
+	// Env shared by both release hooks, matching changelog hooks' contract:
+	// VERSION without the leading v (for stamping files), TAG with it (the ref
+	// name). Pre-expanded and set as real env vars by RunScript, so hooks work
+	// the same on Windows cmd as on POSIX sh. The values are the parsed tag from
+	// step 4; the tag ref itself does not exist until step 11.
+	hookEnv := map[string]string{
+		"VERSION": strings.TrimPrefix(tag, "v"),
+		"TAG":     tag,
+	}
+
+	// 9. Run preRelease hook if configured. Runs before the tag is created, so
+	// it is rehearsable in --dry-run and a hook that commits produces a commit
+	// that the later tag then covers. A hook needing the tag ref wants prePush.
 	if releaseConf.Hooks.PreRelease != "" {
 		fmt.Fprintln(cfg.Stderr, "")
 		msg.Section(cfg.Stderr, "Pre-release hook")
 		msg.Itemf(cfg.Stderr, "%s", releaseConf.Hooks.PreRelease)
-		if err := cfg.RunScript(cfg.Dir, releaseConf.Hooks.PreRelease, nil); err != nil {
+		if err := cfg.RunScript(cfg.Dir, releaseConf.Hooks.PreRelease, hookEnv); err != nil {
 			msg.Errorf(cfg.Stderr, "pre-release hook failed: %v", err)
 			return 1
 		}
@@ -285,6 +297,22 @@ func Run(cfg Config) int {
 	}
 	tagCreated = true
 	fmt.Fprintf(cfg.Stderr, "\nCreated local tag %s\n", tag)
+
+	// 11b. Run prePush hook if configured. The tag ref now exists, so hooks that
+	// need it (signing, artifact builds keyed on the tag) can use it. A failure
+	// aborts before any push; the tagCreated defer removes the local tag (and
+	// rolls back the merge). It never runs in --dry-run, which returned above
+	// before the tag was created — preRelease is the rehearsable slot.
+	if releaseConf.Hooks.PrePush != "" {
+		fmt.Fprintln(cfg.Stderr, "")
+		msg.Section(cfg.Stderr, "Pre-push hook")
+		msg.Itemf(cfg.Stderr, "%s", releaseConf.Hooks.PrePush)
+		if err := cfg.RunScript(cfg.Dir, releaseConf.Hooks.PrePush, hookEnv); err != nil {
+			msg.Errorf(cfg.Stderr, "pre-push hook failed: %v", err)
+			return 1
+		}
+		msg.Itemf(cfg.Stderr, "Hook passed")
+	}
 
 	// 12. Push.
 	fmt.Fprintln(cfg.Stderr, "")

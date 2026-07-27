@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -625,5 +626,25 @@ func TestRun_brief_readiness(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "not-ready") {
 		t.Errorf("brief output missing not-ready, got: %s", stderr.String())
+	}
+}
+
+func TestReleaseHooksSet(t *testing.T) {
+	tests := []struct {
+		name  string
+		hooks config.ReleaseHooks
+		want  string
+	}{
+		{"none", config.ReleaseHooks{}, ""},
+		{"preRelease only", config.ReleaseHooks{PreRelease: "make test"}, "preRelease"},
+		{"prePush only", config.ReleaseHooks{PrePush: "sign"}, "prePush"},
+		{"both, in sequence order", config.ReleaseHooks{PreRelease: "make test", PrePush: "sign"}, "preRelease, prePush"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := releaseHooksSet(tt.hooks); got != tt.want {
+				t.Errorf("releaseHooksSet() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

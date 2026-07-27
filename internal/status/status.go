@@ -197,8 +197,8 @@ func Run(cfg Config) (bool, error) {
 		if pkConf.Release.Branch != "" {
 			fmt.Fprintf(stderr, "  release.branch:   %s\n", pkConf.Release.Branch)
 		}
-		if pkConf.Release.Hooks.PreRelease != "" {
-			fmt.Fprintf(stderr, "  release.hooks:    preRelease set\n")
+		if set := releaseHooksSet(pkConf.Release.Hooks); set != "" {
+			fmt.Fprintf(stderr, "  release.hooks:    %s set\n", set)
 		}
 		if len(pkConf.Guard.Branches) > 0 {
 			fmt.Fprintf(stderr, "  guard.branches:   %s\n", strings.Join(pkConf.Guard.Branches, ", "))
@@ -279,6 +279,19 @@ func runBrief(cfg Config, configured bool, pkConf config.PkConfig, hasHooks bool
 
 // isGitRepo reports whether dir is inside a git working tree. It walks up
 // parent directories, so monorepo subdirectories are correctly detected.
+// releaseHooksSet names the configured release hooks for the status line, or
+// "" when none are set. Order matches the release sequence: preRelease, prePush.
+func releaseHooksSet(h config.ReleaseHooks) string {
+	var set []string
+	if h.PreRelease != "" {
+		set = append(set, "preRelease")
+	}
+	if h.PrePush != "" {
+		set = append(set, "prePush")
+	}
+	return strings.Join(set, ", ")
+}
+
 func isGitRepo(cfg Config, dir string) bool {
 	return git.IsRepo(cfg.Stat, dir)
 }

@@ -82,8 +82,11 @@ type ChangelogConfig struct {
 }
 
 // ReleaseHooks holds lifecycle hook commands for the release process.
+// preRelease runs before the tag is created (rehearsable in --dry-run);
+// prePush runs after tagging, before the push, when the tag ref exists.
 type ReleaseHooks struct {
 	PreRelease string `json:"preRelease,omitempty"`
+	PrePush    string `json:"prePush,omitempty"`
 }
 
 // ReleaseSection holds the release config from .pk.json.

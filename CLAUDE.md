@@ -92,7 +92,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 - `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
 - `changelog.types` controls commit type → changelog section mapping.
 - `changelog.hooks` supports `preCommit`, `postVersion` lifecycle hooks.
-- `release.hooks` supports `preRelease` lifecycle hook.
+- `release.hooks` supports `preRelease` (before tag creation) and `prePush` (after tagging, before push) lifecycle hooks; both receive `$VERSION`/`$TAG`.
 - `guard.branches` lists branches where git mutations are blocked.
 - `release.branch` configures which branch `pk release` merges to and pushes from.
 
