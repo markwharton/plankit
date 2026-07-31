@@ -23,6 +23,12 @@ type fakeGit struct {
 	noOrigin bool     // remote get-url origin fails
 	heads    []string // existing local branches, for rev-parse --verify refs/heads/*
 	failOn   string   // command prefix that returns an error
+	// alwaysClean keeps status --porcelain empty on every call, so the commit
+	// step sees nothing to commit even after files were written.
+	alwaysClean bool
+	// failStatusAfterFirst fails status --porcelain from the second call on:
+	// preflight's clean-tree check passes, the commit step's read fails.
+	failStatusAfterFirst bool
 	// originURL overrides the origin remote; empty means a GitHub remote.
 	originURL string
 	// onCommit fires after an anchor commit, so a test can model the
@@ -54,7 +60,12 @@ func (f *fakeGit) exec(dir string, args ...string) (string, error) {
 			return " M some-file\n", nil
 		}
 		if f.statusCalls > 1 {
-			return "?? CLAUDE.md\n?? .pk.json\n", nil
+			if f.failStatusAfterFirst {
+				return "", fmt.Errorf("git status failed")
+			}
+			if !f.alwaysClean {
+				return "?? CLAUDE.md\n?? .pk.json\n", nil
+			}
 		}
 		return "", nil
 	case joined == "remote get-url origin":
@@ -401,6 +412,91 @@ func TestRun_gitFailureMidSequence(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to create branch develop") {
 		t.Errorf("error = %q, want it to name the failed step", err)
+	}
+}
+
+func TestRun_publishFailures(t *testing.T) {
+	// Each push in the publish sequence can fail; the error must name the ref
+	// that did not make it, because the earlier pushes already landed.
+	tests := []struct {
+		failOn  string
+		wantErr string
+	}{
+		{failOn: "push -u origin main", wantErr: "failed to push main"},
+		{failOn: "push origin v0.0.0", wantErr: "failed to push v0.0.0"},
+		{failOn: "push -u origin develop", wantErr: "failed to push develop"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.failOn, func(t *testing.T) {
+			g := &fakeGit{branch: "main", failOn: tt.failOn}
+			_, _, cfg := newRepo(t, g)
+			cfg.Push = true
+
+			err := Run(cfg)
+			if err == nil {
+				t.Fatal("Run() succeeded despite a failing push")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRun_commitFailures(t *testing.T) {
+	tests := []struct {
+		name    string
+		git     *fakeGit
+		wantErr string
+	}{
+		{
+			name:    "status read fails at the commit step",
+			git:     &fakeGit{branch: "main", failStatusAfterFirst: true},
+			wantErr: "failed to read the working tree status",
+		},
+		{
+			name:    "staging fails",
+			git:     &fakeGit{branch: "main", failOn: "add -A"},
+			wantErr: "failed to stage the setup files",
+		},
+		{
+			name:    "commit fails",
+			git:     &fakeGit{branch: "main", failOn: "commit -m"},
+			wantErr: "failed to commit the setup files",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, cfg := newRepo(t, tt.git)
+
+			err := Run(cfg)
+			if err == nil {
+				t.Fatal("Run() succeeded despite a failing git command")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRun_nothingToCommitSkipsCommit(t *testing.T) {
+	// When git reports nothing to commit after the write phase (everything
+	// already committed by a prior run), the commit step is a clean no-op
+	// rather than an empty-commit generator or an error.
+	g := &fakeGit{branch: "main", alwaysClean: true}
+	_, _, cfg := newRepo(t, g)
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if g.ran("add -A") || g.ran("commit ") {
+		t.Errorf("staged or committed with a clean tree; calls: %v", g.calls)
+	}
+	if !g.ran("switch develop") {
+		t.Error("run did not still finish on develop")
 	}
 }
 

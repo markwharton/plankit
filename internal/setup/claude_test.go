@@ -182,6 +182,46 @@ func TestMergeHooks_preservesUnknownCategories(t *testing.T) {
 	}
 }
 
+func TestMergeHooks_invalidHooksValueErrors(t *testing.T) {
+	// A hooks key that is not an object (hand-edited settings, say) must
+	// surface as an error, not be silently replaced with plankit's hooks.
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`["not","an","object"]`))
+
+	if err := mergeHooks(settings, buildHooks()); err == nil {
+		t.Fatal("mergeHooks() succeeded on a non-object hooks value, want an error")
+	}
+}
+
+func TestMergeHooks_invalidCategoryValueErrors(t *testing.T) {
+	// A known category holding something other than an entry array is user
+	// data pk cannot merge into; refuse rather than clobber.
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{"PreToolUse":{"not":"an array"}}`))
+
+	if err := mergeHooks(settings, buildHooks()); err == nil {
+		t.Fatal("mergeHooks() succeeded on a non-array category, want an error")
+	}
+}
+
+func TestMergeHooks_emptyResultDeletesHooksKey(t *testing.T) {
+	// Merging nothing into settings whose hooks are all plankit-managed
+	// removes them and the now-empty hooks key with them: this is the
+	// teardown direction of the merge.
+	settings := NewOrderedObject()
+	settings.Set("hooks", json.RawMessage(`{
+			"PreToolUse": [{"matcher":"Bash","hooks":[{"type":"command","command":"pk guard"}]}]
+		}`))
+
+	if err := mergeHooks(settings, HooksConfig{}); err != nil {
+		t.Fatalf("mergeHooks() error = %v", err)
+	}
+
+	if raw, ok := settings.Get("hooks"); ok {
+		t.Errorf("hooks key survived an empty merge: %s", raw)
+	}
+}
+
 // TestMergeHooks_noTimeoutZero verifies that user hooks without a timeout
 // don't get "timeout": 0 stamped on them after merging.
 func TestMergeHooks_noTimeoutZero(t *testing.T) {
