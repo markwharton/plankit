@@ -4,7 +4,7 @@ Project-level configuration for pk. Each top-level key maps to a pk subcommand.
 
 ## Location
 
-`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned and hand-editable. `pk setup` writes the **behavior modes** (`guard.mode`, `guard.push`, `preserve.mode`) into it but never touches your other keys; `pk teardown` does not remove it. The `/conventions` skill fills in the **targets** (`guard.branches`, `release.branch`, changelog config).
+`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned and hand-editable. `pk setup` writes the **behavior modes** (`guard.mode`, `guard.push`, `preserve.mode`) into it but never touches your other keys; `pk teardown` does not remove it. The **targets** (`guard.branches`, `release.branch`, changelog config) are filled in by [`pk init`](pk-init.md) at project creation, by the `/conventions` skill, or by hand.
 
 If `.pk.json` does not exist, all commands use their defaults. An empty file (`{}`) is equivalent to no file. Any mode key that is absent falls back to its default; `"off"` is an explicit value, distinct from absence.
 
@@ -86,7 +86,7 @@ pk pre-expands `$VERSION` before passing the command to the shell, so hooks work
 
 ## guard
 
-Configuration for `pk guard`. All fields are optional. `pk setup` writes `mode` and `push`; `/conventions` (or you) sets `branches`.
+Configuration for `pk guard`. All fields are optional. `pk setup` writes `mode` and `push`; `pk init`, `/conventions`, or you set `branches`.
 
 ### guard.mode
 
@@ -103,6 +103,8 @@ Array of branch names where git mutations are blocked (subject to `guard.mode`).
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) are always allowed.
 
 If omitted or empty, the branch policy is a no-op (no branches to protect); `guard.push` still applies.
+
+[`pk init`](pk-init.md) sets this to the release branch when it initializes a project.
 
 ```json
 {
@@ -132,7 +134,7 @@ How the automatic plan-preservation hook behaves when you exit plan mode: `auto`
 
 ## release
 
-Configuration for `pk release`. All fields are optional.
+Configuration for `pk release`. All fields are optional. [`pk init`](pk-init.md) writes `branch`; nothing else in pk does.
 
 ### release.branch
 

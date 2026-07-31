@@ -34,6 +34,7 @@ import (
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/rules"
+	"github.com/markwharton/plankit/internal/scaffold"
 	"github.com/markwharton/plankit/internal/setup"
 	"github.com/markwharton/plankit/internal/status"
 	"github.com/markwharton/plankit/internal/teardown"
@@ -56,6 +57,8 @@ func main() {
 		runRelease(os.Args[2:])
 	case "rules":
 		runRules(os.Args[2:])
+	case "init":
+		runInit(os.Args[2:])
 	case "guard":
 		runGuard(os.Args[2:])
 	case "protect":
@@ -274,6 +277,33 @@ func runSetup(args []string) {
 	printUpdateNotice()
 }
 
+func runInit(args []string) {
+	fs := flag.NewFlagSet("init", flag.ExitOnError)
+	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
+	source := fs.String("source", scaffold.DefaultSourceBranch, "Working branch to create")
+	release := fs.String("release", "", "Release branch (default: the branch currently checked out)")
+	noSetup := fs.Bool("no-setup", false, "Skip the pk setup step (managed files and modes); shape the repository only")
+	push := fs.Bool("push", false, "Publish the release branch, the v0.0.0 tag, and the working branch to origin")
+	dryRun := fs.Bool("dry-run", false, "Preview without making any changes")
+	fs.Usage = usageFor(fs, "pk init [flags]")
+	fs.Parse(args)
+
+	cfg := scaffold.DefaultConfig()
+	cfg.ProjectDir = resolveProjectDir(*projectDir)
+	cfg.SourceBranch = *source
+	cfg.ReleaseBranch = *release
+	cfg.NoSetup = *noSetup
+	cfg.Push = *push
+	cfg.DryRun = *dryRun
+	cfg.Version = version.Version()
+	if err := scaffold.Run(cfg); err != nil {
+		msg.Errorf(os.Stderr, "%v", err)
+		os.Exit(1)
+	}
+
+	printUpdateNotice()
+}
+
 func runStatus(args []string) {
 	fs := flag.NewFlagSet("status", flag.ExitOnError)
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
@@ -465,6 +495,8 @@ Release-time commands (invoked from .pk.json changelog.hooks / release.hooks, no
 User commands:
   pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]
                                       Generate changelog, commit, and tag version
+  pk init [--source <name>] [--release <name>] [--no-setup] [--push] [--dry-run] [--project-dir <dir>]
+                                      Make a repo plankit-shaped: topology, managed files, v0.0.0, branches
   pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push
   pk rules [--lint [--strict]] [--project-dir <dir>]
                                       Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars

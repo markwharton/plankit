@@ -38,23 +38,7 @@ gh repo create markwharton/<NAME> \
   --clone
 
 cd <NAME>
-cat > .pk.json <<'JSON'
-{
-  "guard": {
-    "branches": ["main"]
-  },
-  "release": {
-    "branch": "main"
-  }
-}
-JSON
-pk setup --baseline
-git add -A
-git commit -m "chore: pk setup"
-git push -u origin main
-git push origin v0.0.0
-git checkout -b develop
-git push -u origin develop
+pk init --push
 ```
 
 ## Command template — private
@@ -69,23 +53,7 @@ gh repo create <ORG>/<NAME> \
 
 cd <NAME>
 git commit --allow-empty -m "chore: init"
-cat > .pk.json <<'JSON'
-{
-  "guard": {
-    "branches": ["main"]
-  },
-  "release": {
-    "branch": "main"
-  }
-}
-JSON
-pk setup --baseline
-git add -A
-git commit -m "chore: pk setup"
-git push -u origin main
-git push origin v0.0.0
-git checkout -b develop
-git push -u origin develop
+pk init --push
 ```
 
 ## Design notes
@@ -93,12 +61,9 @@ git push -u origin develop
 - **Parent directory:** `~/Projects/markwharton/` for public, `~/Projects/<org>/` for private.
 - **Visibility:** Public by default. Private repos belong to an org and skip the license.
 - **License:** MIT for public repos. Private repos have no license file.
-- **v0.0.0 anchor commit.** Public repos: `gh repo create --license MIT` creates the initial commit (the LICENSE file). Private repos: `git commit --allow-empty -m "chore: init"` creates the anchor since there is no license file. In both cases, `pk setup --baseline` tags this commit as `v0.0.0`. The setup files become the next commit. `pk changelog`'s first real release starts from that commit — honest about where the project's code history begins.
-- **Two explicit pushes** — `git push -u origin main` first, then `git push origin v0.0.0`. At the init stage, reviewing each step matters more than brevity. When the pattern is trusted and boring, this could collapse to `pk setup --baseline --push`. For now, keep the explicit pushes.
-- **Setup commit message** — `"chore: pk setup"`. Short, accurate, no flavor.
-- **`develop` created and pushed at init.** `pk release` expects `origin/develop` to exist (it runs `git fetch origin develop` and `merge-base HEAD origin/develop` as pre-flight). Establishing the branch on origin at init avoids a cryptic git error weeks later and keeps every plankit-tooled project in the same starting state.
-- **Work stays on `develop` after init.** The script leaves you on `develop`, where all subsequent work belongs — features, fixes, version bumps, and `pk setup` re-runs. `main` is fast-forward-only; `pk release` is the only thing that advances it. Never `git checkout main` to make a change — a manual commit there breaks the invariant and the next `pk release` fails with "main has diverged."
-- **`.pk.json` written at init; `/conventions` deferred.** The branch-topology config (`release.branch: main`, `guard.branches: [main]`) is written now, because the script establishes those exact branches and `pk release` needs `release.branch` set or it silently falls back to trunk flow and ships on `develop`. CLAUDE.md project conventions are a separate matter: they need codebase shape to discover, so the user runs `/conventions` later, once the scaffold has enough shape for conventions to matter. A later `/conventions` run merges into this `.pk.json` rather than conflicting.
+- **The anchor commit.** `pk init` tags `v0.0.0` on whatever commit is at HEAD, so the repo needs one first. `gh repo create --license MIT` creates it (the LICENSE commit). Private repos have no license file and so no commit, which is why the private template adds `git commit --allow-empty`.
+- **Branch protection.** `pk init` writes `.github/protect-main.json` but does not apply it; it prints the `gh api` command. Run that after the script, or import the file through the GitHub UI.
+- **After init.** The script leaves you on `develop`. Restart Claude Code so the hooks load, then run `/conventions`.
 
 ## Out of scope
 

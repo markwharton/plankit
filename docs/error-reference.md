@@ -258,6 +258,80 @@ Some commands (changelog, release) will not work until git is initialized.
 
 **Fix:** Run `git init` when ready. Rules and `pk protect` work without git; other commands do not.
 
+## pk init
+
+Every `pk init` refusal happens in pre-flight, before anything is written, so the repository is unchanged when one of these appears.
+
+### not a git repository
+
+```
+Error: this is not a git repository. Run git init first
+```
+
+**Cause:** `pk init` shapes an existing repository; it does not create one.
+
+**Fix:** Run `git init`, make a first commit, then re-run. To create the GitHub repo too, use `gh repo create --clone` first.
+
+### no commits
+
+```
+Error: this repository has no commits. Make one first, so v0.0.0 has something to anchor to
+```
+
+**Cause:** `pk init` tags `v0.0.0` on the current commit, and there isn't one.
+
+**Fix:** Make the project's first commit, then re-run. `git commit --allow-empty -m "chore: init"` works when there is nothing to commit yet.
+
+### working tree not clean
+
+```
+Error: working tree is not clean; commit or stash changes first
+```
+
+**Cause:** `pk init` commits the files it writes, so it needs to start from a clean tree to avoid sweeping unrelated changes into `chore: pk setup`.
+
+**Fix:** Commit or stash your changes first.
+
+### on the wrong branch
+
+```
+Error: you are on "develop" but the release branch is "main"; switch to it first
+```
+
+**Cause:** `pk init` anchors `v0.0.0` and the topology on the release branch, so it has to be the one checked out.
+
+**Fix:** `git switch main`, then re-run. Or drop `--release` to use the branch you are on.
+
+### detached HEAD
+
+```
+Error: HEAD is detached; check out your release branch, or name it with --release
+```
+
+**Cause:** With no branch checked out there is no default release branch to infer.
+
+**Fix:** Check out the release branch, or pass `--release <name>`.
+
+### source branch equals release branch
+
+```
+Error: source branch "main" is the release branch; they must differ
+```
+
+**Cause:** The working branch and the release branch must be distinct: `pk release` fast-forward merges one into the other.
+
+**Fix:** Pass a different `--source`, or drop the flag to use the `develop` default.
+
+### push without an origin
+
+```
+Error: --push needs an origin remote, and this repository has none
+```
+
+**Cause:** `--push` publishes the release branch, the tag, and the working branch, and there is nowhere to publish them.
+
+**Fix:** Add the remote (`git remote add origin <url>`), or drop `--push` and run `pk init` local-only.
+
 ## pk rules
 
 ### flag dependencies

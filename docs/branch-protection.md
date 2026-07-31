@@ -4,9 +4,11 @@
 
 This doc describes the ruleset plankit's own repos use. Import it into your project for the server-side half.
 
-## Import
+[`pk init`](pk-init.md) writes a copy into new projects at `.github/protect-main.json`, ready to apply. pk never applies it: that needs an authenticated GitHub call, and pk shells out only to git.
 
-1. Download [`protect-main.json`](protect-main.json) — the file sits next to this doc in the `docs/` directory.
+## Import through the UI
+
+1. Get the file: `pk init` writes `.github/protect-main.json`, or download [`protect-main.json`](protect-main.json) from the `docs/` directory next to this doc.
 2. On GitHub: your repo → **Settings** → **Rules** → **Rulesets**.
 3. Click **New ruleset ▾** → **Import a ruleset** → upload `protect-main.json`.
 4. Review the rules shown, confirm, save.
@@ -45,7 +47,16 @@ Adapt the imported ruleset to match your project:
 - **`allowed_merge_methods`** — both `merge` and `rebase` are fine for plankit: each preserves the underlying PR commits that `pk changelog` reads. `merge` adds a merge commit on top (`Merge pull request #N from ...`) which is non-conventional and silently skipped by `pk changelog`. Tighten to `["rebase"]` for linear history or `["merge"]` to preserve branch structure. Never add `"squash"` — it collapses the per-commit conventional types the changelog generator needs.
 - **`bypass_actors`** — add specific usernames or teams alongside Admin, or remove the bypass if no pk-release-style automation is in use.
 
+## Apply with gh
+
+```bash
+gh api --method POST repos/<owner>/<repo>/rulesets --input .github/protect-main.json
+```
+
+Use the copy `pk init` wrote, not `docs/protect-main.json`. The `docs/` copy is a UI export and carries `source` and `source_type` fields naming the repository it came from; the rulesets API rejects those. The `.github/` copy omits them and posts as-is.
+
 ## Related
 
 - [pk guard](pk-guard.md) — local-side guard that complements this ruleset.
+- [pk init](pk-init.md) — writes `.github/protect-main.json` into a new project.
 - [pk release](pk-release.md) — uses the admin bypass to merge the release branch.

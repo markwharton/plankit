@@ -16,7 +16,8 @@ import (
 func embeddedTexts(t *testing.T) map[string]string {
 	t.Helper()
 	texts := map[string]string{
-		"internal/setup/template/install-pk.sh": installScriptTemplate,
+		"internal/setup/template/install-pk.sh":     installScriptTemplate,
+		"internal/setup/template/protect-main.json": string(rulesetTemplate),
 	}
 	for _, fsys := range []fs.FS{templateFS, rulesFS, skillsFS} {
 		err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {

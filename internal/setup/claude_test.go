@@ -755,3 +755,57 @@ func TestWriteInstallScript_repairsPermissionsOnIdenticalContent(t *testing.T) {
 		t.Errorf("said %q, but the file needed repair", strings.TrimSpace(stderr.String()))
 	}
 }
+
+func TestWriteTopology_preservesExistingGuardBranches(t *testing.T) {
+	// A project may guard more than the release branch. Replacing that list
+	// with a single entry would silently unguard the rest.
+	dir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+	path := filepath.Join(dir, ".pk.json")
+	if err := os.WriteFile(path, []byte(`{"guard":{"branches":["main","production"]}}`), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if _, err := WriteTopology(cfg, dir, "main"); err != nil {
+		t.Fatalf("WriteTopology() error = %v", err)
+	}
+
+	var got struct {
+		Guard   struct{ Branches []string } `json:"guard"`
+		Release struct{ Branch string }     `json:"release"`
+	}
+	data, _ := os.ReadFile(path)
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(got.Guard.Branches) != 2 {
+		t.Errorf("guard.branches = %v, want the project's two entries preserved", got.Guard.Branches)
+	}
+	if got.Release.Branch != "main" {
+		t.Errorf("release.branch = %q, want main to still be written", got.Release.Branch)
+	}
+}
+
+func TestWriteTopology_seedsGuardBranchesWhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	var stderr bytes.Buffer
+	cfg := Config{Stderr: &stderr}
+	withFS(&cfg)
+
+	if _, err := WriteTopology(cfg, dir, "main"); err != nil {
+		t.Fatalf("WriteTopology() error = %v", err)
+	}
+
+	var got struct {
+		Guard struct{ Branches []string } `json:"guard"`
+	}
+	data, _ := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(got.Guard.Branches) != 1 || got.Guard.Branches[0] != "main" {
+		t.Errorf("guard.branches = %v, want [main]", got.Guard.Branches)
+	}
+}

@@ -2,6 +2,8 @@
 
 plankit is adopted in layers. Layer 1 is the foundation; Layers 2 and 3 are independent capabilities you add when your project needs them.
 
+This doc is about **established projects**, where each layer is a decision worth making separately. A brand new repository has no history to accommodate, so it can take every layer at once: see [New projects](#new-projects) below.
+
 ```mermaid
 graph TD
     P["Prerequisites<br/>Claude&nbsp;Code&nbsp;+&nbsp;Git&nbsp;+&nbsp;pk"]
@@ -25,6 +27,20 @@ graph TD
 - **[Claude Code](https://code.claude.com) provides the full experience.** Hooks, rules, skills, and `/ship` all run inside Claude Code. The release CLI (`pk changelog`, `pk release`) also works standalone from any terminal.
 - **Git is required.** `pk setup` refuses to install outside a git working tree by default. Pass `--allow-non-git` for the narrow case where only rules and skills are needed before `git init`.
 - **pk is required for hook features.** Install via Homebrew (`brew tap markwharton/plankit && brew install plankit`), `go install github.com/markwharton/plankit/cmd/pk@latest`, or download a binary from the [releases page](https://github.com/markwharton/plankit/releases). See [When pk is not installed](#when-pk-is-not-installed) for what happens without it.
+
+## New projects
+
+A repository with no history has nothing to migrate and no decisions to stage, so [`pk init`](pk-init.md) applies every layer in one command:
+
+```bash
+cd your-new-project
+pk init --push
+# restart Claude Code
+```
+
+That writes the `main` + `develop` topology into `.pk.json` (Layer 2), installs the managed files (Layer 1), tags `v0.0.0` and creates `develop` (Layer 3), commits it all, and drops `.github/protect-main.json` ready to import. There is no Layer 4: there is nothing to migrate from.
+
+`pk init` refuses on a dirty working tree, a repository with no commits, or a branch that is not the release branch. An existing semver tag is not a refusal: the baseline step leaves it alone, so a project that is already anchored keeps its anchor. What `pk init` does not do is decide where an established project's baseline belongs, or migrate config from another release tool; for that, work through the layers below.
 
 ## Layer 1: Foundation
 
@@ -97,6 +113,8 @@ This layer builds on three conventions:
 `release.branch` is the key config. `changelog.types` has sensible defaults (feat, fix, refactor, etc.) and only needs to be added if your project requires custom type-to-section mapping. See [pk changelog](pk-changelog.md#configuration) for the full reference. `/conventions` offers to create this configuration for you.
 
 **`/ship` is the recommended release workflow.** It chains `pk changelog` and `pk release` with preview and confirm at each step, and handles the clean working tree requirement within the Claude session. Power users can run `pk changelog` and `pk release` directly in the terminal. See [pk release](pk-release.md#workflows) for merge flow vs. trunk flow.
+
+**This layer stands alone.** `pk changelog` and `pk release` read git and `.pk.json`, never the managed files, so a repository can adopt Layer 3 with no Claude Code wiring at all. `pk init --no-setup` shapes a fresh repository for exactly this; see [Release management without Claude Code](pk-init.md#release-management-without-claude-code).
 
 **GitHub CLI is optional but useful.** pk commands use git directly, not `gh`. But `gh` helps with the workflow around releases: monitoring CI runs, creating PRs, checking workflow status. See [Resources](resources.md#github-cli) for common commands.
 

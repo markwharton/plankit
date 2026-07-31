@@ -57,6 +57,15 @@ pk setup
 
 This configures `.claude/settings.json` with hooks and installs skills. Restart Claude Code to apply.
 
+Setting up a brand new project? `pk init` does the rest in one command: the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
+
+```bash
+cd your-new-project
+pk init --push
+```
+
+See [pk init](docs/pk-init.md) for the details, and [Adoption](docs/adoption.md) for established repositories.
+
 ### Modes
 
 ```bash
@@ -75,6 +84,7 @@ Modes live in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook com
 
 | Command | Description |
 |---------|-------------|
+| `pk init` | Make a repo plankit-shaped: topology, managed files, `v0.0.0`, branches. [Details](docs/pk-init.md) |
 | `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
 | `pk status` | Report plankit configuration state and release readiness. [Details](docs/pk-status.md) |
 | `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |

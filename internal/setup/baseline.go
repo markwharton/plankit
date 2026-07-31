@@ -8,10 +8,12 @@ import (
 	"github.com/markwharton/plankit/internal/readiness"
 )
 
-// runBaseline creates a v0.0.0 baseline tag if no valid semver tag exists.
+// RunBaseline creates a v0.0.0 baseline tag if no valid semver tag exists.
 // If cfg.BaselineAt is set, tags that ref; otherwise tags HEAD.
 // If cfg.Push is set, also pushes the tag to origin.
-func runBaseline(cfg Config, projectDir string) error {
+// Exported so pk init can anchor the baseline without the managed-file work
+// of Run.
+func RunBaseline(cfg Config, projectDir string) error {
 	if existing, ok := readiness.ValidSemverTag(cfg.GitExec, projectDir); ok {
 		fmt.Fprintf(cfg.Stderr, "Found tag %s; already anchored\n", existing)
 		return nil
@@ -55,7 +57,7 @@ func runBaseline(cfg Config, projectDir string) error {
 		} else {
 			fmt.Fprintln(cfg.Stderr, "Pushed v0.0.0 to origin")
 		}
-	} else {
+	} else if !cfg.Embedded {
 		msg.Hintf(cfg.Stderr, "To publish: pk setup --baseline --push")
 		msg.Or(cfg.Stderr, "git push origin v0.0.0")
 	}
