@@ -8,6 +8,7 @@ Make a repository plankit-shaped: branch topology, managed files, the `v0.0.0` b
 pk init                      # shape the repo you are in
 pk init --push               # and publish the branches and tag to origin
 pk init --dry-run            # preview without changing anything
+pk init --no-setup           # release management only; no .claude footprint
 pk init --source work        # name the working branch something other than develop
 pk init --release trunk      # release branch is trunk, not the current branch
 ```
@@ -22,9 +23,9 @@ pk init --release trunk      # release branch is trunk, not the current branch
 2. Pre-flights: at least one commit, a clean working tree, the release branch checked out, and an `origin` remote when `--push` was given. Any failure refuses before anything is written.
 3. Decides whether the branch-protection ruleset applies: it is only meaningful on a GitHub remote.
 4. Writes the branch topology into `.pk.json`: `guard.branches` naming the release branch, and `release.branch` naming it again. Existing keys are field-merged, not replaced.
-5. Runs the `pk setup` path: managed files and modes, plus the `v0.0.0` baseline tag on the current commit.
+5. Runs the `pk setup` path: managed files and modes, plus the `v0.0.0` baseline tag on the current commit. With `--no-setup`, only the baseline tag: the managed files and modes are skipped.
 6. Writes `.github/protect-main.json` unless the project already has one.
-7. Commits everything written so far as `chore: pk setup`.
+7. Commits everything written so far as `chore: pk setup` (`chore: pk init` with `--no-setup`).
 8. Creates the working branch (`develop` by default) from the release branch and switches to it.
 9. With `--push`: pushes the release branch, then the tag, then the working branch.
 10. Prints how to apply the ruleset, and what to do next.
@@ -34,6 +35,7 @@ Every step is a no-op when already satisfied, so `pk init` is safe to re-run: it
 ## Flags
 
 - **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, in that order. Never partial. Requires an `origin` remote. Shaping is the action; publishing is a separate decision.
+- **--no-setup** — Skip the `pk setup` step: no managed files (CLAUDE.md, rules, skills, settings) and no hook modes. Everything that is repository shape still happens: the `.pk.json` topology, the `v0.0.0` tag, the working branch, the commit (as `chore: pk init`), the ruleset file, and `--push` if given. See [Release management without Claude Code](#release-management-without-claude-code).
 - **--source `<name>`** — Working branch to create. Defaults to `develop`.
 - **--release `<name>`** — Release branch. Defaults to `release.branch` in `.pk.json`, then to the branch currently checked out.
 - **--dry-run** — Print what would happen and exit without creating, writing, tagging, committing, pushing, or applying anything.
@@ -54,11 +56,21 @@ Every step is a no-op when already satisfied, so `pk init` is safe to re-run: it
 }
 ```
 
-The `pk setup` step then field-merges `guard.mode`, `guard.push`, and `preserve.mode` alongside. An existing `.pk.json` keeps every other key, so running `pk init` on a repo that already has `changelog` config does not lose it.
+The `pk setup` step then field-merges `guard.mode`, `guard.push`, and `preserve.mode` alongside. With `--no-setup` the topology is all that is written: the modes only mean something to the hooks, and no hooks were installed. An existing `.pk.json` keeps every other key, so running `pk init` on a repo that already has `changelog` config does not lose it.
 
 See [pk-json.md](pk-json.md) for the full schema.
 
 ## Details
+
+### Release management without Claude Code
+
+`pk changelog` and `pk release` are standalone: they read git (the tag history, the branches, origin) and `.pk.json`, never the managed files. A repository shaped with `pk init --no-setup` therefore supports the full release flow while carrying nothing but standard git artifacts (conventional commits, a Keep-a-Changelog `CHANGELOG.md`, semver tags) plus a small `.pk.json`. Nothing under `.claude/`, no `CLAUDE.md`.
+
+That shape fits a repository that will be handed over, published, or otherwise managed by people who do not use pk: you keep the release discipline while developing; they receive a plain repository. It also fits any project that wants versioned releases without the Claude Code wiring.
+
+What still lands: the `.pk.json` topology (`guard.branches` matters standalone; `pk changelog` refuses to run on a guarded branch by reading it directly), the `v0.0.0` anchor, the working branch, and one commit labelled `chore: pk init` rather than `chore: pk setup`, because setup never ran.
+
+The upgrade path is `pk setup`, run at any time from any branch: it field-merges the hook modes into the existing `.pk.json` alongside the preserved topology and installs the managed files.
 
 ### The ruleset is written, not applied
 

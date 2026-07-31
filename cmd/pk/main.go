@@ -282,6 +282,7 @@ func runInit(args []string) {
 	projectDir := fs.String("project-dir", ".", "Project directory (default: current directory)")
 	source := fs.String("source", scaffold.DefaultSourceBranch, "Working branch to create")
 	release := fs.String("release", "", "Release branch (default: the branch currently checked out)")
+	noSetup := fs.Bool("no-setup", false, "Skip the pk setup step (managed files and modes); shape the repository only")
 	push := fs.Bool("push", false, "Publish the release branch, the v0.0.0 tag, and the working branch to origin")
 	dryRun := fs.Bool("dry-run", false, "Preview without making any changes")
 	fs.Usage = usageFor(fs, "pk init [flags]")
@@ -291,6 +292,7 @@ func runInit(args []string) {
 	cfg.ProjectDir = resolveProjectDir(*projectDir)
 	cfg.SourceBranch = *source
 	cfg.ReleaseBranch = *release
+	cfg.NoSetup = *noSetup
 	cfg.Push = *push
 	cfg.DryRun = *dryRun
 	cfg.Version = version.Version()
@@ -493,7 +495,7 @@ Release-time commands (invoked from .pk.json changelog.hooks / release.hooks, no
 User commands:
   pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]
                                       Generate changelog, commit, and tag version
-  pk init [--source <name>] [--release <name>] [--push] [--dry-run] [--project-dir <dir>]
+  pk init [--source <name>] [--release <name>] [--no-setup] [--push] [--dry-run] [--project-dir <dir>]
                                       Make a repo plankit-shaped: topology, managed files, v0.0.0, branches
   pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push
   pk rules [--lint [--strict]] [--project-dir <dir>]

@@ -3,8 +3,11 @@
 //
 // It writes the branch topology into .pk.json, runs the pk setup path to
 // install managed files and the v0.0.0 baseline tag, drops the GitHub
-// branch-protection ruleset, and creates the source branch. The package is
-// named scaffold rather than init because init is a Go keyword.
+// branch-protection ruleset, and creates the source branch. With NoSetup the
+// managed-file install is skipped and only the repository shape is written,
+// for projects that want release management without the .claude footprint.
+// The package is named scaffold rather than init because init is a Go
+// keyword.
 //
 // Everything here is git-only, so it works on any host and offline. Applying
 // the branch-protection ruleset needs an authenticated GitHub call, so pk
@@ -37,11 +40,16 @@ const DefaultSourceBranch = "develop"
 // where the project's history actually begins.
 const SetupCommitMessage = "chore: pk setup"
 
+// MinimalCommitMessage is the commit pk init makes with --no-setup, where the
+// pk setup step never ran and "chore: pk setup" would misdescribe the commit.
+const MinimalCommitMessage = "chore: pk init"
+
 // Config holds the injectable dependencies and flags for pk init.
 type Config struct {
 	ProjectDir    string
 	SourceBranch  string
 	ReleaseBranch string
+	NoSetup       bool
 	Push          bool
 	DryRun        bool
 	Version       string
@@ -128,12 +136,20 @@ func runShape(cfg Config, dir string) error {
 	// would publish HEAD, which is still the commit before the one carrying
 	// these files. Everything is pushed below, after the commit exists.
 	// Embedded, so setup does not close with tips pointing back at pk setup;
-	// the summary below is ours.
+	// the summary below is ours. With --no-setup only the baseline tag is
+	// wanted: release management reads the topology and the tag, never the
+	// managed files, so the .claude footprint stays out of the repository.
 	sc := setupConfig(cfg, projectDir)
-	sc.Baseline = true
 	sc.Embedded = true
-	if err := setup.Run(sc); err != nil {
-		return err
+	if cfg.NoSetup {
+		if err := setup.RunBaseline(sc, projectDir); err != nil {
+			return err
+		}
+	} else {
+		sc.Baseline = true
+		if err := setup.Run(sc); err != nil {
+			return err
+		}
 	}
 
 	if protect {
@@ -230,7 +246,9 @@ func preflight(cfg Config, projectDir, releaseBranch string) error {
 func preview(cfg Config, projectDir, releaseBranch, sourceBranch string, protect bool) error {
 	msg.Section(cfg.Stderr, "Would initialize")
 	msg.Itemf(cfg.Stderr, "Set release branch %s and guard it in %s", releaseBranch, paths.PkConfig)
-	msg.Itemf(cfg.Stderr, "Install managed files (CLAUDE.md, rules, skills, settings)")
+	if !cfg.NoSetup {
+		msg.Itemf(cfg.Stderr, "Install managed files (CLAUDE.md, rules, skills, settings)")
+	}
 	if tag, ok := readiness.ValidSemverTag(cfg.GitExec, projectDir); ok {
 		msg.Itemf(cfg.Stderr, "Leave tag %s alone; already anchored", tag)
 	} else {
@@ -239,7 +257,7 @@ func preview(cfg Config, projectDir, releaseBranch, sourceBranch string, protect
 	if protect {
 		msg.Itemf(cfg.Stderr, "Write %s", setup.RulesetPath)
 	}
-	msg.Itemf(cfg.Stderr, "Commit those files as %q", SetupCommitMessage)
+	msg.Itemf(cfg.Stderr, "Commit those files as %q", commitMessage(cfg))
 	msg.Itemf(cfg.Stderr, "Create branch %s and switch to it", sourceBranch)
 	if cfg.Push {
 		msg.Itemf(cfg.Stderr, "Push %s, v0.0.0, and %s to origin", releaseBranch, sourceBranch)
@@ -264,11 +282,21 @@ func commitSetup(cfg Config, projectDir string) error {
 	if _, err := cfg.GitExec(projectDir, "add", "-A"); err != nil {
 		return fmt.Errorf("failed to stage the setup files: %w", err)
 	}
-	if _, err := cfg.GitExec(projectDir, "commit", "-m", SetupCommitMessage); err != nil {
+	message := commitMessage(cfg)
+	if _, err := cfg.GitExec(projectDir, "commit", "-m", message); err != nil {
 		return fmt.Errorf("failed to commit the setup files: %w", err)
 	}
-	fmt.Fprintf(cfg.Stderr, "Committed the setup files as %q\n", SetupCommitMessage)
+	fmt.Fprintf(cfg.Stderr, "Committed the setup files as %q\n", message)
 	return nil
+}
+
+// commitMessage returns the message for the commit pk init makes: the setup
+// label normally, the init label when the setup step was skipped.
+func commitMessage(cfg Config) string {
+	if cfg.NoSetup {
+		return MinimalCommitMessage
+	}
+	return SetupCommitMessage
 }
 
 // publish pushes everything pk init produced, in dependency order: the release
@@ -324,7 +352,12 @@ func summarize(cfg Config, projectDir, releaseBranch, sourceBranch string, prote
 		msg.Hintf(cfg.Stderr, "To publish: pk init --push")
 	}
 
-	fmt.Fprintln(cfg.Stderr, "\nNext: restart Claude Code so the hooks load, then run /conventions.")
+	if cfg.NoSetup {
+		fmt.Fprintf(cfg.Stderr, "\nRelease management is ready: pk changelog on %s, then pk release.\n", sourceBranch)
+		msg.Hintf(cfg.Stderr, "To add the Claude Code wiring later: pk setup")
+	} else {
+		fmt.Fprintln(cfg.Stderr, "\nNext: restart Claude Code so the hooks load, then run /conventions.")
+	}
 	return nil
 }
 

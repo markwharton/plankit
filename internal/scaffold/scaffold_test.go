@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/markwharton/plankit/internal/setup"
 )
 
 // fakeGit records the git commands a run issues and answers them from a
@@ -511,6 +513,169 @@ func TestRun_releaseBranchComesFromConfigNotCurrentBranch(t *testing.T) {
 	}
 	if !bytes.Equal(after, original) {
 		t.Errorf(".pk.json was rewritten by a refused run:\n got %s\nwant %s", after, original)
+	}
+}
+
+func TestRun_noSetupSkipsManagedFiles(t *testing.T) {
+	g := &fakeGit{branch: "main"}
+	dir, stderr, cfg := newRepo(t, g)
+	cfg.NoSetup = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	// Topology only: guard.branches and release.branch, none of the modes
+	// pk setup would field-merge alongside.
+	pk := readPkConfig(t, dir)
+	var guard struct {
+		Branches []string `json:"branches"`
+		Mode     string   `json:"mode"`
+	}
+	if err := json.Unmarshal(pk["guard"], &guard); err != nil {
+		t.Fatalf("guard section: %v", err)
+	}
+	if len(guard.Branches) != 1 || guard.Branches[0] != "main" {
+		t.Errorf("guard.branches = %v, want [main]", guard.Branches)
+	}
+	if guard.Mode != "" {
+		t.Errorf("guard.mode = %q, want absent; --no-setup must not write hook modes", guard.Mode)
+	}
+	if _, ok := pk["preserve"]; ok {
+		t.Error("preserve section written; --no-setup must not write hook modes")
+	}
+	if !strings.Contains(string(pk["release"]), `"main"`) {
+		t.Errorf("release section = %s, want branch main", pk["release"])
+	}
+
+	// No managed files: this is the whole point of the flag.
+	for _, rel := range []string{"CLAUDE.md", ".claude"} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
+			t.Errorf("--no-setup still created %s", rel)
+		}
+	}
+	// The ruleset is repo shape, not Claude wiring, so it still lands.
+	if _, err := os.Stat(filepath.Join(dir, ".github/protect-main.json")); err != nil {
+		t.Error(".github/protect-main.json not created; protection is independent of --no-setup")
+	}
+
+	if !g.ran("tag v0.0.0") {
+		t.Error("v0.0.0 was not tagged")
+	}
+	if !g.ran("commit -m " + MinimalCommitMessage) {
+		t.Errorf("files not committed as %q; calls: %v", MinimalCommitMessage, g.calls)
+	}
+	if !g.ran("branch develop") || !g.ran("switch develop") {
+		t.Error("working branch not created and switched to")
+	}
+	if strings.Contains(stderr.String(), "restart Claude Code") {
+		t.Error("summary points at Claude Code hooks that were never installed")
+	}
+	if !strings.Contains(stderr.String(), "pk changelog") {
+		t.Error("summary does not say release management is ready")
+	}
+	if !strings.Contains(stderr.String(), "pk setup") {
+		t.Error("summary does not hint at pk setup for the full install later")
+	}
+}
+
+func TestRun_noSetupDryRunWritesNothing(t *testing.T) {
+	g := &fakeGit{branch: "main"}
+	dir, stderr, cfg := newRepo(t, g)
+	cfg.NoSetup = true
+	cfg.DryRun = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	for _, rel := range []string{".pk.json", "CLAUDE.md", ".claude", ".github"} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err == nil {
+			t.Errorf("dry run created %s", rel)
+		}
+	}
+	for _, mutating := range []string{"tag v0.0.0", "branch develop", "switch ", "push ", "commit ", "add -A"} {
+		if g.ran(mutating) {
+			t.Errorf("dry run ran git %q", mutating)
+		}
+	}
+	if strings.Contains(stderr.String(), "Install managed files") {
+		t.Error("preview lists the managed-file install --no-setup skips")
+	}
+	if !strings.Contains(stderr.String(), MinimalCommitMessage) {
+		t.Errorf("preview does not show the %q commit", MinimalCommitMessage)
+	}
+}
+
+func TestRun_noSetupIdempotent(t *testing.T) {
+	g := &fakeGit{branch: "main"}
+	dir, _, cfg := newRepo(t, g)
+	cfg.NoSetup = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+	first, err := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	if err != nil {
+		t.Fatalf("read .pk.json: %v", err)
+	}
+
+	g2 := &fakeGit{branch: "main", tags: "v0.0.0\n", heads: []string{"develop"}}
+	cfg.GitExec = g2.exec
+	if err := Run(cfg); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+
+	second, err := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	if err != nil {
+		t.Fatalf("read .pk.json: %v", err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Errorf(".pk.json changed on re-run:\nfirst:  %s\nsecond: %s", first, second)
+	}
+	if g2.ran("tag v0.0.0") {
+		t.Error("re-run re-tagged v0.0.0")
+	}
+	if g2.ran("branch develop") {
+		t.Error("re-run re-created develop")
+	}
+}
+
+func TestRun_noSetupThenFullSetupUpgrades(t *testing.T) {
+	// A minimal repo must upgrade cleanly: pk setup later field-merges its
+	// modes alongside the preserved topology and installs the managed files.
+	g := &fakeGit{branch: "main"}
+	dir, stderr, cfg := newRepo(t, g)
+	cfg.NoSetup = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	sc := setupConfig(cfg, dir)
+	sc.Stderr = stderr
+	if err := setup.Run(sc); err != nil {
+		t.Fatalf("setup.Run() error = %v", err)
+	}
+
+	pk := readPkConfig(t, dir)
+	var guard struct {
+		Branches []string `json:"branches"`
+		Mode     string   `json:"mode"`
+	}
+	if err := json.Unmarshal(pk["guard"], &guard); err != nil {
+		t.Fatalf("guard section: %v", err)
+	}
+	if len(guard.Branches) != 1 || guard.Branches[0] != "main" {
+		t.Errorf("guard.branches = %v, want the topology preserved", guard.Branches)
+	}
+	if guard.Mode == "" {
+		t.Error("guard.mode missing; pk setup did not field-merge its modes in")
+	}
+	for _, rel := range []string{"CLAUDE.md", ".claude/settings.json"} {
+		if _, err := os.Stat(filepath.Join(dir, rel)); err != nil {
+			t.Errorf("%s not created by the upgrade", rel)
+		}
 	}
 }
 

@@ -114,6 +114,8 @@ This layer builds on three conventions:
 
 **`/ship` is the recommended release workflow.** It chains `pk changelog` and `pk release` with preview and confirm at each step, and handles the clean working tree requirement within the Claude session. Power users can run `pk changelog` and `pk release` directly in the terminal. See [pk release](pk-release.md#workflows) for merge flow vs. trunk flow.
 
+**This layer stands alone.** `pk changelog` and `pk release` read git and `.pk.json`, never the managed files, so a repository can adopt Layer 3 with no Claude Code wiring at all. `pk init --no-setup` shapes a fresh repository for exactly this; see [Release management without Claude Code](pk-init.md#release-management-without-claude-code).
+
 **GitHub CLI is optional but useful.** pk commands use git directly, not `gh`. But `gh` helps with the workflow around releases: monitoring CI runs, creating PRs, checking workflow status. See [Resources](resources.md#github-cli) for common commands.
 
 ## Moving between setups

@@ -422,7 +422,7 @@ func Run(cfg Config) error {
 		if !inGitRepo {
 			return fmt.Errorf("--baseline requires a git repository")
 		}
-		if err := runBaseline(cfg, projectDir); err != nil {
+		if err := RunBaseline(cfg, projectDir); err != nil {
 			return err
 		}
 	} else if inGitRepo {
