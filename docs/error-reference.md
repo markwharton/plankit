@@ -192,6 +192,26 @@ Error: git push failed: ...
 
 **Fix:** `pk release` automatically cleans up the local tag on push failure. The push is atomic (`git push --atomic`), so a rejected push updates no refs on origin — there is no stray remote tag to remove. Fix the underlying issue (permissions, network) and run `pk release` again.
 
+### pre-release hook failed
+
+```
+Error: pre-release hook failed: ...
+```
+
+**Cause:** The `release.hooks.preRelease` command exited non-zero. It runs after the merge but before the tag is created — commonly a final test or build gate that failed.
+
+**Fix:** Nothing was tagged or pushed. Fix what the hook reported and run `pk release` again. The hook receives `$VERSION` (no leading `v`) and `$TAG` (with it). Because it runs before tagging, `pk release --dry-run` rehearses it, so you can reproduce the failure without releasing.
+
+### pre-push hook failed
+
+```
+Error: pre-push hook failed: ...
+```
+
+**Cause:** The `release.hooks.prePush` command exited non-zero. It runs after the tag is created, before the push — commonly a signing or artifact-build step that needs the tag ref.
+
+**Fix:** The release is aborted and nothing is published: `pk release` removes the local tag (and rolls back the merge in merge flow), so origin is untouched. Fix the hook and run `pk release` again. The hook receives `$VERSION` and `$TAG`, and the tag ref exists on disk while it runs. Note `--dry-run` does **not** exercise prePush (it returns before tagging); rehearse tag-dependent steps against a scratch tag instead.
+
 ## pk setup
 
 ### invalid mode

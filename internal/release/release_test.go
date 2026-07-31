@@ -302,6 +302,7 @@ func TestRun_sourceBranchNotOnOrigin(t *testing.T) {
 func TestRun_preReleaseHook(t *testing.T) {
 	var stderr bytes.Buffer
 	var hookCommand string
+	var hookEnv map[string]string
 
 	cfg := Config{
 		Stderr:  &stderr,
@@ -314,6 +315,7 @@ func TestRun_preReleaseHook(t *testing.T) {
 		},
 		RunScript: func(dir string, command string, env map[string]string) error {
 			hookCommand = command
+			hookEnv = env
 			return nil
 		},
 	}
@@ -324,6 +326,147 @@ func TestRun_preReleaseHook(t *testing.T) {
 	}
 	if hookCommand != "echo test" {
 		t.Errorf("hook command = %q, want %q", hookCommand, "echo test")
+	}
+	// The hook now receives VERSION (no v) and TAG (with v), so it need not
+	// re-derive the version from a pinned file.
+	if hookEnv["VERSION"] != "1.0.0" {
+		t.Errorf("VERSION = %q, want %q", hookEnv["VERSION"], "1.0.0")
+	}
+	if hookEnv["TAG"] != "v1.0.0" {
+		t.Errorf("TAG = %q, want %q", hookEnv["TAG"], "v1.0.0")
+	}
+}
+
+func TestRun_prePushHook(t *testing.T) {
+	var stderr bytes.Buffer
+	var hookEnv map[string]string
+	tagExistedAtHook := false
+	pushedAtHook := false
+
+	git := happyGit("v1.0.0", "main")
+	created := false
+	pushed := false
+	git["tag"] = func(args ...string) (string, error) {
+		if len(args) == 2 && args[1] == "v1.0.0" { // create, not --list or -d
+			created = true
+		}
+		return "", nil
+	}
+	git["push"] = func(args ...string) (string, error) {
+		pushed = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:  &stderr,
+		GitExec: stubGitExec(git),
+		ReadFile: func(name string) ([]byte, error) {
+			if filepath.Base(name) == ".pk.json" {
+				return []byte(`{"release":{"hooks":{"prePush":"sign-it"}}}`), nil
+			}
+			return nil, os.ErrNotExist
+		},
+		RunScript: func(dir string, command string, env map[string]string) error {
+			hookEnv = env
+			tagExistedAtHook = created
+			pushedAtHook = pushed
+			return nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// The whole point of prePush: the tag ref exists when it runs...
+	if !tagExistedAtHook {
+		t.Error("prePush ran before the tag was created")
+	}
+	// ...and the push has not happened yet.
+	if pushedAtHook {
+		t.Error("prePush ran after the push")
+	}
+	if hookEnv["VERSION"] != "1.0.0" || hookEnv["TAG"] != "v1.0.0" {
+		t.Errorf("hook env = %v, want VERSION=1.0.0 TAG=v1.0.0", hookEnv)
+	}
+}
+
+func TestRun_prePushHookFailureAbortsAndCleansUp(t *testing.T) {
+	var stderr bytes.Buffer
+	deletedTag := false
+	pushed := false
+
+	git := happyGit("v1.0.0", "main")
+	git["tag"] = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[1] == "-d" {
+			deletedTag = true
+		}
+		return "", nil
+	}
+	git["push"] = func(args ...string) (string, error) {
+		pushed = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:  &stderr,
+		GitExec: stubGitExec(git),
+		ReadFile: func(name string) ([]byte, error) {
+			if filepath.Base(name) == ".pk.json" {
+				return []byte(`{"release":{"hooks":{"prePush":"false"}}}`), nil
+			}
+			return nil, os.ErrNotExist
+		},
+		RunScript: func(dir string, command string, env map[string]string) error {
+			return fmt.Errorf("exit status 1")
+		},
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "pre-push hook failed") {
+		t.Errorf("stderr = %q, want pre-push failure message", stderr.String())
+	}
+	// A failed prePush must leave nothing published: the local tag is removed
+	// by the defer, and the push never happened.
+	if !deletedTag {
+		t.Error("local tag was not cleaned up after prePush failure")
+	}
+	if pushed {
+		t.Error("pushed despite prePush failure")
+	}
+}
+
+func TestRun_prePushHookNotRunInDryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	hookRan := false
+
+	cfg := Config{
+		Stderr:  &stderr,
+		GitExec: stubGitExec(happyGit("v1.0.0", "main")),
+		DryRun:  true,
+		ReadFile: func(name string) ([]byte, error) {
+			if filepath.Base(name) == ".pk.json" {
+				return []byte(`{"release":{"hooks":{"prePush":"sign-it"}}}`), nil
+			}
+			return nil, os.ErrNotExist
+		},
+		RunScript: func(dir string, command string, env map[string]string) error {
+			hookRan = true
+			return nil
+		},
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	// The dry-run returns before the tag is created, so prePush (which needs the
+	// tag) cannot and must not run. preRelease is the rehearsable slot.
+	if hookRan {
+		t.Error("prePush ran during --dry-run")
 	}
 }
 

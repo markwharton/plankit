@@ -6,11 +6,19 @@ Environment variables that pk reads or sets.
 
 ### VERSION
 
-Set by `pk changelog` when running `postVersion` and `preCommit` hooks. Contains the new version without the `v` prefix (e.g., `0.8.1`).
+Set by `pk changelog` when running `postVersion` and `preCommit` hooks, and by `pk release` when running `preRelease` and `prePush` hooks. Contains the new version without the `v` prefix (e.g., `0.8.1`).
 
 pk pre-expands `$VERSION` before passing the command to the shell, so hooks work on all platforms without relying on shell-specific variable expansion.
 
-**Used by:** `pk changelog` hooks, `pk pin` (as positional argument in hook commands)
+**Used by:** `pk changelog` hooks, `pk release` hooks, `pk pin` (as positional argument in hook commands)
+
+### TAG
+
+Set by `pk release` when running `preRelease` and `prePush` hooks. Contains the release tag *with* the `v` prefix (e.g., `v0.8.1`) — the git ref name, complementing `$VERSION`. During `preRelease` the tag has not been created yet; during `prePush` the tag ref exists.
+
+Pre-expanded like `$VERSION`, so it works on all platforms.
+
+**Used by:** `pk release` hooks (signing, artifact builds keyed on the tag)
 
 ## Variables read by pk
 

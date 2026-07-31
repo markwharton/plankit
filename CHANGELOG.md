@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.27.0] - 2026-07-27
+
+### Added
+
+- pass VERSION/TAG to release hooks and add prePush slot (f6a9707)
+
 ## [v0.26.1] - 2026-07-19
 
 ### Fixed
@@ -1013,3 +1019,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.25.2]: https://github.com/markwharton/plankit/compare/v0.25.1...v0.25.2
 [v0.26.0]: https://github.com/markwharton/plankit/compare/v0.25.2...v0.26.0
 [v0.26.1]: https://github.com/markwharton/plankit/compare/v0.26.0...v0.26.1
+[v0.27.0]: https://github.com/markwharton/plankit/compare/v0.26.1...v0.27.0
