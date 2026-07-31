@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.28.0] - 2026-08-01
+
+### Added
+
+- add pk init to make a repository plankit-shaped (134d997)
+- add --no-setup to shape a repo for release management only (a522d92)
+
 ## [v0.27.0] - 2026-07-27
 
 ### Added
@@ -1020,3 +1027,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.26.0]: https://github.com/markwharton/plankit/compare/v0.25.2...v0.26.0
 [v0.26.1]: https://github.com/markwharton/plankit/compare/v0.26.0...v0.26.1
 [v0.27.0]: https://github.com/markwharton/plankit/compare/v0.26.1...v0.27.0
+[v0.28.0]: https://github.com/markwharton/plankit/compare/v0.27.0...v0.28.0
