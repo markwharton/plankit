@@ -43,7 +43,7 @@ func DefaultConfig() Config {
 
 // managedFile describes a scanned pk-managed file.
 type managedFile struct {
-	label    string // display label (e.g., "development-standards.md")
+	label    string // display label (e.g., "craft.md")
 	path     string // absolute path
 	modified bool   // true if SHA doesn't match (user modified)
 }
@@ -383,7 +383,7 @@ func hasPKPermission(settings map[string]json.RawMessage) bool {
 // If nested is true, looks for <dir>/<subdir>/SKILL.md (skills layout); otherwise
 // scans every <name>.md under dir recursively (rules layout), so pk-managed rules
 // installed under .claude/rules/plankit/ are found. Subdir rules carry their path
-// relative to dir as the label (e.g. "plankit/git-discipline.md").
+// relative to dir as the label (e.g. "plankit/craft.md").
 func scanManaged(cfg Config, dir string, nested bool) []managedFile {
 	var files []managedFile
 	visit := func(path, rel string) error {

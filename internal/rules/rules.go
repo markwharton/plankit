@@ -44,8 +44,8 @@ func DefaultConfig() Config {
 // rule is a single .claude/rules/ file with the metadata the footprint report and
 // lint pass need.
 type rule struct {
-	name        string // filename without .md, e.g. "git-discipline" (sort key)
-	displayPath string // path relative to the repo, e.g. ".claude/rules/plankit/git-discipline.md"
+	name        string // filename without .md, e.g. "craft" (sort key)
+	displayPath string // path relative to the repo, e.g. ".claude/rules/plankit/craft.md"
 	content     string // full file content (what Claude Code loads)
 	kind        string // frontmatter kind, or "unclassified"
 	provenance  string // "managed", "modified", or "local"

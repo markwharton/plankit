@@ -37,15 +37,13 @@ pk rules --project-dir /path      # specify project directory
 ### Example output
 
 ```
-Always-on context: 5 files, ~16 KB, 5,554 tokens (estimated, calibrated against claude-fable-5)
-  CLAUDE.md                                       544 B    186 tokens
-  .claude/rules/plankit/development-standards.md  ~3 KB  1,041 tokens  [managed] craft
-  .claude/rules/plankit/git-discipline.md         ~5 KB  1,667 tokens  [managed] craft
-  .claude/rules/plankit/model-behavior.md         ~4 KB  1,314 tokens  [managed] conduct
-  .claude/rules/plankit/plankit-tooling.md        ~4 KB  1,346 tokens  [managed] conduct
+Always-on context: 3 files, ~9 KB, 2,723 tokens (estimated, calibrated against claude-fable-5)
+  CLAUDE.md                         544 B    186 tokens
+  .claude/rules/plankit/conduct.md  ~4 KB  1,236 tokens  [managed] conduct
+  .claude/rules/plankit/craft.md    ~4 KB  1,301 tokens  [managed] craft
 Conditional (loads on matching files): 1 files, 78 B, 27 tokens (estimated, calibrated against claude-fable-5)
-  .claude/rules/scoped.md                          78 B     27 tokens  [local] unclassified
-Provenance: 4 managed (pristine), 0 modified, 1 user-authored.
+  .claude/rules/scoped.md            78 B     27 tokens  [local] unclassified
+Provenance: 2 managed (pristine), 0 modified, 1 user-authored.
 ```
 
 The shipped rules sit under `.claude/rules/plankit/`; a project's own rules (here `scoped.md`, with `paths:` frontmatter) are discovered too. The `paths:`-scoped rule is reported under `Conditional` and left out of the always-on total.
@@ -60,8 +58,8 @@ Reviewing the rule set *as a system* — overlap, gaps, drift, unstated preceden
 
 Managed rules carry an optional `kind:` frontmatter key recording the craft-vs-conduct split:
 
-- **`craft`** — developer-voiced standards for the work (e.g. `development-standards`, `git-discipline`). Claude inherits them the way a teammate inherits house style.
-- **`conduct`** — Claude-voiced rules about the agent's own behavior (e.g. `model-behavior`).
+- **`craft`** — developer-voiced standards for the work (`craft.md`: release flow invariants, development standards). Claude inherits them the way a teammate inherits house style.
+- **`conduct`** — Claude-voiced rules about the agent's own behavior (`conduct.md`: hook responses, git and session conduct).
 
 `pk rules` surfaces `kind` in the report but never writes or enforces it. Whether a rule is *correctly* classified, and whether craft and conduct are kept separate, is a semantic judgment left to `/review-rules`.
 

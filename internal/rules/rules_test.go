@@ -63,9 +63,9 @@ func setupProject(t *testing.T, claudeMD string, files map[string]string) (Confi
 
 func TestFootprintReport(t *testing.T) {
 	cfg, buf := setupProject(t, "# Project\n\nsome claude rules\n", map[string]string{
-		"git-discipline.md":        managedRule("Git stuff", "craft", "# Git Discipline\n\n- commit with purpose\n"),
-		"development-standards.md": managedRule("Dev stuff", "craft", "# Development Standards\n\n- fail fast\n"),
-		"local-extra.md":           localRule("My own rule", "", "# Local Extra\n\n- my preference\n"),
+		"craft.md":       managedRule("Craft stuff", "craft", "# Plankit Craft\n\n- commit with purpose\n"),
+		"conduct.md":     managedRule("Conduct stuff", "conduct", "# Plankit Conduct\n\n- carry out, don't originate\n"),
+		"local-extra.md": localRule("My own rule", "", "# Local Extra\n\n- my preference\n"),
 	})
 
 	if code := Run(cfg); code != 0 {
@@ -86,7 +86,7 @@ func TestFootprintReport(t *testing.T) {
 		t.Errorf("CLAUDE.md not in report:\n%s", out)
 	}
 	// Per-rule rows carry provenance + kind tags.
-	if !strings.Contains(out, ".claude/rules/git-discipline.md") || !strings.Contains(out, "[managed] craft") {
+	if !strings.Contains(out, ".claude/rules/craft.md") || !strings.Contains(out, "[managed] craft") {
 		t.Errorf("missing per-rule row with provenance/kind:\n%s", out)
 	}
 	if !strings.Contains(out, "[local] unclassified") {
@@ -96,19 +96,19 @@ func TestFootprintReport(t *testing.T) {
 	if !strings.Contains(out, "Provenance: 2 managed (pristine), 0 modified, 1 user-authored.") {
 		t.Errorf("wrong provenance tally:\n%s", out)
 	}
-	// Rows sorted by filename: development-standards < git-discipline < local-extra.
-	iDev := strings.Index(out, "development-standards.md")
-	iGit := strings.Index(out, "git-discipline.md")
+	// Rows sorted by filename: conduct < craft < local-extra.
+	iCon := strings.Index(out, "conduct.md")
+	iCraft := strings.Index(out, "craft.md")
 	iLocal := strings.Index(out, "local-extra.md")
-	if !(iDev < iGit && iGit < iLocal) {
-		t.Errorf("rows not sorted by filename: dev=%d git=%d local=%d\n%s", iDev, iGit, iLocal, out)
+	if !(iCon < iCraft && iCraft < iLocal) {
+		t.Errorf("rows not sorted by filename: conduct=%d craft=%d local=%d\n%s", iCon, iCraft, iLocal, out)
 	}
 }
 
 func TestRecursiveDiscovery(t *testing.T) {
 	cfg, _ := setupProject(t, "", map[string]string{
-		"top.md":                    localRule("top", "", "# Top\n\n- t\n"),
-		"plankit/git-discipline.md": managedRule("git", "craft", "# Git Discipline\n\n- c\n"),
+		"top.md":           localRule("top", "", "# Top\n\n- t\n"),
+		"plankit/craft.md": managedRule("git", "craft", "# Plankit Craft\n\n- c\n"),
 	})
 	rs, err := collectRules(cfg)
 	if err != nil {
@@ -118,7 +118,7 @@ func TestRecursiveDiscovery(t *testing.T) {
 	for _, r := range rs {
 		got[r.displayPath] = true
 	}
-	for _, want := range []string{".claude/rules/top.md", ".claude/rules/plankit/git-discipline.md"} {
+	for _, want := range []string{".claude/rules/top.md", ".claude/rules/plankit/craft.md"} {
 		if !got[want] {
 			t.Errorf("subdir rule not discovered: missing %q in %v", want, got)
 		}

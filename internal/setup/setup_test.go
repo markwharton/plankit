@@ -95,7 +95,7 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify rules were created with SHA markers under the plankit/ subdirectory.
-	for _, name := range []string{"model-behavior", "development-standards", "git-discipline", "plankit-tooling"} {
+	for _, name := range []string{"conduct", "craft"} {
 		ruleFile := filepath.Join(projectDir, ".claude", "rules", "plankit", name+".md")
 		data, err := os.ReadFile(ruleFile)
 		if err != nil {
@@ -347,13 +347,13 @@ func TestRun_migratesFlatRulesToSubdir(t *testing.T) {
 	// An old pristine pk-managed rule at the flat top-level (marker matches body).
 	pristineBody := "# Old Pristine\n\n- body\n"
 	pristine := embedSHA("---\ndescription: old\n---\n"+pristineBody, ContentSHA(pristineBody))
-	if err := os.WriteFile(filepath.Join(rulesDir, "git-discipline.md"), []byte(pristine), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(rulesDir, "old-pristine.md"), []byte(pristine), 0644); err != nil {
 		t.Fatal(err)
 	}
 	// A user-modified pk-managed rule at the top-level (marker no longer matches body).
 	modifiedBody := "# Modified\n\n- changed by user\n"
 	modified := embedSHA("---\ndescription: mod\n---\n"+modifiedBody, ContentSHA("a different body"))
-	if err := os.WriteFile(filepath.Join(rulesDir, "model-behavior.md"), []byte(modified), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(rulesDir, "old-modified.md"), []byte(modified), 0644); err != nil {
 		t.Fatal(err)
 	}
 	// A user's own rule (no pk marker) at the top-level.
@@ -369,17 +369,17 @@ func TestRun_migratesFlatRulesToSubdir(t *testing.T) {
 	}
 
 	// New subdir copies exist.
-	for _, name := range []string{"git-discipline", "model-behavior", "development-standards", "plankit-tooling"} {
+	for _, name := range []string{"conduct", "craft"} {
 		if _, err := os.Stat(filepath.Join(rulesDir, "plankit", name+".md")); err != nil {
 			t.Errorf("subdir rule %s not installed: %v", name, err)
 		}
 	}
 	// Old pristine top-level rule removed by the migration sweep.
-	if _, err := os.Stat(filepath.Join(rulesDir, "git-discipline.md")); !os.IsNotExist(err) {
-		t.Errorf("old pristine top-level git-discipline.md should be removed (stat err=%v)", err)
+	if _, err := os.Stat(filepath.Join(rulesDir, "old-pristine.md")); !os.IsNotExist(err) {
+		t.Errorf("old pristine top-level old-pristine.md should be removed (stat err=%v)", err)
 	}
 	// User-modified top-level rule preserved (with a warning); user's own rule preserved.
-	if _, err := os.Stat(filepath.Join(rulesDir, "model-behavior.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(rulesDir, "old-modified.md")); err != nil {
 		t.Errorf("user-modified top-level rule should be preserved: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(rulesDir, "my-own.md")); err != nil {
@@ -390,7 +390,7 @@ func TestRun_migratesFlatRulesToSubdir(t *testing.T) {
 	}
 
 	// Idempotent: a second run leaves the subdir copy byte-identical.
-	subFile := filepath.Join(rulesDir, "plankit", "git-discipline.md")
+	subFile := filepath.Join(rulesDir, "plankit", "craft.md")
 	before, _ := os.ReadFile(subFile)
 	stderr.Reset()
 	if err := Run(cfg); err != nil {

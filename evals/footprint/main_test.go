@@ -33,7 +33,7 @@ func TestRewriteRegion(t *testing.T) {
 func TestCollectAndRunRewritesReadme(t *testing.T) {
 	repo := t.TempDir()
 	write(t, filepath.Join(repo, "internal", "setup", "template", "CLAUDE.md"), "# CLAUDE\n\nrules\n")
-	write(t, filepath.Join(repo, "internal", "setup", "rules", "git-discipline.md"), "# Git\n\n- commit\n")
+	write(t, filepath.Join(repo, "internal", "setup", "rules", "craft.md"), "# Git\n\n- commit\n")
 	write(t, filepath.Join(repo, "internal", "setup", "skills", "ship", "SKILL.md"), "# Ship\n\non demand\n")
 	readme := "# plankit\n\n" + markerStart + "\nold\n" + markerEnd + "\n\ntail\n"
 	write(t, filepath.Join(repo, "README.md"), readme)

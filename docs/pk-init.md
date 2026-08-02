@@ -86,7 +86,7 @@ The ruleset is only written when `origin` points at GitHub. Elsewhere it would b
 
 `--push` is only meaningful if the pushed branches carry the files `pk init` just wrote. Committing before pushing is what makes the published repository match the local one; without it, `--push` would publish branches and a tag containing none of the setup.
 
-The commit is deliberately separate from the project's own work, matching the git-discipline convention that `pk setup` updates are committed on their own.
+The commit is deliberately separate from the project's own work, matching the shipped craft rule that `pk setup` updates are committed on their own.
 
 ### Where the release branch comes from
 

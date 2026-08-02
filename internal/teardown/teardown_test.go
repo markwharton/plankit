@@ -32,7 +32,7 @@ func setupProject(t *testing.T) string {
 	}
 
 	// Write managed rules with pk_sha256 markers under the plankit/ subdirectory.
-	for _, name := range []string{"development-standards", "git-discipline", "model-behavior", "plankit-tooling"} {
+	for _, name := range []string{"conduct", "craft"} {
 		body := "# " + name + "\n"
 		sha := setup.ContentSHA(body)
 		content := "---\ndescription: " + name + "\npk_sha256: " + sha + "\n---\n" + body
@@ -113,7 +113,7 @@ func TestRun_fullCycle(t *testing.T) {
 			t.Errorf("skill %s still exists", name)
 		}
 	}
-	for _, name := range []string{"development-standards", "git-discipline", "model-behavior", "plankit-tooling"} {
+	for _, name := range []string{"conduct", "craft"} {
 		path := filepath.Join(dir, ".claude", "rules", "plankit", name+".md")
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("rule %s still exists", name)

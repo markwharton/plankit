@@ -2,6 +2,8 @@
 
 A conversation with Claude Code about the project rules and self-assessed compliance.
 
+Captured before the 2026-08 rules consolidation: the four rule files shown are now `craft.md` and `conduct.md` under `.claude/rules/plankit/`. The transcript is preserved verbatim.
+
 ```
 markwharton@Marks-MacBook-Air plankit % claude
 ▗ ▗   ▖ ▖  Claude Code v2.1.92

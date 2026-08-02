@@ -173,6 +173,8 @@ Breaking changes are detected from both the `!` suffix and `BREAKING CHANGE:` / 
 
 Non-conventional commits are silently skipped.
 
+That includes commits from automation: configure Dependabot, release bots, and any tool that opens PRs or pushes commits to set a conventional `commit-message` prefix (e.g. `chore(deps)`) so their work flows into the changelog rather than getting silently skipped at release time.
+
 ### Version bump
 
 The bump is auto-detected from conventional commits:
