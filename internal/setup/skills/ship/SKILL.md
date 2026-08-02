@@ -59,7 +59,7 @@ Auto mode changes steps 2 and 3: run the dry-run, check for errors, and if clean
 - Never run `git push` directly. `pk release` re-runs all pre-flight checks before pushing; bypassing it skips safety validation.
 - **An unanswered confirmation halts the flow — never proceed on a default.** If a question to the user goes unanswered (they may be away), do not substitute best judgment. End with a clear report: "ship paused — awaiting your answer on <X>", and state that re-running `/ship` resumes where it stopped (step 1's `Release-Tag` detection). Pausing costs one command; a wrong release is permanent.
 - **A surprising computed version usually means a mislabeled commit — fix the commit, not the number.** Before reaching for `--bump`, check the commits being released (e.g. an unjustified `BREAKING CHANGE` footer driving a major). How to fix depends on where you are in the flow:
-  - Before `pk changelog` has run (surprise seen in the dry-run): correct the unpushed commit's message via the soft-reset procedure from git-discipline, then re-run the dry-run.
+  - Before `pk changelog` has run (surprise seen in the dry-run): correct the unpushed commit's message via the soft-reset procedure from the plankit craft rule, then re-run the dry-run.
   - After `pk changelog` has run: first `pk changelog --undo` to unwind the changelog commit — never soft-reset through it — then fix the mislabeled commit, then re-run `pk changelog`.
 
   `--bump` corrects the number but ships the wrong label into permanent history; use it only when the labels are right and the user deliberately wants a different bump.

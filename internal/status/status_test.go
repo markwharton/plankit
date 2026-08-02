@@ -30,7 +30,7 @@ func setupProject(t *testing.T) string {
 	}
 
 	// Managed rules install under .claude/rules/plankit/; status must find them recursively.
-	for _, name := range []string{"development-standards", "git-discipline"} {
+	for _, name := range []string{"conduct", "craft"} {
 		body := "# " + name + "\n"
 		sha := setup.ContentSHA(body)
 		content := "---\ndescription: " + name + "\npk_sha256: " + sha + "\n---\n" + body
@@ -156,7 +156,7 @@ func TestRun_modifiedFiles(t *testing.T) {
 	dir := setupProject(t)
 
 	// Modify a rule (managed rules live under the plankit/ subdir).
-	rulePath := filepath.Join(dir, ".claude", "rules", "plankit", "development-standards.md")
+	rulePath := filepath.Join(dir, ".claude", "rules", "plankit", "craft.md")
 	data, _ := os.ReadFile(rulePath)
 	os.WriteFile(rulePath, []byte(string(data)+"\n# User edits\n"), 0644)
 
@@ -174,7 +174,7 @@ func TestRun_modifiedFiles(t *testing.T) {
 		t.Errorf("expected modified count, got: %s", output)
 	}
 	// The label carries the subdir path, proving recursive discovery.
-	if !strings.Contains(output, "plankit/development-standards.md (modified by user)") {
+	if !strings.Contains(output, "plankit/craft.md (modified by user)") {
 		t.Errorf("expected modified subdir rule listed with relative path, got: %s", output)
 	}
 }

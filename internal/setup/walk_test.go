@@ -13,7 +13,7 @@ func TestWalkRuleFiles_recursesAndFiltersMD(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "top.md"))
 	mustWrite(t, filepath.Join(dir, "notes.txt"))
-	mustWrite(t, filepath.Join(dir, "plankit", "git-discipline.md"))
+	mustWrite(t, filepath.Join(dir, "plankit", "craft.md"))
 	mustWrite(t, filepath.Join(dir, "plankit", "deep", "nested.md"))
 
 	var rels []string
@@ -28,7 +28,7 @@ func TestWalkRuleFiles_recursesAndFiltersMD(t *testing.T) {
 		t.Fatalf("WalkRuleFiles() error = %v", err)
 	}
 	sort.Strings(rels)
-	want := []string{"plankit/deep/nested.md", "plankit/git-discipline.md", "top.md"}
+	want := []string{"plankit/craft.md", "plankit/deep/nested.md", "top.md"}
 	if !reflect.DeepEqual(rels, want) {
 		t.Errorf("rels = %v, want %v", rels, want)
 	}

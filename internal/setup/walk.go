@@ -8,7 +8,7 @@ import (
 
 // WalkRuleFiles calls visit for every .md file under dir, descending into
 // subdirectories. rel is the file's slash-separated path relative to dir
-// (e.g. "plankit/git-discipline.md"), the form status, teardown, and rules
+// (e.g. "plankit/craft.md"), the form status, teardown, and rules
 // all use as a display label. A missing directory (at any level) yields
 // nothing; any other readDir error, or an error from visit, aborts the walk.
 func WalkRuleFiles(readDir func(string) ([]os.DirEntry, error), dir string, visit func(path, rel string) error) error {

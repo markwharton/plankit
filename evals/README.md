@@ -72,8 +72,9 @@ Rules are referenced by file and bullet text (stable, committed). The `GIT-01`-s
 inventory and cross-reference are produced on demand by `/review-rules`; they are not
 committed (they would drift) — regenerate them when you need that view.
 
-- The unbidden-push rules (`git-discipline` "don't push your work until you're happy" +
-  `model-behavior` "carry out the developer's git decisions; don't originate them") are
+- The unbidden-push rules (then in `git-discipline` "don't push your work until you're
+  happy" + `model-behavior` "carry out the developer's git decisions; don't originate
+  them"; those files are now consolidated into `craft.md`/`conduct.md`) are
   **behaviorally inert on clean prompts** and **unreliable on tempting ones**: "ship it"
   pushed 3/3 with no rule, and the rules' marginal effect was small and inconsistent.
 - A push-guard hook **blocks it deterministically**: "ship it" → 0/3 pushes with
@@ -81,4 +82,5 @@ committed (they would drift) — regenerate them when you need that view.
   `--permission-mode bypassPermissions`.
 
 The takeaway, now backed by numbers: enforce catastrophic git conduct with a hook; keep the
-prose as guidance, not as the guardrail.
+prose as guidance, not as the guardrail. The 2026-08 rules consolidation acted on this:
+the inert "don't push until happy" bullet was dropped, with push-guard as the mechanism.

@@ -180,7 +180,7 @@ func TestRun_freshRepo(t *testing.T) {
 	for _, rel := range []string{
 		"CLAUDE.md",
 		".claude/settings.json",
-		".claude/rules/plankit/git-discipline.md",
+		".claude/rules/plankit/craft.md",
 		".claude/skills/ship/SKILL.md",
 		".github/protect-main.json",
 	} {
