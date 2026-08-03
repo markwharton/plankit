@@ -1,5 +1,5 @@
 ---
-name: release-notes
+name: workshop-notes
 description: Generate a prompt for writing a "Notes from the workshop" entry on plankit.com from plankit's latest CHANGELOG
 disable-model-invocation: true
 ---
