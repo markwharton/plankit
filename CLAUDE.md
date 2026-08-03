@@ -53,7 +53,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
-- `.claude/skills/` — managed skills (conventions, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
+- `.claude/skills/` — managed skills (pk-configure, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
 - `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint badge, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
 - `.claude/rules/plankit/` — managed rules (craft, conduct), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
 

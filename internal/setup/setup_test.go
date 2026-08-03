@@ -79,7 +79,7 @@ func TestRun_freshProject(t *testing.T) {
 	}
 
 	// Verify skills were created with SHA markers.
-	for _, name := range []string{"conventions", "preserve", "ship"} {
+	for _, name := range []string{"pk-configure", "preserve", "ship"} {
 		skillFile := filepath.Join(projectDir, ".claude", "skills", name, "SKILL.md")
 		data, err := os.ReadFile(skillFile)
 		if err != nil {
@@ -1020,7 +1020,7 @@ func TestRun_commitTip_hiddenOnEmptyVersion(t *testing.T) {
 	}
 }
 
-func TestRun_conventionsReminder_shownWhenNoPkJSON(t *testing.T) {
+func TestRun_pkConfigureReminder_shownWhenNoPkJSON(t *testing.T) {
 	projectDir := t.TempDir()
 	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
 	var stderr bytes.Buffer
@@ -1031,12 +1031,12 @@ func TestRun_conventionsReminder_shownWhenNoPkJSON(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	if !strings.Contains(stderr.String(), "Run /conventions") {
-		t.Errorf("stderr = %q, want /conventions reminder when no .pk.json", stderr.String())
+	if !strings.Contains(stderr.String(), "Run /pk-configure") {
+		t.Errorf("stderr = %q, want /pk-configure reminder when no .pk.json", stderr.String())
 	}
 }
 
-func TestRun_conventionsReminder_hiddenWhenPkJSONPresent(t *testing.T) {
+func TestRun_pkConfigureReminder_hiddenWhenPkJSONPresent(t *testing.T) {
 	projectDir := t.TempDir()
 	os.MkdirAll(filepath.Join(projectDir, ".git"), 0755)
 	if err := os.WriteFile(filepath.Join(projectDir, ".pk.json"), []byte(`{"release":{"branch":"main"}}`), 0644); err != nil {
@@ -1050,8 +1050,8 @@ func TestRun_conventionsReminder_hiddenWhenPkJSONPresent(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	if strings.Contains(stderr.String(), "Run /conventions") {
-		t.Errorf("stderr = %q, should not show /conventions reminder when .pk.json present", stderr.String())
+	if strings.Contains(stderr.String(), "Run /pk-configure") {
+		t.Errorf("stderr = %q, should not show /pk-configure reminder when .pk.json present", stderr.String())
 	}
 }
 

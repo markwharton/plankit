@@ -29,7 +29,7 @@ The branch policy defaults to `block`; `guard.mode: ask` prompts instead, allowi
 
 ## Configuration
 
-The `guard` key in `.pk.json` holds the branches plus the two modes (`pk setup` writes `mode`/`push`; `/conventions` or you set `branches`):
+The `guard` key in `.pk.json` holds the branches plus the two modes (`pk setup` writes `mode`/`push`; `/pk-configure` or you set `branches`):
 
 ```json
 {
@@ -43,7 +43,7 @@ The `guard` key in `.pk.json` holds the branches plus the two modes (`pk setup` 
 
 Any absent key falls back to its default (`mode` `block`, `push` `block`); `"off"` is an explicit, distinct value. With no `guard.branches`, the **branch** policy is a no-op, but the **push** policy still applies (default `block`), so the agent's `git push` is blocked unless `guard.push` is `"off"`.
 
-The `/conventions` skill can set `guard.branches` for you, field-merging it into the `guard` object without disturbing the modes.
+The `/pk-configure` skill can set `guard.branches` for you, field-merging it into the `guard` object without disturbing the modes.
 
 ## Hook protocol
 

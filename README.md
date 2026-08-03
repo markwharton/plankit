@@ -16,7 +16,7 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 `pk setup` installs the pieces that make plan-driven development work with Claude Code:
 
 - **Rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` covering development craft and agent conduct
-- **Claude Code skills:** `/conventions`, `/preserve`, `/ship`
+- **Claude Code skills:** `/pk-configure`, `/preserve`, `/ship`
 - **Plan preservation:** approved plans saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
 - **Branch protection:** git mutations blocked via hooks, locally, before the damage happens
 - **Release management:** automated changelogs and tagged releases from your commit history
@@ -105,7 +105,7 @@ plankit has three skills that wrap pk commands into workflows Claude Code can ru
 
 | Skill | Wraps | What it does |
 |-------|-------|--------------|
-| `/conventions` | — | Analyze the codebase and generate project conventions for CLAUDE.md and `.pk.json` |
+| `/pk-configure` | — | Detect the git setup, ask about branch and release policy, and write `.pk.json` |
 | `/preserve` | `pk preserve` | Save the approved plan to `docs/plans/` and commit |
 | `/ship` | `pk changelog` + `pk release` | Preview and confirm changelog, then preview and confirm release |
 

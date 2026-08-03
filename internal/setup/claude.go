@@ -12,9 +12,6 @@ import (
 	"github.com/markwharton/plankit/internal/version"
 )
 
-// The /conventions skill also carries a copy of this template for when CLAUDE.md
-// is missing. Update both when changing the Critical Rules header.
-//
 //go:embed template/CLAUDE.md
 var templateFS embed.FS
 
@@ -321,7 +318,7 @@ func addPermission(settings *OrderedObject, perm string) error {
 
 // writePkModes writes guard.mode / guard.push / preserve.mode into .pk.json,
 // field-merging so existing keys (guard.branches, release, changelog) are
-// preserved. Top-level keys are sorted alphabetically to match the conventions
+// preserved. Top-level keys are sorted alphabetically to match the pk-configure
 // skill. .pk.json is user-owned, so no SHA marker is embedded. Returns whether
 // the file's bytes changed.
 func writePkModes(cfg Config, projectDir, guardMode, guardPush, preserveMode string) (bool, error) {

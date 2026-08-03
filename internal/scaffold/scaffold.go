@@ -356,7 +356,7 @@ func summarize(cfg Config, projectDir, releaseBranch, sourceBranch string, prote
 		fmt.Fprintf(cfg.Stderr, "\nRelease management is ready: pk changelog on %s, then pk release.\n", sourceBranch)
 		msg.Hintf(cfg.Stderr, "To add the Claude Code wiring later: pk setup")
 	} else {
-		fmt.Fprintln(cfg.Stderr, "\nNext: restart Claude Code so the hooks load, then run /conventions.")
+		fmt.Fprintln(cfg.Stderr, "\nNext: restart Claude Code so the hooks load, then run /pk-configure.")
 	}
 	return nil
 }

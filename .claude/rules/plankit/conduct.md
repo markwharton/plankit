@@ -1,14 +1,14 @@
 ---
 description: Hook responses, skill dispatch, pk flag lookup, and git/session conduct
 kind: conduct
-pk_sha256: 661612aa9f27298f67b83767f4796116e1c9aab9d8748d123ec7d664ace59717
+pk_sha256: 3f67f32901d334fb6472b280a368b892c1dd2968aed0c8b73295ee6b4c3b3bb0
 ---
 
 # Plankit Conduct
 
 ## Tooling
 
-- **pk has three layers: commands, hooks, skills.** Hooks wire pk commands into Claude Code events and run automatically; skills (`/conventions`, `/preserve`, `/ship`) are user-invoked workflows. Execute a skill only when the user asks.
+- **pk has three layers: commands, hooks, skills.** Hooks wire pk commands into Claude Code events and run automatically; skills (`/pk-configure`, `/preserve`, `/ship`) are user-invoked workflows. Execute a skill only when the user asks.
 - **`pk guard` blocks git mutations on protected branches, and can guard `git push` on any branch.** In ask mode you are prompted instead; respect the user's decision either way. When a protected-branch mutation is blocked, switch to the development branch. When a push is blocked or prompted, pushing is the developer's call: never work around it. The developer pushes manually, or uses `pk preserve` / `pk release`, which publish through pk and pass the guard.
 - **`pk protect` blocks edits to `docs/plans/`.** Preserved plans are immutable historical records. Adjust your approach; don't try to work around the block.
 - **`pk preserve` runs after exiting plan mode.** It may preserve automatically or notify that a plan is ready. When it runs automatically, surface the outcome to the user, including any commits created or pushes attempted. If the user types `/preserve`, dispatch the skill as your next action; it is an explicit request, never a go-signal for something else.

@@ -115,7 +115,7 @@ func (oo *OrderedObject) Len() int {
 }
 
 // SortKeys sorts the object's top-level keys alphabetically. Used when writing
-// .pk.json so pk setup and the conventions skill agree on key order.
+// .pk.json so pk setup and the pk-configure skill agree on key order.
 func (oo *OrderedObject) SortKeys() {
 	sort.Strings(oo.keys)
 }
@@ -448,7 +448,7 @@ func Run(cfg Config) error {
 	// project re-running setup on an upgrade is not nagged. Without release.branch,
 	// pk release silently falls back to trunk flow.
 	if inGitRepo && pkConf.Release.Branch == "" {
-		fmt.Fprintln(stderr, "No release branch in .pk.json. Run /conventions in Claude Code to set guard.branches and release.branch.")
+		fmt.Fprintln(stderr, "No release branch in .pk.json. Run /pk-configure in Claude Code to set guard.branches and release.branch.")
 		msg.Itemf(stderr, "Without release.branch, pk release uses trunk flow (tags the current branch, no merge to a release branch).")
 		msg.Hintf(stderr, "To check what's configured and ready: pk status")
 	}
