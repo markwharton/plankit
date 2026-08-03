@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.28.1] - 2026-08-03
+
+### Changed
+
+- consolidate four shipped rules into craft.md and conduct.md (6868503)
+- trim Critical Rules template to sole-home lines (6361ece)
+
+### Maintenance
+
+- cover ruleset write, publish and commit failures, hook-merge edge cases (2e649e8)
+- bump actions/setup-go from 6.5.0 to 7.0.0 (ffbbdf9)
+- bump softprops/action-gh-release from 3.0.1 to 3.0.2 (54ec3b4)
+- bump actions/checkout from 7.0.0 to 7.0.1 (900564a)
+- rename release-notes skill to workshop-notes (896cfc7)
+
 ## [v0.28.0] - 2026-08-01
 
 ### Added
@@ -1028,3 +1043,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.26.1]: https://github.com/markwharton/plankit/compare/v0.26.0...v0.26.1
 [v0.27.0]: https://github.com/markwharton/plankit/compare/v0.26.1...v0.27.0
 [v0.28.0]: https://github.com/markwharton/plankit/compare/v0.27.0...v0.28.0
+[v0.28.1]: https://github.com/markwharton/plankit/compare/v0.28.0...v0.28.1
