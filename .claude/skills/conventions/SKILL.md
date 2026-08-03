@@ -2,7 +2,7 @@
 name: conventions
 description: Discover project conventions and configure .pk.json by analyzing the codebase
 disable-model-invocation: true
-pk_sha256: f5075409af69d244ed868f3ddd7147f7b9d9ad2a9fe35cefb6571d7df3488382
+pk_sha256: e61338c1f3f3d73d4f062c8b5fd96a1f9c378af3089cb8020daa72385a85ecf1
 ---
 
 Analyze this project and generate or refresh the **Project Conventions** section in CLAUDE.md.
@@ -23,10 +23,6 @@ Run this after `pk setup` to add project-specific conventions, or re-run anytime
    - NEVER force push. Make a new commit to fix mistakes.
    - NEVER commit secrets to version control.
    - Only do what was asked. No scope creep.
-   - Understand existing code before changing it.
-   - If you don't know, say so. Never guess.
-   - Test before and after every change.
-   - Surface errors clearly. No silent fallbacks.
    ```
 2. If a `## Project Conventions` section already exists, read it carefully — this is a refresh, not a blank slate. Preserve conventions that are still accurate, update what has changed, and add anything new.
 3. Explore the project to identify:
