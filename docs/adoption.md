@@ -1,6 +1,6 @@
 # Adoption
 
-plankit is adopted in layers. Layer 1 is the foundation; Layers 2 and 3 are independent capabilities you add when your project needs them.
+plankit is adopted in layers. Layer 1 is the foundation and works on any repository as it stands, a bare `main` included; Layers 2 and 3 are independent capabilities you add when your project needs them. Nothing asks for a branch topology change until you opt into it.
 
 This doc is about **established projects**, where each layer is a decision worth making separately. A brand new repository has no history to accommodate, so it can take every layer at once: see [New projects](#new-projects) below.
 

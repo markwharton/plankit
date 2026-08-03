@@ -21,6 +21,8 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 - **Branch protection:** git mutations blocked via hooks, locally, before the damage happens
 - **Release management:** automated changelogs and tagged releases from your commit history
 
+All of it works on your repository as it stands, bare `main` included. Release management starts in trunk flow: `pk release` tags the branch you're on and pushes. When you want `main` to be the stable projection of your work, adding `release.branch` to `.pk.json` is the one-key upgrade to the develop→main merge flow. Start where you are; opt into layers as they earn their keep.
+
 <!-- shipped-footprint:start -->
 Always-on rules footprint: ≈2,583 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
 <!-- shipped-footprint:end -->
@@ -57,7 +59,7 @@ pk setup
 
 This configures `.claude/settings.json` with hooks and installs skills. Restart Claude Code to apply.
 
-Setting up a brand new project? `pk init` does the rest in one command: the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
+Setting up a brand new project and want every layer from day one? `pk init` is the opinionated on-ramp. One command creates the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
 
 ```bash
 cd your-new-project
