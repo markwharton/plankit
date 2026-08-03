@@ -23,6 +23,7 @@ IMPORTANT: Follow these rules at all times.
 ```bash
 make build          # Build for current platform -> dist/pk
 make test           # Run tests with race detector
+go test -run TestName ./internal/<pkg>   # Run a single test
 make build-all      # Cross-compile for 5 platforms
 make install        # Install to GOPATH/bin
 make lint           # Run go vet + gofmt drift check
@@ -52,7 +53,8 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
-- `.claude/skills/` — managed skills (conventions, preserve, ship).
+- `.claude/skills/` — managed skills (conventions, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
+- `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint badge, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
 - `.claude/rules/plankit/` — managed rules (craft, conduct), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
 
 ### Design
