@@ -94,11 +94,11 @@ How the branch policy acts on a git mutation on a protected branch: `block` (den
 
 ### guard.push
 
-The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt), or `off` (allow). Defaults to `block`. This blocks the *agent's* direct pushes within a Claude Code session; your own terminal pushes and pk's publish flows (`pk release`, `pk preserve --push`) are unaffected. Set it with `pk setup --push-guard <mode>`.
+The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt), or `off` (allow). Defaults to `block`. This blocks the *agent's* direct pushes within a Claude Code session. Your own terminal pushes and pk's publish flows (`pk release`, `pk preserve --push`) are unaffected. Set it with `pk setup --push-guard <mode>`.
 
 ### guard.branches
 
-Array of branch names where git mutations are blocked (subject to `guard.mode`). When the current branch matches any entry, `pk guard` blocks (or prompts, in ask mode) git mutations like `commit`, `push`, `merge`, and `rebase`.
+Array of branch names where git mutations are blocked (subject to `guard.mode`). When the current branch matches any entry, `pk guard` blocks git mutations like `commit`, `push`, `merge`, and `rebase`. In ask mode it prompts instead.
 
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) are always allowed.
 
@@ -122,7 +122,7 @@ Configuration for `pk preserve`. `pk setup` writes `mode`.
 
 ### preserve.mode
 
-How the automatic plan-preservation hook behaves when you exit plan mode: `auto` (commit the plan to `docs/plans/`), `manual` (notify you to run `/preserve`), or `off` (do nothing). Defaults to `manual`. Set it with `pk setup --preserve <mode>`. An explicit `/preserve` always commits, regardless of this mode.
+How the automatic plan-preservation hook behaves when you exit plan mode. `auto` commits the plan to `docs/plans/`, `manual` notifies you to run `/preserve`, and `off` does nothing. Defaults to `manual`. Set it with `pk setup --preserve <mode>`. An explicit `/preserve` always commits, regardless of this mode.
 
 ```json
 {
@@ -153,9 +153,9 @@ The branch that `pk release` merges to and pushes from. The current branch is th
 
 ### release.hooks
 
-Lifecycle hooks for the release process. Both receive `$VERSION` (the version without the leading `v`, e.g. `0.26.1`) and `$TAG` (with it, e.g. `v0.26.1`) as pre-expanded, cross-platform environment variables — a hook need not re-derive the version from a pinned file. The two differ by *when* they run relative to tag creation:
+Lifecycle hooks for the release process. Both receive `$VERSION` (the version without the leading `v`, e.g. `0.26.1`) and `$TAG` (with it, e.g. `v0.26.1`) as pre-expanded, cross-platform environment variables. A hook need not re-derive the version from a pinned file. The two differ by *when* they run relative to tag creation:
 
-- **preRelease** — runs after merge (or on HEAD in trunk flow) but before the tag is created. If it fails, the release is aborted and nothing is pushed. Because it runs before tagging, it is rehearsed by `pk release --dry-run`, and a hook that commits produces a commit the tag then covers. **The release tag does not exist yet when preRelease runs** — a hook needing the tag ref (signing, artifact builds keyed on the tag) wants `prePush`. Use case: run tests one final time before publishing.
+- **preRelease** — runs after merge (or on HEAD in trunk flow) but before the tag is created. If it fails, the release is aborted and nothing is pushed. Because it runs before tagging, it is rehearsed by `pk release --dry-run`, and a hook that commits produces a commit the tag then covers. **The release tag does not exist yet when preRelease runs.** A hook needing the tag ref wants `prePush` instead: signing, or artifact builds keyed on the tag. Use case: run tests one final time before publishing.
 - **prePush** — runs after the tag is created, before the push, so the tag ref exists. If it fails, the release is aborted, the local tag is removed, and nothing is pushed. It does **not** run under `--dry-run` (the dry-run returns before tagging). Use case: sign the tag, or build an artifact named for it.
 
 ```json

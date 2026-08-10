@@ -32,7 +32,7 @@ No git tag is created by `pk changelog`. The tag is the responsibility of `pk re
 - **--bump** — Override the version bump: `major`, `minor`, or `patch`. If omitted, the bump is auto-detected from conventional commits.
 - **--dry-run** — Preview the changelog output without writing or committing.
 - **--undo** — Unwind the most recent `pk changelog` commit. Refuses unless HEAD carries a `Release-Tag:` trailer, the working tree is clean, and HEAD has not been pushed (or the branch has no upstream). On success, HEAD is reset one commit back via `git reset --hard`, which restores CHANGELOG.md and version files to their prior state.
-- **--exclude** — Comma-separated list of commit SHAs to drop from the generated section. Each SHA must match exactly as it appears in `CHANGELOG.md` parentheses (the abbreviated short hash). The filter runs before version-bump detection, so excluding all `feat:` commits falls back to a patch bump, and excluding a breaking change removes its contribution to the bump too. Unmatched exclude values emit a warning but don't fail the release.
+- **--exclude** — Comma-separated list of commit SHAs to drop from the generated section. Each SHA must match exactly as it appears in `CHANGELOG.md` parentheses (the abbreviated short hash). The filter runs before version-bump detection. Excluding all `feat:` commits therefore falls back to a patch bump, and excluding a breaking change removes its contribution to the bump too. Unmatched exclude values emit a warning but don't fail the release.
 
 ## Requirements
 
@@ -103,7 +103,7 @@ For JSON files, `pk changelog` updates the root-level `version` field using prop
 
 `pk changelog` writes versions into these files but never reads versions out of them — the git tag is always the source of truth.
 
-`versionFiles` handles JSON only. For a version string in a non-JSON file (a Go `const`, Python `__version__`, a shell script), pin it from a `preCommit` hook with [`pk pin`](pk-pin.md).
+`versionFiles` handles JSON only. For a version string in a non-JSON file, pin it from a `preCommit` hook with [`pk pin`](pk-pin.md). That covers a Go `const`, a Python `__version__`, or a shell script.
 
 ### showScope
 
@@ -155,7 +155,7 @@ The tag-as-source rule shines in monorepos with a unified-version policy — eve
 }
 ```
 
-`$VERSION` is set to the computed next version without the `v` prefix (e.g., `0.11.0`), ready for tools like `npm version` that expect a plain semver string. Every package.json gets the same bump, even unchanged ones, the accepted trade-off of unified versioning. pk pre-expands `$VERSION` before passing the command to the shell, so the same hook works on all platforms (macOS, Linux, Windows). Bash-specific parameter expansion like `${VAR#pattern}` is not supported cross-platform.
+`$VERSION` is set to the computed next version without the `v` prefix (e.g., `0.11.0`). That suits tools like `npm version`, which expect a plain semver string. Every package.json gets the same bump, even unchanged ones, the accepted trade-off of unified versioning. pk pre-expands `$VERSION` before passing the command to the shell, so the same hook works on all platforms (macOS, Linux, Windows). Bash-specific parameter expansion like `${VAR#pattern}` is not supported cross-platform.
 
 ### Conventional commits
 
@@ -173,7 +173,7 @@ Breaking changes are detected from both the `!` suffix and `BREAKING CHANGE:` / 
 
 Non-conventional commits are silently skipped.
 
-That includes commits from automation: configure Dependabot, release bots, and any tool that opens PRs or pushes commits to set a conventional `commit-message` prefix (e.g. `chore(deps)`) so their work flows into the changelog rather than getting silently skipped at release time.
+That includes commits from automation. Configure Dependabot, release bots, and any tool that opens PRs or pushes commits to set a conventional `commit-message` prefix, such as `chore(deps)`. Their work then flows into the changelog instead of being silently skipped at release time.
 
 ### Version bump
 
@@ -187,7 +187,7 @@ Override with `--bump major|minor|patch`.
 
 ### Excluding commits from a release
 
-Sometimes a commit that lives in git history shouldn't appear in the release notes — usually because it was added and later removed within the same release window, so the net effect is zero and mentioning it would confuse a reader. `--exclude` is the tool for that.
+Sometimes a commit that lives in git history shouldn't appear in the release notes. The usual reason: it was added and later removed within the same release window. The net effect is zero, and mentioning it would confuse a reader. `--exclude` is the tool for that.
 
 The intended workflow:
 

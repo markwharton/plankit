@@ -23,9 +23,9 @@ Setup refuses to install outside a git working tree by default — most pk comma
 
 ## How it works
 
-1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. The hook commands are **bare** — guard/preserve behavior modes live in `.pk.json`, not the command. `pk setup` writes those modes (`guard.mode`, `guard.push`, `preserve.mode`) to `.pk.json`, resolved by precedence: your flag → existing `.pk.json` value → migrated from an old flag-bearing hook → default (`block`/`block`/`manual`); your other `.pk.json` keys (`guard.branches`, `release`, `changelog`) are field-merged, never replaced. Existing user hooks are preserved too — only plankit hooks are added or updated.
+1. **Configures `.claude/settings.json`** with PreToolUse, PostToolUse, and SessionStart hooks (guard, protect, preserve, bootstrap), and adds `Bash(pk:*)` permission for skill execution. The hook commands are **bare** — guard/preserve behavior modes live in `.pk.json`, not the command. `pk setup` writes those modes (`guard.mode`, `guard.push`, `preserve.mode`) to `.pk.json`. Precedence: your flag → existing `.pk.json` value → migrated from an old flag-bearing hook → default (`block`/`block`/`manual`). Your other `.pk.json` keys (`guard.branches`, `release`, `changelog`) are field-merged, never replaced. Existing user hooks are preserved too — only plankit hooks are added or updated.
 2. **Creates `CLAUDE.md`** with critical rules if none exists. If a pk-managed CLAUDE.md exists and hasn't been modified, it is updated. User-modified or unmanaged files are left alone. CLAUDE.md is never force-overwritten — once customized, it is user-owned.
-3. **Installs rules** to `.claude/rules/plankit/`: `craft.md` (release flow invariants, development standards) and `conduct.md` (hook responses, pk flag lookup, git and session conduct). They go under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files; Claude Code discovers rules recursively, so they still load automatically. These contain the detailed guidelines.
+3. **Installs rules** to `.claude/rules/plankit/`: `craft.md` (release flow invariants, development standards) and `conduct.md` (hook responses, pk flag lookup, git and session conduct). They go under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files. Claude Code discovers rules recursively, so they still load automatically. These contain the detailed guidelines.
 4. **Installs skills** to `.claude/skills/`: `/pk-configure`, `/preserve`, `/ship`. User-modified skills are skipped unless `--force` is used.
 5. **Writes `.claude/install-pk.sh`** — a bootstrap script that downloads `pk` into cloud sandboxes (Claude Code on the web). The script is pinned to the running `pk` version and is a no-op when `pk` is already on PATH. Skipped for development builds.
 6. **Checks PATH** and warns if `pk` is not found.
@@ -34,17 +34,17 @@ After setup, restart Claude Code to apply changes.
 
 ## Flags
 
-These three mode flags are written to `.pk.json` (not the hook command). When omitted, the mode is resolved from your existing `.pk.json`, migrated from an old hook, or the default — so a re-run never silently resets a mode.
+These three mode flags are written to `.pk.json` (not the hook command). When omitted, the mode is resolved from your existing `.pk.json`, migrated from an old hook, or taken from the default. A re-run never silently resets a mode.
 
 - **--guard** — Guard mode written to `guard.mode`: `block`, `ask`, or `off` (default when unset: `block`). Whether `pk guard` blocks git mutations outright, prompts, or does nothing on protected branches.
 - **--push-guard** — Push-guard mode written to `guard.push`: `block`, `ask`, or `off` (default when unset: `block`). Whether `pk guard` denies, prompts on, or allows `git push` on any branch (independent of the branch list). See [pk guard](pk-guard.md).
 - **--preserve** — Plan preservation mode written to `preserve.mode`: `auto`, `manual`, or `off` (default when unset: `manual`).
 - **--force** — Overwrite all managed skills regardless of user modifications. Does not affect CLAUDE.md.
-- **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default; this flag is the escalation for cases where pk is being installed before `git init`, or when only pk's non-git features (rules, skills, `pk protect`) are wanted.
+- **--allow-non-git** — Proceed even if the project directory is not inside a git working tree. Setup refuses by default. This flag is the escalation for two cases: pk installed before `git init`, and projects that want only pk's non-git features (rules, skills, `pk protect`).
 - **--project-dir** — Starting directory for git root resolution (default: current directory). Resolves up to the nearest `.git` ancestor.
 - **--baseline** — After setup, create a `v0.0.0` tag on HEAD if no valid semver tag exists in the repo. Idempotent: if any tag parses as semver (e.g. `v0.0.0`, `v1.2.3`), the step is a no-op. See [Baseline tag for pk changelog](#baseline-tag-for-pk-changelog).
 - **--at** — Tag the given ref instead of HEAD. Requires `--baseline`. Use this to anchor an existing repo at its first commit so all prior work lands in the first changelog entry (`pk setup --baseline --at $(git rev-list --max-parents=0 HEAD)`).
-- **--push** — After tagging, publish to `origin`. Requires `--baseline`. Pushes HEAD + tag by default, so the tagged commit is reachable from a branch on origin (matching `pk preserve --push`). With `--at`, pushes the tag only — the user picked the ref, pk doesn't assume which branch goes with it. Without `--push`, the tag stays local and pk prints the manual push command — consistent with the shipped conduct rule that commit and push are separate decisions.
+- **--push** — After tagging, publish to `origin`. Requires `--baseline`. Pushes HEAD + tag by default, so the tagged commit is reachable from a branch on origin (matching `pk preserve --push`). With `--at`, pushes the tag only — the user picked the ref, pk doesn't assume which branch goes with it. Without `--push`, the tag stays local and pk prints the manual push command. That matches the shipped conduct rule: commit and push are separate decisions.
 
 ## Details
 
@@ -71,9 +71,9 @@ Add a `## Project Conventions` section to make Claude productive from the first 
 
 ### Customize your CLAUDE.md
 
-After running `pk setup`, run `/pk-configure` to configure `.pk.json`: the skill detects the git setup, asks about branch protection and release policy, writes the config, and offers to create a missing working branch. When no `.pk.json` exists, `pk setup` prints a reminder to run it: without a configured `release.branch`, `pk release` uses trunk flow and tags the current branch instead of merging to a release branch.
+After running `pk setup`, run `/pk-configure` to configure `.pk.json`. The skill detects the git setup, asks about branch protection and release policy, writes the config, and offers to create a missing working branch. When no `.pk.json` exists, `pk setup` prints a reminder to run it. Without a configured `release.branch`, `pk release` uses trunk flow: it tags the current branch instead of merging to a release branch.
 
-For the `## Project Conventions` section itself, use Claude Code's built-in `/init` skill. Prompt it to read into services and components and extract business rules (actual defaults, calculation rules, workflow states); codebase analysis does not surface those on its own.
+For the `## Project Conventions` section itself, use Claude Code's built-in `/init` skill. Prompt it to read into services and components and extract business rules: actual defaults, calculation rules, workflow states. Codebase analysis does not surface those on its own.
 
 ### Add your own skills
 
@@ -98,7 +98,7 @@ Re-running `pk setup` preserves the existing mode configuration. Pass `--guard` 
 `pk setup` manages files with three update strategies:
 
 - **CLAUDE.md** — starts managed, becomes user-owned once customized. Protected by a SHA256 marker (`<!-- pk:sha256:... -->`). Updated when pristine, skipped when modified. Never force-overwritten — once you add project conventions, it's yours.
-- **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them. When pk no longer ships a skill or rule, the local copy is removed on the next `pk setup` run if its hash still matches — user-modified copies are preserved with a warning, and skills you authored yourself (no `pk_sha256` marker) are skipped without notice.
+- **Skills and rules** — protected by a `pk_sha256` field in YAML frontmatter. Updated when pristine, skipped when modified. `--force` reclaims them. When pk no longer ships a skill or rule, the local copy is removed on the next `pk setup` run if its hash still matches. User-modified copies are preserved with a warning. Skills you authored yourself (no `pk_sha256` marker) are skipped without notice.
 - **install-pk.sh** — always overwritten with the latest template. No SHA protection. Users have no reason to customize it — it's infrastructure, not content. Script fixes ship to every project on the next `pk setup` run.
 
 ### Baseline tag for pk changelog
@@ -146,7 +146,7 @@ Tags the initial commit of the repo as `v0.0.0`. Every commit since (including a
 
 ### Cloud sandbox bootstrap
 
-`pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start, then runs a best-effort `git fetch --tags` so `pk changelog` and `pk release` see the repo's version tags — sandboxes clone only the working branch by default.
+`pk setup` writes a SessionStart hook and `.claude/install-pk.sh` that together bootstrap `pk` into Claude Code on the web. The script downloads the `pk` binary from GitHub Releases into `$HOME/.local/bin` at session start. It then runs a best-effort `git fetch --tags`, so `pk changelog` and `pk release` see the repo's version tags: sandboxes clone only the working branch by default.
 
 On local surfaces (CLI, Desktop, VS Code), the script detects the existing `pk` install and exits immediately. If pk is not on PATH, it prints a warning with install instructions so developers know hooks won't run.
 

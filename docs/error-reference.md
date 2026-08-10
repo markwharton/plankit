@@ -165,7 +165,7 @@ Error: merge failed; main has diverged from develop (not fast-forward). Resolve 
 
 **Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
 
-**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge so the `Release-Tag` trailer ends up at the released tip rather than buried under the merge commit (`pk release` reads the trailer from HEAD only):
+**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge. That keeps the `Release-Tag` trailer at the released tip instead of burying it under the merge commit. `pk release` reads the trailer from HEAD only:
 
 1. `pk changelog --undo` — drop the unpushed release commit (skip if you have not run `pk changelog` yet).
 2. `git merge origin/main` — merge the release branch into your source branch to reconcile the divergent commit. That commit is already pushed and can't be dropped (never force push), so merging is how you keep it.
@@ -210,7 +210,7 @@ Error: pre-push hook failed: ...
 
 **Cause:** The `release.hooks.prePush` command exited non-zero. It runs after the tag is created, before the push — commonly a signing or artifact-build step that needs the tag ref.
 
-**Fix:** The release is aborted and nothing is published: `pk release` removes the local tag (and rolls back the merge in merge flow), so origin is untouched. Fix the hook and run `pk release` again. The hook receives `$VERSION` and `$TAG`, and the tag ref exists on disk while it runs. Note `--dry-run` does **not** exercise prePush (it returns before tagging); rehearse tag-dependent steps against a scratch tag instead.
+**Fix:** The release is aborted and nothing is published. `pk release` removes the local tag (and rolls back the merge in merge flow), so origin is untouched. Fix the hook and run `pk release` again. The hook receives `$VERSION` and `$TAG`, and the tag ref exists on disk while it runs. Note `--dry-run` does **not** exercise prePush (it returns before tagging); rehearse tag-dependent steps against a scratch tag instead.
 
 ## pk setup
 
@@ -371,9 +371,9 @@ runtime.schedinit()
 runtime.rt0_go()
 ```
 
-**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`): the process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure; `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. This is memory pressure on the machine, not a pk leak.
+**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`). The process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure. `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. This is memory pressure on the machine, not a pk leak.
 
-**Fix:** Nothing is left unguarded: Go fatal errors exit with status 2, which Claude Code treats as a blocking error for PreToolUse hooks, so the command was blocked and retrying it succeeds once memory frees. If it recurs, find what is consuming memory (on Windows, Event Viewer > System log > Event ID 2004 names the largest consumers) and check the pagefile is not disabled or capped small.
+**Fix:** Nothing is left unguarded. Go fatal errors exit with status 2, which Claude Code treats as a blocking error for PreToolUse hooks. The command was blocked, and retrying it succeeds once memory frees. If it recurs, find what is consuming memory. On Windows, Event Viewer > System log > Event ID 2004 names the largest consumers. Also check the pagefile is not disabled or capped small.
 
 ## pk pin
 
@@ -397,7 +397,11 @@ pk preserve --dry-run: no plan found (plan file not found: /path/to/.claude/plan
 pk preserve --dry-run: no plan found (stdin had no valid hook payload and no pending-plan pointer was found)
 ```
 
-**Cause:** `--dry-run` found no plan to preview. The diagnostic in parentheses explains why: the `tool_response` didn't contain a path matching `.claude/plans/*.md`, the matched path doesn't exist on disk, or stdin had no valid JSON payload and no pending-plan pointer was available.
+**Cause:** `--dry-run` found no plan to preview. The diagnostic in parentheses explains why:
+
+- The `tool_response` didn't contain a path matching `.claude/plans/*.md`.
+- The matched path doesn't exist on disk.
+- Stdin had no valid JSON payload, and no pending-plan pointer was available.
 
 **Fix:** Ensure the `tool_response` contains an absolute path with `.claude/plans/` in it (e.g., `/Users/you/.claude/plans/my-plan.md`). Paths using `~` or outside `.claude/plans/` are not recognized.
 

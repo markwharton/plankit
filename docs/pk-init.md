@@ -15,7 +15,7 @@ pk init --release trunk      # release branch is trunk, not the current branch
 
 `pk init` runs on a repository that already exists and has at least one commit. It does not create the GitHub repository: that needs an authenticated GitHub call, and pk shells out only to git. Create the repo first with `gh repo create` or the web UI, then run `pk init` inside the clone.
 
-**`pk init` and [`pk setup`](pk-setup.md) act on different things.** `pk setup` sets up *pk* in a project: managed files, hooks, and modes. `pk init` sets up the *project*: branch topology, the baseline tag, the working branch, protection. That is why `pk init` runs `pk setup` internally (initializing a repository includes installing pk into it), and why you keep running `pk setup` afterwards on every pk upgrade, while `pk init` runs once.
+**`pk init` and [`pk setup`](pk-setup.md) act on different things.** `pk setup` sets up *pk* in a project: managed files, hooks, and modes. `pk init` sets up the *project*: branch topology, the baseline tag, the working branch, protection. That is why `pk init` runs `pk setup` internally: initializing a repository includes installing pk into it. It is also why `pk init` runs once, while you keep running `pk setup` on every pk upgrade.
 
 ## How it works
 
@@ -30,12 +30,12 @@ pk init --release trunk      # release branch is trunk, not the current branch
 9. With `--push`: pushes the release branch, then the tag, then the working branch.
 10. Prints how to apply the ruleset, and what to do next.
 
-Every step is a no-op when already satisfied, so `pk init` is safe to re-run: it does not re-tag, re-create the branch, or make an empty commit.
+Every step is a no-op when already satisfied, so `pk init` is safe to re-run. It does not re-tag, re-create the branch, or make an empty commit.
 
 ## Flags
 
 - **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, in that order. Never partial. Requires an `origin` remote. Shaping is the action; publishing is a separate decision.
-- **--no-setup** — Skip the `pk setup` step: no managed files (CLAUDE.md, rules, skills, settings) and no hook modes. Everything that is repository shape still happens: the `.pk.json` topology, the `v0.0.0` tag, the working branch, the commit (as `chore: pk init`), the ruleset file, and `--push` if given. See [Release management without Claude Code](#release-management-without-claude-code).
+- **--no-setup** — Skip the `pk setup` step: no managed files (CLAUDE.md, rules, skills, settings) and no hook modes. Everything that is repository shape still happens: the `.pk.json` topology, the `v0.0.0` tag, the working branch, the ruleset file, and `--push` if given. The commit is labelled `chore: pk init`. See [Release management without Claude Code](#release-management-without-claude-code).
 - **--source `<name>`** — Working branch to create. Defaults to `develop`.
 - **--release `<name>`** — Release branch. Defaults to `release.branch` in `.pk.json`, then to the branch currently checked out.
 - **--dry-run** — Print what would happen and exit without creating, writing, tagging, committing, pushing, or applying anything.
@@ -64,13 +64,17 @@ See [pk-json.md](pk-json.md) for the full schema.
 
 ### Release management without Claude Code
 
-`pk changelog` and `pk release` are standalone: they read git (the tag history, the branches, origin) and `.pk.json`, never the managed files. A repository shaped with `pk init --no-setup` therefore supports the full release flow while carrying nothing but standard git artifacts (conventional commits, a Keep-a-Changelog `CHANGELOG.md`, semver tags) plus a small `.pk.json`. Nothing under `.claude/`, no `CLAUDE.md`.
+`pk changelog` and `pk release` are standalone: they read git (the tag history, the branches, origin) and `.pk.json`, never the managed files. A repository shaped with `pk init --no-setup` therefore supports the full release flow. It carries nothing but standard git artifacts (conventional commits, a Keep-a-Changelog `CHANGELOG.md`, semver tags) plus a small `.pk.json`. Nothing under `.claude/`, no `CLAUDE.md`.
 
-That shape fits a repository that will be handed over, published, or otherwise managed by people who do not use pk: you keep the release discipline while developing; they receive a plain repository. It also fits any project that wants versioned releases without the Claude Code wiring.
+That shape fits a repository that will be handed over, published, or otherwise managed by people who do not use pk. You keep the release discipline while developing; they receive a plain repository. It also fits any project that wants versioned releases without the Claude Code wiring.
 
-What still lands: the `.pk.json` topology (`guard.branches` matters standalone; `pk changelog` refuses to run on a guarded branch by reading it directly), the `v0.0.0` anchor, the working branch, and one commit labelled `chore: pk init` rather than `chore: pk setup`, because setup never ran.
+What still lands:
 
-The upgrade path is `pk setup`, run at any time from any branch: it field-merges the hook modes into the existing `.pk.json` alongside the preserved topology and installs the managed files.
+- The `.pk.json` topology. `guard.branches` matters standalone: `pk changelog` refuses to run on a guarded branch by reading it directly.
+- The `v0.0.0` anchor and the working branch.
+- One commit, labelled `chore: pk init` rather than `chore: pk setup`, because setup never ran.
+
+The upgrade path is `pk setup`, run at any time from any branch. It field-merges the hook modes into the existing `.pk.json` alongside the preserved topology, and installs the managed files.
 
 ### The ruleset is written, not applied
 
@@ -84,16 +88,16 @@ The ruleset is only written when `origin` points at GitHub. Elsewhere it would b
 
 ### Why pk init creates a commit
 
-`--push` is only meaningful if the pushed branches carry the files `pk init` just wrote. Committing before pushing is what makes the published repository match the local one; without it, `--push` would publish branches and a tag containing none of the setup.
+`--push` is only meaningful if the pushed branches carry the files `pk init` just wrote. Committing before pushing is what makes the published repository match the local one. Without it, `--push` would publish branches and a tag containing none of the setup.
 
 The commit is deliberately separate from the project's own work, matching the shipped craft rule that `pk setup` updates are committed on their own.
 
 ### Where the release branch comes from
 
-By precedence: the `--release` flag, then `release.branch` in `.pk.json`, then the branch currently checked out. Reading `.pk.json` is what stops a re-run from redefining the project: `pk init` leaves you on the working branch, and inferring from there would rewrite `release.branch` and `guard.branches` to that branch, silently unguarding the real one. A re-run from the working branch is refused instead.
+By precedence: the `--release` flag, then `release.branch` in `.pk.json`, then the branch currently checked out. Reading `.pk.json` is what stops a re-run from redefining the project. `pk init` leaves you on the working branch, so inferring from there would rewrite `release.branch` and `guard.branches` to that branch, silently unguarding the real one. A re-run from the working branch is refused instead.
 
 `guard.branches` is seeded only when the project has not set it, since a project may legitimately guard more than the release branch.
 
 ### Established repositories
 
-`pk init` targets a fresh repository. For an established project that already has history, releases, or another release tool, see [adoption.md](adoption.md), which covers anchoring the baseline somewhere other than the first commit and migrating existing configuration.
+`pk init` targets a fresh repository. For an established project that already has history, releases, or another release tool, see [adoption.md](adoption.md). It covers anchoring the baseline somewhere other than the first commit, and migrating existing configuration.

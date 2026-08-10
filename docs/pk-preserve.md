@@ -26,7 +26,7 @@ This command is designed to run as a **PostToolUse hook** on `ExitPlanMode`, but
 
 - **--dry-run** — Preview the plan title, destination file, and commit message without writing, committing, or pushing. When no plan is found, prints a diagnostic to stderr explaining why (e.g., path didn't match the `.claude/plans/*.md` pattern, file not found).
 - **--push** — Push to origin after committing. By default, `pk preserve` commits only — push when you're ready.
-- **--notify** *(deprecated)* — Force manual (notify) mode: output a notification about the plan without preserving it. The mode now lives in `.pk.json` (`preserve.mode`); this flag is kept only so an old `pk preserve --notify` hook keeps working until `pk setup` rewrites it bare.
+- **--notify** *(deprecated)* — Force manual (notify) mode: output a notification about the plan without preserving it. The mode now lives in `.pk.json` (`preserve.mode`). This flag is kept only so an old `pk preserve --notify` hook keeps working until `pk setup` rewrites it bare.
 
 ## Configuration
 
@@ -52,8 +52,8 @@ An explicit `/preserve` always commits, regardless of the mode. Set it with `pk 
 
 ### Race safety across Claude sessions
 
-`~/.claude/plans/` is shared — every Claude Code session writes plans there. When multiple sessions are active, mtime-based selection in `findLatestPlan()` can pick the wrong plan. To close that window, `pk preserve --notify` writes the absolute path of the approved plan to `<projectDir>/.git/pk-pending-plan`. When the `/preserve` skill later invokes `pk preserve` (no hook stdin), that invocation reads the pointer and preserves the exact plan that was approved — even if a rival session has since bumped the mtime on a different `*.md` in `~/.claude/plans/`. The pointer is deleted after successful preservation (or when it points at a missing file). No `.gitignore` coordination is needed because `.git/` is never tracked.
+`~/.claude/plans/` is shared — every Claude Code session writes plans there. When multiple sessions are active, mtime-based selection in `findLatestPlan()` can pick the wrong plan. To close that window, `pk preserve --notify` writes the absolute path of the approved plan to `<projectDir>/.git/pk-pending-plan`. When the `/preserve` skill later invokes `pk preserve` (no hook stdin), that invocation reads the pointer and preserves the exact plan that was approved. That holds even if a rival session has since bumped the mtime on a different `*.md` in `~/.claude/plans/`. The pointer is deleted after successful preservation (or when it points at a missing file). No `.gitignore` coordination is needed because `.git/` is never tracked.
 
 ### Team usage
 
-The sequence number in filenames (e.g., `001`, `002`) is a local sort hint based on what exists in `docs/plans/` at the time of preservation. In a team setting, developers working in parallel may generate duplicate sequence numbers because each developer's local directory is a different snapshot. This is harmless — the slug portion ensures filenames are unique, and git will merge them without conflict. The sequence number provides useful ordering for a single developer; across a team, the date is the primary sort key.
+The sequence number in filenames (e.g., `001`, `002`) is a local sort hint. It reflects what exists in `docs/plans/` at the time of preservation. In a team setting, developers working in parallel may generate duplicate sequence numbers because each developer's local directory is a different snapshot. This is harmless — the slug portion ensures filenames are unique, and git will merge them without conflict. The sequence number provides useful ordering for a single developer; across a team, the date is the primary sort key.

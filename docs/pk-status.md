@@ -14,7 +14,7 @@ pk status --project-dir /path     # specify project directory
 
 1. Detects whether the directory is a git repository. Warns if not — pk requires git for most commands.
 2. Reads `.claude/settings.json` and identifies plankit hooks and the `Bash(pk:*)` permission.
-3. Reads the guard mode, push-guard mode (shown only when guard is active), and preserve mode from `.pk.json`, applying defaults for any absent key (guard `block`, push `block`, preserve `manual`). The Modes section shows when plankit hooks are installed.
+3. Reads the guard mode, push-guard mode (shown only when guard is active), and preserve mode from `.pk.json`. Any absent key takes its default: guard `block`, push `block`, preserve `manual`. The Modes section shows when plankit hooks are installed.
 4. Scans `.claude/skills/` and `.claude/rules/` for files with `pk_sha256` markers and checks if they match (pristine) or have been modified.
 5. Checks `CLAUDE.md` for a plankit SHA marker.
 6. Checks for `.claude/install-pk.sh`.
@@ -47,13 +47,13 @@ plankit is reported as configured if any of the following are present:
 
 ### Modes
 
-The guard, push-guard, and preserve modes are read from `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`). Status shows the **effective** mode — an absent key resolves to its default (guard `block`, push `block`, preserve `manual`), so a configured project always shows a value. The `push:` line appears only when guard is active (`block` or `ask`); when guard is `off`, push-guard is moot and not shown.
+The guard, push-guard, and preserve modes are read from `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`). Status shows the **effective** mode. An absent key resolves to its default (guard `block`, push `block`, preserve `manual`), so a configured project always shows a value. The `push:` line appears only when guard is active (`block` or `ask`); when guard is `off`, push-guard is moot and not shown.
 
 See [.pk.json](pk-json.md#guard) for the keys and how `pk setup` writes them.
 
 ### Readiness
 
-A configured project can still be unready for `pk changelog` / `pk release`: no baseline tag, a working branch that only exists locally, a release branch that was never pushed. Status evaluates these facts and reports each gap with the exact command that closes it:
+A configured project can still be unready for `pk changelog` / `pk release`. The gaps: no baseline tag, a working branch that only exists locally, a release branch that was never pushed. Status evaluates these facts and reports each gap with the exact command that closes it:
 
 ```
 Readiness:
