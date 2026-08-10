@@ -75,7 +75,7 @@ entry at the top (newest first).
 - Lead with what the user can do differently now, not what commit landed.
 - Short — one or two paragraphs OR a focused bullet list per entry.
 - Bold one key command or noun per entry for scanning.
-- Workshop metaphors where natural, not forced.
+- No workshop metaphors. "Notes from the workshop" is the section name, and that is the extent of it; use plain developer words (build, cut, ship, land, polish).
 - Link to full CHANGELOG on GitHub for detail.
 
 ## Visual style
