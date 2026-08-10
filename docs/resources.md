@@ -112,3 +112,15 @@ AWS, Azure, and Google Cloud each publish a Well-Architected Framework — a str
 
 - [Google Cloud Well-Architected Framework](https://docs.cloud.google.com/architecture/framework)
 - Pillars: [Operational Excellence](https://docs.cloud.google.com/architecture/framework/operational-excellence) | [Security, Privacy, and Compliance](https://docs.cloud.google.com/architecture/framework/security) | [Reliability](https://docs.cloud.google.com/architecture/framework/reliability) | [Cost Optimization](https://docs.cloud.google.com/architecture/framework/cost-optimization) | [Performance Optimization](https://docs.cloud.google.com/architecture/framework/performance-optimization) | [Sustainability](https://docs.cloud.google.com/architecture/framework/sustainability)
+
+## Writing
+
+- [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/) — A controlled language: 53 writing rules, ~900 approved words
+
+Simplified Technical English is a real standard, not a prompt-engineering folk remedy. ASD (AeroSpace and Defence Industries Association of Europe) maintains it, and Issue 9 landed in January 2025. It began in 1983 as AECMA Simplified English for aircraft maintenance manuals, where a tired mechanic misreading a step is a safety event. The PDF is free on request.
+
+Its rules are mechanical rather than aspirational: 20 words per instruction, 25 per descriptive sentence, one instruction per sentence, one meaning and one part of speech per word, active voice, simple tenses, condition before command.
+
+The relevance here is the shape, not the content. "Be concise" is an adjective the model has to interpret. "No sentence over 25 words" is a spec it can satisfy and you can check. That is the same move plankit makes elsewhere: [`.pk.json`](pk-json.md) targets instead of inferred intent, hooks instead of hoping, `pk rules --lint --strict` instead of a style conversation.
+
+Two honest limits. STE excludes persuasive and creative prose by its own scope statement, so it does not apply to a README, a landing page, or a rule bullet whose job is to be memorable. And the popular "STE reduces AI slop" benchmarks mostly measure conformance to a linter of STE's own rules, which proves less than it appears; the useful signal in them is the weaker blind-preference result. Naming the standard in a prompt is cheap and does shorten sentences and drop hedging. Treat it as a lever for reference documentation, not as a house style.
