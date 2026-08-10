@@ -13,6 +13,6 @@ See CONTRIBUTING.md for the workflow (develop-first, conventional commits, no sq
 
 ## Checklist
 
-- [ ] `make test`, `make lint`, and `make vuln` pass
+- [ ] `make test`, `make lint`, `make rules-lint`, and `make vuln` pass
 - [ ] No new third-party Go dependency (standard library only)
 - [ ] If a managed file was touched (`internal/setup/rules/`, `internal/setup/skills/`, `internal/setup/template/CLAUDE.md`): `pk_sha256` updated and the embed-safety check passes

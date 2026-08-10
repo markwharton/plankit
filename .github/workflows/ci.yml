@@ -27,6 +27,9 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Rules lint
+        run: make rules-lint
+
       - name: Vulnerability scan
         run: make vuln
 

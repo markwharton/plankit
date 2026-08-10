@@ -19,9 +19,10 @@ pk version    # Shows "pk dev" or "pk 1.0.0" etc.
 ## Test
 
 ```bash
-make test     # Run tests with race detector
-make lint     # Run go vet
-make fmt      # Format code
+make test       # Run tests with race detector
+make lint       # Run go vet
+make rules-lint # Lint .claude/rules: hidden chars + house style
+make fmt        # Format code
 ```
 
 ## Workflow

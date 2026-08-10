@@ -8,7 +8,7 @@ export CGO_ENABLED := 0
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 
-.PHONY: all build clean test install fmt lint vet fmtcheck vuln build-all release release-dry
+.PHONY: all build clean test install fmt lint vet fmtcheck rules-lint vuln build-all release release-dry
 
 all: build
 
@@ -51,6 +51,13 @@ vet:
 
 fmtcheck:
 	@files=$$(gofmt -l $$(go list -f '{{.Dir}}' ./...)); [ -z "$$files" ] || { echo "gofmt drift:"; echo "$$files"; exit 1; }
+
+# Lint .claude/rules: hidden characters (safety) plus plankit's own writing
+# conventions (em dashes, trailing whitespace, hard-wrapped bullets). --strict
+# because this repo is the house. Separate from `lint`, which stays pure Go
+# and needs no binary; this one runs the freshly built pk.
+rules-lint: build
+	$(BUILD_DIR)/$(BINARY_NAME) rules --lint --strict
 
 # Scan for known vulnerabilities (Go stdlib + toolchain) against the live
 # vuln.go.dev database. Uses the latest govulncheck so detection stays current;
