@@ -64,6 +64,8 @@ Add a `release` key to `.pk.json`:
 
 Both hooks receive `$VERSION` (no leading `v`) and `$TAG` (with it) as environment variables.
 
+Neither runs before a commit, so a file written by either hook leaves the working tree dirty after the release. To have a file edit committed and covered by the tag, use the `changelog` hooks instead: see [pk changelog — hooks](pk-changelog.md#hooks) and the [hook timeline](pk-json.md#hook-timeline) comparing all four.
+
 ## Details
 
 ### Workflows

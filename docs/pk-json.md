@@ -169,6 +169,25 @@ Lifecycle hooks for the release process. Both receive `$VERSION` (the version wi
 }
 ```
 
+## Hook timeline
+
+The four hooks live under two keys, and each command documents only its own pair. Choosing between them means comparing all four, so they are listed here in firing order.
+
+| Hook | Key | `$VERSION` | `$TAG` | Tag ref exists | Output is committed | Runs on `--dry-run` |
+|------|-----|------------|--------|----------------|---------------------|---------------------|
+| `postVersion` | `changelog.hooks` | yes | no | no | yes | no |
+| `preCommit` | `changelog.hooks` | yes | no | no | **yes** | no |
+| `preRelease` | `release.hooks` | yes | yes | **no** | no | yes |
+| `prePush` | `release.hooks` | yes | yes | **yes** | no | **no** |
+
+The last three columns decide most choices:
+
+- **Committed output.** Only the changelog hooks run before a commit, so only their file edits reach git. A release hook that writes a file leaves the tree dirty afterwards.
+- **Tag ref.** Only `prePush` runs after the tag exists. Signing the tag, or naming a build after it, belongs there.
+- **Dry-run.** `pk release --dry-run` rehearses `preRelease` but returns before `prePush`. A step that should not run in a rehearsal belongs in `prePush`.
+
+`$TAG` carries the `v` prefix and `$VERSION` does not. Release hooks receive both. Changelog hooks receive `$VERSION` only, because the tag does not exist yet.
+
 ## Workflow examples
 
 ### Trunk flow (single branch, no guard)
@@ -223,3 +242,29 @@ Uses default types (omitted), adds version file syncing, scoped changelog entrie
   }
 }
 ```
+
+### An artifact that carries its own version
+
+Some deliverables leave the repository and lose their filename. A zipped Claude skill, a plugin bundle, or a downloadable archive is unpacked by the recipient, and the version in the filename is gone. Answering "which version is this?" then needs the version *inside* the artifact.
+
+That takes both keys, in order. The changelog hook writes the version into a source file, so the commit and the tag cover it. The release hook builds the artifact afterwards, named for `$TAG`, from a tree that already holds the pinned version:
+
+```json
+{
+  "changelog": {
+    "hooks": {
+      "preCommit": "python3 scripts/package_skill.py --pin $VERSION"
+    }
+  },
+  "release": {
+    "branch": "main",
+    "hooks": {
+      "prePush": "python3 scripts/package_skill.py --all --version $TAG"
+    }
+  }
+}
+```
+
+Two properties make this work, and both come from the timeline above. `preCommit` output is committed, so the pinned version is in the tag. `prePush` runs after tagging, so the build is named for a tag that exists.
+
+Pass `$TAG` to the build rather than deriving a version from `git describe`. pk already knows the version it is releasing, and reconstructing it needs a clean tree and a tag that may not exist yet.

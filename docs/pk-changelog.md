@@ -123,7 +123,11 @@ Lifecycle hooks that run as shell commands during the release process. The `VERS
 - **postVersion** — runs after version files are updated, before CHANGELOG.md is written. Use case: propagate the version to other config files.
 - **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, format files, or pin the version into non-JSON source files via [`pk pin`](pk-pin.md).
 
+These two are the only hooks whose file edits are committed, because they run before the commit.
+
 If a hook fails, the release is aborted.
+
+`pk release` has two more hooks, `preRelease` and `prePush`, configured under the `release` key. They also receive `$TAG`, and `prePush` runs after the tag exists. See [pk release — release.hooks](pk-release.md#configuration) and the [hook timeline](pk-json.md#hook-timeline) comparing all four.
 
 ## Details
 
