@@ -24,7 +24,7 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 All of it works on your repository as it stands, bare `main` included. Release management starts in trunk flow: `pk release` tags the branch you're on and pushes. When you want `main` to be the stable projection of your work, adding `release.branch` to `.pk.json` is the one-key upgrade to the develop→main merge flow. Start where you are; opt into layers as they earn their keep.
 
 <!-- shipped-footprint:start -->
-Always-on rules footprint: ≈2,583 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
+Always-on rules footprint: ≈2,584 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
 <!-- shipped-footprint:end -->
 
 After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk release` with preview+confirm at each step.

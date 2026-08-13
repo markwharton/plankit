@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.29.0] - 2026-08-13
+
+### Added
+
+- replace /conventions with /pk-configure (9331bf5)
+- accept a bare colon so --name pins YAML and frontmatter (6cc8829)
+
+### Fixed
+
+- exit 0 with a warning when a pin target has no match (68cc619)
+
+### Documentation
+
+- lead adoption with plain main; develop-to-main is the opt-in layer (ea6baa1)
+- add single-test command, evals harness, and maintainer skills to CLAUDE.md (3e5e545)
+- add Simplified Technical English to resources (6e27ea0)
+- cap reference-doc sentences at 25 words (ace5391)
+- split over-length sentences in reference docs (8ecd298)
+- compare all four lifecycle hooks in one place (2f257c9)
+
+### Maintenance
+
+- gate on pk rules --lint --strict (5215787)
+- align workshop-notes emitted voice rules with the authoritative section (caeca78)
+
 ## [v0.28.1] - 2026-08-03
 
 ### Changed
@@ -1044,3 +1069,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.27.0]: https://github.com/markwharton/plankit/compare/v0.26.1...v0.27.0
 [v0.28.0]: https://github.com/markwharton/plankit/compare/v0.27.0...v0.28.0
 [v0.28.1]: https://github.com/markwharton/plankit/compare/v0.28.0...v0.28.1
+[v0.29.0]: https://github.com/markwharton/plankit/compare/v0.28.1...v0.29.0
