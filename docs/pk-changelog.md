@@ -103,7 +103,7 @@ For JSON files, `pk changelog` updates the root-level `version` field using prop
 
 `pk changelog` writes versions into these files but never reads versions out of them — the git tag is always the source of truth.
 
-`versionFiles` handles JSON only. For a version string in a non-JSON file, pin it from a `preCommit` hook with [`pk pin`](pk-pin.md). That covers a Go `const`, a Python `__version__`, or a shell script.
+`versionFiles` handles JSON only. For a version string in a non-JSON file, pin it from a `preCommit` hook with [`pk pin`](pk-pin.md). That covers a Go `const`, a Python `__version__`, a YAML or frontmatter `version`, or a shell script.
 
 ### showScope
 

@@ -170,7 +170,7 @@ Already releasing from a single branch (no `release.branch`)? Adding `release.br
 **Version propagation.** plankit reads the version from git tags, so many projects need nothing here. Configure it only when a file other than the tag carries the version:
 
 - **JSON manifests/lockfiles** (`package.json`, nested/workspace `package.json`, `package-lock.json`) → list them in `changelog.versionFiles` (JSON only).
-- **Non-JSON version strings** (`pyproject.toml`, Python `__version__`, a Go `const version`, a shell script) → bump with `pk pin --file <path> [--name <ident>] $VERSION` chained in `changelog.hooks.preCommit`; `versionFiles` can't touch non-JSON. See [pk pin](pk-pin.md).
+- **Non-JSON version strings** (`pyproject.toml`, Python `__version__`, a Go `const version`, skill frontmatter, a shell script) → bump with `pk pin --file <path> [--name <ident>] $VERSION` chained in `changelog.hooks.preCommit`; `versionFiles` can't touch non-JSON. See [pk pin](pk-pin.md).
 - **Files derived from the bump** (lockfiles, generated docs, monorepo cross-refs) → regenerate them in `preCommit`. pk auto-stages `CHANGELOG.md`, every `versionFiles` entry, and any already-tracked file a hook modifies (`git add -u`); add an explicit `git add` in the hook only for newly created/untracked output (e.g. generated docs).
 - **`release.hooks.preRelease`** → an optional validation gate run before publishing, e.g. `npm ci && npm run lint && npm test && npm run build`.
 - **`release.hooks.prePush`** → an optional hook that runs after the tag is created, before the push (for signing or artifact builds that need the tag ref).
@@ -203,7 +203,7 @@ Everything that can connect into a plankit release — most projects wire up onl
 - [ ] **`changelog.versionFiles`** — JSON files (manifests, lockfiles) whose version string pk should bump.
 - [ ] **`changelog.hooks.postVersion`** — runs after the bump, before the changelog is written; receives `$VERSION`.
 - [ ] **`changelog.hooks.preCommit`** — regenerate/pin files derived from the bump just before the release commit; receives `$VERSION`.
-- [ ] **`pk pin`** — bump version strings in non-JSON files (`pyproject.toml`, a Go `const`, Python `__version__`, a shell script like `install-pk.sh`) from inside `preCommit`.
+- [ ] **`pk pin`** — bump version strings in non-JSON files (`pyproject.toml`, a Go `const`, Python `__version__`, skill frontmatter, a shell script like `install-pk.sh`) from inside `preCommit`.
 - [ ] **`release.hooks.preRelease`** — validation gate (lint/test/build) run before publishing.
 - [ ] **`$VERSION` / `$TAG`** — the new version (no `v`) and tag (with `v`), available as env vars to the `postVersion`, `preCommit`, `preRelease`, and `prePush` hooks (`postVersion`/`preCommit` receive `$VERSION` only).
 - [ ] **Remove the old tool** — disable commit-and-tag-version / standard-version / semantic-release in devDependencies and CI.

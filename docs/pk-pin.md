@@ -62,6 +62,18 @@ For Python packages:
 }
 ```
 
+For a Claude skill that records its version in Markdown frontmatter:
+
+```json
+{
+  "changelog": {
+    "hooks": {
+      "preCommit": "pk pin --file .claude/skills/my-skill/SKILL.md --name version $VERSION"
+    }
+  }
+}
+```
+
 Multiple pins via shell chaining:
 
 ```json
@@ -95,7 +107,7 @@ The variable name must be uppercase letters and underscores, ending with `VERSIO
 When `--name` is provided, the command finds a line where the named identifier is assigned a quoted string value. The match requires:
 
 - The identifier at a word boundary (not part of a larger name like `my_version`)
-- An assignment operator (`=` or `:=`, with optional surrounding whitespace)
+- An assignment operator (`=`, `:=`, or a bare colon, with optional surrounding whitespace)
 - A double-quoted or single-quoted string value
 
 Examples of lines that match `--name version`:
@@ -113,6 +125,15 @@ Examples of lines that match `--name __version__`:
 __version__ = "0.1.0"
 __version__ = '0.1.0'
 ```
+
+Examples of lines that match `--name version` in YAML or Markdown frontmatter:
+
+```yaml
+version: "0.1.0"
+version: '0.1.0'
+```
+
+The value must be quoted. An unquoted YAML scalar (`version: 0.1.0`) does not match. This keeps prose like `version: see below` from matching.
 
 The version must be valid [semver](https://semver.org/) — pre-release and build metadata are supported (e.g., `1.0.0-beta.1`, `1.0.0+build.123`).
 

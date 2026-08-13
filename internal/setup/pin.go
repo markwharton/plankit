@@ -85,7 +85,7 @@ type namedPinMatch struct {
 
 // matchNamedPin checks if a line contains an assignment of a quoted string to
 // the given identifier name. The name must appear at a word boundary and be
-// followed by = or := then a quoted value.
+// followed by =, :=, or a bare colon, then a quoted value.
 func matchNamedPin(line, name string) (namedPinMatch, bool) {
 	pos := 0
 	for {
@@ -113,23 +113,23 @@ func matchNamedPin(line, name string) (namedPinMatch, bool) {
 			i++
 		}
 
-		// Expect = or :=
+		// Expect =, :=, or a bare colon (YAML and frontmatter).
 		if i >= len(line) {
 			pos = after
 			continue
 		}
-		if line[i] == ':' {
+		switch line[i] {
+		case '=':
 			i++
-			if i >= len(line) || line[i] != '=' {
-				pos = after
-				continue
+		case ':':
+			i++
+			if i < len(line) && line[i] == '=' {
+				i++
 			}
-		}
-		if i >= len(line) || line[i] != '=' {
+		default:
 			pos = after
 			continue
 		}
-		i++ // skip =
 
 		// Skip whitespace after operator.
 		for i < len(line) && (line[i] == ' ' || line[i] == '\t') {

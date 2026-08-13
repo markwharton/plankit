@@ -263,6 +263,50 @@ func TestMatchNamedPin_operatorNoQuote(t *testing.T) {
 	}
 }
 
+func TestMatchNamedPin_yamlColon(t *testing.T) {
+	m, ok := matchNamedPin(`version: "0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+}
+
+func TestMatchNamedPin_yamlColonSingleQuote(t *testing.T) {
+	m, ok := matchNamedPin(`version: '0.1.0'`, "version")
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if m.quote != '\'' {
+		t.Errorf("quote = %c, want %c", m.quote, '\'')
+	}
+}
+
+func TestMatchNamedPin_colonNoSpace(t *testing.T) {
+	m, ok := matchNamedPin(`version:"0.1.0"`, "version")
+	if !ok {
+		t.Fatal("expected match with no space after colon")
+	}
+	if m.value != "0.1.0" {
+		t.Errorf("value = %q, want %q", m.value, "0.1.0")
+	}
+}
+
+func TestMatchNamedPin_yamlUnquoted(t *testing.T) {
+	_, ok := matchNamedPin(`version: 0.1.0`, "version")
+	if ok {
+		t.Fatal("expected no match for unquoted YAML value")
+	}
+}
+
+func TestMatchNamedPin_colonProse(t *testing.T) {
+	_, ok := matchNamedPin(`version: see below`, "version")
+	if ok {
+		t.Fatal("expected no match for prose after a colon")
+	}
+}
+
 func TestPinVersionNamed_updatesGoConst(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "main.go")
@@ -347,6 +391,27 @@ func TestPinVersionNamed_firstMatchWins(t *testing.T) {
 	}
 	if lines[1] != `var version = "0.2.0"` {
 		t.Errorf("second line should be unchanged, got: %s", lines[1])
+	}
+}
+
+func TestPinVersionNamed_frontmatter(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "SKILL.md")
+	content := "---\nname: demo\nversion: \"0.0.1\"\ndescription: x\n---\n"
+	os.WriteFile(path, []byte(content), 0644)
+
+	updated, err := PinVersionNamed(os.ReadFile, os.WriteFile, path, "version", "1.2.3")
+	if err != nil {
+		t.Fatalf("PinVersionNamed() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("expected updated=true")
+	}
+
+	data, _ := os.ReadFile(path)
+	want := "---\nname: demo\nversion: \"1.2.3\"\ndescription: x\n---\n"
+	if string(data) != want {
+		t.Errorf("file = %q, want %q", string(data), want)
 	}
 }
 

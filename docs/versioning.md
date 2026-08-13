@@ -33,7 +33,7 @@ For projects with a root-level `"version"` field in a JSON file (Node.js, Deno, 
 
 ### pk pin --name — source constants
 
-For projects where the version is a constant or variable in source code (Go, Python, Rust, TOML).
+For projects where the version is a constant or variable in source code (Go, Python, Rust, TOML) or a quoted YAML/frontmatter value.
 
 A `preCommit` hook calls `pk pin` to find the named identifier and replace its quoted value. The v-prefix is inferred from whatever's already in the file.
 
@@ -54,6 +54,7 @@ Examples across languages:
 | Go | `const version = "0.1.0"` | `pk pin --file cmd/myapp/main.go --name version $VERSION` |
 | Python | `__version__ = "0.1.0"` | `pk pin --file mypackage/__init__.py --name __version__ $VERSION` |
 | Rust | `version = "0.1.0"` | `pk pin --file Cargo.toml --name version $VERSION` |
+| YAML / frontmatter | `version: "0.1.0"` | `pk pin --file .claude/skills/my-skill/SKILL.md --name version $VERSION` |
 
 `pk pin --name` matches the first occurrence in the file. For TOML files like `Cargo.toml`, this works when `[package]` appears before `[dependencies]`, which is the conventional layout. If the file structure puts a different `version` key first, the match will be wrong. Structural TOML support via `versionFiles` would eliminate this limitation.
 
@@ -137,6 +138,7 @@ Generated files that are committed follow the same model: regenerate them in a `
 |--------------|----------|-----|
 | npm package, VS Code extension | versionFiles | `npm publish` and `vsce` read `package.json` directly |
 | Simple Go/Python/Rust CLI | pk pin --name | `go build ./cmd/...` is the build command; no Makefile, no ldflags |
+| Claude skill or plugin | pk pin --name | The version lives in `SKILL.md` frontmatter; a zip filename doesn't survive install |
 | Cross-compiled Go binary with CI | ldflags | Version derived from tag at build time; no constant in source to drift |
 | Monorepo with unified version | versionFiles + preCommit hook | Ecosystem provides propagation commands; verify cross-ref handling |
 | SPFx, custom frameworks | versionFiles + hook script | No ecosystem command; script handles format conversion and file discovery |
