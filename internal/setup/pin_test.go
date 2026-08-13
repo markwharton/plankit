@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,6 +99,24 @@ func TestPinVersion_noFile(t *testing.T) {
 	}
 	if updated {
 		t.Error("PinVersion should return updated=false when file doesn't exist")
+	}
+}
+
+func TestPinVersion_noPin(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "script.sh")
+	os.WriteFile(path, []byte("#!/usr/bin/env bash\necho hello\n"), 0755)
+
+	_, err := PinVersion(os.ReadFile, os.WriteFile, path, "0.8.1")
+	if err == nil {
+		t.Fatal("expected error when file has no VERSION pin")
+	}
+	var noPin *NoPinError
+	if !errors.As(err, &noPin) {
+		t.Fatalf("error = %T, want *NoPinError", err)
+	}
+	if err.Error() != "script.sh has no VERSION pin" {
+		t.Errorf("error = %q, want %q", err.Error(), "script.sh has no VERSION pin")
 	}
 }
 
@@ -372,8 +391,12 @@ func TestPinVersionNamed_noMatch(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for no match")
 	}
-	if !strings.Contains(err.Error(), "no pin for") {
-		t.Errorf("error = %v, want 'no pin for'", err)
+	var noPin *NoPinError
+	if !errors.As(err, &noPin) {
+		t.Fatalf("error = %T, want *NoPinError", err)
+	}
+	if err.Error() != `main.go has no pin for "version"` {
+		t.Errorf("error = %q, want %q", err.Error(), `main.go has no pin for "version"`)
 	}
 }
 

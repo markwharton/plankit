@@ -19,6 +19,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -366,6 +367,11 @@ func runPin(args []string) {
 		updated, err = setup.PinVersion(os.ReadFile, os.WriteFile, *file, fs.Arg(0))
 	}
 	if err != nil {
+		var noPin *setup.NoPinError
+		if errors.As(err, &noPin) {
+			msg.Warnf(os.Stderr, "%v", err)
+			return
+		}
 		msg.Errorf(os.Stderr, "%v", err)
 		os.Exit(1)
 	}

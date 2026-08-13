@@ -15,7 +15,7 @@ pk pin --file <path> [--name <identifier>] <version>
    - **Without `--name`:** matches `SOMETHING_VERSION="v..."` — any uppercase variable name ending in `VERSION`.
    - **With `--name`:** matches the named identifier assigned a quoted string value (e.g., `const version = "0.1.0"`).
 3. Replaces the version value. The `v` prefix is inferred from the existing value: if it had `v`, the replacement gets `v`; otherwise bare.
-4. If the file does not exist, exits silently. This makes the command safe to use in hooks without requiring the file to be present.
+4. If the file does not exist, exits 0 silently. If the file exists but no line matches, exits 0 with a warning. Both cases make the command safe to use in hooks: nothing was pinned, and the hook proceeds.
 
 ## Flags
 

@@ -29,7 +29,9 @@ func ScriptVersion(readFile func(string) ([]byte, error), filePath string) (stri
 // PinVersion updates a shell-variable version pin in a file. It finds the first
 // line matching SOMETHING_VERSION="vX.Y.Z" (any uppercase variable ending in
 // VERSION) and replaces the version.
-// Returns (updated, error). updated is true if the file was rewritten, false if the file does not exist (no-op); a missing VERSION pin returns an error.
+// Returns (updated, error). updated is true if the file was rewritten, false
+// with nil error if the file does not exist (no-op); a missing VERSION pin
+// returns a *NoPinError.
 func PinVersion(readFile func(string) ([]byte, error), writeFile func(string, []byte, os.FileMode) error, filePath string, ver string) (bool, error) {
 	data, err := readFile(filePath)
 	if err != nil {
@@ -48,7 +50,7 @@ func PinVersion(readFile func(string) ([]byte, error), writeFile func(string, []
 		}
 	}
 	if !found {
-		return false, fmt.Errorf("%s has no VERSION pin", filepath.Base(filePath))
+		return false, &NoPinError{File: filepath.Base(filePath)}
 	}
 	if err := writeFile(filePath, []byte(strings.Join(lines, "\n")), 0755); err != nil {
 		return false, err
@@ -73,6 +75,21 @@ func versionPinName(line string) (string, bool) {
 		return "", false
 	}
 	return name, true
+}
+
+// NoPinError reports that the file exists but contains no matching pin.
+// The CLI treats it as a warning rather than a fatal error, so a renamed or
+// reformatted pin target never aborts a release from a preCommit hook.
+type NoPinError struct {
+	File string // base name of the target file
+	Name string // identifier from --name; empty for the shell-variable format
+}
+
+func (e *NoPinError) Error() string {
+	if e.Name == "" {
+		return e.File + " has no VERSION pin"
+	}
+	return fmt.Sprintf("%s has no pin for %q", e.File, e.Name)
 }
 
 // namedPinMatch holds the result of scanning a line for a named version pin.
@@ -173,7 +190,7 @@ func isIdentChar(c byte) bool {
 // line where the identifier name is assigned a quoted string value and replaces
 // that value with ver. The v-prefix is inferred from the existing value.
 // Returns (updated, error). updated is false with nil error if the file does
-// not exist (safe for hooks).
+// not exist; a file with no matching pin returns a *NoPinError.
 func PinVersionNamed(readFile func(string) ([]byte, error), writeFile func(string, []byte, os.FileMode) error, filePath, name, ver string) (bool, error) {
 	data, err := readFile(filePath)
 	if err != nil {
@@ -196,7 +213,7 @@ func PinVersionNamed(readFile func(string) ([]byte, error), writeFile func(strin
 		break
 	}
 	if !found {
-		return false, fmt.Errorf("%s has no pin for %q", filepath.Base(filePath), name)
+		return false, &NoPinError{File: filepath.Base(filePath), Name: name}
 	}
 	if err := writeFile(filePath, []byte(strings.Join(lines, "\n")), 0644); err != nil {
 		return false, err

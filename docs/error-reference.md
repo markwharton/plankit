@@ -387,6 +387,17 @@ Error: "abc" is not valid semver
 
 **Fix:** Use a valid semver string (e.g., `1.0.0`, `0.8.1-beta.1`).
 
+### no matching pin
+
+```
+Warning: SKILL.md has no pin for "version"
+Warning: install-pk.sh has no VERSION pin
+```
+
+**Cause:** The file exists but no line matches. The identifier was renamed, the file was reformatted, or the value is unquoted. The command exits 0 so a `preCommit` hook proceeds; the version was not stamped.
+
+**Fix:** Check the identifier and quoting against the match rules in [pk pin](pk-pin.md#details). A missing file also exits 0, without the warning.
+
 ## pk preserve
 
 ### no plan found (dry-run)
