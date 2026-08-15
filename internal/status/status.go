@@ -205,15 +205,16 @@ func Run(cfg Config) (bool, error) {
 		}
 	}
 
-	printReadiness(stderr, hasPKConfig, checks)
+	printReadiness(stderr, hasPKConfig, pkConf.Release.Branch, checks)
 
 	return true, nil
 }
 
 // printReadiness renders the release-readiness checks. All-pass collapses to
-// a single line; failed checks carry their next-step hint (and git
-// equivalent) indented beneath them.
-func printReadiness(stderr io.Writer, afterConfig bool, checks []readiness.Check) {
+// a single line naming the flow, so an empty Config section in trunk flow
+// reads as a choice rather than a gap; failed checks carry their next-step
+// hint (and git equivalent) indented beneath them.
+func printReadiness(stderr io.Writer, afterConfig bool, releaseBranch string, checks []readiness.Check) {
 	if len(checks) == 0 {
 		return
 	}
@@ -221,7 +222,11 @@ func printReadiness(stderr io.Writer, afterConfig bool, checks []readiness.Check
 		fmt.Fprintln(stderr, "")
 	}
 	if readiness.Ready(checks) {
-		fmt.Fprintln(stderr, "Readiness: ready for pk changelog / pk release")
+		if releaseBranch == "" {
+			fmt.Fprintln(stderr, "Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)")
+		} else {
+			fmt.Fprintf(stderr, "Readiness: ready for pk changelog / pk release (merge flow into %s)\n", releaseBranch)
+		}
 		return
 	}
 	width := 0

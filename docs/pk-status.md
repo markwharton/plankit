@@ -64,7 +64,7 @@ Readiness:
     To start one: git switch -c develop && git push -u origin develop
 ```
 
-When every check passes, the section collapses to one line: `Readiness: ready for pk changelog / pk release`.
+When every check passes, the section collapses to one line that names the flow. Merge flow: `Readiness: ready for pk changelog / pk release (merge flow into main)`. Trunk flow: `Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)`. In trunk flow the Config section is empty by choice, and the line says so rather than leaving it to read as a gap.
 
 The checks are keyed to what `.pk.json` declares. With `release.branch` set (merge flow): baseline tag, a working branch distinct from the release branch, and both branches on origin. Without it (trunk flow): baseline tag and the current branch on origin. Status never nags about layers the configuration hasn't opted into.
 

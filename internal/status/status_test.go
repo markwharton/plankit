@@ -588,11 +588,38 @@ func TestRun_readinessReady(t *testing.T) {
 	}
 
 	output := stderr.String()
-	if !strings.Contains(output, "Readiness: ready for pk changelog / pk release") {
-		t.Errorf("missing collapsed ready line, got:\n%s", output)
+	if !strings.Contains(output, "Readiness: ready for pk changelog / pk release (merge flow into main)") {
+		t.Errorf("missing collapsed ready line naming the merge flow, got:\n%s", output)
 	}
 	if strings.Contains(output, "missing") {
 		t.Errorf("unexpected failed check in ready output:\n%s", output)
+	}
+}
+
+func TestRun_readinessReadyTrunkFlow(t *testing.T) {
+	// No release.branch is a choice (trunk flow), and the ready line says so:
+	// an empty Config section otherwise reads as a gap.
+	dir := setupProject(t)
+	os.MkdirAll(filepath.Join(dir, ".git"), 0755)
+	os.WriteFile(filepath.Join(dir, ".pk.json"),
+		[]byte(`{"guard":{"mode":"block","push":"off"}}`), 0644)
+
+	cfg, stderr := testConfig(dir)
+	cfg.GitExec = fakeGit(map[string]string{
+		"tag --list v* --sort=-v:refname":                     "v0.2.15\n",
+		"branch --show-current":                               "main\n",
+		"rev-parse --verify --quiet refs/remotes/origin/main": "abc\n",
+	})
+	if _, err := Run(cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	output := stderr.String()
+	if !strings.Contains(output, "Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)") {
+		t.Errorf("ready line does not name trunk flow, got:\n%s", output)
+	}
+	if strings.Contains(output, "working branch") {
+		t.Errorf("trunk flow must not ask for a working branch:\n%s", output)
 	}
 }
 
