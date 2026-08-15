@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.29.2] - 2026-08-16
+
+### Fixed
+
+- pin the branch-protection ruleset to the release branch by name, not ~DEFAULT_BRANCH (d151bd5)
+- never commit on the release branch once the working branch exists (22d0dd1)
+- name the flow on the ready line (5b776a4)
+
+### Documentation
+
+- merge flow to trunk flow, and why the config change lands last (4486e61)
+
 ## [v0.29.1] - 2026-08-14
 
 ### Security
@@ -1077,3 +1089,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.28.1]: https://github.com/markwharton/plankit/compare/v0.28.0...v0.28.1
 [v0.29.0]: https://github.com/markwharton/plankit/compare/v0.28.1...v0.29.0
 [v0.29.1]: https://github.com/markwharton/plankit/compare/v0.29.0...v0.29.1
+[v0.29.2]: https://github.com/markwharton/plankit/compare/v0.29.1...v0.29.2
