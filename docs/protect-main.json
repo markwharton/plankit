@@ -8,7 +8,7 @@
     "ref_name": {
       "exclude": [],
       "include": [
-        "~DEFAULT_BRANCH"
+        "refs/heads/main"
       ]
     }
   },

@@ -153,10 +153,10 @@ func runShape(cfg Config, dir string) error {
 	}
 
 	if protect {
-		if wrote, err := setup.WriteRuleset(setupConfig(cfg, projectDir), projectDir); err != nil {
+		if wrote, err := setup.WriteRuleset(setupConfig(cfg, projectDir), projectDir, releaseBranch); err != nil {
 			return err
 		} else if wrote {
-			fmt.Fprintf(cfg.Stderr, "Wrote %s\n", setup.RulesetPath)
+			fmt.Fprintf(cfg.Stderr, "Wrote %s\n", setup.RulesetPath(releaseBranch))
 		}
 	}
 
@@ -255,7 +255,7 @@ func preview(cfg Config, projectDir, releaseBranch, sourceBranch string, protect
 		msg.Itemf(cfg.Stderr, "Tag v0.0.0 on %s", releaseBranch)
 	}
 	if protect {
-		msg.Itemf(cfg.Stderr, "Write %s", setup.RulesetPath)
+		msg.Itemf(cfg.Stderr, "Write %s", setup.RulesetPath(releaseBranch))
 	}
 	msg.Itemf(cfg.Stderr, "Commit those files as %q", commitMessage(cfg))
 	msg.Itemf(cfg.Stderr, "Create branch %s and switch to it", sourceBranch)
@@ -341,9 +341,9 @@ func summarize(cfg Config, projectDir, releaseBranch, sourceBranch string, prote
 
 	if protect {
 		fmt.Fprintln(cfg.Stderr, "\nBranch protection is not applied; pk does not call GitHub.")
-		msg.Hintf(cfg.Stderr, "To import it: GitHub repo Settings, Rules, New ruleset, Import a ruleset, then choose "+setup.RulesetPath)
+		msg.Hintf(cfg.Stderr, "To import it: GitHub repo Settings, Rules, New ruleset, Import a ruleset, then choose "+setup.RulesetPath(releaseBranch))
 		if slug := repoSlug(cfg, projectDir); slug != "" {
-			msg.Or(cfg.Stderr, fmt.Sprintf("gh api --method POST repos/%s/rulesets --input %s", slug, setup.RulesetPath))
+			msg.Or(cfg.Stderr, fmt.Sprintf("gh api --method POST repos/%s/rulesets --input %s", slug, setup.RulesetPath(releaseBranch)))
 		}
 	}
 
