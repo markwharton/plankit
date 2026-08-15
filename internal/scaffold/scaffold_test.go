@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	gitpkg "github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/setup"
 )
 
@@ -789,5 +791,393 @@ func TestRun_explicitReleaseFlagBeatsConfig(t *testing.T) {
 	pk := readPkConfig(t, dir)
 	if !strings.Contains(string(pk["release"]), `"trunk"`) {
 		t.Errorf("release = %s, want the --release flag to win", pk["release"])
+	}
+}
+
+// --- Real-git integration -------------------------------------------------
+//
+// The fake above models git well enough for the write path, but the defect
+// that motivates these tests only shows against a real repository: a re-run
+// that finds something to write commits it on the release branch, and the
+// working branch, created by the first run, never sees that commit. So this
+// drives pk init twice through real git with a bare origin.
+
+func realGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	out, err := gitpkg.Exec(dir, args...)
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+	}
+	return out
+}
+
+// newRealRepo returns a fresh repository on main with one commit, wired to
+// the real filesystem and real git, and a bare origin it can push to.
+func newRealRepo(t *testing.T) (string, string, *bytes.Buffer, Config) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	t.Setenv("GIT_AUTHOR_NAME", "pk test")
+	t.Setenv("GIT_AUTHOR_EMAIL", "pk@test")
+	t.Setenv("GIT_COMMITTER_NAME", "pk test")
+	t.Setenv("GIT_COMMITTER_EMAIL", "pk@test")
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+
+	root := t.TempDir()
+	dir := filepath.Join(root, "repo")
+	bare := filepath.Join(root, "origin.git")
+	realGit(t, "", "init", "-q", "-b", "main", dir)
+	realGit(t, dir, "commit", "-q", "--allow-empty", "-m", "chore: init")
+	realGit(t, "", "init", "-q", "--bare", bare)
+
+	var stderr bytes.Buffer
+	cfg := DefaultConfig()
+	cfg.ProjectDir = dir
+	cfg.Stderr = &stderr
+	cfg.Version = "0.0.0-test"
+	cfg.LookPath = func(string) (string, error) { return "/usr/local/bin/pk", nil }
+	return dir, bare, &stderr, cfg
+}
+
+func TestRun_realGit_secondRunNeverCommitsOnTheReleaseBranch(t *testing.T) {
+	dir, bare, stderr, cfg := newRealRepo(t)
+
+	// First run: no remote yet, the way a repository that is created locally
+	// and published afterwards looks.
+	if err := Run(cfg); err != nil {
+		t.Fatalf("first Run() error = %v\n%s", err, stderr)
+	}
+	if got := realGit(t, dir, "branch", "--show-current"); got != "develop" {
+		t.Fatalf("after first run on %q, want develop", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".github", "protect-main.json")); err != nil {
+		t.Errorf("first run did not write the ruleset without a remote: %v", err)
+	}
+	if got := realGit(t, dir, "log", "--format=%s", "-1", "main"); got != SetupCommitMessage {
+		t.Errorf("main tip = %q, want %q", got, SetupCommitMessage)
+	}
+	mainBefore := realGit(t, dir, "rev-parse", "main")
+	tagBefore := realGit(t, dir, "rev-parse", "v0.0.0^{commit}")
+	if tagBefore == mainBefore {
+		t.Fatalf("v0.0.0 should anchor the commit before %q", SetupCommitMessage)
+	}
+
+	// The remote appears, and the working branch gains work of its own, as
+	// gh repo create --source . --push would leave things.
+	realGit(t, dir, "remote", "add", "origin", bare)
+	realGit(t, dir, "commit", "-q", "--allow-empty", "-m", "feat: first")
+	realGit(t, dir, "push", "-q", "-u", "origin", "develop")
+	developBefore := realGit(t, dir, "rev-parse", "develop")
+
+	// Second run, from develop, to publish main and the tag. It must change
+	// no ref and write no file.
+	stderr.Reset()
+	cfg.Push = true
+	if err := Run(cfg); err != nil {
+		t.Fatalf("second Run() error = %v\n%s", err, stderr)
+	}
+	if !strings.Contains(stderr.String(), "Already shaped") {
+		t.Errorf("second run did not say the repository is already shaped:\n%s", stderr)
+	}
+	if got := realGit(t, dir, "rev-parse", "main"); got != mainBefore {
+		t.Errorf("second run moved main: %s -> %s", mainBefore, got)
+	}
+	if got := realGit(t, dir, "rev-parse", "develop"); got != developBefore {
+		t.Errorf("second run moved develop: %s -> %s", developBefore, got)
+	}
+	if got := realGit(t, dir, "rev-parse", "v0.0.0^{commit}"); got != tagBefore {
+		t.Errorf("second run moved v0.0.0: %s -> %s", tagBefore, got)
+	}
+	if got := realGit(t, dir, "log", "--oneline", "develop..main"); got != "" {
+		t.Errorf("main has commits develop lacks (release would not fast-forward):\n%s", got)
+	}
+	if got := realGit(t, dir, "status", "--porcelain"); got != "" {
+		t.Errorf("second run left the tree dirty:\n%s", got)
+	}
+	if got := realGit(t, dir, "branch", "--show-current"); got != "develop" {
+		t.Errorf("second run moved off develop to %q", got)
+	}
+	// And it published: main, the tag, and develop are on origin.
+	if got := realGit(t, dir, "ls-remote", "--heads", "origin", "main"); !strings.HasPrefix(got, mainBefore) {
+		t.Errorf("origin/main = %q, want %s", got, mainBefore)
+	}
+	if got := realGit(t, dir, "ls-remote", "--tags", "origin", "v0.0.0"); got == "" {
+		t.Error("v0.0.0 was not pushed")
+	}
+}
+
+func TestRun_realGit_secondRunFromMainSwitchesToDevelop(t *testing.T) {
+	dir, _, stderr, cfg := newRealRepo(t)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("first Run() error = %v\n%s", err, stderr)
+	}
+	realGit(t, dir, "switch", "-q", "main")
+	mainBefore := realGit(t, dir, "rev-parse", "main")
+
+	stderr.Reset()
+	if err := Run(cfg); err != nil {
+		t.Fatalf("second Run() error = %v\n%s", err, stderr)
+	}
+	if got := realGit(t, dir, "rev-parse", "main"); got != mainBefore {
+		t.Errorf("second run moved main: %s -> %s", mainBefore, got)
+	}
+	if got := realGit(t, dir, "branch", "--show-current"); got != "develop" {
+		t.Errorf("second run from main left the user on %q, want develop", got)
+	}
+	if !strings.Contains(stderr.String(), "You are on develop") {
+		t.Errorf("summary does not say where the user is:\n%s", stderr)
+	}
+}
+
+func TestRun_realGit_existingBranchOnUnshapedRepoIsRefused(t *testing.T) {
+	// An established repository with its own develop is the adoption path,
+	// not pk init: shaping it here would tag and commit on main behind
+	// develop's back.
+	dir, _, stderr, cfg := newRealRepo(t)
+	realGit(t, dir, "branch", "develop")
+	mainBefore := realGit(t, dir, "rev-parse", "main")
+
+	err := Run(cfg)
+	if err == nil {
+		t.Fatalf("Run() succeeded on an unshaped repository with develop present\n%s", stderr)
+	}
+	if !strings.Contains(err.Error(), "not plankit-shaped") {
+		t.Errorf("error = %q, want it to say the repository is not plankit-shaped", err)
+	}
+	if got := realGit(t, dir, "rev-parse", "main"); got != mainBefore {
+		t.Errorf("refused run moved main: %s -> %s", mainBefore, got)
+	}
+	if got := realGit(t, dir, "tag", "--list"); got != "" {
+		t.Errorf("refused run tagged: %q", got)
+	}
+	if got := realGit(t, dir, "status", "--porcelain"); got != "" {
+		t.Errorf("refused run wrote files:\n%s", got)
+	}
+}
+
+// --- Shaped-path unit tests (fake git) -------------------------------------
+
+// shapedRepo returns a repo the first run already shaped: develop exists, the
+// tag is set, and .pk.json names main. The fake starts on the given branch.
+func shapedRepo(t *testing.T, branch string) (string, *bytes.Buffer, Config, *fakeGit) {
+	t.Helper()
+	g := &fakeGit{branch: branch, tags: "v0.0.0\n", heads: []string{"develop"}}
+	dir, stderr, cfg := newRepo(t, g)
+	conf := []byte(`{"guard":{"branches":["main"]},"release":{"branch":"main"}}` + "\n")
+	if err := os.WriteFile(filepath.Join(dir, ".pk.json"), conf, 0644); err != nil {
+		t.Fatalf("seed .pk.json: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".github"), 0755); err != nil {
+		t.Fatalf("mkdir .github: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".github", "protect-main.json"), []byte("{}"), 0644); err != nil {
+		t.Fatalf("seed ruleset: %v", err)
+	}
+	return dir, stderr, cfg, g
+}
+
+func TestRun_shapedFromDevelopPushesAndStays(t *testing.T) {
+	dir, stderr, cfg, g := shapedRepo(t, "develop")
+	before, _ := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	cfg.Push = true
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v\n%s", err, stderr)
+	}
+	for _, forbidden := range []string{"add -A", "commit ", "tag v0.0.0", "branch develop", "switch "} {
+		if g.ran(forbidden) {
+			t.Errorf("shaped run issued %q; it must write and move nothing", forbidden)
+		}
+	}
+	for _, want := range []string{"push -u origin main", "push origin v0.0.0", "push -u origin develop"} {
+		if !g.ran(want) {
+			t.Errorf("shaped run with --push did not issue %q; calls=%v", want, g.calls)
+		}
+	}
+	after, _ := os.ReadFile(filepath.Join(dir, ".pk.json"))
+	if !bytes.Equal(before, after) {
+		t.Errorf(".pk.json rewritten on the shaped path")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); err == nil {
+		t.Error("shaped run installed managed files")
+	}
+	out := stderr.String()
+	for _, want := range []string{"Already shaped: release branch main, working branch develop, anchored at v0.0.0", "Pushed main, v0.0.0, and develop", "You are on develop", "gh api --method POST repos/markwharton/demo/rulesets --input .github/protect-main.json"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stderr lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestRun_shapedFromMainSwitchesWithoutPush(t *testing.T) {
+	_, stderr, cfg, g := shapedRepo(t, "main")
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v\n%s", err, stderr)
+	}
+	if !g.ran("switch develop") {
+		t.Error("shaped run from main did not switch to develop")
+	}
+	if g.ran("push") {
+		t.Error("pushed without --push")
+	}
+	if !strings.Contains(stderr.String(), "To publish: pk init --push") {
+		t.Errorf("no publish hint:\n%s", stderr)
+	}
+}
+
+func TestRun_shapedFromOtherBranchStaysPut(t *testing.T) {
+	_, stderr, cfg, g := shapedRepo(t, "feature/x")
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v\n%s", err, stderr)
+	}
+	if g.ran("switch ") {
+		t.Error("shaped run from a feature branch switched branches")
+	}
+	if !strings.Contains(stderr.String(), "You are on feature/x. All work happens on develop") {
+		t.Errorf("summary does not name the current and working branches:\n%s", stderr)
+	}
+}
+
+func TestRun_shapedDryRun(t *testing.T) {
+	t.Run("push from main", func(t *testing.T) {
+		_, stderr, cfg, g := shapedRepo(t, "main")
+		cfg.DryRun, cfg.Push = true, true
+		if err := Run(cfg); err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+		if g.ran("push") || g.ran("switch") {
+			t.Error("dry run acted")
+		}
+		out := stderr.String()
+		for _, want := range []string{"Would do:", "Push main, v0.0.0, and develop to origin", "Switch to develop"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("stderr lacks %q:\n%s", want, out)
+			}
+		}
+	})
+	t.Run("nothing from develop", func(t *testing.T) {
+		_, stderr, cfg, _ := shapedRepo(t, "develop")
+		cfg.DryRun = true
+		if err := Run(cfg); err != nil {
+			t.Fatalf("Run() error = %v", err)
+		}
+		if !strings.Contains(stderr.String(), "Nothing to do.") {
+			t.Errorf("stderr:\n%s", stderr)
+		}
+	})
+}
+
+func TestRun_shapedRefusals(t *testing.T) {
+	t.Run("push without origin", func(t *testing.T) {
+		_, _, cfg, g := shapedRepo(t, "develop")
+		g.noOrigin = true
+		cfg.Push = true
+		err := Run(cfg)
+		if err == nil || !strings.Contains(err.Error(), "--push needs an origin remote") {
+			t.Errorf("error = %v, want the origin refusal", err)
+		}
+	})
+	t.Run("dirty tree", func(t *testing.T) {
+		_, _, cfg, g := shapedRepo(t, "main")
+		g.dirty = true
+		if err := Run(cfg); err == nil || !strings.Contains(err.Error(), "not clean") {
+			t.Errorf("error = %v, want the dirty-tree refusal", err)
+		}
+	})
+	t.Run("no tag", func(t *testing.T) {
+		_, _, cfg, g := shapedRepo(t, "main")
+		g.tags = ""
+		err := Run(cfg)
+		if err == nil || !strings.Contains(err.Error(), "not plankit-shaped (no version tag)") {
+			t.Errorf("error = %v, want the not-shaped refusal naming the missing tag", err)
+		}
+		if g.ran("tag v0.0.0") || g.ran("commit") {
+			t.Error("refused run tagged or committed")
+		}
+	})
+	t.Run("no release.branch", func(t *testing.T) {
+		dir, _, cfg, g := shapedRepo(t, "main")
+		if err := os.WriteFile(filepath.Join(dir, ".pk.json"), []byte("{}"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		err := Run(cfg)
+		if err == nil || !strings.Contains(err.Error(), "no release.branch in .pk.json") {
+			t.Errorf("error = %v, want the not-shaped refusal naming release.branch", err)
+		}
+		if g.ran("commit") {
+			t.Error("refused run committed")
+		}
+	})
+	t.Run("release flag disagrees with config", func(t *testing.T) {
+		_, _, cfg, _ := shapedRepo(t, "trunk")
+		cfg.ReleaseBranch = "trunk"
+		err := Run(cfg)
+		if err == nil || !strings.Contains(err.Error(), `release.branch in .pk.json is "main", not "trunk"`) {
+			t.Errorf("error = %v, want the mismatch refusal", err)
+		}
+	})
+}
+
+func TestRun_shapedNotesMissingRuleset(t *testing.T) {
+	dir, stderr, cfg, g := shapedRepo(t, "develop")
+	if err := os.Remove(filepath.Join(dir, ".github", "protect-main.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".github", "protect-main.json")); err == nil {
+		t.Error("shaped run wrote the ruleset; that would need a commit")
+	}
+	if g.ran("commit") {
+		t.Error("shaped run committed")
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "Note: no .github/protect-main.json in this repository; pk init writes it on the first run only") {
+		t.Errorf("no note about the missing ruleset:\n%s", out)
+	}
+	if strings.Contains(out, "gh api") {
+		t.Errorf("printed an apply hint for a file that does not exist:\n%s", out)
+	}
+}
+
+func TestRun_noOriginStillWritesRuleset(t *testing.T) {
+	// A repository created locally and published later has no origin at
+	// init time. The host is unknown rather than known-not-GitHub, and pk
+	// init writes the ruleset once, before the branch split, so it is
+	// written now.
+	g := &fakeGit{branch: "main", noOrigin: true}
+	dir, stderr, cfg := newRepo(t, g)
+
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".github", "protect-main.json")); err != nil {
+		t.Errorf("ruleset not written without an origin: %v", err)
+	}
+	out := stderr.String()
+	if strings.Contains(out, "no GitHub remote") {
+		t.Errorf("said the ruleset does not apply, but the host is simply unknown:\n%s", out)
+	}
+	if !strings.Contains(out, "To import it: GitHub repo Settings") || strings.Contains(out, "gh api") {
+		t.Errorf("want the UI import hint and no gh command without a slug:\n%s", out)
+	}
+}
+
+func TestRun_rulesetFollowsReleaseBranch(t *testing.T) {
+	g := &fakeGit{branch: "trunk"}
+	dir, stderr, cfg := newRepo(t, g)
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".github", "protect-trunk.json")); err != nil {
+		t.Errorf("ruleset not written as protect-trunk.json: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "Wrote .github/protect-trunk.json") {
+		t.Errorf("stderr:\n%s", stderr)
 	}
 }

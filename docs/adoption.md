@@ -38,7 +38,7 @@ pk init --push
 # restart Claude Code
 ```
 
-That writes the `main` + `develop` topology into `.pk.json` (Layer 2), installs the managed files (Layer 1), tags `v0.0.0` and creates `develop` (Layer 3), commits it all, and drops `.github/protect-main.json` ready to import. There is no Layer 4: there is nothing to migrate from.
+That writes the `main` + `develop` topology into `.pk.json` (Layer 2), installs the managed files (Layer 1), tags `v0.0.0` and creates `develop` (Layer 3), commits it all, and drops `.github/protect-main.json` ready to import. Run it once; a re-run writes nothing and only publishes with `--push`. There is no Layer 4: there is nothing to migrate from.
 
 `pk init` refuses on a dirty working tree, a repository with no commits, or a branch that is not the release branch. An existing semver tag is not a refusal: the baseline step leaves it alone, so a project that is already anchored keeps its anchor. What `pk init` does not do is decide where an established project's baseline belongs, or migrate config from another release tool; for that, work through the layers below.
 

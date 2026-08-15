@@ -298,9 +298,21 @@ Error: working tree is not clean; commit or stash changes first
 Error: you are on "develop" but the release branch is "main"; switch to it first
 ```
 
-**Cause:** `pk init` anchors `v0.0.0` and the topology on the release branch, so it has to be the one checked out.
+**Cause:** On its first run `pk init` anchors `v0.0.0` and the topology on the release branch, so it has to be the one checked out. A repository that is already shaped (its working branch exists) does not hit this: nothing is anchored, so `pk init` runs from any branch.
 
 **Fix:** `git switch main`, then re-run. Or drop `--release` to use the branch you are on.
+
+### working branch exists but the repository is not shaped
+
+```
+Error: branch "develop" already exists but the repository is not plankit-shaped (no version tag); pk init shapes a fresh repository, so shape this one by hand
+```
+
+The parenthesis names what is missing: `no version tag`, `no release.branch in .pk.json`, or `release.branch in .pk.json is "main", not "trunk"`.
+
+**Cause:** `pk init` treats an existing working branch as proof it already ran, and from then on writes nothing on the release branch. A working branch on a repository with no anchor or no topology is an established project. Shaping it here would tag and commit on the release branch behind the working branch's back.
+
+**Fix:** Follow [adoption.md](adoption.md): `pk setup` for the managed files, `guard.branches` and `release.branch` in `.pk.json` for the topology, `pk setup --baseline` for the anchor.
 
 ### detached HEAD
 

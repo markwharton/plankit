@@ -6,7 +6,7 @@ Make a repository plankit-shaped: branch topology, managed files, the `v0.0.0` b
 
 ```bash
 pk init                      # shape the repo you are in
-pk init --push               # and publish the branches and tag to origin
+pk init --push               # and publish the branches and tag to origin (also on a shaped repo, from any branch)
 pk init --dry-run            # preview without changing anything
 pk init --no-setup           # release management only; no .claude footprint
 pk init --source work        # name the working branch something other than develop
@@ -15,26 +15,26 @@ pk init --release trunk      # release branch is trunk, not the current branch
 
 `pk init` runs on a repository that already exists and has at least one commit. It does not create the GitHub repository: that needs an authenticated GitHub call, and pk shells out only to git. Create the repo first with `gh repo create` or the web UI, then run `pk init` inside the clone.
 
-**`pk init` and [`pk setup`](pk-setup.md) act on different things.** `pk setup` sets up *pk* in a project: managed files, hooks, and modes. `pk init` sets up the *project*: branch topology, the baseline tag, the working branch, protection. That is why `pk init` runs `pk setup` internally: initializing a repository includes installing pk into it. It is also why `pk init` runs once, while you keep running `pk setup` on every pk upgrade.
+**`pk init` and [`pk setup`](pk-setup.md) act on different things.** `pk setup` sets up *pk* in a project: managed files, hooks, and modes. `pk init` sets up the *project*: branch topology, the baseline tag, the working branch, protection. That is why `pk init` runs `pk setup` internally: initializing a repository includes installing pk into it. It is also why `pk init` runs once, while you keep running `pk setup` on every pk upgrade. A second `pk init` writes nothing; see [Idempotency](#idempotency).
 
 ## How it works
 
 1. Resolves the git repository root and the release branch (the branch currently checked out, unless `--release` names one).
 2. Pre-flights: at least one commit, a clean working tree, the release branch checked out, and an `origin` remote when `--push` was given. Any failure refuses before anything is written.
-3. Decides whether the branch-protection ruleset applies: it is only meaningful on a GitHub remote.
+3. Decides whether the branch-protection ruleset applies. It is skipped only when `origin` is known not to be GitHub (a local path, say). No `origin` yet is not that case: the ruleset is written, since a later run cannot add it.
 4. Writes the branch topology into `.pk.json`: `guard.branches` naming the release branch, and `release.branch` naming it again. Existing keys are field-merged, not replaced.
 5. Runs the `pk setup` path: managed files and modes, plus the `v0.0.0` baseline tag on the current commit. With `--no-setup`, only the baseline tag: the managed files and modes are skipped.
-6. Writes `.github/protect-main.json` unless the project already has one.
+6. Writes `.github/protect-<release>.json` (`protect-main.json` for the default) unless the project already has one. The ruleset guards `refs/heads/<release>` by name.
 7. Commits everything written so far as `chore: pk setup` (`chore: pk init` with `--no-setup`).
 8. Creates the working branch (`develop` by default) from the release branch and switches to it.
 9. With `--push`: pushes the release branch, then the tag, then the working branch.
 10. Prints how to apply the ruleset, and what to do next.
 
-Every step is a no-op when already satisfied, so `pk init` is safe to re-run. It does not re-tag, re-create the branch, or make an empty commit.
+Every step is a no-op when already satisfied, so a re-run after a partial failure completes the job. Once the working branch exists the run takes a different path entirely: nothing is written or committed. See [Idempotency](#idempotency).
 
 ## Flags
 
-- **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, in that order. Never partial. Requires an `origin` remote. Shaping is the action; publishing is a separate decision.
+- **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, in that order. Never partial. Requires an `origin` remote. Shaping is the action; publishing is a separate decision. `--push` also works later, on a shaped repository, from any branch.
 - **--no-setup** — Skip the `pk setup` step: no managed files (CLAUDE.md, rules, skills, settings) and no hook modes. Everything that is repository shape still happens: the `.pk.json` topology, the `v0.0.0` tag, the working branch, the ruleset file, and `--push` if given. The commit is labelled `chore: pk init`. See [Release management without Claude Code](#release-management-without-claude-code).
 - **--source `<name>`** — Working branch to create. Defaults to `develop`.
 - **--release `<name>`** — Release branch. Defaults to `release.branch` in `.pk.json`, then to the branch currently checked out.
@@ -76,11 +76,26 @@ What still lands:
 
 The upgrade path is `pk setup`, run at any time from any branch. It field-merges the hook modes into the existing `.pk.json` alongside the preserved topology, and installs the managed files.
 
+### Idempotency
+
+`pk init` makes exactly one commit on the release branch, on the first run, before the working branch is created. That commit is the last thing both branches share by construction. Any later commit on the release branch is one the working branch lacks, and `pk release` cannot fast-forward past it.
+
+So the working branch is the switch. If it does not exist, the first-run steps above run, each a no-op when already satisfied: no re-tag, no re-created branch, no empty commit. If it exists, `pk init` writes and commits nothing. It confirms the rest of the shape: a version tag, and `release.branch` in `.pk.json` naming this release branch. It prints `Already shaped`, publishes with `--push`, and switches to the working branch if you are on the release branch. Nothing else moves: not the release branch, not the tag, not the working tree.
+
+Two consequences:
+
+- A shaped repository takes `pk init --push` from any branch, since nothing is anchored on this run. Shape locally, publish the working branch with `gh repo create --source . --push`, then `pk init --push` from where you are to publish the release branch and the tag.
+- Managed-file updates never arrive through `pk init`. On a shaped repository that is `pk setup`'s job, on the working branch, committed on its own.
+
+A working branch on a repository that is *not* otherwise shaped is refused. That is an established project; shaping it here would tag and commit on the release branch behind the working branch's back. See [adoption.md](adoption.md).
+
 ### The ruleset is written, not applied
 
-Applying a ruleset needs an authenticated GitHub call, and pk shells out only to git. `pk init` writes `.github/protect-main.json` and prints both ways to apply it: the GitHub UI import, and the `gh api` equivalent. The file on disk is the source of truth, so a project that customizes it keeps its own policy.
+Applying a ruleset needs an authenticated GitHub call, and pk shells out only to git. `pk init` writes `.github/protect-<release>.json` (`.github/protect-main.json` for the default) and prints both ways to apply it: the GitHub UI import, and the `gh api` equivalent. The file on disk is the source of truth, so a project that customizes it keeps its own policy.
 
-The ruleset is only written when `origin` points at GitHub. Elsewhere it would be an inert file nobody can apply, so pk says so with a `Note:` and skips it.
+The ruleset guards the release branch by name, `refs/heads/<release>`, not `~DEFAULT_BRANCH`. The release branch is the one `pk release` advances and `pk guard` blocks. It need not be the repository's default branch. A project that makes its working branch the default (so pull requests base there) must still have the release branch guarded. See [branch-protection.md](branch-protection.md).
+
+The ruleset is written on the first run only, when the setup commit is made. It is skipped when `origin` is known not to be GitHub (a local path, say). There it would be an inert file nobody can apply, so pk says so with a `Note:`. No `origin` yet is different: the host is unknown. A later run cannot add the file without a commit on the release branch, so it is written now. The summary says how to apply it once the repository is on GitHub. A repository shaped without one gets a `Note:` on re-run; add the ruleset by hand from [branch-protection.md](branch-protection.md).
 
 ### Where v0.0.0 lands
 
@@ -94,7 +109,7 @@ The commit is deliberately separate from the project's own work, matching the sh
 
 ### Where the release branch comes from
 
-By precedence: the `--release` flag, then `release.branch` in `.pk.json`, then the branch currently checked out. Reading `.pk.json` is what stops a re-run from redefining the project. `pk init` leaves you on the working branch, so inferring from there would rewrite `release.branch` and `guard.branches` to that branch, silently unguarding the real one. A re-run from the working branch is refused instead.
+By precedence: the `--release` flag, then `release.branch` in `.pk.json`, then the branch currently checked out. Reading `.pk.json` is what stops a re-run from redefining the project. `pk init` leaves you on the working branch, so inferring from there would rewrite `release.branch` and `guard.branches` to that branch, silently unguarding the real one. With `.pk.json` read first, a re-run from the working branch resolves the right release branch and takes the shaped path.
 
 `guard.branches` is seeded only when the project has not set it, since a project may legitimately guard more than the release branch.
 

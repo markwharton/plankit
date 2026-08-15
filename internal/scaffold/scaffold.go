@@ -83,9 +83,14 @@ func DefaultConfig() Config {
 	}
 }
 
-// Run makes the repository plankit-shaped. It is idempotent: every step is a
-// no-op when already satisfied, so a re-run after a partial failure completes
-// the job rather than erroring.
+// Run makes the repository plankit-shaped.
+//
+// Two paths, decided by whether the working branch exists. It is created
+// last, so its presence means a run completed; from then on pk init writes
+// and commits nothing, because a commit on the release branch after the split
+// is one the working branch lacks and pk release cannot fast-forward past.
+// Before the split every step is a no-op when already satisfied, so a re-run
+// after a partial failure completes the job rather than erroring.
 func Run(cfg Config) error {
 	return runShape(cfg, cfg.ProjectDir)
 }
@@ -109,14 +114,22 @@ func runShape(cfg Config, dir string) error {
 		return fmt.Errorf("source branch %q is the release branch; they must differ", sourceBranch)
 	}
 
+	if branchExists(cfg, projectDir, sourceBranch) {
+		return runShaped(cfg, projectDir, releaseBranch, sourceBranch)
+	}
+
 	if err := preflight(cfg, projectDir, releaseBranch); err != nil {
 		return err
 	}
 
-	// The ruleset is only meaningful on a GitHub remote. Elsewhere it would be
-	// an inert file nobody can apply, so say so and skip it.
-	slug := repoSlug(cfg, projectDir)
-	protect := slug != ""
+	// The ruleset is only meaningful on a GitHub remote. A remote that is
+	// known to be something else would get an inert file nobody can apply, so
+	// say so and skip it. No remote yet is not that case: the host is unknown,
+	// GitHub is where the ruleset applies, and pk init writes it once, before
+	// the branch split, so a later run cannot add it without diverging the
+	// branches. Write it now and let the summary say how to apply it.
+	origin, hasOrigin := originURL(cfg, projectDir)
+	protect := !hasOrigin || repoSlug(origin) != ""
 	if !protect {
 		msg.Notef(cfg.Stderr, "no GitHub remote, so the branch-protection ruleset does not apply here")
 	}
@@ -179,6 +192,103 @@ func runShape(cfg Config, dir string) error {
 	return summarize(cfg, projectDir, releaseBranch, sourceBranch, protect)
 }
 
+// runShaped is the path for a repository whose working branch already exists.
+// It writes and commits nothing. It confirms the rest of the shape is there,
+// publishes with --push, and moves off the release branch; anything else is
+// pk setup's job, on the working branch.
+func runShaped(cfg Config, projectDir, releaseBranch, sourceBranch string) error {
+	tag, err := checkShape(cfg, projectDir, releaseBranch, sourceBranch)
+	if err != nil {
+		return err
+	}
+	current, err := currentBranch(cfg, projectDir)
+	if err != nil {
+		return err
+	}
+	if err := git.CheckCleanTree(cfg.GitExec, projectDir); err != nil {
+		return err
+	}
+	if cfg.Push {
+		if _, ok := originURL(cfg, projectDir); !ok {
+			return fmt.Errorf("--push needs an origin remote, and this repository has none")
+		}
+	}
+
+	fmt.Fprintf(cfg.Stderr, "Already shaped: release branch %s, working branch %s, anchored at %s\n", releaseBranch, sourceBranch, tag)
+
+	origin, hasOrigin := originURL(cfg, projectDir)
+	protect := !hasOrigin || repoSlug(origin) != ""
+	if protect {
+		if _, err := cfg.ReadFile(filepath.Join(projectDir, filepath.FromSlash(setup.RulesetPath(releaseBranch)))); err != nil {
+			// Written on the first run only; a repository shaped before it had
+			// a remote may lack it, and adding it here would mean a commit.
+			msg.Notef(cfg.Stderr, "no %s in this repository; pk init writes it on the first run only", setup.RulesetPath(releaseBranch))
+			protect = false
+		}
+	}
+
+	if cfg.DryRun {
+		return previewShaped(cfg, releaseBranch, sourceBranch, current)
+	}
+
+	if cfg.Push {
+		if err := publish(cfg, projectDir, releaseBranch, sourceBranch); err != nil {
+			return err
+		}
+	}
+
+	if current == releaseBranch {
+		if err := switchTo(cfg, projectDir, sourceBranch); err != nil {
+			return err
+		}
+		current = sourceBranch
+	}
+
+	return summarizeShaped(cfg, projectDir, releaseBranch, sourceBranch, current, protect)
+}
+
+// checkShape confirms that a repository whose working branch exists carries
+// the rest of the shape: a semver anchor and release.branch in .pk.json naming
+// this release branch. Returns the anchor tag. Anything less is an established
+// repository that happens to have the branch, which pk init does not shape:
+// running the first-run steps there would tag and commit on the release
+// branch behind the working branch's back.
+func checkShape(cfg Config, projectDir, releaseBranch, sourceBranch string) (string, error) {
+	refuse := func(reason string) error {
+		return fmt.Errorf("branch %q already exists but the repository is not plankit-shaped (%s); pk init shapes a fresh repository, so shape this one by hand", sourceBranch, reason)
+	}
+	conf, err := config.Load(cfg.ReadFile, filepath.Join(projectDir, paths.PkConfig))
+	if err != nil {
+		return "", err
+	}
+	if conf.Release.Branch == "" {
+		return "", refuse("no release.branch in " + paths.PkConfig)
+	}
+	if conf.Release.Branch != releaseBranch {
+		return "", refuse(fmt.Sprintf("release.branch in %s is %q, not %q", paths.PkConfig, conf.Release.Branch, releaseBranch))
+	}
+	tag, ok := readiness.ValidSemverTag(cfg.GitExec, projectDir)
+	if !ok {
+		return "", refuse("no version tag")
+	}
+	return tag, nil
+}
+
+// branchExists reports whether a local branch of that name exists.
+func branchExists(cfg Config, projectDir, name string) bool {
+	_, err := cfg.GitExec(projectDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+name)
+	return err == nil
+}
+
+// originURL returns the origin remote's URL and whether there is one.
+func originURL(cfg Config, projectDir string) (string, bool) {
+	out, err := cfg.GitExec(projectDir, "remote", "get-url", "origin")
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimSpace(out), true
+}
+
 // resolveReleaseBranch returns the release branch by precedence: the --release
 // flag, then release.branch already in .pk.json, then the branch currently
 // checked out. Same shape as pk setup's mode resolution.
@@ -235,7 +345,7 @@ func preflight(cfg Config, projectDir, releaseBranch string) error {
 		return err
 	}
 	if cfg.Push {
-		if _, err := cfg.GitExec(projectDir, "remote", "get-url", "origin"); err != nil {
+		if _, ok := originURL(cfg, projectDir); !ok {
 			return fmt.Errorf("--push needs an origin remote, and this repository has none")
 		}
 	}
@@ -263,7 +373,28 @@ func preview(cfg Config, projectDir, releaseBranch, sourceBranch string, protect
 		msg.Itemf(cfg.Stderr, "Push %s, v0.0.0, and %s to origin", releaseBranch, sourceBranch)
 	}
 	if protect {
-		msg.Itemf(cfg.Stderr, "Apply the branch-protection ruleset to %s", repoSlug(cfg, projectDir))
+		if origin, ok := originURL(cfg, projectDir); ok {
+			msg.Itemf(cfg.Stderr, "Apply the branch-protection ruleset to %s", repoSlug(origin))
+		} else {
+			msg.Itemf(cfg.Stderr, "Apply the branch-protection ruleset once origin points at GitHub")
+		}
+	}
+	return nil
+}
+
+// previewShaped prints what a real run on an already-shaped repository would
+// do, which is at most a publish and a branch switch.
+func previewShaped(cfg Config, releaseBranch, sourceBranch, current string) error {
+	if !cfg.Push && current != releaseBranch {
+		fmt.Fprintln(cfg.Stderr, "Nothing to do.")
+		return nil
+	}
+	msg.Section(cfg.Stderr, "Would do")
+	if cfg.Push {
+		msg.Itemf(cfg.Stderr, "Push %s, v0.0.0, and %s to origin", releaseBranch, sourceBranch)
+	}
+	if current == releaseBranch {
+		msg.Itemf(cfg.Stderr, "Switch to %s", sourceBranch)
 	}
 	return nil
 }
@@ -319,39 +450,28 @@ func publish(cfg Config, projectDir, releaseBranch, sourceBranch string) error {
 // createSourceBranch creates the working branch off the release branch and
 // switches to it.
 func createSourceBranch(cfg Config, projectDir, sourceBranch string) error {
-	exists := false
-	if _, err := cfg.GitExec(projectDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+sourceBranch); err == nil {
-		exists = true
-	}
-	if !exists {
+	if !branchExists(cfg, projectDir, sourceBranch) {
 		if _, err := cfg.GitExec(projectDir, "branch", sourceBranch); err != nil {
 			return fmt.Errorf("failed to create branch %s: %w", sourceBranch, err)
 		}
 		fmt.Fprintf(cfg.Stderr, "Created branch %s\n", sourceBranch)
 	}
-	if _, err := cfg.GitExec(projectDir, "switch", sourceBranch); err != nil {
-		return fmt.Errorf("failed to switch to %s: %w", sourceBranch, err)
+	return switchTo(cfg, projectDir, sourceBranch)
+}
+
+// switchTo checks out the named branch.
+func switchTo(cfg Config, projectDir, branch string) error {
+	if _, err := cfg.GitExec(projectDir, "switch", branch); err != nil {
+		return fmt.Errorf("failed to switch to %s: %w", branch, err)
 	}
 	return nil
 }
 
-// summarize closes with where the user is and what is left to do.
+// summarize closes a first run with where the user is and what is left to do.
 func summarize(cfg Config, projectDir, releaseBranch, sourceBranch string, protect bool) error {
 	fmt.Fprintf(cfg.Stderr, "\nYou are on %s. All work happens here; %s advances only via pk release.\n", sourceBranch, releaseBranch)
-
-	if protect {
-		fmt.Fprintln(cfg.Stderr, "\nBranch protection is not applied; pk does not call GitHub.")
-		msg.Hintf(cfg.Stderr, "To import it: GitHub repo Settings, Rules, New ruleset, Import a ruleset, then choose "+setup.RulesetPath(releaseBranch))
-		if slug := repoSlug(cfg, projectDir); slug != "" {
-			msg.Or(cfg.Stderr, fmt.Sprintf("gh api --method POST repos/%s/rulesets --input %s", slug, setup.RulesetPath(releaseBranch)))
-		}
-	}
-
-	if !cfg.Push {
-		fmt.Fprintln(cfg.Stderr, "\nNothing was pushed.")
-		msg.Hintf(cfg.Stderr, "To publish: pk init --push")
-	}
-
+	summarizeProtection(cfg, projectDir, releaseBranch, protect)
+	summarizePush(cfg)
 	if cfg.NoSetup {
 		fmt.Fprintf(cfg.Stderr, "\nRelease management is ready: pk changelog on %s, then pk release.\n", sourceBranch)
 		msg.Hintf(cfg.Stderr, "To add the Claude Code wiring later: pk setup")
@@ -361,14 +481,47 @@ func summarize(cfg Config, projectDir, releaseBranch, sourceBranch string, prote
 	return nil
 }
 
-// repoSlug returns the owner/repo of origin, or "" when there is no origin or
-// the URL is not a recognisable host path.
-func repoSlug(cfg Config, projectDir string) string {
-	out, err := cfg.GitExec(projectDir, "remote", "get-url", "origin")
-	if err != nil {
-		return ""
+// summarizeShaped closes a run on an already-shaped repository. Nothing was
+// installed, so there is no next step beyond publishing and protection.
+func summarizeShaped(cfg Config, projectDir, releaseBranch, sourceBranch, current string, protect bool) error {
+	if current == sourceBranch {
+		fmt.Fprintf(cfg.Stderr, "\nYou are on %s. All work happens here; %s advances only via pk release.\n", sourceBranch, releaseBranch)
+	} else {
+		fmt.Fprintf(cfg.Stderr, "\nYou are on %s. All work happens on %s; %s advances only via pk release.\n", current, sourceBranch, releaseBranch)
 	}
-	u := git.ParseRepoURL(out)
+	summarizeProtection(cfg, projectDir, releaseBranch, protect)
+	summarizePush(cfg)
+	return nil
+}
+
+// summarizeProtection says how to apply the ruleset pk wrote, when one applies.
+func summarizeProtection(cfg Config, projectDir, releaseBranch string, protect bool) {
+	if !protect {
+		return
+	}
+	path := setup.RulesetPath(releaseBranch)
+	fmt.Fprintln(cfg.Stderr, "\nBranch protection is not applied; pk does not call GitHub.")
+	msg.Hintf(cfg.Stderr, "To import it: GitHub repo Settings, Rules, New ruleset, Import a ruleset, then choose "+path)
+	if origin, ok := originURL(cfg, projectDir); ok {
+		if slug := repoSlug(origin); slug != "" {
+			msg.Or(cfg.Stderr, fmt.Sprintf("gh api --method POST repos/%s/rulesets --input %s", slug, path))
+		}
+	}
+}
+
+// summarizePush says how to publish when nothing was pushed.
+func summarizePush(cfg Config) {
+	if cfg.Push {
+		return
+	}
+	fmt.Fprintln(cfg.Stderr, "\nNothing was pushed.")
+	msg.Hintf(cfg.Stderr, "To publish: pk init --push")
+}
+
+// repoSlug returns the owner/repo of a remote URL, or "" when the URL is not
+// a recognisable host path.
+func repoSlug(remoteURL string) string {
+	u := git.ParseRepoURL(remoteURL)
 	// ParseRepoURL leaves a non-URL remote (a local path, say) untouched.
 	// Without the scheme there is no host, so there is no owner/repo to name
 	// and no gh command worth printing.

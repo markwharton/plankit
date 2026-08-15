@@ -62,7 +62,7 @@ pk init --push
 - **Visibility:** Public by default. Private repos belong to an org and skip the license.
 - **License:** MIT for public repos. Private repos have no license file.
 - **The anchor commit.** `pk init` tags `v0.0.0` on whatever commit is at HEAD, so the repo needs one first. `gh repo create --license MIT` creates it (the LICENSE commit). Private repos have no license file and so no commit, which is why the private template adds `git commit --allow-empty`.
-- **Branch protection.** `pk init` writes `.github/protect-main.json` but does not apply it; it prints the `gh api` command. Run that after the script, or import the file through the GitHub UI.
+- **Branch protection.** `pk init` writes `.github/protect-main.json` (pinned to `refs/heads/main`) but does not apply it; it prints the `gh api` command. Run that after the script, or import the file through the GitHub UI.
 - **After init.** The script leaves you on `develop`. Restart Claude Code so the hooks load, then run `/pk-configure`.
 
 ## Out of scope
