@@ -247,3 +247,40 @@ func TestWriteRuleset_writeFailure(t *testing.T) {
 		t.Errorf("error = %q, want it to name the failed step", err)
 	}
 }
+
+func TestRenderRuleset_rejectsAMalformedTemplate(t *testing.T) {
+	// The template is embedded, so these branches only fire if the file
+	// shipped in the binary is broken. Swap it for a bad one to prove the
+	// error is reported rather than a half-rendered ruleset written.
+	saved := rulesetTemplate
+	t.Cleanup(func() { rulesetTemplate = saved })
+
+	cases := map[string]string{
+		"not an object":       `[]`,
+		"conditions not json": `{"name":"x","conditions":"nope"}`,
+		"ref_name not json":   `{"name":"x","conditions":{"ref_name":42}}`,
+	}
+	for name, tmpl := range cases {
+		t.Run(name, func(t *testing.T) {
+			rulesetTemplate = []byte(tmpl)
+			if _, err := RenderRuleset("main"); err == nil {
+				t.Errorf("RenderRuleset() succeeded with template %s", tmpl)
+			}
+		})
+	}
+}
+
+func TestWriteRuleset_renderFailureWritesNothing(t *testing.T) {
+	saved := rulesetTemplate
+	t.Cleanup(func() { rulesetTemplate = saved })
+	rulesetTemplate = []byte(`[]`)
+
+	dir := t.TempDir()
+	wrote, err := WriteRuleset(rulesetConfig(), dir, "main")
+	if err == nil || wrote {
+		t.Fatalf("WriteRuleset() = (%v, %v), want an error and no write", wrote, err)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, ".github", "protect-main.json")); statErr == nil {
+		t.Error("a file was written despite the render failing")
+	}
+}

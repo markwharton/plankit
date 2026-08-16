@@ -1181,3 +1181,82 @@ func TestRun_rulesetFollowsReleaseBranch(t *testing.T) {
 		t.Errorf("stderr:\n%s", stderr)
 	}
 }
+
+func TestRun_shapedGitFailures(t *testing.T) {
+	// The shaped path issues few git commands, and each one that can fail
+	// must surface as an error naming the step, never as a silent no-op.
+	tests := []struct {
+		name    string
+		branch  string
+		push    bool
+		failOn  string
+		wantErr string
+	}{
+		{name: "current branch unreadable", branch: "main", failOn: "branch --show-current", wantErr: "failed to read the current branch"},
+		{name: "status unreadable", branch: "main", failOn: "status --porcelain", wantErr: "git status failed"},
+		{name: "push fails", branch: "develop", push: true, failOn: "push -u origin main", wantErr: "failed to push main"},
+		{name: "switch fails", branch: "main", failOn: "switch develop", wantErr: "failed to switch to develop"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, cfg, g := shapedRepo(t, tt.branch)
+			g.failOn = tt.failOn
+			cfg.Push = tt.push
+			err := Run(cfg)
+			if err == nil {
+				t.Fatalf("Run() succeeded despite %q failing", tt.failOn)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err, tt.wantErr)
+			}
+			if g.ran("commit") || g.ran("tag v0.0.0") {
+				t.Error("a failing shaped run still wrote or committed")
+			}
+		})
+	}
+}
+
+func TestRun_shapedDetachedHead(t *testing.T) {
+	_, _, cfg, _ := shapedRepo(t, "")
+	err := Run(cfg)
+	if err == nil || !strings.Contains(err.Error(), "HEAD is detached") {
+		t.Errorf("error = %v, want the detached-HEAD refusal", err)
+	}
+}
+
+func TestRun_dryRunWithoutOriginNamesTheRulesetStep(t *testing.T) {
+	// No origin: the preview still lists the ruleset, and says the apply
+	// step waits for a GitHub remote rather than printing an empty slug.
+	g := &fakeGit{branch: "main", noOrigin: true}
+	_, stderr, cfg := newRepo(t, g)
+	cfg.DryRun = true
+	if err := Run(cfg); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "Write .github/protect-main.json") {
+		t.Errorf("preview omits the ruleset without an origin:\n%s", out)
+	}
+	if !strings.Contains(out, "once origin points at GitHub") {
+		t.Errorf("preview does not defer the apply step:\n%s", out)
+	}
+}
+
+func TestRun_shapedUnreadableConfig(t *testing.T) {
+	// The shaped path reads .pk.json to confirm the shape; a corrupt file is
+	// an error, never treated as "no release.branch".
+	dir, _, cfg, g := shapedRepo(t, "main")
+	if err := os.WriteFile(filepath.Join(dir, ".pk.json"), []byte("{not json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	err := Run(cfg)
+	if err == nil {
+		t.Fatal("Run() succeeded with a corrupt .pk.json")
+	}
+	if strings.Contains(err.Error(), "not plankit-shaped") {
+		t.Errorf("corrupt config was reported as an unshaped repository: %v", err)
+	}
+	if g.ran("commit") || g.ran("switch") || g.ran("push") {
+		t.Error("a refused shaped run acted")
+	}
+}
