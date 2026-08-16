@@ -45,6 +45,7 @@ These rules apply when working *on* plankit: authoring the CLI, writing runtime 
 
 ## Repo Checks
 
+- **Run `make cover` before `/ship`; Codecov's patch check is not a pre-flight.** The flow is work locally on `develop`, then `/ship` is the first push, so Codecov's patch status (`codecov/patch`, target 84%) lands on the release commit after it is public. `make cover` prints per-function coverage for every non-test `.go` file changed since the latest tag; an empty list is the goal, and anything on it is what Codecov will flag. Cover the reachable branches (error paths through the Config mocks; swap an embedded input for a bad one to reach parse-error branches) rather than lowering the target.
 - **All commands resolve to the git root via `git.RepoRoot`.** Directory resolution is uniform: `git.RepoRoot(stat, dir)` walks parent directories for `.git` (no subprocess) and returns the root path. There is no separate subprocess verification step. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).
 
 ## Security Scanning

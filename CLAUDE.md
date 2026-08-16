@@ -29,6 +29,7 @@ make install        # Install to GOPATH/bin
 make lint           # Run go vet + gofmt drift check
 make rules-lint     # Lint .claude/rules: hidden chars + house style (--strict)
 make vuln           # Scan for known vulnerabilities (govulncheck)
+make cover          # Per-function coverage for .go files changed since the latest tag; run before /ship
 pk changelog        # Generate CHANGELOG.md and commit (no tag)
 pk changelog --undo # Unwind an unpushed release commit
 pk release          # Read Release-Tag trailer, create tag, merge, and push

@@ -8,7 +8,7 @@ export CGO_ENABLED := 0
 # Build flags for smaller binaries
 LDFLAGS=-s -w -X github.com/markwharton/plankit/internal/version.version=$(VERSION)
 
-.PHONY: all build clean test install fmt lint vet fmtcheck rules-lint vuln build-all release release-dry
+.PHONY: all build clean test install fmt lint vet fmtcheck rules-lint vuln cover build-all release release-dry
 
 all: build
 
@@ -64,6 +64,18 @@ rules-lint: build
 # the database is fetched at run time. Exits non-zero on findings, gating CI.
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+# Coverage of what the next release would ship: per-function coverage for
+# every non-test .go file changed since the latest tag, functions below
+# 100% only. Codecov judges the release diff after the push; this is the
+# same view before it. An empty list means the diff is fully covered.
+cover:
+	@mkdir -p $(BUILD_DIR)
+	@go test -coverprofile=$(BUILD_DIR)/cover.out ./... >/dev/null
+	@changed=$$(git diff --name-only $$(git describe --tags --abbrev=0) -- '*.go' | grep -v '_test\.go$$' | sed 's|^|github.com/markwharton/plankit/|'); \
+	if [ -z "$$changed" ]; then echo "No .go files changed since $$(git describe --tags --abbrev=0)"; exit 0; fi; \
+	echo "Functions below 100% in files changed since $$(git describe --tags --abbrev=0):"; \
+	go tool cover -func=$(BUILD_DIR)/cover.out | grep -F "$$changed" | awk '$$3+0 < 100 {print "  " $$0}'
 
 # Release: validate and push to trigger CI build
 release:
