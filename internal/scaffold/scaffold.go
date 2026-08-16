@@ -102,7 +102,13 @@ func runShape(cfg Config, dir string) error {
 		return fmt.Errorf("this is not a git repository. Run git init first")
 	}
 
-	releaseBranch, err := resolveReleaseBranch(cfg, projectDir)
+	// One read of .pk.json for the whole run: the release branch comes from
+	// it, and the shaped path confirms the shape against the same view.
+	conf, err := config.Load(cfg.ReadFile, filepath.Join(projectDir, paths.PkConfig))
+	if err != nil {
+		return err
+	}
+	releaseBranch, err := resolveReleaseBranch(cfg, projectDir, conf)
 	if err != nil {
 		return err
 	}
@@ -115,7 +121,7 @@ func runShape(cfg Config, dir string) error {
 	}
 
 	if branchExists(cfg, projectDir, sourceBranch) {
-		return runShaped(cfg, projectDir, releaseBranch, sourceBranch)
+		return runShaped(cfg, projectDir, conf, releaseBranch, sourceBranch)
 	}
 
 	if err := preflight(cfg, projectDir, releaseBranch); err != nil {
@@ -196,8 +202,8 @@ func runShape(cfg Config, dir string) error {
 // It writes and commits nothing. It confirms the rest of the shape is there,
 // publishes with --push, and moves off the release branch; anything else is
 // pk setup's job, on the working branch.
-func runShaped(cfg Config, projectDir, releaseBranch, sourceBranch string) error {
-	tag, err := checkShape(cfg, projectDir, releaseBranch, sourceBranch)
+func runShaped(cfg Config, projectDir string, conf config.PkConfig, releaseBranch, sourceBranch string) error {
+	tag, err := checkShape(cfg, projectDir, conf, releaseBranch, sourceBranch)
 	if err != nil {
 		return err
 	}
@@ -253,13 +259,9 @@ func runShaped(cfg Config, projectDir, releaseBranch, sourceBranch string) error
 // repository that happens to have the branch, which pk init does not shape:
 // running the first-run steps there would tag and commit on the release
 // branch behind the working branch's back.
-func checkShape(cfg Config, projectDir, releaseBranch, sourceBranch string) (string, error) {
+func checkShape(cfg Config, projectDir string, conf config.PkConfig, releaseBranch, sourceBranch string) (string, error) {
 	refuse := func(reason string) error {
 		return fmt.Errorf("branch %q already exists but the repository is not plankit-shaped (%s); pk init shapes a fresh repository, so shape this one by hand", sourceBranch, reason)
-	}
-	conf, err := config.Load(cfg.ReadFile, filepath.Join(projectDir, paths.PkConfig))
-	if err != nil {
-		return "", err
 	}
 	if conf.Release.Branch == "" {
 		return "", refuse("no release.branch in " + paths.PkConfig)
@@ -297,13 +299,9 @@ func originURL(cfg Config, projectDir string) (string, bool) {
 // leaves you on the working branch, so a second run would otherwise infer that
 // branch as the release branch and overwrite release.branch and guard.branches
 // with it, silently unguarding the real release branch.
-func resolveReleaseBranch(cfg Config, projectDir string) (string, error) {
+func resolveReleaseBranch(cfg Config, projectDir string, conf config.PkConfig) (string, error) {
 	if cfg.ReleaseBranch != "" {
 		return cfg.ReleaseBranch, nil
-	}
-	conf, err := config.Load(cfg.ReadFile, filepath.Join(projectDir, paths.PkConfig))
-	if err != nil {
-		return "", err
 	}
 	if conf.Release.Branch != "" {
 		return conf.Release.Branch, nil
