@@ -25,6 +25,45 @@ make rules-lint # Lint .claude/rules: hidden chars + house style
 make fmt        # Format code
 ```
 
+## Documentation
+
+The prose standard for `docs/` and `README.md` lives in `.claude/rules/plankit-development.md` (Documentation Prose) and loads into every Claude Code session in this repo. For a full audit-and-rewrite pass, paste this into a session:
+
+```text
+Audit and rewrite every file under docs/ except docs/plans/, plus
+README.md, against the Documentation Prose rules (already loaded from
+.claude/rules/). No fact may change in the style pass — only how it
+is said.
+
+1. Audit first: read every doc and list each violation with file:line,
+   the exact sentence, the rule it breaks, and the fact it hides. Show
+   me the full list before rewriting anything.
+2. Verify before rewriting: confirm each behavior sentence in the Go
+   source or reproduce it in a scratch repository. Where doc and code
+   disagree, record it as a fact correction instead of restyling it.
+3. Recurring phrases get the identical replacement everywhere. Grep the
+   whole repo, including --help strings and error messages in internal/;
+   where source strings share a doc's wording, list the pair with a
+   recommendation — never desync them one-sidedly.
+4. Re-read every touched section in full before showing the diff, not
+   only the sentences you changed.
+5. Commit fact corrections separately from style rewrites (both docs:),
+   corrections first.
+6. Rule bullets (.claude/rules/ and internal/setup/rules/) are
+   audit-and-propose: show each proposed rewrite old and new, and I
+   approve each bullet individually — these are behavioral instructions
+   to the model, so meaning drift matters more than style. Shipped
+   rules follow the pk-managed file procedure: update the embedded
+   source and the local copy together and recompute pk_sha256 per
+   CLAUDE.md. Run make rules-lint after.
+
+Verify: make test and make lint pass; a final grep proves each replaced
+phrase is gone from docs/; your report lists every fact correction and
+every doc/source shared-wording pair.
+```
+
+The em dash check in `pk rules --lint` began as a proxy for this standard, added when nothing checked the content itself: the LLM tell was never the glyph, it was the vague clause the glyph joined. After a full rewrite pass has run under the standard, revisit the check. Removing it changes pk's shipped linter for every pk-managed project, so that is its own commit and release note, never a side effect.
+
 ## Workflow
 
 All changes go through `develop` — never commit directly to `main`.
