@@ -77,7 +77,7 @@ if (!secret || secret.length < 32) {
 
 ## Squash Merge and Release Tags
 
-**When this applies:** any workflow where you tag a commit on one branch and then squash-merge that branch into another. `pk release`'s direct merge flow is not affected — it tags on the fast-forwarded release branch, so the tag always points at a commit reachable from the release branch. This is a general warning for manual tagging or other tools that tag on a feature branch before a PR is squashed.
+**When this applies:** any workflow where you tag a commit on one branch and then squash-merge that branch into another. `pk release`'s direct merge flow is not affected — it tags on the fast-forwarded release branch, so the tag always points at a commit reachable from the release branch. The warning is general: it covers manual tagging and other tools that tag on a feature branch before a PR is squashed.
 
 **The pattern:** A tag is created at commit C on a source branch. The PR is squash-merged to main, creating a new commit S. The tag still points at C, which is now orphaned — it's not an ancestor of main.
 

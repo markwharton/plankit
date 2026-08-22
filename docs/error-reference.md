@@ -165,7 +165,7 @@ Error: merge failed; main has diverged from develop (not fast-forward). Resolve 
 
 **Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
 
-**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge. That keeps the `Release-Tag` trailer at the released tip instead of burying it under the merge commit. `pk release` reads the trailer from HEAD only:
+**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge. Undoing first keeps the `Release-Tag` trailer at the released tip; `pk release` reads the trailer from HEAD only:
 
 1. `pk changelog --undo` — drop the unpushed release commit (skip if you have not run `pk changelog` yet).
 2. `git merge origin/main` — merge the release branch into your source branch to reconcile the divergent commit. That commit is already pushed and can't be dropped (never force push), so merging is how you keep it.
@@ -309,7 +309,7 @@ Error: branch "develop" already exists but the repository is not plankit-shaped 
 
 The parenthesis names what is missing: `no version tag`, `no release.branch in .pk.json`, or `release.branch in .pk.json is "main", not "trunk"`.
 
-**Cause:** `pk init` treats an existing working branch as proof it already ran, and from then on writes nothing on the release branch. A working branch on a repository with no anchor or no topology is an established project. Shaping it here would tag and commit on the release branch behind the working branch's back.
+**Cause:** `pk init` treats an existing working branch as proof it already ran, and from then on writes nothing on the release branch. A working branch on a repository with no anchor or no topology is an established project. Shaping it here would tag and commit on the release branch, unreachable from the working branch.
 
 **Fix:** Follow [adoption.md](adoption.md): `pk setup` for the managed files, `guard.branches` and `release.branch` in `.pk.json` for the topology, `pk setup --baseline` for the anchor.
 
@@ -382,7 +382,7 @@ runtime.schedinit()
 runtime.rt0_go()
 ```
 
-**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`). The process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure. `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. This is memory pressure on the machine, not a pk leak.
+**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`). The process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure. `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. The failure is memory pressure on the machine, not a pk leak.
 
 **Fix:** Nothing is left unguarded. Go fatal errors exit with status 2, which Claude Code treats as a blocking error for PreToolUse hooks. The command was blocked, and retrying it succeeds once memory frees. If it recurs, find what is consuming memory. On Windows, Event Viewer > System log > Event ID 2004 names the largest consumers. Also check the pagefile is not disabled or capped small.
 

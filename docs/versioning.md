@@ -6,7 +6,7 @@ How pk manages version numbers across a release.
 
 Git tags are the single source of truth for version. `pk changelog` reads the latest tag, computes the next version from conventional commits, and writes that version into whatever files need it. Nothing else determines the version — not a constant in source, not a field in package.json, not a variable in a script. Those are all downstream targets that receive the version at release time.
 
-**The version flows one way.** Never read it back out of a downstream target: reading the version from package.json or a source constant at build or generate time and writing the result into committed files bakes in whatever the last release left behind, and those files lag every release. Files that must carry the version are wired into the changelog config and stamped at release time.
+**The version flows one way.** Never read it back out of a downstream target: reading the version from package.json or a source constant at build or generate time and writing the result into committed files copies the previous release's version forward, and those files lag every release. Files that must carry the version are wired into the changelog config and stamped at release time.
 
 ## Flowing the version into artifacts
 
@@ -29,7 +29,7 @@ For projects with a root-level `"version"` field in a JSON file (Node.js, Deno, 
 }
 ```
 
-**When to use:** The version lives in a JSON file that tools read at runtime or publish time (`npm publish` reads `package.json`). No build step needed to surface the version.
+**When to use:** The version is stored in a JSON file that tools read at runtime or publish time (`npm publish` reads `package.json`). No build step needed to surface the version.
 
 ### pk pin --name — source constants
 
@@ -58,7 +58,7 @@ Examples across languages:
 
 `pk pin --name` matches the first occurrence in the file. For TOML files like `Cargo.toml`, this works when `[package]` appears before `[dependencies]`, which is the conventional layout. If the file structure puts a different `version` key first, the match will be wrong. Structural TOML support via `versionFiles` would eliminate this limitation.
 
-**When to use:** The binary or package reads its version from a source constant at runtime, and the build is a simple `go build` / `pip install` / `cargo build` with no ldflags or injection step. The version lives in the source file and `pk pin` keeps it in sync with the tag.
+**When to use:** The binary or package reads its version from a source constant at runtime, and the build is a simple `go build` / `pip install` / `cargo build` with no ldflags or injection step. The version is stored in the source file and `pk pin` keeps it in sync with the tag.
 
 ### ldflags — build-time injection
 
@@ -89,11 +89,11 @@ The `preCommit` hook pins a shell-variable script (for cloud sandbox bootstrap) 
 }
 ```
 
-**When to use:** The project cross-compiles for multiple platforms, uses CI to build release binaries, or has a Makefile that already derives the version from git. The version is never committed to source — it's computed from the tag at build time. This avoids a source-level version that could drift from the tag.
+**When to use:** The project cross-compiles for multiple platforms, uses CI to build release binaries, or has a Makefile that already derives the version from git. The version is never committed to source — it's computed from the tag at build time. Computing at build time avoids a source-level version that could drift from the tag.
 
 ### Single tag, many files
 
-Monorepos with a unified-version policy release every package at the same version, governed by one tag. The `preCommit` hook fans the tag-derived version out to every file that needs it:
+Monorepos with a unified-version policy release every package at the same version, governed by one tag. The `preCommit` hook writes the tag-derived version into every configured file:
 
 ```json
 {
@@ -105,7 +105,7 @@ Monorepos with a unified-version policy release every package at the same versio
 }
 ```
 
-This works when the ecosystem handles cross-package references natively (pnpm's `workspace:*` protocol never resolves a pinned version, so bumping each package independently is safe). Not every monorepo tool handles this cleanly — `npm version --workspaces`, for example, bumps each package's own version but doesn't rewrite cross-refs, then fails trying to resolve the old version from the registry. When the ecosystem command doesn't cover cross-refs, use a [hook script](#hook-scripts--custom-version-sync) instead.
+The ecosystem-command route works when the ecosystem handles cross-package references natively (pnpm's `workspace:*` protocol never resolves a pinned version, so bumping each package independently is safe). Not every monorepo tool handles this cleanly — `npm version --workspaces`, for example, bumps each package's own version but doesn't rewrite cross-refs, then fails trying to resolve the old version from the registry. When the ecosystem command doesn't cover cross-refs, use a [hook script](#hook-scripts--custom-version-sync) instead.
 
 Strategies compose freely. A project might use `versionFiles` for package.json, `pk pin --name` for a Python constant, and `pk pin` (without `--name`) for a bootstrap script, all in the same release.
 
@@ -128,9 +128,9 @@ For projects where the framework has no built-in version propagation command. Yo
 
 The script handles whatever the framework requires: SPFx uses 4-part versions (`X.Y.Z.0`) spread across `package-solution.json` and multiple `*.manifest.json` files. No CLI command exists to sync these, so the script receives the version, appends `.0`, writes every manifest, and stages the results.
 
-Generated files that are committed follow the same model: regenerate them in a `preCommit` hook and stage the result, so they are built with the release version and land in the changelog commit; `pk changelog --undo` reverts them with everything else.
+Generated files that are committed follow the same model: regenerate them in a `preCommit` hook and stage the result, so they are built with the release version and land in the changelog commit; `pk changelog --undo` reverts them with the changelog and version files.
 
-**When to use:** The framework stores versions in a non-standard format or across multiple files with no ecosystem command to update them. `versionFiles` handles the root `package.json`; the hook script handles everything else.
+**When to use:** The framework stores versions in a non-standard format or across multiple files with no ecosystem command to update them. `versionFiles` handles the root `package.json`; the hook script handles the other files.
 
 ## Choosing a strategy
 
@@ -138,7 +138,7 @@ Generated files that are committed follow the same model: regenerate them in a `
 |--------------|----------|-----|
 | npm package, VS Code extension | versionFiles | `npm publish` and `vsce` read `package.json` directly |
 | Simple Go/Python/Rust CLI | pk pin --name | `go build ./cmd/...` is the build command; no Makefile, no ldflags |
-| Claude skill or plugin | pk pin --name | The version lives in `SKILL.md` frontmatter; a zip filename doesn't survive install |
+| Claude skill or plugin | pk pin --name | The version is stored in `SKILL.md` frontmatter; the archive filename is not retained after install |
 | Cross-compiled Go binary with CI | ldflags | Version derived from tag at build time; no constant in source to drift |
 | Monorepo with unified version | versionFiles + preCommit hook | Ecosystem provides propagation commands; verify cross-ref handling |
 | SPFx, custom frameworks | versionFiles + hook script | No ecosystem command; script handles format conversion and file discovery |
@@ -161,24 +161,24 @@ All pinned files are staged by `git add -u` before the changelog commit. `pk cha
 
 ## Cross-platform hooks
 
-`pk changelog` pre-expands `$VERSION` and `${VERSION}` in hook commands before passing them to the shell. This means the same hook syntax works on macOS, Linux, and Windows without platform-specific variable references (`%VERSION%` in cmd, `$env:VERSION` in PowerShell). The expansion happens inside pk, not in the shell.
+`pk changelog` pre-expands `$VERSION` and `${VERSION}` in hook commands before passing them to the shell. So the same hook syntax works on macOS, Linux, and Windows without platform-specific variable references (`%VERSION%` in cmd, `$env:VERSION` in PowerShell). The expansion happens inside pk, not in the shell.
 
-This is also why `pk pin` exists rather than using `sed` — `sed -i` behaves differently on macOS vs Linux, and doesn't exist on Windows. `pk pin` is a cross-platform replacement that handles the quoting, prefix conventions, and file writing portably.
+Cross-platform behavior is also why `pk pin` exists rather than `sed` — `sed -i` behaves differently on macOS vs Linux, and doesn't exist on Windows. `pk pin` is a cross-platform replacement that handles the quoting, prefix conventions, and file writing portably.
 
 Bash-specific parameter expansion like `${VAR#pattern}` is not supported — only simple `$VAR` and `${VAR}` substitution.
 
 ## After release: the tag governs a running service
 
-The tag's authority doesn't end when pk cuts the release. For a service you operate, the same tag governs what's running.
+The tag stays the version source after the release. For a service you operate, the same tag governs what's running.
 
-**This applies to a service you operate, not a distributed artifact.** The model fits a service whose running version you can replace by redeploying a tag. It does not fit a distributed artifact — a CLI binary, a desktop or mobile app, a published package — where the shipped version lives on machines you don't control: there's no single running version to replace, and you move forward only by publishing a new release for consumers to pull. `pk` itself is the distributed case, which is why plankit ships releases and has no deploy command.
+**This applies to a service you operate, not a distributed artifact.** The model fits a service whose running version you can replace by redeploying a tag. It does not fit a distributed artifact — a CLI binary, a desktop or mobile app, a published package — where the shipped version is installed on machines you don't control: there's no single running version to replace, and you move forward only by publishing a new release for consumers to pull. `pk` itself is the distributed case, which is why plankit ships releases and has no deploy command.
 
 **Two operations run the service, both computed from the tag list alone.**
 
 - **Deploy** — ship the latest tag.
 - **Roll back** — ship the tag before the latest.
 
-Both targets come from the tag list alone — the latest tag, and the one before it — never from what's currently deployed, so there is no deployment ledger to keep and no running version to look up. Because both operations are idempotent, either can run at any time: the end state is decided by which one you run, not by what was live when you started. Deploy always lands on the latest tag; rollback deliberately ships an older one, so it's worth gating rollback behind an explicit confirmation — so a routine deploy and a step backward aren't one careless click apart. Each run checks out its tag, verifies the build and tests against exactly what will ship, deploys, and smoke-checks that the live service reports the tag's version — the tag is the source of truth, and the check proves reality matches it.
+Both targets come from the tag list alone — the latest tag, and the one before it — never from what's currently deployed, so there is no deployment ledger to keep and no running version to look up. Because both operations are idempotent, either can run at any time: the end state is decided by which one you run, not by what was live when you started. Deploy always lands on the latest tag; rollback deliberately ships an older one, so it's worth gating rollback behind an explicit confirmation — rollback then always takes a second, deliberate action. Each run checks out its tag, verifies the build and tests against exactly what will ship, deploys, and smoke-checks that the live service reports the tag's version — the tag is the source of truth, and the check proves reality matches it.
 
 That last check assumes the service exposes its own version — a small endpoint, say `/health` returning its status and build version, is what makes "does the live version match the tag" answerable.
 

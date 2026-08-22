@@ -16,7 +16,7 @@ pk changelog --exclude abc1234,def5678      # drop commits from the section by s
 
 1. Checks if the current branch is protected by `guard.branches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
 2. Verifies the working tree is clean (skipped in `--dry-run` mode). Exits with an error if there are uncommitted changes.
-3. Verifies the current branch exists on origin. Without this, `pk changelog` would succeed but `pk release` would fail, leaving a stranded Release-Tag commit.
+3. Verifies the current branch exists on origin. Without this, `pk changelog` would succeed but `pk release` would fail, leaving a Release-Tag commit whose release cannot proceed until the branch is pushed.
 4. Reads the latest version tag (git tags are the single version source)
 5. Scans commits since that tag for conventional commit messages
 6. Groups commits by type into changelog sections
@@ -147,7 +147,7 @@ See [pk setup — baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk
 
 ### Single tag, many files
 
-The tag-as-source rule shines in monorepos with a unified-version policy — every package releases at the same version, governed by one tag. The `preCommit` hook fans the tag-derived version out to every file that needs it. For an npm workspaces monorepo:
+In a monorepo with a unified-version policy, one tag governs every package's version. The `preCommit` hook writes the tag-derived version into every configured file. For an npm workspaces monorepo:
 
 ```json
 {
@@ -159,7 +159,7 @@ The tag-as-source rule shines in monorepos with a unified-version policy — eve
 }
 ```
 
-`$VERSION` is set to the computed next version without the `v` prefix (e.g., `0.11.0`). That suits tools like `npm version`, which expect a plain semver string. Every package.json gets the same bump, even unchanged ones, the accepted trade-off of unified versioning. pk pre-expands `$VERSION` before passing the command to the shell, so the same hook works on all platforms (macOS, Linux, Windows). Bash-specific parameter expansion like `${VAR#pattern}` is not supported cross-platform.
+`$VERSION` is set to the computed next version without the `v` prefix (e.g., `0.11.0`). The `v`-less form suits tools like `npm version`, which expect a plain semver string. Every package.json gets the same bump, even unchanged ones, the accepted trade-off of unified versioning. pk pre-expands `$VERSION` before passing the command to the shell, so the same hook works on all platforms (macOS, Linux, Windows). Bash-specific parameter expansion like `${VAR#pattern}` is not supported cross-platform.
 
 ### Conventional commits
 
@@ -177,7 +177,7 @@ Breaking changes are detected from both the `!` suffix and `BREAKING CHANGE:` / 
 
 Non-conventional commits are silently skipped.
 
-That includes commits from automation. Configure Dependabot, release bots, and any tool that opens PRs or pushes commits to set a conventional `commit-message` prefix, such as `chore(deps)`. Their work then flows into the changelog instead of being silently skipped at release time.
+Non-conventional messages include commits from automation. Configure Dependabot, release bots, and any tool that opens PRs or pushes commits: set a conventional `commit-message` prefix, such as `chore(deps)`. Their commits then appear in the changelog instead of being silently skipped at release time.
 
 ### Version bump
 
@@ -185,18 +185,18 @@ The bump is auto-detected from conventional commits:
 
 - Any commit with `!` or `BREAKING CHANGE:` trailer → **major**
 - Any `feat:` commit → **minor**
-- Everything else → **patch**
+- Any other conventional commit → **patch**
 
 Override with `--bump major|minor|patch`.
 
 ### Excluding commits from a release
 
-Sometimes a commit that lives in git history shouldn't appear in the release notes. The usual reason: it was added and later removed within the same release window. The net effect is zero, and mentioning it would confuse a reader. `--exclude` is the tool for that.
+Sometimes a commit recorded in git history shouldn't appear in the release notes. The usual reason: it was added and later removed within the same release window. The net effect is zero, and mentioning it would confuse a reader; `--exclude` removes the entry.
 
 The intended workflow:
 
 1. Run `pk changelog` normally. It generates the section and commits it.
-2. Read `CHANGELOG.md`. If there's an entry you don't want, copy the short SHA from inside its parentheses — for example, `abc1234` from `- add feature (abc1234)`.
+2. Read `CHANGELOG.md`. If there's an entry you don't want, copy the short SHA from inside its parentheses. For example: `abc1234` from `- add feature (abc1234)`.
 3. Run `pk changelog --undo` to unwind the release commit.
 4. Run `pk changelog --exclude abc1234` (or a comma-separated list for multiple) to regenerate without that commit.
 

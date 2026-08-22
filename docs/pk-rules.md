@@ -18,7 +18,7 @@ pk rules --project-dir /path      # specify project directory
 3. Classifies each rule's provenance from its `pk_sha256` marker, exactly like `pk status`: `[managed]` (pk-shipped, body hash matches), `[modified]` (pk-shipped, edited), or `[local]` (no marker, user-authored).
 4. Reads the optional `kind:` frontmatter key (`craft` or `conduct`); absent values render as `unclassified`.
 5. Estimates each file's context cost using a calibrated characters-per-token ratio and sums it with `CLAUDE.md`, which Claude Code also loads every session. The ratio is model-specific, measured against a named model by `evals/calibrate`; figures are labelled `(estimated)` and gain `(estimated, calibrated against <model>)` once the calibration has been run. Plain `chars/4` runs ~25% low for this markdown.
-6. Separates always-on rules from conditional ones. A rule with a `paths:` frontmatter key loads only when Claude reads a matching file, so it is reported under a `Conditional (loads on matching files)` group. Excluding it from the always-on total keeps that figure honest.
+6. Separates always-on rules from conditional ones. A rule with a `paths:` frontmatter key loads only when Claude reads a matching file. It is reported under a `Conditional (loads on matching files)` group, so the always-on total counts only files loaded every session.
 7. Prints the report to stderr. First the `Always-on context` totals line and its rows: `CLAUDE.md` and each always-on rule, tagged with provenance and `kind`. Then the `Conditional` group if any, then a provenance tally. `--lint` runs the scan instead.
 
 ## Flags
@@ -52,7 +52,7 @@ The shipped rules sit under `.claude/rules/plankit/`; a project's own rules (her
 
 The report is a context-cost and governance view. It shows how much always-on budget the rule set spends, and where each rule sits on the provenance/`kind` axes. It is a quick read, not a deep analysis — and it writes nothing.
 
-Reviewing the rule set *as a system* is the job of the `/review-rules` skill, which reads the source rules directly. That means overlap, gaps, drift, unstated precedence, and whether each rule sits at the right altitude. `pk rules` deliberately does not produce a paste-able document for that; the skill's analysis is more than a concatenation can give.
+Reviewing the rule set *as a system* is the job of the `/review-rules` skill, which reads the source rules directly. The review covers overlap, gaps, drift, unstated precedence, and whether each rule is stated at the right level of generality. `pk rules` deliberately does not produce a paste-able document for that; the skill's analysis is more than a concatenation can give.
 
 ### The `kind` frontmatter convention
 

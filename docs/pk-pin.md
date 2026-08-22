@@ -133,7 +133,7 @@ version: "0.1.0"
 version: '0.1.0'
 ```
 
-The value must be quoted. An unquoted YAML scalar (`version: 0.1.0`) does not match. This keeps prose like `version: see below` from matching.
+The value must be quoted. An unquoted YAML scalar (`version: 0.1.0`) does not match. The quoted-value requirement keeps prose like `version: see below` from matching.
 
 The version must be valid [semver](https://semver.org/) — pre-release and build metadata are supported (e.g., `1.0.0-beta.1`, `1.0.0+build.123`).
 

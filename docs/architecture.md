@@ -64,7 +64,7 @@ Not all environments offer the same capabilities. pk adapts its governance model
 
 ### Enforcement vs. advisory
 
-Claude Code is the only environment with pre-tool interception hooks. This means:
+Claude Code is the only environment with pre-tool interception hooks. So:
 
 - **Claude Code**: full enforcement. `pk guard` blocks git mutations. `pk protect` blocks edits to preserved plans. `pk preserve` reacts to plan approval.
 - **Other environments**: advisory governance. Rules carry the behavioral guidance (which covers the majority of value), but there is no backstop for the cases where the AI ignores a rule. Git workflow commands (`pk changelog`, `pk release`) work identically regardless of environment.

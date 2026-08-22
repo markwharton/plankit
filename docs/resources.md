@@ -22,7 +22,7 @@ Git is an elegant data structure, not a weird tool with confusing commands. Thre
 
 These three concepts explain the techniques below:
 
-- **Soft replay.** `git reset --soft <target>` moves the branch pointer back but leaves all changes staged. You re-deal the cards — same content, different commits. Only works while unpushed, because new commits get new SHAs.
+- **Soft replay.** `git reset --soft <target>` moves the branch pointer back but leaves all changes staged. The same content is then recommitted as new commits. Only works while unpushed, because new commits get new SHAs.
 - **Merge for branch syncing.** Use `git merge` to bring commits from another branch into yours. Merge establishes ancestry — git knows the branches are connected, which is what fast-forward merges (like `pk release`) require. Avoid cherry-pick for this purpose: it copies content but doesn't connect the branches, so fast-forward merges will fail later.
 - **Merge commits as invisible infrastructure.** A merge commit that isn't a conventional commit won't appear in the changelog — but it's load-bearing in the git graph. It establishes the ancestry that makes `pk release` fast-forward work, without cluttering user-facing output.
 
@@ -121,6 +121,6 @@ Simplified Technical English is a real standard, not a prompt-engineering folk r
 
 Its rules are mechanical rather than aspirational: 20 words per instruction, 25 per descriptive sentence, one instruction per sentence, one meaning and one part of speech per word, active voice, simple tenses, condition before command.
 
-The relevance here is the shape, not the content. "Be concise" is an adjective the model has to interpret. "No sentence over 25 words" is a spec it can satisfy and you can check. That is the same move plankit makes elsewhere: [`.pk.json`](pk-json.md) targets instead of inferred intent, hooks instead of hoping, `pk rules --lint --strict` instead of a style conversation.
+The relevance here is the shape, not the content. "Be concise" is an adjective the model has to interpret. "No sentence over 25 words" is a spec it can satisfy and you can check. plankit makes the same move elsewhere: [`.pk.json`](pk-json.md) targets instead of inferred intent, hooks instead of prose the model may not follow, `pk rules --lint --strict` instead of a style conversation.
 
-Two honest limits. STE excludes persuasive and creative prose by its own scope statement, so it does not apply to a README, a landing page, or a rule bullet whose job is to be memorable. And the popular "STE reduces AI slop" benchmarks mostly measure conformance to a linter of STE's own rules, which proves less than it appears; the useful signal in them is the weaker blind-preference result. Naming the standard in a prompt is cheap and does shorten sentences and drop hedging. Treat it as a lever for reference documentation, not as a house style.
+Two honest limits. STE excludes persuasive and creative prose by its own scope statement, so it does not apply to a README, a landing page, or a rule bullet written to be memorable. And the popular "STE reduces AI slop" benchmarks mostly measure conformance to a linter of STE's own rules, which proves less than it appears; the useful signal in them is the weaker blind-preference result. Naming the standard in a prompt is cheap and does shorten sentences and drop hedging. Treat it as a lever for reference documentation, not as a house style.

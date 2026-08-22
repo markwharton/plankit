@@ -20,7 +20,7 @@ pk init --release trunk      # release branch is trunk, not the current branch
 ## How it works
 
 1. Resolves the git repository root and the release branch (the branch currently checked out, unless `--release` names one).
-2. Pre-flights: at least one commit, a clean working tree, the release branch checked out, and an `origin` remote when `--push` was given. Any failure refuses before anything is written.
+2. Pre-flights: at least one commit, a clean working tree, the release branch checked out, and an `origin` remote when `--push` was given. On any failure, `pk init` refuses before writing anything.
 3. Decides whether the branch-protection ruleset applies. It is skipped only when `origin` is known not to be GitHub (a local path, say). No `origin` yet is not that case: the ruleset is written, since a later run cannot add it.
 4. Writes the branch topology into `.pk.json`: `guard.branches` naming the release branch, and `release.branch` naming it again. Existing keys are field-merged, not replaced.
 5. Runs the `pk setup` path: managed files and modes, plus the `v0.0.0` baseline tag on the current commit. With `--no-setup`, only the baseline tag: the managed files and modes are skipped.
@@ -80,14 +80,14 @@ The upgrade path is `pk setup`, run at any time from any branch. It field-merges
 
 `pk init` makes exactly one commit on the release branch, on the first run, before the working branch is created. That commit is the last thing both branches share by construction. Any later commit on the release branch is one the working branch lacks, and `pk release` cannot fast-forward past it.
 
-So the working branch is the switch. If it does not exist, the first-run steps above run, each a no-op when already satisfied: no re-tag, no re-created branch, no empty commit. If it exists, `pk init` writes and commits nothing. It confirms the rest of the shape: a version tag, and `release.branch` in `.pk.json` naming this release branch. It prints `Already shaped`, publishes with `--push`, and switches to the working branch if you are on the release branch. Nothing else moves: not the release branch, not the tag, not the working tree.
+So the working branch's existence selects the path. If it does not exist, the first-run steps above run, each a no-op when already satisfied: no re-tag, no re-created branch, no empty commit. If it exists, `pk init` writes and commits nothing. It confirms the other two parts of the shape: a version tag, and `release.branch` in `.pk.json` naming this release branch. It prints `Already shaped`, publishes with `--push`, and switches to the working branch if you are on the release branch. Nothing else is updated: not the release branch, not the tag, not the working tree.
 
 Two consequences:
 
 - A shaped repository takes `pk init --push` from any branch, since nothing is anchored on this run. Shape locally, publish the working branch with `gh repo create --source . --push`, then `pk init --push` from where you are to publish the release branch and the tag.
 - Managed-file updates never arrive through `pk init`. On a shaped repository that is `pk setup`'s job, on the working branch, committed on its own.
 
-A working branch on a repository that is *not* otherwise shaped is refused. That is an established project; shaping it here would tag and commit on the release branch behind the working branch's back. See [adoption.md](adoption.md).
+A working branch on a repository that is *not* otherwise shaped is refused. A repository in that state is an established project; shaping it here would tag and commit on the release branch, unreachable from the working branch. See [adoption.md](adoption.md).
 
 ### The ruleset is written, not applied
 
@@ -99,7 +99,7 @@ The ruleset is written on the first run only, when the setup commit is made. It 
 
 ### Where v0.0.0 lands
 
-`v0.0.0` tags the commit that was HEAD when shaping began, which is the project's own first commit. The managed files land in the *next* commit, `chore: pk setup`. That keeps the anchor honest: `pk changelog`'s first real release starts from where the project's code history begins, not from plankit's scaffolding.
+`v0.0.0` tags the commit that was HEAD when shaping began, which is the project's own first commit. The managed files land in the *next* commit, `chore: pk setup`. The one-commit gap is deliberate: `pk changelog`'s first real release starts from where the project's code history begins, not from plankit's scaffolding.
 
 ### Why pk init creates a commit
 

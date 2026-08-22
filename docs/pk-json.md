@@ -4,7 +4,7 @@ Project-level configuration for pk. Each top-level key maps to a pk subcommand.
 
 ## Location
 
-`.pk.json` lives in the project root (the directory where you run `pk setup`). It is user-owned and hand-editable. `pk setup` writes the **behavior modes** (`guard.mode`, `guard.push`, `preserve.mode`) into it but never touches your other keys; `pk teardown` does not remove it. The **targets** (`guard.branches`, `release.branch`, changelog config) are filled in by [`pk init`](pk-init.md) at project creation, by the `/pk-configure` skill, or by hand.
+`.pk.json` sits at the project root (the directory where you run `pk setup`). It is user-owned and hand-editable. `pk setup` writes the **behavior modes** (`guard.mode`, `guard.push`, `preserve.mode`) into it but never touches your other keys; `pk teardown` does not remove it. The **targets** (`guard.branches`, `release.branch`, changelog config) are filled in by [`pk init`](pk-init.md) at project creation, by the `/pk-configure` skill, or by hand.
 
 If `.pk.json` does not exist, all commands use their defaults. An empty file (`{}`) is equivalent to no file. Any mode key that is absent falls back to its default; `"off"` is an explicit value, distinct from absence.
 
@@ -94,7 +94,7 @@ How the branch policy acts on a git mutation on a protected branch: `block` (den
 
 ### guard.push
 
-The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt), or `off` (allow). Defaults to `block`. This blocks the *agent's* direct pushes within a Claude Code session. Your own terminal pushes and pk's publish flows (`pk release`, `pk preserve --push`) are unaffected. Set it with `pk setup --push-guard <mode>`.
+The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt), or `off` (allow). Defaults to `block`. The policy blocks the *agent's* direct pushes within a Claude Code session. Your own terminal pushes and pk's publish flows (`pk release`, `pk preserve --push`) are unaffected. Set it with `pk setup --push-guard <mode>`.
 
 ### guard.branches
 
@@ -155,7 +155,7 @@ The branch that `pk release` merges to and pushes from. The current branch is th
 
 Lifecycle hooks for the release process. Both receive `$VERSION` (the version without the leading `v`, e.g. `0.26.1`) and `$TAG` (with it, e.g. `v0.26.1`) as pre-expanded, cross-platform environment variables. A hook need not re-derive the version from a pinned file. The two differ by *when* they run relative to tag creation:
 
-- **preRelease** — runs after merge (or on HEAD in trunk flow) but before the tag is created. If it fails, the release is aborted and nothing is pushed. Because it runs before tagging, it is rehearsed by `pk release --dry-run`, and a hook that commits produces a commit the tag then covers. **The release tag does not exist yet when preRelease runs.** A hook needing the tag ref wants `prePush` instead: signing, or artifact builds keyed on the tag. Use case: run tests one final time before publishing.
+- **preRelease** — runs after merge (or on HEAD in trunk flow) but before the tag is created. If it fails, the release is aborted and nothing is pushed. Because it runs before tagging, it is rehearsed by `pk release --dry-run`, and a hook that commits produces a commit the tag then covers. **The release tag does not exist yet when preRelease runs.** A hook that reads the tag ref goes in `prePush` instead: signing, or artifact builds keyed on the tag. Use case: run tests one final time before publishing.
 - **prePush** — runs after the tag is created, before the push, so the tag ref exists. If it fails, the release is aborted, the local tag is removed, and nothing is pushed. It does **not** run under `--dry-run` (the dry-run returns before tagging). Use case: sign the tag, or build an artifact named for it.
 
 ```json
@@ -171,7 +171,7 @@ Lifecycle hooks for the release process. Both receive `$VERSION` (the version wi
 
 ## Hook timeline
 
-The four hooks live under two keys, and each command documents only its own pair. Choosing between them means comparing all four, so they are listed here in firing order.
+The four hooks are configured under two keys, and each command's reference page documents only its own pair. Choosing between them means comparing all four, so they are listed here in firing order.
 
 | Hook | Key | `$VERSION` | `$TAG` | Tag ref exists | Output is committed | Runs on `--dry-run` |
 |------|-----|------------|--------|----------------|---------------------|---------------------|
@@ -180,7 +180,7 @@ The four hooks live under two keys, and each command documents only its own pair
 | `preRelease` | `release.hooks` | yes | yes | **no** | no | yes |
 | `prePush` | `release.hooks` | yes | yes | **yes** | no | **no** |
 
-The last three columns decide most choices:
+Read the last three columns to choose a hook:
 
 - **Committed output.** Only the changelog hooks run before a commit, so only their file edits reach git. A release hook that writes a file leaves the tree dirty afterwards.
 - **Tag ref.** Only `prePush` runs after the tag exists. Signing the tag, or naming a build after it, belongs there.

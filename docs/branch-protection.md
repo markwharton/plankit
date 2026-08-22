@@ -1,6 +1,6 @@
 # Branch protection
 
-`pk guard` blocks git mutations on protected branches at commit time in your local environment. GitHub Repository Rulesets block at push time on the server. Running both gives defense in depth — a mistake dodged by one is caught by the other, and both enforce the same conceptual rule.
+`pk guard` blocks git mutations on protected branches at commit time in your local environment. GitHub Repository Rulesets block at push time on the server. Running both gives defense in depth — a mutation one layer does not cover is rejected by the other, and both enforce the same conceptual rule.
 
 This doc describes the ruleset plankit's own repos use. Import it into your project for the server-side half.
 
@@ -8,7 +8,7 @@ This doc describes the ruleset plankit's own repos use. Import it into your proj
 
 ## Which branch it guards
 
-The ruleset names the release branch: `refs/heads/main`. It does not use GitHub's `~DEFAULT_BRANCH`. The release branch is the one `pk release` advances and `pk guard` blocks, and it need not be the repository's default: many projects make the working branch (`develop`) the default so pull requests base there. With `~DEFAULT_BRANCH` that change would silently move the protection onto `develop` and leave `main` open. Pinning by name keeps the guard where the release model needs it, whatever the default branch is set to. If you rename the release branch, update `include` alongside `release.branch` in `.pk.json`.
+The ruleset names the release branch: `refs/heads/main`. It does not use GitHub's `~DEFAULT_BRANCH`. The release branch is the one `pk release` advances and `pk guard` blocks, and it need not be the repository's default: many projects make the working branch (`develop`) the default so pull requests base there. With `~DEFAULT_BRANCH` that change would silently move the protection onto `develop` and leave `main` open. Pinning by name keeps the ruleset on the branch `pk release` advances, whatever the default branch is set to. If you rename the release branch, update `include` alongside `release.branch` in `.pk.json`.
 
 ## Import through the UI
 

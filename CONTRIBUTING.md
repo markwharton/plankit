@@ -27,7 +27,7 @@ make fmt        # Format code
 
 ## Documentation
 
-The prose standard for `docs/` and `README.md` lives in `.claude/rules/plankit-development.md` (Documentation Prose) and loads into every Claude Code session in this repo. For a full audit-and-rewrite pass, paste this into a session:
+The prose standard for `docs/` and `README.md` is defined in `.claude/rules/plankit-development.md` (Documentation Prose) and loads into every Claude Code session in this repo. For a full audit-and-rewrite pass, paste this into a session:
 
 ```text
 Audit and rewrite every file under docs/ except docs/plans/, plus
@@ -62,13 +62,13 @@ phrase is gone from docs/; your report lists every fact correction and
 every doc/source shared-wording pair.
 ```
 
-The em dash check in `pk rules --lint` began as a proxy for this standard, added when nothing checked the content itself: the LLM tell was never the glyph, it was the vague clause the glyph joined. After a full rewrite pass has run under the standard, revisit the check. Removing it changes pk's shipped linter for every pk-managed project, so that is its own commit and release note, never a side effect.
+The em dash check in `pk rules --lint` began as a proxy for this standard, added when nothing checked the content itself: the LLM tell was never the glyph, it was the vague clause the glyph joined. After a full rewrite pass has run under the standard, revisit the check. Removing it changes pk's shipped linter for every pk-managed project, so the removal is its own commit and release note, never a side effect.
 
 ## Workflow
 
 All changes go through `develop` — never commit directly to `main`.
 
-In Claude Code, `pk guard` enforces this automatically — it blocks git mutations on `main`. In the terminal, branch protection rules may exist but should not be the only safety net — discipline is on you.
+In Claude Code, `pk guard` enforces this automatically — it blocks git mutations on `main`. In the terminal, GitHub branch protection rejects the push only at the server, after the commit exists locally; nothing blocks a local commit to `main` outside a session, so check the branch yourself.
 
 Dependabot PRs target `develop` via `.github/dependabot.yml`. If a hotfix or emergency PR lands directly on `main`, merge main into develop before releasing:
 
@@ -77,7 +77,7 @@ git switch develop
 git merge main
 ```
 
-This ensures the changelog includes everything in the release and maintains the ancestry that `pk release` needs for fast-forward merges to main.
+The merge brings the commits that landed on `main` into the changelog and keeps the ancestry that `pk release` needs for fast-forward merges to main.
 
 After merging PRs on GitHub, sync your local branch with rebase to avoid unnecessary merge commits:
 
@@ -85,7 +85,7 @@ After merging PRs on GitHub, sync your local branch with rebase to avoid unneces
 git pull --rebase
 ```
 
-This replays your unpushed local commits on top of the remote, keeping history linear. Only safe when your local commits haven't been pushed yet — which is exactly when you need it.
+`git pull --rebase` replays your unpushed local commits on top of the remote, keeping history linear. Only safe when your local commits haven't been pushed yet — which is exactly when you need it.
 
 ## Pull requests
 

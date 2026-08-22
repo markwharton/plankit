@@ -72,7 +72,7 @@ Testing is both validation and collaboration accelerator:
 
 The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, predictable outcomes come from deliberate constraints.
 
-Two recent papers calibrate this on harder problem classes: Donald Knuth's *Claude's Cycles* (2026) and Keston Aquino-Michaels' *Completing Claude's Cycles* (2026). Different scale, same axis.
+Two recent papers calibrate the effect of deliberate constraints on harder problem classes: Donald Knuth's *Claude's Cycles* (2026) and Keston Aquino-Michaels' *Completing Claude's Cycles* (2026). Different scale, same axis.
 
 ## 6. Code review
 
@@ -99,9 +99,9 @@ The old session retains deep context; the new session has fresh capacity. Sessio
 
 Exploration should remain separate from documentation. When Claude creates artifacts too early, the conversation shifts from thinking into editing. Iteration becomes local patching instead of clarity.
 
-Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When a session is flailing on a draft, the first clear articulation from earlier in the conversation is usually cleaner than anything generated after.
+Exploration ends when the developer says it ends, not when Claude decides an idea is ready to document. When repeated rewrites of a draft are not converging, the first clear articulation from earlier in the conversation is usually cleaner than anything generated after.
 
-Some failure modes persist through polite iteration. The editing rhythm defends itself; each correction becomes another edit. Direct intervention breaks it:
+Some failure modes persist through polite iteration: each correction becomes another edit rather than a decision. Direct intervention breaks the cycle:
 
 - **Say "stop"** (or hit Esc). A firm interruption is valid, not rude
 - **Ask "what is the value?"** Substance breaks the loop, rephrasing sustains it
@@ -124,6 +124,6 @@ Rules create accountability, not obedience. The model won't follow them every ti
 
 ## 10. When the model shifts
 
-Claude's behavior evolves across versions: how plan mode exits, how long-session context is retained, how auto mode proceeds. pk sits between the model and the action. When the model changes, the gaps show up here first. pk's guarantees live in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts.
+Claude's behavior evolves across versions: how plan mode exits, how long-session context is retained, how auto mode proceeds. pk sits between the model and the action. When the model changes, the gaps show up here first. pk's guarantees are implemented in the CLI layer: git mutation guards, managed-file protection, bounded hook timeouts.
 
-When a release exposes an edge case, the fix belongs in the CLI layer. Reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. That's the lifecycle, not an aberration. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues).
+When a release exposes an edge case, the fix belongs in the CLI layer. Reduce the model-dependence that let the bug in, so the next shift can't re-expose the same class of problem. The shift-and-fix cycle is the lifecycle, not an aberration. If you hit a surprise, [open an issue](https://github.com/markwharton/plankit/issues).

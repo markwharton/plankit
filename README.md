@@ -7,7 +7,7 @@
 
 **Every new LLM session picks a different approach. Plans narrow a specific task to an approved approach before code is written. Rules reduce drift between sessions. Hooks preserve what was approved and guard what should not change.**
 
-A plan-driven development toolkit for [Claude Code](https://code.claude.com). Plans are shared artifacts: one or two developers review and approve an approach, and that becomes the record. Plan preservation and plan protection keep approved work from being lost or overwritten. Discipline is the multiplier; rules, testing, and branch protection make plans worth keeping. Designed for small teams and independent developers.
+A plan-driven development toolkit for [Claude Code](https://code.claude.com). Plans are shared artifacts: one or two developers review and approve an approach, and that becomes the record. Plan preservation and plan protection keep approved work from being lost or overwritten. Rules, testing, and branch protection keep the repository in the state the approved plan describes, so the plan stays worth keeping. Designed for small teams and independent developers.
 
 Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-practices) covers the fundamentals that plankit builds on.
 
@@ -18,10 +18,10 @@ Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-pr
 - **Rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` covering development craft and agent conduct
 - **Claude Code skills:** `/pk-configure`, `/preserve`, `/ship`
 - **Plan preservation:** approved plans saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
-- **Branch protection:** git mutations blocked via hooks, locally, before the damage happens
+- **Branch protection:** git mutations blocked via hooks, locally, before the commit or push is created
 - **Release management:** automated changelogs and tagged releases from your commit history
 
-All of it works on your repository as it stands, bare `main` included. Release management starts in trunk flow: `pk release` tags the branch you're on and pushes. When you want `main` to be the stable projection of your work, adding `release.branch` to `.pk.json` is the one-key upgrade to the develop→main merge flow. Start where you are; opt into layers as they earn their keep.
+All five work on your repository as it stands, bare `main` included. Release management starts in trunk flow: `pk release` tags the branch you're on and pushes. When you want `main` to hold only released commits, adding `release.branch` to `.pk.json` is the one-key upgrade to the develop→main merge flow. Start where you are; enable each layer when you need what it does.
 
 <!-- shipped-footprint:start -->
 Always-on rules footprint: ≈2,584 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
@@ -57,9 +57,9 @@ cd your-project
 pk setup
 ```
 
-This configures `.claude/settings.json` with hooks and installs skills. Restart Claude Code to apply.
+`pk setup` configures `.claude/settings.json` with hooks and installs skills. Restart Claude Code to apply.
 
-Setting up a brand new project and want every layer from day one? `pk init` is the opinionated on-ramp. One command creates the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
+Setting up a brand new project and want every layer from day one? `pk init` is the one command that produces the full topology. It creates the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
 
 ```bash
 cd your-new-project
@@ -80,7 +80,7 @@ pk setup --preserve auto       # Auto-preserve plans on ExitPlanMode
 pk setup --preserve off        # Disable plan preservation
 ```
 
-Modes live in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook commands are bare. Re-run setup to upgrade managed files; pass `--guard`/`--push-guard`/`--preserve` to change a mode, or edit `.pk.json` directly.
+The modes are stored in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook commands are bare. Re-run setup to upgrade managed files; pass `--guard`/`--push-guard`/`--preserve` to change a mode, or edit `.pk.json` directly.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Adoption
 
-plankit is adopted in layers. Layer 1 is the foundation and works on any repository as it stands, a bare `main` included; Layers 2 and 3 are independent capabilities you add when your project needs them. Nothing asks for a branch topology change until you opt into it.
+plankit is adopted in layers. Layer 1 is the foundation and works on any repository as it stands, a bare `main` included; Layers 2 and 3 are independent capabilities you add when your project needs them. No pk command changes your branch topology until you configure one.
 
 This doc is about **established projects**, where each layer is a decision worth making separately. A brand new repository has no history to accommodate, so it can take every layer at once: see [New projects](#new-projects) below.
 
@@ -151,7 +151,7 @@ Starting point: everything on `main`, pushed straight to origin. Target: `main` 
 
 4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release (merge flow into main)`. From here, work lands on `develop` and `/ship` publishes releases to `main`.
 
-Until the transition is complete, the release commands point at the next step rather than dead-ending: `pk changelog` on a protected `main` with no other branch suggests creating `develop`, and `pk release` refuses with the same hint when the working branch is missing.
+Until the transition is complete, each release-command refusal names the command that fixes it: `pk changelog` on a protected `main` with no other branch suggests creating `develop`, and `pk release` refuses with the same hint when the working branch is missing.
 
 ### Trunk flow to merge flow
 
@@ -159,14 +159,14 @@ Already releasing from a single branch (no `release.branch`)? Adding `release.br
 
 ### Merge flow to trunk flow
 
-The reverse move: a project that no longer wants a working branch separate from the release branch. A Homebrew tap is the typical case: automated bump PRs, no code of its own, nothing to stage. `.pk.json` without `release.branch` selects trunk flow, and `guard.branches` has to go too, since a branch guard on the only branch would block every commit.
+The reverse move: a project that no longer needs a working branch separate from the release branch. A Homebrew tap is the typical case: automated bump PRs, no code of its own, nothing to stage. `.pk.json` without `release.branch` selects trunk flow, and `guard.branches` has to go too, since a branch guard on the only branch would block every commit.
 
 The order matters, because `pk release` reads `.pk.json` from the working tree at run time. Remove `release.branch` on the working branch and then release, and `pk release` runs in trunk mode *there*: it tags and pushes the working branch, and the release branch never receives the commits. So the config change is the last thing to land, and it lands on the release branch:
 
 1. **On the working branch**, make every other change for the new shape (CI that checks out or targets the working branch, Dependabot `target-branch`, docs) and cut one last merge-flow release, so those commits reach the release branch through the normal path.
 2. **Switch to the release branch.** Delete the working branch locally and on origin. Confirm only the release branch remains.
-3. **From your own terminal, not a Claude Code session,** remove `release.branch` and `guard.branches` from `.pk.json` and commit. Until this commit lands, `guard.branches` still names the branch you are standing on, so `pk guard` blocks the commit inside a session; that is the guard doing its job, and this one commit is the developer's to make. Keep `guard.mode`, `guard.push`, and `preserve.mode`.
-4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)`. `pk changelog --dry-run` shows that one config commit; it rides the next real release rather than earning one of its own. `pk setup` will now end each run with the reminder that `.pk.json` names no release branch; in trunk flow the reminder needs no action.
+3. **From your own terminal, not a Claude Code session,** remove `release.branch` and `guard.branches` from `.pk.json` and commit. Until this commit lands, `guard.branches` still names the checked-out branch, so `pk guard` blocks the commit inside a session; the block is `guard.mode: block` working as configured, and this one commit is the developer's to make. Keep `guard.mode`, `guard.push`, and `preserve.mode`.
+4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)`. `pk changelog --dry-run` shows that one config commit; it is released with the next real change, not on its own. `pk setup` will now end each run with the reminder that `.pk.json` names no release branch; in trunk flow the reminder needs no action.
 
 Tags made under merge flow remain valid; the next release tags the current branch and pushes it with the tag.
 
@@ -174,7 +174,7 @@ Tags made under merge flow remain valid; the next release tags the current branc
 
 **When:** Switching from commit-and-tag-version, standard-version, semantic-release, or similar tools.
 
-**Existing CHANGELOG.md — leave it as is.** `pk changelog` writes [Keep a Changelog](https://keepachangelog.com/) format and appends new entries *above* your existing content, which stays untouched: new releases in plankit's format, old entries unchanged. This is the simplest, lossless path. Rewriting older entries into plankit's format is optional and **lossy** — anything plankit omits by design (e.g. per-commit SHA links) is dropped — so only do it if you want a uniform file.
+**Existing CHANGELOG.md — leave it as is.** `pk changelog` writes [Keep a Changelog](https://keepachangelog.com/) format and appends new entries *above* your existing content, which stays untouched: new releases in plankit's format, old entries unchanged. Leaving the file untouched is the simplest, lossless path. Rewriting older entries into plankit's format is optional and **lossy** — anything plankit omits by design (e.g. per-commit SHA links) is dropped — so only do it if you want a uniform file.
 
 **Baseline tag placement.** Where you anchor `v0.0.0` determines what appears in your first pk-generated changelog entry. Use `--at` to include prior history or omit it to start fresh. See [Baseline tag for pk changelog](pk-setup.md#baseline-tag-for-pk-changelog) for the three scenarios.
 
@@ -234,7 +234,7 @@ Migrate this established repo onto plankit (pk). `pk setup` has already run. Wor
 
 3. Version propagation (needs my knowledge of the build) — first decide if it's even needed: if only the git tag carries the version, configure nothing. Otherwise, per version-bearing file: JSON manifests/lockfiles → `changelog.versionFiles`; non-JSON (pyproject.toml, Python `__version__`, Go `const version`, a shell script) → `pk pin --file <f> [--name <id>] $VERSION` in `changelog.hooks.preCommit` (versionFiles is JSON-only); files derived from the bump (lockfiles, generated docs, workspace refs) → regenerate in `preCommit`. pk auto-stages CHANGELOG.md, every versionFiles entry, and already-tracked files a hook changes (`git add -u`) — add an explicit `git add` only for newly created files. Optionally add a `release.hooks.preRelease` gate (e.g. `npm ci && npm run lint && npm test && npm run build`). Show me the merged `.pk.json` (preserve existing keys, sort top-level) before writing.
 
-4. Remove the old tool — find commit-and-tag-version / standard-version / semantic-release in devDependencies and CI and tell me where to disable them so they don't fight pk over tags or the changelog.
+4. Remove the old tool — find commit-and-tag-version / standard-version / semantic-release in devDependencies and CI and tell me where to disable them so they and pk do not both write tags or CHANGELOG.md.
 ```
 
 ## When pk is not installed

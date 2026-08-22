@@ -20,7 +20,7 @@ When `release.branch` is configured in `.pk.json`:
 5. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
 6. **Run pre-release hook** if configured.
 7. **Create the git tag** on HEAD (the fast-forwarded release branch points at the same commit as the source branch).
-8. **Push** release branch + tag to origin atomically (`git push --atomic`), so a rejected branch ref can never leave the tag stranded on origin.
+8. **Push** release branch + tag to origin atomically (`git push --atomic`), so a rejected push updates no refs on origin.
 9. **Switch back** to source branch and push it to sync origin.
 
 When `release.branch` is NOT configured (trunk flow):
@@ -94,19 +94,19 @@ The merge uses `git merge --ff-only`. If the release branch has diverged (e.g., 
 Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
 
-That check guards the local merge. A pre-flight check guards the push target. If `origin/main` carries a commit your source branch doesn't, `pk release` fails before creating the tag with `Error: origin/main has diverged from develop; the release push would be rejected`. That is common when the release branch was set up outside the create-new-project flow. Both cases reconcile the same way — see [Error recovery](#error-recovery).
+That check guards the local merge. A pre-flight check guards the push target. If `origin/main` carries a commit your source branch doesn't, `pk release` fails before creating the tag with `Error: origin/main has diverged from develop; the release push would be rejected`. The divergence is common when the release branch was set up outside the create-new-project flow. Both cases are reconciled the same way — see [Error recovery](#error-recovery).
 
 ### Error recovery
 
 If any step fails after switching to the release branch (merge, hook, push), `pk release` automatically switches back to the source branch before exiting.
 
-Divergence means the release branch carries a commit that is not on the source branch, so the fast-forward merge can't proceed. Recovery is to reconcile that commit back into the source branch (`git merge origin/main`), not to drop it. If it was already pushed, never force push. When you have an unpushed `pk changelog` release commit, the order matters. Undo it before the merge and regenerate it after, so the `Release-Tag` trailer stays at HEAD instead of being buried under the merge commit. See [not fast-forward](error-reference.md#not-fast-forward) for the exact ordered steps.
+Divergence means the release branch carries a commit that is not on the source branch, so the fast-forward merge can't proceed. Recovery is to reconcile that commit back into the source branch (`git merge origin/main`), not to drop it. If it was already pushed, never force push. When you have an unpushed `pk changelog` release commit, the order matters. Undo it before the merge and regenerate it after, so the `Release-Tag` trailer stays at HEAD, the only place `pk release` reads it. See [not fast-forward](error-reference.md#not-fast-forward) for the exact ordered steps.
 
 ### Guard interaction
 
-`pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. This means `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks everything else on protected branches — `pk release` is the single command that legitimately touches the release branch.
+`pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. So `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks every other git mutation on protected branches — `pk release` is the single command that legitimately commits to and pushes the release branch.
 
-If you are already on the release branch when you run `pk release`, it refuses: "switch to your working branch first". This prevents accidental pushes without a merge.
+If you are already on the release branch when you run `pk release`, it refuses: "switch to your working branch first". The refusal prevents accidental pushes without a merge.
 
 ### Scope
 

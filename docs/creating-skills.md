@@ -1,6 +1,6 @@
 # Creating skills
 
-Skills are reusable prompts that Claude Code discovers automatically. You package one as a markdown file with YAML frontmatter, and users invoke it with `/<skill-name>`. They're how you turn a repeatable workflow — a code review checklist, a deploy procedure, a session opener — into a one-command muscle.
+Skills are reusable prompts that Claude Code discovers automatically. You package one as a markdown file with YAML frontmatter, and users invoke it with `/<skill-name>`. They're how you turn a repeatable workflow — a code review checklist, a deploy procedure, a session opener — into a single invocation.
 
 Custom slash commands have been merged into skills in Claude Code. Skills are the forward-looking approach.
 
@@ -94,7 +94,7 @@ When a skill needs information from the user before it can proceed, ask up front
 > - Are there branches that should never receive direct commits?
 > - Which branch should releases be pushed to?
 
-Gather inputs → draft → show → confirm → write. This turns Claude into a structured assistant rather than a guessing oracle.
+Gather inputs → draft → show → confirm → write. The question sequence makes Claude collect the answers instead of guessing them.
 
 ### Multi-step exploration
 
@@ -325,9 +325,9 @@ This is a high-stakes workflow that reverts a commit and opens a pull request. T
 
 ### Variations to consider
 
-- **Direct push for emergencies** — when production is completely down and CI latency is unacceptable, skip the branch and PR: `git revert <commit> && git push`. This trades visibility for speed. Use only when the outage cost exceeds the risk of an unvalidated revert.
+- **Direct push for emergencies** — when production is completely down and CI latency is unacceptable, skip the branch and PR: `git revert <commit> && git push`. The direct push trades visibility for speed. Use only when the outage cost exceeds the risk of an unvalidated revert.
 - **Revert a range** — for cascading failures, accept a range like `<good>..<bad>` and revert each commit in reverse order.
-- **CI status check** — before reverting, run `gh run list --limit 5` to show recent CI status. This helps confirm which commit broke the build.
+- **CI status check** — before reverting, run `gh run list --limit 5` to show recent CI status. The list helps confirm which commit broke the build.
 
 ## References
 

@@ -18,7 +18,7 @@ Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) and non-git 
 
 The branch policy defaults to `block`; `guard.mode: ask` prompts instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The push policy is independent and also defaults to `block`.
 
-**pk-mediated pushes pass through.** `pk release`, `pk preserve --push`, and `pk setup --baseline --push` reach the hook as the command `pk release` etc. (not `git push`), so they are allowed. Their internal push is a child process of `pk` via `exec.Command`, not a Bash tool call, so it is never hooked. The agent cannot hand-push under `guard.push: "block"`; pk's deliberate publish flows still work.
+**pk-mediated pushes are never hooked.** `pk release`, `pk preserve --push`, and `pk setup --baseline --push` reach the hook as the command `pk release` etc. (not `git push`), so they are allowed. Their internal push is a child process of `pk` via `exec.Command`, not a Bash tool call, so it is never hooked. The agent cannot hand-push under `guard.push: "block"`; pk's deliberate publish flows still work.
 
 ## Flags
 
