@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.29.3] - 2026-08-23
+
+### Fixed
+
+- correct pk release step order and pk changelog tag claim in usage text (9c05e7e)
+- align pk setup, status, and rules usage lines with the README command table (5eb12f6)
+
+### Changed
+
+- read .pk.json once per run (3efb54e)
+
+### Documentation
+
+- say-the-fact prose standard, and the docs rewrite prompt (b6079d8)
+- correct fifteen behavior claims against the source (251193b)
+- state the fact in place of idiom, referents, and personification (c218b16)
+- clarity pass over the rule bullets (37badb2)
+- smooth two echoes the style pass introduced (e4c2574)
+- ground the Claude's Cycles citations; document the dry-run divergence message (c395b4f)
+- reinstate discipline-is-the-multiplier, with its definition attached (8acd0fc)
+
+### Maintenance
+
+- retarget workshop-notes to the rebuilt site and add a field-note mode (123d165)
+- cover the shaped-path failures and a malformed ruleset template (c632fc5)
+- make cover shows per-function coverage for the release diff (bc56f01)
+
 ## [v0.29.2] - 2026-08-16
 
 ### Fixed
@@ -1090,3 +1117,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.29.0]: https://github.com/markwharton/plankit/compare/v0.28.1...v0.29.0
 [v0.29.1]: https://github.com/markwharton/plankit/compare/v0.29.0...v0.29.1
 [v0.29.2]: https://github.com/markwharton/plankit/compare/v0.29.1...v0.29.2
+[v0.29.3]: https://github.com/markwharton/plankit/compare/v0.29.2...v0.29.3
