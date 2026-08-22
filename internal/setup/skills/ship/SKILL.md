@@ -1,6 +1,6 @@
 ---
 name: ship
-description: "Ship a release: changelog, tag, merge, and push in one pass"
+description: "Ship a release: changelog, merge, tag, and push in one pass"
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
 argument-hint: [auto]
@@ -29,7 +29,7 @@ Run this on the branch where you've been working. For develop→main projects, t
 
    The resulting commit carries a `Release-Tag` trailer; no git tag is created yet.
 
-3. **Release preview + publish (tag, merge, push).**
+3. **Release preview + publish (merge, tag, push).**
 
    pk release --dry-run
 

@@ -1,10 +1,10 @@
 ---
 name: ship
-description: "Ship a release: changelog, tag, merge, and push in one pass"
+description: "Ship a release: changelog, merge, tag, and push in one pass"
 disable-model-invocation: true
 allowed-tools: Bash(pk:*), Bash(git:*)
 argument-hint: [auto]
-pk_sha256: 7ac42c5a6e5afa42a7fd225d09e112f8f787e4ab6212069164a0c37dee2ac729
+pk_sha256: e0470217cff5a967035b249ad84ffef59094aa68727b9b5f4c2af9c0e57fce65
 ---
 
 The release workflow. `pk changelog` and `pk release` are always run in sequence when shipping a version; this skill chains them while preserving the preview+confirm gate for each step so nothing lands unreviewed.
@@ -30,7 +30,7 @@ Run this on the branch where you've been working. For develop→main projects, t
 
    The resulting commit carries a `Release-Tag` trailer; no git tag is created yet.
 
-3. **Release preview + publish (tag, merge, push).**
+3. **Release preview + publish (merge, tag, push).**
 
    pk release --dry-run
 

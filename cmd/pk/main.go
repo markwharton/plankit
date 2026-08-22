@@ -5,12 +5,12 @@
 //
 // Commands:
 //
-//	pk changelog   Generate CHANGELOG.md from conventional commits, commit, and tag version
+//	pk changelog   Generate CHANGELOG.md from conventional commits and commit; pk release creates the tag
 //	pk guard       PreToolUse hook: block git mutations on protected branches
 //	pk pin         Update pinned version in a file
 //	pk preserve    PostToolUse hook: preserve approved plans in docs/plans/
 //	pk protect     PreToolUse hook: block edits to docs/plans/
-//	pk release     Merge to release branch, validate, and push
+//	pk release     Merge to release branch, tag, and push
 //	pk rules       Report the always-on context footprint of .claude/rules/ and CLAUDE.md
 //	pk setup       Configure a project's .claude/settings.json
 //	pk status      Report plankit configuration state of a project
@@ -500,10 +500,10 @@ Release-time commands (invoked from .pk.json changelog.hooks / release.hooks, no
 
 User commands:
   pk changelog [--bump major|minor|patch] [--dry-run] [--undo] [--exclude <sha>,<sha>]
-                                      Generate changelog, commit, and tag version
+                                      Generate changelog and commit; pk release creates the tag
   pk init [--source <name>] [--release <name>] [--no-setup] [--push] [--dry-run] [--project-dir <dir>]
                                       Make a repo plankit-shaped: topology, managed files, v0.0.0, branches
-  pk release [--dry-run]              Read Release-Tag trailer, tag, merge, and push
+  pk release [--dry-run]              Read Release-Tag trailer, merge, tag, and push
   pk rules [--lint [--strict]] [--project-dir <dir>]
                                       Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars
   pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask|off]
