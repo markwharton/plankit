@@ -89,7 +89,7 @@ The `preCommit` hook pins a shell-variable script (for cloud sandbox bootstrap) 
 }
 ```
 
-**When to use:** The project cross-compiles for multiple platforms, uses CI to build release binaries, or has a Makefile that already derives the version from git. The version is never committed to source — it's computed from the tag at build time. Computing at build time avoids a source-level version that could drift from the tag.
+**When to use:** The project cross-compiles for multiple platforms, uses CI to build release binaries, or has a Makefile that already derives the version from git. The version is never committed to source — it's computed from the tag at build time, so no source-level version exists to drift from the tag.
 
 ### Single tag, many files
 
@@ -105,7 +105,7 @@ Monorepos with a unified-version policy release every package at the same versio
 }
 ```
 
-The ecosystem-command route works when the ecosystem handles cross-package references natively (pnpm's `workspace:*` protocol never resolves a pinned version, so bumping each package independently is safe). Not every monorepo tool handles this cleanly — `npm version --workspaces`, for example, bumps each package's own version but doesn't rewrite cross-refs, then fails trying to resolve the old version from the registry. When the ecosystem command doesn't cover cross-refs, use a [hook script](#hook-scripts--custom-version-sync) instead.
+The ecosystem-command route works when cross-package references are handled natively (pnpm's `workspace:*` protocol never resolves a pinned version, so bumping each package independently is safe). Not every monorepo tool handles this cleanly — `npm version --workspaces`, for example, bumps each package's own version but doesn't rewrite cross-refs, then fails trying to resolve the old version from the registry. When the ecosystem command doesn't cover cross-refs, use a [hook script](#hook-scripts--custom-version-sync) instead.
 
 Strategies compose freely. A project might use `versionFiles` for package.json, `pk pin --name` for a Python constant, and `pk pin` (without `--name`) for a bootstrap script, all in the same release.
 
