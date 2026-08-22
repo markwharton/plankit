@@ -72,7 +72,7 @@ Testing is both validation and collaboration accelerator:
 
 The developer's role shifts from writing code to directing outcomes: precision in plans, attention to testability, pushing back on assumptions during review. Under-prompting sometimes yields better solutions, but mostly, predictable outcomes come from deliberate constraints.
 
-Two recent papers calibrate the effect of deliberate constraints on harder problem classes: Donald Knuth's *Claude's Cycles* (2026) and Keston Aquino-Michaels' *Completing Claude's Cycles* (2026). Different scale, same axis.
+Two recent papers calibrate the effect of deliberate constraints on harder problem classes. In *Claude's Cycles* (February 2026), Donald Knuth documents Claude Opus 4.6 solving an open Hamiltonian-cycle decomposition problem in a session run under one explicit rule: update the plan file before doing anything else, after every exploration. Keston Aquino-Michaels' *Completing Claude's Cycles* (March 2026) completes the even case Knuth left open, with two agents and an orchestrator under a heavier structured prompt; the paper's own summary is "The prompt structures process, not thought." Both results come from imposed structure, not raw model capability; how much structure is needed differs with the problem class.
 
 ## 6. Code review
 

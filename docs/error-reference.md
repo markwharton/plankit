@@ -163,6 +163,12 @@ Error: local develop is behind origin/develop; pull first
 Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
 
+`pk release --dry-run` reports the same condition before any merge is attempted:
+
+```
+Error: merge would not be fast-forward; main has diverged from develop. Resolve on main manually, then try again.
+```
+
 **Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
 
 **Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge. Undoing first keeps the `Release-Tag` trailer at the released tip; `pk release` reads the trailer from HEAD only:
