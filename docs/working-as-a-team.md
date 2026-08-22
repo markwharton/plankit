@@ -10,4 +10,4 @@ What lets us trust the speed is that pk sits between the model and the repo (see
 
 The skills give everyone the same path through it. `/pk-configure`, `/preserve`, and `/ship` are the same commands and the same workflow whether you are a senior developer who wants the guardrails out of the way or someone newer who needs a path to follow before they have internalized every rule.
 
-No single piece works alone. Plans, guidelines, review, guards: the discipline comes from all four together, and the result belongs to the system, not any single part. For a small team, the payoff is the discipline of a much larger process without the overhead of one.
+Discipline is the multiplier: the model supplies the capability, and discipline is what turns capability into results you can trust. No single piece supplies it alone. Plans, guidelines, review, guards: all four together, and the result belongs to the system, not any single part. For a small team, the payoff is the discipline of a much larger process without the overhead of one.
