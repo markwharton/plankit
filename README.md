@@ -92,7 +92,7 @@ Modes live in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook com
 | `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
 | `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
-| `pk release` | Tag, merge to release branch, validate, and push. [Details](docs/pk-release.md) |
+| `pk release` | Validate, merge to release branch, tag, and push. [Details](docs/pk-release.md) |
 | `pk guard` | Block git mutations on protected branches; guard `git push` against unbidden pushes. [Details](docs/pk-guard.md) |
 | `pk preserve` | Preserve approved plan. [Details](docs/pk-preserve.md) |
 | `pk protect` | Block edits to docs/plans/. [Details](docs/pk-protect.md) |

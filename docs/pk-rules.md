@@ -50,7 +50,7 @@ The shipped rules sit under `.claude/rules/plankit/`; a project's own rules (her
 
 ### What it reports, and what it does not
 
-The report is a context-cost and governance view. It shows how much always-on budget the rule set spends, and where each rule sits on the provenance/`kind` axes. It is a quick read, not a deep analysis — and it writes nothing, like every other pk command.
+The report is a context-cost and governance view. It shows how much always-on budget the rule set spends, and where each rule sits on the provenance/`kind` axes. It is a quick read, not a deep analysis — and it writes nothing.
 
 Reviewing the rule set *as a system* is the job of the `/review-rules` skill, which reads the source rules directly. That means overlap, gaps, drift, unstated precedence, and whether each rule sits at the right altitude. `pk rules` deliberately does not produce a paste-able document for that; the skill's analysis is more than a concatenation can give.
 

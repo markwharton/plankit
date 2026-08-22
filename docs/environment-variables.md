@@ -46,4 +46,4 @@ Claude Code writes plan files here when exiting plan mode. `pk preserve` reads t
 
 ### .git/pk-pending-plan
 
-Pointer file written by `pk preserve --notify` containing the absolute path to the approved plan. Read by the subsequent `pk preserve` invocation to preserve the exact plan that was approved, avoiding race conditions when multiple Claude Code sessions are active. Deleted after successful preservation.
+Pointer file written by the `pk preserve` hook run in `manual` mode, containing the absolute path to the approved plan. Read by the subsequent `pk preserve` invocation to preserve the exact plan that was approved, avoiding race conditions when multiple Claude Code sessions are active. Deleted after successful preservation.

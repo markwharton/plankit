@@ -46,7 +46,7 @@ For how this works in practice as a small team, see [Working as a Team](working-
 
 ## 4. Guidelines
 
-`pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines as `.claude/rules/` files covering model behavior, development standards, and git discipline.
+`pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines in `.claude/rules/plankit/` (`craft.md` and `conduct.md`).
 
 Every new LLM session draws from a wide solution space. Without constraints, they reach for familiar patterns: regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. Every convention in the guidelines is a countermeasure:
 
@@ -118,7 +118,7 @@ The more common a pattern is in training data, the more likely it is to override
 
 A different failure mode: Claude had learned "commit and push are separate decisions" via memory. In a project without plankit's guidelines, it started committing and pushing autonomously. Three commits went to the remote that could have been squashed into one. Memory alone wasn't enough. A rule recalled from memory doesn't carry the same weight as a rule in the project's CLAUDE.md that is read every session. Guidelines need to be present, not just remembered.
 
-Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines live in `.claude/rules/` where they're loaded automatically but don't compete for attention.
+Keep CLAUDE.md trimmed to essentials so each rule gets read. Detailed guidelines are installed under `.claude/rules/plankit/`, where Claude Code loads them automatically.
 
 Rules create accountability, not obedience. The model won't follow them every time. But without them, the same failures happen silently and nobody learns.
 

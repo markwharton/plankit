@@ -1,11 +1,11 @@
 # pk release
 
-Read the `Release-Tag` trailer from HEAD, create the git tag, merge to the release branch, validate, and push.
+Read the `Release-Tag` trailer from HEAD, validate, merge to the release branch, create the git tag, and push.
 
 ## Usage
 
 ```bash
-pk release                        # tag, merge, validate, and push
+pk release                        # validate, merge, tag, and push
 pk release --dry-run              # validate without tagging, merging, or pushing
 ```
 

@@ -52,7 +52,7 @@ An explicit `/preserve` always commits, regardless of the mode. Set it with `pk 
 
 ### Race safety across Claude sessions
 
-`~/.claude/plans/` is shared — every Claude Code session writes plans there. When multiple sessions are active, mtime-based selection in `findLatestPlan()` can pick the wrong plan. To close that window, `pk preserve --notify` writes the absolute path of the approved plan to `<projectDir>/.git/pk-pending-plan`. When the `/preserve` skill later invokes `pk preserve` (no hook stdin), that invocation reads the pointer and preserves the exact plan that was approved. That holds even if a rival session has since bumped the mtime on a different `*.md` in `~/.claude/plans/`. The pointer is deleted after successful preservation (or when it points at a missing file). No `.gitignore` coordination is needed because `.git/` is never tracked.
+`~/.claude/plans/` is shared — every Claude Code session writes plans there. When multiple sessions are active, mtime-based selection in `findLatestPlan()` can pick the wrong plan. To close that window, the automatic hook run in `manual` mode writes the absolute path of the approved plan to `<projectDir>/.git/pk-pending-plan`. When the `/preserve` skill later invokes `pk preserve` (no hook stdin), that invocation reads the pointer and preserves the exact plan that was approved. That holds even if a rival session has since bumped the mtime on a different `*.md` in `~/.claude/plans/`. The pointer is deleted after successful preservation (or when it points at a missing file). No `.gitignore` coordination is needed because `.git/` is never tracked.
 
 ### Team usage
 

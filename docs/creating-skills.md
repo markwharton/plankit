@@ -333,4 +333,4 @@ This is a high-stakes workflow that reverts a commit and opens a pull request. T
 
 - [Claude Code Skills](https://code.claude.com/docs/en/skills) — full schema, frontmatter fields, advanced features.
 - [Claude Code .claude directory](https://code.claude.com/docs/en/claude-directory) — file location and discovery rules.
-- plankit's installed skills (`.claude/skills/`) — `init`, `preserve`, `ship` as live examples.
+- plankit's installed skills (`.claude/skills/`) — `pk-configure`, `preserve`, `ship` as live examples.

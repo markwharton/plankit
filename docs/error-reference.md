@@ -250,8 +250,7 @@ Error: invalid --at ref "--force"; refs cannot start with -
 ### not a git repository
 
 ```
-Warning: this is not a git repository. Proceeding because --allow-non-git was set.
-Some commands (changelog, release) will not work until git is initialized.
+Warning: this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.
 ```
 
 **Cause:** `pk setup` was run outside a git repository with `--allow-non-git`.

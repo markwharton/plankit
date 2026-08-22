@@ -26,8 +26,9 @@ internal/setup/
 ├── claude.go             Claude Code provider (hooks, settings, bootstrap)
 ├── managed.go            SHA-tracked file management (universal)
 ├── pin.go                Version pinning (universal)
+├── ruleset.go            GitHub branch-protection ruleset template (universal)
 ├── setup.go              Config, Run() orchestrator, OrderedObject
-├── setup_test.go         Tests (unchanged, same exported API)
+├── walk.go               Rule-file directory walking (universal)
 ├── rules/                Rule content (universal, embedded)
 ├── skills/               Skill content (Claude Code format, embedded)
 └── template/             CLAUDE.md template, install-pk.sh
@@ -68,4 +69,4 @@ Claude Code is the only environment with pre-tool interception hooks. This means
 - **Claude Code**: full enforcement. `pk guard` blocks git mutations. `pk protect` blocks edits to preserved plans. `pk preserve` reacts to plan approval.
 - **Other environments**: advisory governance. Rules carry the behavioral guidance (which covers the majority of value), but there is no backstop for the cases where the AI ignores a rule. Git workflow commands (`pk changelog`, `pk release`) work identically regardless of environment.
 
-Rules carry roughly 90% of the behavioral value. The model follows them in the vast majority of cases. Hooks are a backstop for the remaining cases where enforcement matters: protecting immutable plans, guarding release branches, and preserving approved work.
+Rules carry most of the behavioral value. The model follows them in the majority of cases. Hooks are a backstop for the remaining cases where enforcement matters: protecting immutable plans, guarding release branches, and preserving approved work.

@@ -47,7 +47,7 @@ plankit is reported as configured if any of the following are present:
 
 ### Modes
 
-The guard, push-guard, and preserve modes are read from `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`). Status shows the **effective** mode. An absent key resolves to its default (guard `block`, push `block`, preserve `manual`), so a configured project always shows a value. The `push:` line appears only when guard is active (`block` or `ask`); when guard is `off`, push-guard is moot and not shown.
+The guard, push-guard, and preserve modes are read from `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`). Status shows the **effective** mode. An absent key resolves to its default (guard `block`, push `block`, preserve `manual`), so a configured project always shows a value. The `push:` line appears only when guard is active (`block` or `ask`); when guard is `off`, the line is not shown, but the push policy itself still applies to every `git push` (see [pk guard](pk-guard.md)).
 
 See [.pk.json](pk-json.md#guard) for the keys and how `pk setup` writes them.
 

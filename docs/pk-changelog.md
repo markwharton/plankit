@@ -97,7 +97,7 @@ If `types` is omitted or empty, defaults are used:
 Files containing a version string to update when a new version is released. Each entry has:
 
 - **path** — path to the file relative to the project root
-- **type** — file format, currently `"json"` only
+- **type** — file format; `"json"` is the only accepted value, and an omitted `type` is treated as `"json"`
 
 For JSON files, `pk changelog` updates the root-level `version` field using proper JSON parsing (no regex). Formatting, key order, and indentation are preserved.
 
@@ -137,8 +137,8 @@ Git tags are the single version source. If no tags exist, `pk changelog` exits w
 
 ```
 Error: no version tags found
-  To anchor at v0.0.0: pk setup --baseline --push
-  Or tag a specific version manually (e.g., git tag v1.2.3 && git push origin v1.2.3)
+  To anchor at v0.0.0: pk setup --baseline [--at <ref>] --push
+  or: git tag v0.0.0 && git push origin v0.0.0
 ```
 
 If origin has tags but they aren't present locally (common in shallow-clone sandboxes), the error instead points at `git fetch --tags`. The bootstrap script runs this automatically on session start, so the case normally only shows up outside a Claude Code session.
@@ -216,7 +216,7 @@ Release-Tag: v0.6.2
 
 The trailer is a git-native mechanism for structured commit metadata (see also `Signed-off-by:`, `Co-authored-by:`). It's written via `git commit --trailer` and read via `git log --format=%(trailers:key=Release-Tag,valueonly)`. Two pk commands consume it:
 
-- **`pk release`** reads the trailer to know which version to tag. Without the trailer, `pk release` refuses with "no Release-Tag trailer on HEAD — run 'pk changelog' first."
+- **`pk release`** reads the trailer to know which version to tag. Without the trailer, `pk release` refuses with "no Release-Tag trailer on HEAD; run pk changelog first".
 - **`pk changelog --undo`** checks for the trailer before touching history, so it only unwinds pk-created commits.
 
 The trailer value is validated as strict semver: the value must parse via plankit's semver parser and round-trip back to the same string. Anything else (typos, non-semver strings, extra characters) is rejected.

@@ -118,7 +118,7 @@ git init
 pk setup --baseline
 ```
 
-Tags HEAD (your initial commit) as `v0.0.0`. Next conventional commits on `develop` become the first changelog entry.
+Tags HEAD (your initial commit) as `v0.0.0`. The next conventional commits become the first changelog entry.
 
 **2. Existing repo, anchor from current state.**
 

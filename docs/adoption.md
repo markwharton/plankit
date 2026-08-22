@@ -38,7 +38,7 @@ pk init --push
 # restart Claude Code
 ```
 
-That writes the `main` + `develop` topology into `.pk.json` (Layer 2), installs the managed files (Layer 1), tags `v0.0.0` and creates `develop` (Layer 3), commits it all, and drops `.github/protect-main.json` ready to import. Run it once; a re-run writes nothing and only publishes with `--push`. There is no Layer 4: there is nothing to migrate from.
+That writes the `main` + `develop` topology into `.pk.json` (Layer 2), installs the managed files (Layer 1), tags `v0.0.0` and creates `develop` (Layer 3), commits it all, and writes `.github/protect-main.json` ready to import (unless the project already has one). Run it once; a re-run writes nothing and only publishes with `--push`. There is no Layer 4: there is nothing to migrate from.
 
 `pk init` refuses on a dirty working tree, a repository with no commits, or a branch that is not the release branch. An existing semver tag is not a refusal: the baseline step leaves it alone, so a project that is already anchored keeps its anchor. What `pk init` does not do is decide where an established project's baseline belongs, or migrate config from another release tool; for that, work through the layers below.
 
@@ -166,7 +166,7 @@ The order matters, because `pk release` reads `.pk.json` from the working tree a
 1. **On the working branch**, make every other change for the new shape (CI that checks out or targets the working branch, Dependabot `target-branch`, docs) and cut one last merge-flow release, so those commits reach the release branch through the normal path.
 2. **Switch to the release branch.** Delete the working branch locally and on origin. Confirm only the release branch remains.
 3. **From your own terminal, not a Claude Code session,** remove `release.branch` and `guard.branches` from `.pk.json` and commit. Until this commit lands, `guard.branches` still names the branch you are standing on, so `pk guard` blocks the commit inside a session; that is the guard doing its job, and this one commit is the developer's to make. Keep `guard.mode`, `guard.push`, and `preserve.mode`.
-4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)`. `pk changelog --dry-run` shows that one config commit; it rides the next real release rather than earning one of its own. `pk setup` will now print its "No release branch in .pk.json" reminder on each run; in trunk flow that is expected.
+4. **Confirm:** `pk status` → `Readiness: ready for pk changelog / pk release (trunk flow; no release.branch in .pk.json)`. `pk changelog --dry-run` shows that one config commit; it rides the next real release rather than earning one of its own. `pk setup` will now end each run with the reminder that `.pk.json` names no release branch; in trunk flow the reminder needs no action.
 
 Tags made under merge flow remain valid; the next release tags the current branch and pushes it with the tag.
 

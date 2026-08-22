@@ -32,7 +32,7 @@ make vuln           # Scan for known vulnerabilities (govulncheck)
 make cover          # Per-function coverage for .go files changed since the latest tag; run before /ship
 pk changelog        # Generate CHANGELOG.md and commit (no tag)
 pk changelog --undo # Unwind an unpushed release commit
-pk release          # Read Release-Tag trailer, create tag, merge, and push
+pk release          # Read Release-Tag trailer, merge, create tag, and push
 ```
 
 - **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` drops a binary in the working directory; the Makefile routes output to `dist/`.
@@ -56,7 +56,7 @@ pk release          # Read Release-Tag trailer, create tag, merge, and push
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (pk-configure, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
-- `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint badge, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
+- `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint line, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
 - `.claude/rules/plankit/` — managed rules (craft, conduct), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
 
 ### Design

@@ -34,7 +34,7 @@ See [pk release — Workflows](pk-release.md#workflows) for the reference table.
 
 ```bash
 pk changelog                          # on develop: generate changelog and commit (no tag yet)
-pk release                            # tag, merge to main, validate, push, switch back, push develop
+pk release                            # validate, merge to main, tag, push, switch back, push develop
 ```
 
 **Trunk flow** (single branch, no `release.branch` configured):

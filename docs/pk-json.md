@@ -63,7 +63,7 @@ Types also control section ordering: sections appear in the order their first ty
 Files containing a version string to update when a new version is released. Each entry has:
 
 - **path** — path to the file relative to the project root.
-- **type** — file format. Currently `"json"` only.
+- **type** — file format. `"json"` is the only accepted value; an omitted `type` is treated as `"json"`.
 
 For JSON files, `pk changelog` updates the root-level `version` field using proper JSON parsing. Formatting, key order, and indentation are preserved.
 

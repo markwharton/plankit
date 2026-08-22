@@ -103,12 +103,12 @@ With `release.branch` configured in `.pk.json`, the full release flow runs from 
 pk changelog --dry-run            # preview changelog and version bump
 pk changelog                      # on develop: generate CHANGELOG.md and commit (no tag)
 pk release --dry-run              # preview the release flow
-pk release                        # read Release-Tag trailer, tag, merge to main, push main + tag, push develop
+pk release                        # read Release-Tag trailer, merge to main, tag, push main + tag, push develop
 ```
 
 `pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
 
-**The release flow needs the Go toolchain on PATH**, not only for `make build`. Two release hooks compile from source: `pk changelog`'s `preCommit` runs `go run ./evals/footprint` (refreshes the always-on rules footprint line in the README so it lands in the release commit), and `pk release`'s `preRelease` runs `go test -race ./...`. So a release can't be cut on a machine without Go, even though the published binary itself has no runtime dependencies.
+**The release flow needs the Go toolchain on PATH**, not only for `make build`. Two release hooks compile from source: `pk changelog`'s `preCommit` runs `pk pin` on the bootstrap script and then `go run ./evals/footprint` (refreshes the always-on rules footprint line in the README so it lands in the release commit), and `pk release`'s `preRelease` runs `go test -race ./...`. So a release can't be cut on a machine without Go, even though the published binary itself has no runtime dependencies.
 
 See [pk changelog](docs/pk-changelog.md) and [pk release](docs/pk-release.md) for details.
 
