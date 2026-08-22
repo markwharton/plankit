@@ -1,7 +1,7 @@
 ---
 description: Hook responses, skill dispatch, pk flag lookup, and git/session conduct
 kind: conduct
-pk_sha256: 3f67f32901d334fb6472b280a368b892c1dd2968aed0c8b73295ee6b4c3b3bb0
+pk_sha256: 2d2be96d26a9ed5b039c63e678a60330753191fdc75e0ef43a5440e459b3b228
 ---
 
 # Plankit Conduct
@@ -24,8 +24,8 @@ pk_sha256: 3f67f32901d334fb6472b280a368b892c1dd2968aed0c8b73295ee6b4c3b3bb0
 
 ## Git and Session Conduct
 
-- **Git decisions are the developer's; carry them out, don't originate them.** A request to commit is never a request to push, and approval to push once doesn't carry forward to the next push.
+- **Git decisions are the developer's; carry them out, don't originate them.** A request to commit is never a request to push, and approval to push once is not approval for the next push.
 - **On unexpected git state, stop and defer to the developer.** Diverged branches, "behind remote", anything you didn't anticipate: don't reflexively `git pull`, `git pull --rebase`, `git merge`, or `git reset`. Diagnose with `git log --oneline --graph HEAD origin/<branch>`, report what you see, and wait for instructions.
 - **Surface state-changing failures immediately.** When an operation partially succeeds (commit created but push rejected, file written but validation failed), tell the user what happened, what state changed, and the remediation step. Never silently continue.
-- **Clarifications are information, not instructions.** When the user corrects your interpretation or brings you up to date on state, acknowledge and wait for the explicit next step. Never execute whichever branch of your prior analysis now matches the clarified state, especially destructive operations.
+- **Clarifications are information, not instructions.** When the user corrects your interpretation or brings you up to date on state, acknowledge and wait for the explicit next step. Never execute an option from your prior analysis just because the clarified state now matches it, especially destructive operations.
 - **Test at the start of each session and report the status.** Test before and after changes so failures are attributable.

@@ -35,7 +35,7 @@ pk changelog --undo # Unwind an unpushed release commit
 pk release          # Read Release-Tag trailer, merge, create tag, and push
 ```
 
-- **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` drops a binary in the working directory; the Makefile routes output to `dist/`.
+- **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` leaves a binary in the working directory; the Makefile routes output to `dist/`.
 
 ### Language & Build
 
@@ -61,7 +61,7 @@ pk release          # Read Release-Tag trailer, merge, create tag, and push
 
 ### Design
 
-- **All commands resolve to the git repository root.** A pk command can be invoked from any subdirectory; it walks up to find `.git` and operates there. Commands don't require being at the root, but they effectively run as if they are. Non-git fallback: when no `.git` exists up the tree, the command uses the provided directory as-is.
+- **All commands resolve to the git repository root.** A pk command can be invoked from any subdirectory; it walks up to find `.git` and operates there. Commands don't require being at the root; running from a subdirectory gives the same result as running at the root. Non-git fallback: when no `.git` exists up the tree, the command uses the provided directory as-is.
 - **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
 - **Three command layers, three flag patterns.**
   - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
@@ -71,7 +71,7 @@ pk release          # Read Release-Tag trailer, merge, create tag, and push
 ### Code Patterns
 
 - **Dependency injection via Config structs.** Every package exports a `Config` struct with injectable deps (`Stdin`, `Stdout`, `Stderr`, `GitExec`, `ReadFile`, etc.) and a `DefaultConfig()` factory wired to real implementations. DI extends to standalone utility functions too: any function that does file I/O accepts injected `readFile`/`writeFile` parameters rather than calling `os.ReadFile`/`os.WriteFile` directly. The call site in `cmd/pk/main.go` passes the real implementations.
-- **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests. Test error paths, not just happy paths: file I/O failures, git operation failures, and config parse errors all need coverage because they protect against silent data corruption.
+- **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests. Test error paths, not just happy paths: file I/O failures, git operation failures, and config parse errors all need coverage because untested error paths can hide silent data corruption.
 - **Hook commands** read JSON from stdin, write JSON to stdout, and always exit 0. Shared types and helpers live in `internal/hooks`: `ResolveProjectDir` for project-dir resolution (env var then CWD fallback), `ReadInput` for payload parsing, `WritePostToolUse`/`WritePermissionDecision` for response writing. Response writers return errors; callers log to stderr and continue (hooks never fail on write errors).
 - **Shared git helpers** live in `internal/git`: `RepoRoot` (stat-based, no subprocess) resolves a directory to the git repository root and is the single resolution mechanism for all commands. `IsRepo` wraps `RepoRoot` when only the boolean is needed. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).
 - **Managed files** embed a SHA marker (HTML comment for CLAUDE.md, YAML frontmatter `pk_sha256` for skills) so `pk setup` can detect user modifications.
@@ -85,7 +85,7 @@ When editing a file that has `pk_sha256` in its frontmatter (skills, rules), upd
 sed -n '/^---$/,/^---$/!p' <embedded-source> | shasum -a 256
 ```
 
-Replace the `pk_sha256` line in the local copy with the new value. The sed pattern excludes the frontmatter `---`...`---` block, matching Go's body hash calculation byte-for-byte. This avoids running `pk setup`, which would also touch other managed files.
+Replace the `pk_sha256` line in the local copy with the new value. The sed pattern excludes the frontmatter `---`...`---` block, matching Go's body hash calculation byte-for-byte. Replacing the line by hand avoids running `pk setup`, which would also rewrite the other managed files.
 
 ### Configuration
 
@@ -98,7 +98,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 
 ### Documentation
 
-- Convention format: bold principle, then concise context — plain statement when the rule speaks for itself.
+- Convention format: bold principle, then concise context — plain statement when no context is needed.
 - Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`) → reference docs. New command docs follow `docs/command-doc-template.md`. Reference docs (`docs/pk-json.md`, `docs/error-reference.md`, `docs/environment-variables.md`) centralize information that spans multiple commands: when a change adds a config key, error message, or environment variable, update the relevant reference doc in the same pass. Higher-level docs (README, methodology) link to command docs and only change when concepts change. When they already enumerate options or modes, a new option is a concept change — update them too.
 - Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally).
 
