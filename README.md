@@ -87,7 +87,7 @@ The modes are stored in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`)
 | Command | Description |
 |---------|-------------|
 | `pk init` | Make a repo plankit-shaped: topology, managed files, `v0.0.0`, branches. [Details](docs/pk-init.md) |
-| `pk setup` | Configure project hooks, skills, and CLAUDE.md. [Details](docs/pk-setup.md) |
+| `pk setup` | Install hooks, skills, rules, and CLAUDE.md; `--baseline` anchors `pk changelog`. [Details](docs/pk-setup.md) |
 | `pk status` | Report plankit configuration state and release readiness. [Details](docs/pk-status.md) |
 | `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |
 | `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |

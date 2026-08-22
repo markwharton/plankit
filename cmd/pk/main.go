@@ -505,12 +505,12 @@ User commands:
                                       Make a repo plankit-shaped: topology, managed files, v0.0.0, branches
   pk release [--dry-run]              Read Release-Tag trailer, merge, tag, and push
   pk rules [--lint [--strict]] [--project-dir <dir>]
-                                      Report .claude/rules/ + CLAUDE.md context footprint; --lint scans for hidden chars
+                                      Report the always-on context footprint of .claude/rules/ + CLAUDE.md; --lint scans for hidden chars
   pk setup [--force] [--allow-non-git] [--project-dir <dir>] [--guard block|ask|off]
            [--preserve auto|manual|off] [--push-guard block|ask|off] [--baseline [--at <ref>] [--push]]
-                                      Configure project hooks and skills; optionally anchor pk changelog
+                                      Install hooks, skills, rules, and CLAUDE.md; --baseline anchors pk changelog
   pk status [--brief] [--project-dir <dir>]
-                                      Report plankit configuration state
+                                      Report plankit configuration state and release readiness
   pk teardown [--confirm] [--project-dir <dir>]
                                       Remove plankit hooks, skills, and rules
   pk version [--verbose]              Print version and check for updates
