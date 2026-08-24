@@ -83,6 +83,21 @@ func TestLoadConfig(t *testing.T) {
 	})
 }
 
+func TestLoadFullConfig_guardAndRelease(t *testing.T) {
+	full, err := LoadFullConfig(func(name string) ([]byte, error) {
+		return []byte(`{"guard":{"branches":["main"]},"release":{"branch":"main"}}`), nil
+	}, ".pk.json")
+	if err != nil {
+		t.Fatalf("LoadFullConfig() error = %v", err)
+	}
+	if len(full.Guard.Branches) != 1 || full.Guard.Branches[0] != "main" {
+		t.Errorf("guard.branches = %v, want [main]", full.Guard.Branches)
+	}
+	if full.Release.Branch != "main" {
+		t.Errorf("release.branch = %q, want main", full.Release.Branch)
+	}
+}
+
 func TestParseVersion(t *testing.T) {
 	tests := []struct {
 		tag    string
@@ -1404,6 +1419,158 @@ func TestRun_branchNotOnOrigin(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "git push -u origin develop") {
 		t.Errorf("stderr = %q, want push advice", stderr.String())
+	}
+}
+
+func TestRun_trunkFlow_notOnDefaultBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	commitCalled := false
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "feature\n", nil
+			}
+			if args[0] == "ls-remote" && args[1] == "--symref" {
+				return "ref: refs/heads/main\tHEAD\nabc123\tHEAD\n", nil
+			}
+			if args[0] == "commit" {
+				commitCalled = true
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+	}
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	out := stderr.String()
+	if !strings.Contains(out, `you're on "feature" but the default branch on origin is "main"`) {
+		t.Errorf("stderr = %q, want default-branch refusal naming both branches", out)
+	}
+	if !strings.Contains(out, "To release this work from main: git switch main && git merge feature") {
+		t.Errorf("stderr = %q, want merge hint", out)
+	}
+	if !strings.Contains(out, "Then: pk changelog && pk release") {
+		t.Errorf("stderr = %q, want follow-up hint", out)
+	}
+	if commitCalled {
+		t.Error("commit should not run after the refusal")
+	}
+}
+
+func TestRun_trunkFlow_onDefaultBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "main\n", nil
+			}
+			if args[0] == "ls-remote" && args[1] == "--symref" {
+				return "ref: refs/heads/main\tHEAD\nabc123\tHEAD\n", nil
+			}
+			if args[0] == "ls-remote" {
+				return "abc123\trefs/heads/main", nil
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+		DryRun:   true,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "default branch on origin") {
+		t.Errorf("should not refuse on the default branch: %s", stderr.String())
+	}
+}
+
+func TestRun_trunkFlow_noRemoteHead(t *testing.T) {
+	// Origin advertises no HEAD symref: no default can be established, so
+	// the check is skipped and the run proceeds.
+	var stderr bytes.Buffer
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "feature\n", nil
+			}
+			if args[0] == "ls-remote" && args[1] == "--symref" {
+				return "abc123\tHEAD\n", nil
+			}
+			if args[0] == "ls-remote" {
+				return "abc123\trefs/heads/feature", nil
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) { return nil, os.ErrNotExist },
+		Now:      fixedTime,
+		DryRun:   true,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "default branch on origin") {
+		t.Errorf("should not refuse when origin advertises no HEAD: %s", stderr.String())
+	}
+}
+
+func TestRun_mergeFlow_skipsDefaultBranchCheck(t *testing.T) {
+	// With release.branch configured, the working branch is by design not
+	// the default branch; the check must not run.
+	var stderr bytes.Buffer
+	symrefQueried := false
+	cfg := Config{
+		Stderr: &stderr,
+		GitExec: func(dir string, args ...string) (string, error) {
+			if args[0] == "branch" {
+				return "develop\n", nil
+			}
+			if args[0] == "ls-remote" && args[1] == "--symref" {
+				symrefQueried = true
+				return "ref: refs/heads/main\tHEAD\n", nil
+			}
+			if args[0] == "ls-remote" {
+				return "abc123\trefs/heads/develop", nil
+			}
+			if args[0] == "tag" && args[1] == "--list" {
+				return "v0.0.0", nil
+			}
+			if args[0] == "log" {
+				return "abc1234\x00feat: add feature\x00\x00", nil
+			}
+			return "", nil
+		},
+		ReadFile: func(name string) ([]byte, error) {
+			return []byte(`{"release":{"branch":"main"}}`), nil
+		},
+		Now:    fixedTime,
+		DryRun: true,
+	}
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if symrefQueried {
+		t.Error("merge flow should not query origin's default branch")
 	}
 }
 

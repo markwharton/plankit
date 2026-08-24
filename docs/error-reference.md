@@ -38,6 +38,18 @@ Error: you're on "main" which is a protected branch; switch to your development 
 
 **Fix:** Switch to your development branch (`git switch develop`). The create hint appears only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
 
+### not the default branch
+
+```
+Error: you're on "feature" but the default branch on origin is "main"; trunk flow releases from the default branch
+  To release this work from main: git switch main && git merge feature
+  Then: pk changelog && pk release
+```
+
+**Cause:** In trunk flow (no `release.branch` in `.pk.json`), releases publish from the default branch on origin. A tag on any other branch would publish unmerged work. The check is skipped when origin advertises no HEAD.
+
+**Fix:** Merge the work into the default branch and rerun. To ship from a different branch permanently, change the repository's default branch on your host. To tag the branch anyway, deliberately: `git tag <tag> && git push origin <branch> <tag>`. If the default branch is listed in `guard.branches`, the config is a dead end — configure `release.branch` for the merge flow instead.
+
 ### branch not on origin
 
 ```
@@ -135,6 +147,18 @@ Error: tag v0.8.1 already exists locally; nothing to release
 **Cause:** The tag from the `Release-Tag` trailer already exists. The release was already completed or partially completed.
 
 **Fix:** If the release was already pushed, there is nothing to do. If the tag is leftover from a failed attempt, delete it (`git tag -d v0.8.1`) and retry.
+
+### not the default branch
+
+```
+Error: you're on "feature" but the default branch on origin is "main"; trunk flow releases from the default branch
+  To release this work from main: git switch main && git merge feature
+  Then: pk release
+```
+
+**Cause:** In trunk flow (no `release.branch` in `.pk.json`), `pk release` tags and pushes the branch it runs on. Only the default branch on origin may publish a release; a tag elsewhere would publish unmerged work. The check is skipped when origin advertises no HEAD.
+
+**Fix:** Merge the work into the default branch. The fast-forward carries the Release-Tag trailer, so `pk release` works there directly. See the `pk changelog` entry above for the other options: change the host's default branch, tag manually with git, or configure `release.branch` when the default branch is guarded.
 
 ### branch not on origin
 

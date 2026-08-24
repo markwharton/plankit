@@ -43,6 +43,11 @@ func happyGit(tag, branch string) map[string]func(args ...string) (string, error
 			return branch, nil
 		},
 		"ls-remote": func(args ...string) (string, error) {
+			// Both the default-branch symref query and the heads existence
+			// query land here; the fixture branch is origin's default.
+			if len(args) > 1 && args[1] == "--symref" {
+				return "ref: refs/heads/" + branch + "\tHEAD\nabc123\tHEAD\n", nil
+			}
 			return "abc123\trefs/heads/" + branch, nil
 		},
 		"fetch": func(args ...string) (string, error) {
@@ -151,6 +156,9 @@ func TestRun_dryRun(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Dry run complete") {
 		t.Errorf("stderr missing dry run message: %s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "Would push main and v1.0.0") {
+		t.Errorf("stderr missing push preview: %s", stderr.String())
 	}
 }
 
@@ -743,6 +751,9 @@ func TestRun_mergeFlow_dryRun(t *testing.T) {
 	if !strings.Contains(stderr.String(), "Would merge dev into main") {
 		t.Errorf("stderr missing merge preview: %s", stderr.String())
 	}
+	if !strings.Contains(stderr.String(), "Would push main and v1.0.0") {
+		t.Errorf("stderr missing push preview: %s", stderr.String())
+	}
 }
 
 func TestRun_mergeFlow_alreadyOnReleaseBranch(t *testing.T) {
@@ -970,6 +981,122 @@ func TestRun_trunkFlow_noReleaseBranch(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Trunk flow (no release.branch in .pk.json)") {
 		t.Errorf("stderr missing trunk flow label: %s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "On develop (default branch on origin)") {
+		t.Errorf("stderr missing verified default-branch line: %s", stderr.String())
+	}
+}
+
+func TestRun_trunkFlow_notOnDefaultBranch(t *testing.T) {
+	var stderr bytes.Buffer
+	tagCalled := false
+	pushCalled := false
+
+	git := happyGit("v1.0.0", "feature")
+	git["ls-remote"] = func(args ...string) (string, error) {
+		if len(args) > 1 && args[1] == "--symref" {
+			return "ref: refs/heads/main\tHEAD\nabc123\tHEAD\n", nil
+		}
+		return "abc123\trefs/heads/feature", nil
+	}
+	git["tag"] = func(args ...string) (string, error) {
+		if len(args) == 2 && args[1] == "v1.0.0" {
+			tagCalled = true
+		}
+		return "", nil
+	}
+	git["push"] = func(args ...string) (string, error) {
+		pushCalled = true
+		return "", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1; stderr: %s", code, stderr.String())
+	}
+	out := stderr.String()
+	if !strings.Contains(out, `you're on "feature" but the default branch on origin is "main"`) {
+		t.Errorf("stderr = %q, want default-branch refusal naming both branches", out)
+	}
+	if !strings.Contains(out, "To release this work from main: git switch main && git merge feature") {
+		t.Errorf("stderr = %q, want merge hint", out)
+	}
+	if !strings.Contains(out, "Then: pk release") {
+		t.Errorf("stderr = %q, want pk release hint", out)
+	}
+	if tagCalled {
+		t.Error("tag should not be created after the refusal")
+	}
+	if pushCalled {
+		t.Error("push should not run after the refusal")
+	}
+}
+
+func TestRun_trunkFlow_noRemoteHead(t *testing.T) {
+	// Origin advertises no HEAD symref: the default-branch check is skipped
+	// and the trunk output keeps the plain branch line as disclosure.
+	var stderr bytes.Buffer
+
+	git := happyGit("v1.0.0", "feature")
+	git["ls-remote"] = func(args ...string) (string, error) {
+		if len(args) > 1 && args[1] == "--symref" {
+			return "abc123\tHEAD\n", nil
+		}
+		return "abc123\trefs/heads/feature", nil
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: noConfig,
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "On feature branch") {
+		t.Errorf("stderr = %q, want plain branch line", out)
+	}
+	if strings.Contains(out, "(default branch on origin)") {
+		t.Errorf("stderr = %q, must not claim a verified default branch", out)
+	}
+}
+
+func TestRun_mergeFlow_noDefaultBranchCheck(t *testing.T) {
+	// Merge flow never queries origin's default branch; release.branch is
+	// the policy there.
+	var stderr bytes.Buffer
+	symrefQueried := false
+
+	git := happyGitMerge("v1.0.0", "feature", "main")
+	original := git["ls-remote"]
+	git["ls-remote"] = func(args ...string) (string, error) {
+		if len(args) > 1 && args[1] == "--symref" {
+			symrefQueried = true
+		}
+		return original(args...)
+	}
+
+	cfg := Config{
+		Stderr:   &stderr,
+		GitExec:  stubGitExec(git),
+		ReadFile: mergeConfig("main"),
+	}
+
+	code := Run(cfg)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0; stderr: %s", code, stderr.String())
+	}
+	if symrefQueried {
+		t.Error("merge flow should not query origin's default branch")
 	}
 }
 

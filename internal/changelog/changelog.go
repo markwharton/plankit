@@ -143,6 +143,25 @@ func Run(cfg Config) int {
 		}
 	}
 
+	// 3b. Trunk flow (no release.branch): releases publish from the default
+	// branch on origin, so refuse any other branch. This runs before the
+	// branch-on-origin check, whose "push it" hint would otherwise walk the
+	// user straight into this refusal. Skipped on detached HEAD, and when
+	// origin advertises no HEAD symref so no default can be established.
+	if fullConfig.Release.Branch == "" {
+		if branch, err := cfg.GitExec(cfg.Dir, "branch", "--show-current"); err == nil {
+			branch = strings.TrimSpace(branch)
+			if branch != "" {
+				if def, ok, derr := pkgit.DefaultBranch(cfg.GitExec, cfg.Dir); derr == nil && ok && branch != def {
+					msg.Errorf(cfg.Stderr, "you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", branch, def)
+					msg.Hintf(cfg.Stderr, "To release this work from %s: git switch %s && git merge %s", def, def, branch)
+					msg.Hintf(cfg.Stderr, "Then: pk changelog && pk release")
+					return 1
+				}
+			}
+		}
+	}
+
 	// 4. Check that the current branch exists on origin. Without this,
 	// pk changelog succeeds but pk release fails — leaving the user with a
 	// Release-Tag commit and a manual push before they can continue.
@@ -377,13 +396,15 @@ func Undo(cfg Config) int {
 	return 0
 }
 
-// FullConfig holds both changelog and guard config from .pk.json.
+// FullConfig holds changelog, guard, and release config from .pk.json.
 type FullConfig struct {
 	ChangelogConfig
-	Guard config.GuardConfig
+	Guard   config.GuardConfig
+	Release config.ReleaseSection
 }
 
-// LoadFullConfig reads .pk.json from path and returns changelog + guard config.
+// LoadFullConfig reads .pk.json from path and returns changelog, guard, and
+// release config.
 // Falls back to defaults if the file is missing. Returns an error if the
 // file exists but contains malformed JSON.
 func LoadFullConfig(readFile func(string) ([]byte, error), path string) (FullConfig, error) {
@@ -394,7 +415,7 @@ func LoadFullConfig(readFile func(string) ([]byte, error), path string) (FullCon
 	if len(pk.Changelog.Types) == 0 {
 		pk.Changelog.Types = defaultTypes
 	}
-	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard}, nil
+	return FullConfig{ChangelogConfig: pk.Changelog, Guard: pk.Guard, Release: pk.Release}, nil
 }
 
 // LoadConfig reads .pk.json from path and returns the changelog config.

@@ -16,14 +16,15 @@ pk changelog --exclude abc1234,def5678      # drop commits from the section by s
 
 1. Checks if the current branch is protected by `guard.branches` in `.pk.json`. If so, exits with an error: "switch to your development branch first."
 2. Verifies the working tree is clean (skipped in `--dry-run` mode). Exits with an error if there are uncommitted changes.
-3. Verifies the current branch exists on origin. Without this, `pk changelog` would succeed but `pk release` would fail, leaving a Release-Tag commit whose release cannot proceed until the branch is pushed.
-4. Reads the latest version tag (git tags are the single version source)
-5. Scans commits since that tag for conventional commit messages
-6. Groups commits by type into changelog sections
-7. Writes or updates CHANGELOG.md with the new version section
-8. Updates version files if configured
-9. Runs lifecycle hooks if configured
-10. Commits CHANGELOG.md and all modified files, adding a `Release-Tag: vX.Y.Z` trailer to the commit body via `git commit --trailer`
+3. In trunk flow (no `release.branch` in `.pk.json`), verifies the current branch is the default branch on origin (`git ls-remote --symref origin HEAD`). Any other branch is refused: a trunk-flow release tags and pushes the branch it runs on, so another branch would publish unmerged work. Skipped when origin advertises no HEAD.
+4. Verifies the current branch exists on origin. Without this, `pk changelog` would succeed but `pk release` would fail, leaving a Release-Tag commit whose release cannot proceed until the branch is pushed.
+5. Reads the latest version tag (git tags are the single version source)
+6. Scans commits since that tag for conventional commit messages
+7. Groups commits by type into changelog sections
+8. Writes or updates CHANGELOG.md with the new version section
+9. Updates version files if configured
+10. Runs lifecycle hooks if configured
+11. Commits CHANGELOG.md and all modified files, adding a `Release-Tag: vX.Y.Z` trailer to the commit body via `git commit --trailer`
 
 No git tag is created by `pk changelog`. The tag is the responsibility of `pk release`, which reads the trailer from HEAD and creates the tag just before pushing.
 

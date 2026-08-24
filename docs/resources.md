@@ -40,8 +40,8 @@ pk release                            # validate, merge to main, tag, push, swit
 **Trunk flow** (single branch, no `release.branch` configured):
 
 ```bash
-pk changelog                          # on the working branch: generate changelog and commit (no tag yet)
-pk release                            # tag HEAD, push current branch + tag
+pk changelog                          # on the default branch: generate changelog and commit (no tag yet)
+pk release                            # tag HEAD on the default branch, push it + tag
 ```
 
 `pk changelog` adds a `Release-Tag:` trailer to the commit message body. `pk release` reads that trailer to know which version to tag, then creates the tag just before pushing. If something goes wrong between `pk changelog` and `pk release`, run `pk changelog --undo` to cleanly unwind the release commit (refuses if HEAD has already been pushed).

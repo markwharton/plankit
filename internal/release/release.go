@@ -117,6 +117,25 @@ func Run(cfg Config) int {
 	}
 	msg.Itemf(cfg.Stderr, "Clean working tree")
 
+	// 6b. Pre-flight, trunk flow only: releases publish from the default
+	// branch on origin, so refuse any other branch; re-checks what
+	// pk changelog already refused, like the branch-on-origin check below.
+	// Skipped on detached HEAD, and when origin advertises no HEAD symref
+	// so no default can be established; a git failure here is left for the
+	// next ls-remote check to surface.
+	defaultVerified := false
+	if releaseBranch == "" && sourceBranch != "" {
+		if def, ok, derr := pkgit.DefaultBranch(cfg.GitExec, cfg.Dir); derr == nil && ok {
+			if sourceBranch != def {
+				msg.Errorf(cfg.Stderr, "you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", sourceBranch, def)
+				msg.Hintf(cfg.Stderr, "To release this work from %s: git switch %s && git merge %s", def, def, sourceBranch)
+				msg.Hintf(cfg.Stderr, "Then: pk release")
+				return 1
+			}
+			defaultVerified = true
+		}
+	}
+
 	// 7. Pre-flight: source branch exists on origin. Gives a clear error
 	// for the "local-only branch" case that would otherwise surface as a
 	// cryptic fetch failure.
@@ -250,9 +269,15 @@ func Run(cfg Config) int {
 		}
 	} else if releaseBranch == "" {
 		// Trunk flow: no releaseBranch configured — tag HEAD, push current branch.
-		// We already checked tag exists above. Just note the branch.
+		// We already checked tag exists above. Just note the branch. The plain
+		// "On %s branch" form doubles as disclosure that the default-branch
+		// check could not run (origin advertises no HEAD symref).
 		msg.Itemf(cfg.Stderr, "Trunk flow (no release.branch in .pk.json)")
-		msg.Itemf(cfg.Stderr, "On %s branch", sourceBranch)
+		if defaultVerified {
+			msg.Itemf(cfg.Stderr, "On %s (default branch on origin)", sourceBranch)
+		} else {
+			msg.Itemf(cfg.Stderr, "On %s branch", sourceBranch)
+		}
 	}
 
 	// Env shared by both release hooks, matching changelog hooks' contract:
@@ -279,11 +304,20 @@ func Run(cfg Config) int {
 		msg.Itemf(cfg.Stderr, "Hook passed")
 	}
 
+	// The push publishes the release branch in merge flow, the source branch
+	// in trunk flow. Computed before the dry-run exit so the rehearsal names
+	// the branch the real push would publish.
+	pushBranch := sourceBranch
+	if needsMerge {
+		pushBranch = releaseBranch
+	}
+
 	// 10. Dry run complete (merge/trunk flows).
 	if cfg.DryRun {
 		fmt.Fprintln(cfg.Stderr, "")
 		msg.Section(cfg.Stderr, "Dry run complete")
 		msg.Itemf(cfg.Stderr, "Would create tag %s", tag)
+		msg.Itemf(cfg.Stderr, "Would push %s and %s", pushBranch, tag)
 		msg.Itemf(cfg.Stderr, "All checks passed. Run without --dry-run to release.")
 		return 0
 	}
@@ -317,11 +351,6 @@ func Run(cfg Config) int {
 	// 12. Push.
 	fmt.Fprintln(cfg.Stderr, "")
 	msg.Section(cfg.Stderr, "Pushing to origin")
-
-	pushBranch := sourceBranch
-	if needsMerge {
-		pushBranch = releaseBranch
-	}
 
 	if _, err := cfg.GitExec(cfg.Dir, "push", "--atomic", "origin", pushBranch, tag); err != nil {
 		msg.Errorf(cfg.Stderr, "git push failed: %v", err)

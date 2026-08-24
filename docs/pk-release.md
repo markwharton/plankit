@@ -27,7 +27,7 @@ When `release.branch` is NOT configured (trunk flow):
 
 1. Read `Release-Tag:` trailer from HEAD and validate it as semver.
 2. Check the tag doesn't already exist locally.
-3. Pre-flight checks — clean working tree, current branch exists on origin, not behind remote.
+3. Pre-flight checks — clean working tree, current branch is the default branch on origin, exists there, not behind remote.
 4. Run pre-release hook if configured.
 5. Create the git tag on HEAD.
 6. Push current branch + tag to origin atomically (`git push --atomic`).
@@ -58,7 +58,7 @@ Add a `release` key to `.pk.json`:
 }
 ```
 
-- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the trunk flow (validate current branch and push).
+- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the trunk flow (validate current branch and push). In trunk flow, both `pk changelog` and `pk release` refuse any branch that is not the default branch on origin.
 - **hooks.preRelease** — Shell command that runs after merge but before the tag is created. If it fails, the release is aborted and nothing is pushed. Rehearsed by `--dry-run`; the release tag does not exist yet when it runs.
 - **hooks.prePush** — Shell command that runs after tagging, before the push, so the tag ref exists (for signing or artifact builds). If it fails, the local tag is removed and nothing is pushed. Does not run under `--dry-run`.
 
@@ -78,7 +78,7 @@ Neither runs before a commit, so a file written by either hook leaves the workin
 | Flow | Config | Command | What happens |
 |------|--------|---------|--------------|
 | Merge | `release.branch` set | `pk release` | Tag, merge to release branch, push both |
-| Trunk | no `release.branch` | `pk release` | Tag HEAD, push current branch + tag |
+| Trunk | no `release.branch` | `pk release` | Tag HEAD on the default branch, push it + tag |
 
 ### Release-Tag trailer
 
@@ -110,4 +110,4 @@ If you are already on the release branch when you run `pk release`, it refuses: 
 
 ### Scope
 
-Guard and `release.branch` are for the merge flow. Trunk-flow projects don't need guard or `release.branch` — they run `pk changelog` and `pk release` directly on their working branch. No configuration needed; an empty `.pk.json` (or no `.pk.json` at all) is fine.
+Guard and `release.branch` are for the merge flow. Trunk-flow projects don't need guard or `release.branch` — they run `pk changelog` and `pk release` directly on the default branch on origin. Both commands refuse any other branch, so a feature branch can't publish a release tag on unmerged work. No configuration needed; an empty `.pk.json` (or no `.pk.json` at all) is fine.

@@ -141,7 +141,7 @@ Configuration for `pk release`. All fields are optional. [`pk init`](pk-init.md)
 The branch that `pk release` merges to and pushes from. The current branch is the implicit source.
 
 - **Set:** merge flow. `pk release` switches to the release branch, merges from the source branch (fast-forward only), creates the tag, and pushes both branches.
-- **Omitted:** trunk flow. `pk release` tags HEAD on the current branch and pushes.
+- **Omitted:** trunk flow. `pk release` tags HEAD on the current branch and pushes. Both commands refuse when that branch is not the default branch on origin.
 
 ```json
 {
@@ -192,7 +192,7 @@ Read the last three columns to choose a hook:
 
 ### Trunk flow (single branch, no guard)
 
-No `.pk.json` needed. `pk changelog` and `pk release` work on the current branch.
+No `.pk.json` needed. `pk changelog` and `pk release` work on the default branch on origin and refuse any other.
 
 ### Merge flow (develop + main)
 
