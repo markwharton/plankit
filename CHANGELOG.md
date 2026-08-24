@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.30.0] - 2026-08-24
+
+### Added
+
+- trunk flow releases only from the default branch on origin (dff6439)
+
 ## [v0.29.3] - 2026-08-23
 
 ### Fixed
@@ -1118,3 +1124,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.29.1]: https://github.com/markwharton/plankit/compare/v0.29.0...v0.29.1
 [v0.29.2]: https://github.com/markwharton/plankit/compare/v0.29.1...v0.29.2
 [v0.29.3]: https://github.com/markwharton/plankit/compare/v0.29.2...v0.29.3
+[v0.30.0]: https://github.com/markwharton/plankit/compare/v0.29.3...v0.30.0
