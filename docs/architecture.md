@@ -6,7 +6,7 @@ pk's functionality falls into three layers with different levels of environment 
 
 ### Git workflow (zero coupling)
 
-Commands that operate on git directly: `pk changelog`, `pk release`, `pk guard`, `pk pin`, `pk version`. These work with any AI coding tool or none at all. They read `.pk.json` for configuration and produce git artifacts (tags, commits, changelogs).
+Commands that operate on git directly: `pk init`, `pk changelog`, `pk release`, `pk status`, `pk pin`, `pk version`. These work with any AI coding tool or none at all. (`pk guard` is a Claude Code hook; see below.) They read `.pk.json` for configuration and produce git artifacts (tags, commits, changelogs).
 
 ### AI governance (protocol-specific)
 

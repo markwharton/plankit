@@ -92,7 +92,8 @@ When a skill needs information from the user before it can proceed, ask up front
 > Ask the user about branch conventions:
 > - What is the default branch for development?
 > - Are there branches that should never receive direct commits?
-> - Which branch should releases be pushed to?
+> - Should releases merge into a separate branch before pushing? Which one?
+> - Custom changelog commit types beyond the defaults, or use the defaults?
 
 Gather inputs → draft → show → confirm → write. The question sequence makes Claude collect the answers instead of guessing them.
 

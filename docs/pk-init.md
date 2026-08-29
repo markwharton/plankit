@@ -34,7 +34,7 @@ Every step is a no-op when already satisfied, so a re-run after a partial failur
 
 ## Flags
 
-- **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, in that order. Never partial. Requires an `origin` remote. Shaping is the action; publishing is a separate decision. `--push` also works later, on a shaped repository, from any branch.
+- **--push** — Publish what `pk init` produced: the release branch, the `v0.0.0` tag, and the working branch, as three pushes in that order; a push that fails stops the run, and the pushes before it stand. Requires an `origin` remote. Shaping is the action; publishing is a separate decision. `--push` also works later, on a shaped repository, from any branch.
 - **--no-setup** — Skip the `pk setup` step: no managed files (CLAUDE.md, rules, skills, settings) and no hook modes. Everything that is repository shape still happens: the `.pk.json` topology, the `v0.0.0` tag, the working branch, the ruleset file, and `--push` if given. The commit is labelled `chore: pk init`. See [Release management without Claude Code](#release-management-without-claude-code).
 - **--source `<name>`** — Working branch to create. Defaults to `develop`.
 - **--release `<name>`** — Release branch. Defaults to `release.branch` in `.pk.json`, then to the branch currently checked out.

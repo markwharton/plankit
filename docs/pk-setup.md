@@ -142,7 +142,7 @@ Tags the initial commit of the repo as `v0.0.0`. Every commit since (including a
 
 **Tag is local by default.** After tagging, `pk setup --baseline` prints the push command for you to run when ready. Pass `--push` to tag and push in one step. The manual push keeps the commit/push separation — creating a tag is reversible, publishing it is not.
 
-**Discoverability tip.** When `pk setup` runs in a git repo with no valid semver tag, it prints a tip suggesting `pk setup --baseline`. The tip is only shown when there is no tag — once anchored, setup is quiet.
+**Discoverability tip.** When `pk setup` runs in a git repo with no valid semver tag, it prints a tip suggesting `pk setup --baseline --push`, with the git equivalent. The tip is only shown when there is no tag — once anchored, setup is quiet.
 
 ### Cloud sandbox bootstrap
 

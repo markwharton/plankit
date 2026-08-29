@@ -42,7 +42,7 @@ The parent directory follows `os.UserCacheDir()`: `~/Library/Caches` on macOS, `
 
 ### ~/.claude/plans/
 
-Claude Code writes plan files here when exiting plan mode. `pk preserve` reads the most recent plan from this directory when no hook payload is available. Shared across all Claude Code sessions.
+Claude Code writes plan files here when exiting plan mode. `pk preserve` reads the path of the approved plan from the hook payload, or from `.git/pk-pending-plan` when there is no payload; it never scans this directory. Shared across all Claude Code sessions.
 
 ### .git/pk-pending-plan
 

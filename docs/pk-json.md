@@ -78,7 +78,7 @@ When `true`, the conventional commit scope is included in changelog entries as a
 Lifecycle hooks that run as shell commands during the changelog process. The `VERSION` environment variable is set to the new version without the `v` prefix (e.g., `0.8.1`).
 
 - **postVersion** — runs after version files are updated, before CHANGELOG.md is written. Use case: propagate the version to config files not covered by `versionFiles`.
-- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, pin versions in source files via `pk pin`. Chain steps with `&&` (hooks run through a shell); files the hook modifies are staged automatically.
+- **preCommit** — runs after CHANGELOG.md is written, before `git add` and commit. Use case: regenerate lockfiles, pin versions in source files via `pk pin`. Chain steps with `&&` (hooks run through a shell); tracked files the hook modifies are staged (`git add -u`); a new file is not.
 
 If a hook fails, the changelog process is aborted.
 
@@ -98,7 +98,7 @@ The push policy for any `git push`, on any branch: `block` (deny), `ask` (prompt
 
 ### guard.branches
 
-Array of branch names where git mutations are blocked (subject to `guard.mode`). When the current branch matches any entry, `pk guard` blocks git mutations like `commit`, `push`, `merge`, and `rebase`. In ask mode it prompts instead.
+Array of branch names where git mutations are blocked (subject to `guard.mode`). When the current branch matches any entry, `pk guard` blocks `commit`, `push`, `merge`, `rebase`, and `reset`. In ask mode it prompts instead.
 
 Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) are always allowed.
 

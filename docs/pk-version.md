@@ -12,7 +12,7 @@ pk version --verbose    # include Go version, build time, and commit SHA
 ## How it works
 
 1. Prints the current version (set via `-ldflags` at build time, or read from `debug.ReadBuildInfo()`).
-2. Checks `.claude/install-pk.sh` for a pinned version. If the pinned version differs from the running version, prints a note to re-run `pk setup`.
+2. Checks `.claude/install-pk.sh` for a pinned version. If the pinned version differs from the running version, prints a note: when the pin is newer, the hint is `go install github.com/markwharton/plankit/cmd/pk@latest`; otherwise `pk setup`. Skipped on dev builds.
 3. Checks GitHub releases for a newer version (cached daily in `plankit/version-check.json` under the OS user cache directory; see [Environment variables](environment-variables.md)).
 4. If a newer version is available, prints an update notice to stderr.
 

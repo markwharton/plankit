@@ -46,7 +46,7 @@ For how this works in practice as a small team, see [Working as a Team](working-
 
 ## 4. Guidelines
 
-`pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines in `.claude/rules/plankit/` (`craft.md` and `conduct.md`).
+`pk setup` installs behavioral constraints: critical rules in CLAUDE.md, detailed guidelines in `.claude/rules/plankit/` (`craft.md`, `conduct.md`, and `docs.md`).
 
 Every new LLM session draws from a wide solution space. Without constraints, they reach for familiar patterns: regex for structured data, flattening hierarchies then reconstructing with heuristics, inventing plausible fallbacks instead of surfacing errors. Every convention in the guidelines is a countermeasure:
 

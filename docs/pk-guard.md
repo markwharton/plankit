@@ -9,7 +9,7 @@ Block git mutations on protected branches, and guard `git push` against unbidden
 ## How it works
 
 1. Reads the Bash command from the hook payload.
-2. Splits compound commands (`&&`, `||`, `;`) and parses each subcommand's git operation. Git global options are skipped, so `git -C dir push` and `git -c k=v commit` are recognized, not just `git push`/`git commit`.
+2. Splits compound commands on `&&`, `||`, `|`, `|&`, `;`, and newlines, ignoring operators inside quotes, and parses each subcommand's git operation. Leading `VAR=value` assignments and a leading `command` word are skipped, git is matched by path basename (`/usr/bin/git`), and git's global options are skipped, so `GIT_DIR=. git push` and `git -C dir push` are recognized.
 3. **Branch policy:** applies when any subcommand mutates (`commit`, `push`, `merge`, `rebase`, `reset`). Reads `guard.branches` and `guard.mode` from `.pk.json`, then gets the current branch (`git rev-parse --abbrev-ref HEAD`). If the branch is protected, decides per `guard.mode`: `block` → deny, `ask` → ask, `off` → allow (default `block`).
 4. **Push policy:** applies when any subcommand is a `git push`, regardless of branch. Decides per `guard.push` from `.pk.json`: `block` → deny, `ask` → ask, `off` → allow (default `block`).
 5. **Strongest wins:** when both policies apply, the strongest decision is emitted (deny > ask > allow). A push on a protected branch is therefore never downgraded.

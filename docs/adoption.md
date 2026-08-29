@@ -55,7 +55,7 @@ pk setup
 **What you get:**
 
 - **CLAUDE.md** with critical rules that prevent the most common issues
-- **`.claude/rules/`** with detailed guidelines covering development craft and agent conduct
+- **`.claude/rules/`** with detailed guidelines covering development craft, agent conduct, and documentation
 - **Three skills:** `/pk-configure` (plankit configuration), `/preserve` (plan preservation), `/ship` (release workflow)
 - **Hooks:** branch guard, plan protection, plan preservation
 

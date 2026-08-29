@@ -2,7 +2,7 @@
 
 A conversation with Claude Code about the project rules and self-assessed compliance.
 
-Captured before the 2026-08 rules consolidation: the three `.claude/rules/` files shown are now `craft.md` and `conduct.md` under `.claude/rules/plankit/`; CLAUDE.md stays separate. The transcript is preserved verbatim.
+Captured before the 2026-08 rules consolidation: the three `.claude/rules/` files shown are now `craft.md`, `conduct.md`, and `docs.md` under `.claude/rules/plankit/`; CLAUDE.md stays separate, and the eight critical rules shown are the template of the time (four ship today). The transcript is preserved verbatim.
 
 ```
 markwharton@Marks-MacBook-Air plankit % claude

@@ -206,6 +206,7 @@ Error: merge would not be fast-forward; main has diverged from develop. Resolve 
 
 ```
 Error: origin/main has diverged from develop; the release push would be rejected
+  To reconcile, on develop: git merge origin/main
 ```
 
 **Cause:** `origin/main` carries a commit that your source branch does not, so the release push (branch + tag) would be rejected as non-fast-forward. Unlike [not fast-forward](#not-fast-forward), which is caught by the local merge, this is caught by a pre-flight check against `origin` before any tag is created. It commonly appears when the release branch was set up outside the create-new-project flow (e.g. `origin/main` was auto-created with an initial commit).
@@ -455,7 +456,7 @@ pk preserve --dry-run: no plan found (stdin had no valid hook payload and no pen
 - The matched path doesn't exist on disk.
 - Stdin had no valid JSON payload, and no pending-plan pointer was available.
 
-**Fix:** Ensure the `tool_response` contains an absolute path with `.claude/plans/` in it (e.g., `/Users/you/.claude/plans/my-plan.md`). Paths using `~` or outside `.claude/plans/` are not recognized.
+**Fix:** Ensure the `tool_response` contains an absolute path with `.claude/plans/` in it (e.g., `/Users/you/.claude/plans/my-plan.md`). A leading `~/` is expanded to the home directory; paths outside `.claude/plans/` are not recognized.
 
 ### failed to read plan
 

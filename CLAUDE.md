@@ -52,7 +52,7 @@ pk release          # Read Release-Tag trailer, merge, create tag, and push
 ### Directory Structure
 
 - `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
+- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `msg`, `paths`, `preserve`, `protect`, `readiness`, `release`, `rules`, `safety`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
 - `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (pk-configure, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
@@ -89,7 +89,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 
 ### Configuration
 
-- `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
+- `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `preserve`, `release`).
 - `changelog.types` controls commit type → changelog section mapping.
 - `changelog.hooks` supports `preCommit`, `postVersion` lifecycle hooks.
 - `release.hooks` supports `preRelease` (before tag creation) and `prePush` (after tagging, before push) lifecycle hooks; both receive `$VERSION`/`$TAG`.
