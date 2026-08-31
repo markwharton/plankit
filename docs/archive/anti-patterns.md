@@ -75,20 +75,5 @@ if (!secret || secret.length < 32) {
 
 **The principle:** Bounds that look defensive but are quietly wrong are harder to catch than bounds that are obviously wrong. Review plans for these specifically.
 
-## Squash Merge and Release Tags
 
-**When this applies:** any workflow where you tag a commit on one branch and then squash-merge that branch into another. `pk release`'s direct merge flow is not affected — it tags on the fast-forwarded release branch, so the tag always points at a commit reachable from the release branch. The warning is general: it covers manual tagging and other tools that tag on a feature branch before a PR is squashed.
 
-**The pattern:** A tag is created at commit C on a source branch. The PR is squash-merged to main, creating a new commit S. The tag still points at C, which is now orphaned — it's not an ancestor of main.
-
-```
-Feature:  A → B → C (tag: v1.2.0)
-                    ↓ squash merge
-Main:     X → Y → S (new commit — tag is NOT here)
-```
-
-**The consequence:** `git log main` won't show the tagged commit. `git describe` on main finds nothing. CI/CD looking for tags on the release branch sees no release. The version history is detached from the branch it was released to.
-
-**The fix:** Use merge commits or rebase merge — not squash — for branches that carry release tags. Both preserve the original commits (and their tags) as ancestors of the target branch. If you need squash merges for other PRs, make sure the tagging step runs *after* the merge lands on the target branch, not before.
-
-**The principle:** Tags must point to commits that are ancestors of the release branch. Any merge strategy that rewrites commits between tagging and landing will orphan the tag.

@@ -1,72 +1,37 @@
 # Architecture
 
-pk's functionality falls into three layers with different levels of environment coupling.
+pk is one Go binary in three layers, distinguished by how much of Claude Code each one depends on. This record states the layers, the file boundary that keeps them apart, and how a second AI coding tool would be added.
 
 ## Three layers
 
-### Git workflow (zero coupling)
+- **Git workflow, no coupling**: `pk init`, `pk changelog`, `pk release`, `pk status`, `pk pin`, `pk version`. They read git and `.pk.json` and write git artifacts: commits, tags, `CHANGELOG.md`. They run with any AI tool or none.
+- **Rules and skills, format coupling**: markdown that the tool loads as context (`.claude/rules/`) or runs on request (`.claude/skills/`). The content is tool-independent; the paths and frontmatter are Claude Code's.
+- **Hooks, protocol coupling**: `pk guard`, `pk protect`, `pk preserve`, the settings that wire them, and `install-pk.sh`. They exist because Claude Code offers PreToolUse, PostToolUse and SessionStart hooks; no other tool currently intercepts a tool call before it runs.
 
-Commands that operate on git directly: `pk init`, `pk changelog`, `pk release`, `pk status`, `pk pin`, `pk version`. These work with any AI coding tool or none at all. (`pk guard` is a Claude Code hook; see below.) They read `.pk.json` for configuration and produce git artifacts (tags, commits, changelogs).
+Rules describe; hooks enforce. In a tool without hooks, the first two layers apply and nothing backstops a rule the model ignores.
 
-### AI governance (protocol-specific)
+## The file boundary
 
-Rules and skills that shape AI behavior. Rules are markdown files that AI coding tools load as context. Skills are workflow scripts that tools execute on user request. The content is universal, but the file paths and frontmatter format are environment-specific: Claude Code reads `.claude/rules/` and `.claude/skills/`, other tools use different locations.
-
-### Environment wiring (deep coupling)
-
-Hooks, settings, and bootstrap that integrate pk into a specific AI coding tool. Claude Code's hook protocol (PreToolUse, PostToolUse, SessionStart) enables enforcement: `pk guard` can block a git mutation before it happens, `pk protect` can block an edit to a preserved plan. This layer is inherently Claude Code-specific because no other tool currently offers pre-tool interception.
-
-## File structure
-
-The `internal/setup/` package is organized by concern to make these boundaries visible:
+`internal/setup/` keeps provider code in one file:
 
 ```
 internal/setup/
-├── baseline.go           Git tag baseline (universal)
-├── claude.go             Claude Code provider (hooks, settings, bootstrap)
-├── managed.go            SHA-tracked file management (universal)
-├── pin.go                Version pinning (universal)
-├── ruleset.go            GitHub branch-protection ruleset template (universal)
-├── setup.go              Config, Run() orchestrator, OrderedObject
-├── walk.go               Rule-file directory walking (universal)
-├── rules/                Rule content (universal, embedded)
-├── skills/               Skill content (Claude Code format, embedded)
+├── baseline.go           git tag baseline
+├── claude.go             Claude Code: hooks, settings merge, permission, bootstrap script
+├── managed.go            hash-tracked file management
+├── pin.go                version pinning
+├── ruleset.go            GitHub ruleset template
+├── setup.go              Config, Run(), OrderedObject
+├── walk.go               rule-file walking
+├── rules/                shipped rules
+├── skills/               shipped skills, Claude Code format
 └── template/             CLAUDE.md template, install-pk.sh
 ```
 
-**Universal files** (`baseline.go`, `managed.go`, `pin.go`) contain logic reusable across any provider: version pinning, SHA-tracked file management, git tag operations.
+`Run()` in `setup.go` calls the provider-independent files and `claude.go`.
 
-**Provider file** (`claude.go`) contains everything specific to Claude Code: hook types, settings merge, permission management, install script generation.
+## Adding a provider
 
-**Orchestrator** (`setup.go`) holds `Config`, `Run()`, and `OrderedObject`. `Run()` calls into both universal and provider-specific code.
+Not built. When a second tool needs support: copy `claude.go` to `<provider>.go`; adapt hook types, settings paths and file formats; wire its steps into `Run()` behind a flag or detection. `baseline.go`, `managed.go`, `pin.go` and `setup.go` do not change. The cost is one file per provider and a skills directory in its format. Reopen when a tool ships pre-tool interception; without it the provider gets rules and skills only.
 
-## Adding a new provider
-
-When a second AI coding tool needs support, the path is:
-
-1. Copy `claude.go` to `<provider>.go`.
-2. Adapt hook types, settings paths, and file formats to the new tool's conventions.
-3. Wire the new provider's steps into `Run()` alongside the existing Claude Code steps, gated on a configuration flag or auto-detection.
-
-The universal files (`managed.go`, `pin.go`, `baseline.go`) and the orchestrator (`setup.go`) do not change.
-
-## AI coding landscape
-
-Not all environments offer the same capabilities. pk adapts its governance model to what each tool provides.
-
-| Capability | Claude Code | Cursor | Windsurf | Cline | Bob IDE |
-|------------|-------------|--------|----------|-------|---------|
-| Rules (context files) | Yes | Yes | Yes | Yes | Yes |
-| Skills (workflows) | Yes | No | No | No | Yes |
-| Pre-tool hooks (enforcement) | Yes | No | No | No | No |
-| Post-tool hooks (reactions) | Yes | No | No | No | No |
-| Plan mode | Yes | No | No | No | No |
-
-### Enforcement vs. advisory
-
-Claude Code is the only environment with pre-tool interception hooks. So:
-
-- **Claude Code**: full enforcement. `pk guard` blocks git mutations. `pk protect` blocks edits to preserved plans. `pk preserve` reacts to plan approval.
-- **Other environments**: advisory governance. Rules carry the behavioral guidance (which covers the majority of value), but there is no backstop for the cases where the AI ignores a rule. Git workflow commands (`pk changelog`, `pk release`) work identically regardless of environment.
-
-Rules carry most of the behavioral value. The model follows them in the majority of cases. Hooks are a backstop for the remaining cases where enforcement matters: protecting immutable plans, guarding release branches, and preserving approved work.
+Other design decisions: [docs/design.md](design.md).
