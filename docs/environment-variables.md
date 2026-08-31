@@ -1,49 +1,18 @@
-# Environment Variables
+# Environment variables
 
-Environment variables that pk reads or sets.
+## Set by pk
 
-## Variables set by pk
+- **VERSION**: the version being released, without the `v` (`0.8.1`). Set for every hook; see the [hook timeline](pk-json.md#hook-timeline).
+- **TAG**: the release tag, with the `v` (`v0.8.1`). Set for `preRelease` and `prePush`. During `preRelease` the tag ref does not exist yet.
 
-### VERSION
+pk expands `$VERSION`, `${VERSION}`, `$TAG` and `${TAG}` in the hook line before the shell runs it, so one line works on macOS, Linux and Windows. Shell-specific forms such as `${VAR#pattern}` are not expanded. Hooks inherit the parent environment.
 
-Set by `pk changelog` when running `postVersion` and `preCommit` hooks, and by `pk release` when running `preRelease` and `prePush` hooks. Contains the new version without the `v` prefix (e.g., `0.8.1`).
+## Read by pk
 
-pk pre-expands `$VERSION` before passing the command to the shell, so hooks work on all platforms without relying on shell-specific variable expansion.
+- **CLAUDE_PROJECT_DIR**: set by Claude Code; the project root. `pk guard`, `pk preserve` and `pk protect` use it, and fall back to the `cwd` field of the hook payload.
 
-**Used by:** `pk changelog` hooks, `pk release` hooks, `pk pin` (as positional argument in hook commands)
+## Files
 
-### TAG
-
-Set by `pk release` when running `preRelease` and `prePush` hooks. Contains the release tag *with* the `v` prefix (e.g., `v0.8.1`) — the git ref name, complementing `$VERSION`. During `preRelease` the tag has not been created yet; during `prePush` the tag ref exists.
-
-Pre-expanded like `$VERSION`, so it works on all platforms.
-
-**Used by:** `pk release` hooks (signing, artifact builds keyed on the tag)
-
-## Variables read by pk
-
-### CLAUDE_PROJECT_DIR
-
-Set by Claude Code. Contains the absolute path to the project root. Used by hook commands to resolve the project directory when the hook payload's `cwd` field might differ from the project root.
-
-Falls back to the `cwd` field from the hook payload when not set.
-
-**Used by:** `pk guard`, `pk preserve`, `pk protect`
-
-## Filesystem paths
-
-These are not environment variables but filesystem locations pk uses.
-
-### ~/.cache/plankit/version-check.json
-
-Daily cache for `pk version` update checks. Stores the latest version from GitHub Releases and the timestamp of the last check. Avoids repeated HTTP calls within 24 hours.
-
-The parent directory follows `os.UserCacheDir()`: `~/Library/Caches` on macOS, `~/.cache` on Linux, `%LocalAppData%` on Windows.
-
-### ~/.claude/plans/
-
-Claude Code writes plan files here when exiting plan mode. `pk preserve` reads the path of the approved plan from the hook payload, or from `.git/pk-pending-plan` when there is no payload; it never scans this directory. Shared across all Claude Code sessions.
-
-### .git/pk-pending-plan
-
-Pointer file written by the `pk preserve` hook run in `manual` mode, containing the absolute path to the approved plan. Read by the subsequent `pk preserve` invocation to preserve the exact plan that was approved, avoiding race conditions when multiple Claude Code sessions are active. Deleted after successful preservation.
+- **`<user cache dir>/plankit/version-check.json`**: `pk version`'s update check, refreshed daily. The directory is `os.UserCacheDir()`: `~/Library/Caches` on macOS, `~/.cache` on Linux, `%LocalAppData%` on Windows.
+- **`~/.claude/plans/`**: where Claude Code writes plan files. `pk preserve` reads the approved plan's path from the hook payload or the pointer below; it never scans this directory.
+- **`.git/pk-pending-plan`**: the absolute path of the approved plan, written by the `pk preserve` hook in `manual` mode and read by the next `pk preserve` with no payload (the `/preserve` skill). Deleted after a successful preservation. It lives under `.git/`, which is never tracked, so it needs no `.gitignore` entry.

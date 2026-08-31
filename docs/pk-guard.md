@@ -1,56 +1,44 @@
 # pk guard
 
-Block git mutations on protected branches, and guard `git push` against unbidden pushes on any branch.
+Block git mutations on protected branches, and `git push` on any branch, inside a Claude Code session.
 
 ## Usage
 
-`pk guard` is a PreToolUse hook — it runs automatically when Claude Code invokes Bash. It is not intended to be called directly.
+`pk guard` runs as a PreToolUse hook on the Bash and PowerShell tools. It is not run by hand.
 
 ## How it works
 
-1. Reads the Bash command from the hook payload.
-2. Splits compound commands on `&&`, `||`, `|`, `|&`, `;`, and newlines, ignoring operators inside quotes, and parses each subcommand's git operation. Leading `VAR=value` assignments and a leading `command` word are skipped, git is matched by path basename (`/usr/bin/git`), and git's global options are skipped, so `GIT_DIR=. git push` and `git -C dir push` are recognized.
-3. **Branch policy:** applies when any subcommand mutates (`commit`, `push`, `merge`, `rebase`, `reset`). Reads `guard.branches` and `guard.mode` from `.pk.json`, then gets the current branch (`git rev-parse --abbrev-ref HEAD`). If the branch is protected, decides per `guard.mode`: `block` → deny, `ask` → ask, `off` → allow (default `block`).
-4. **Push policy:** applies when any subcommand is a `git push`, regardless of branch. Decides per `guard.push` from `.pk.json`: `block` → deny, `ask` → ask, `off` → allow (default `block`).
-5. **Strongest wins:** when both policies apply, the strongest decision is emitted (deny > ask > allow). A push on a protected branch is therefore never downgraded.
+1. Reads the command from the hook payload.
+2. Splits it on `&&`, `||`, `|`, `|&`, `;` and newlines, ignoring operators inside quotes. In each part, skips leading `VAR=value` assignments and a leading `command`, matches git by path basename (`/usr/bin/git`), and skips git's global options (`git -C dir push`, `git -c k=v commit`).
+3. **Branch policy**: a part that runs `commit`, `push`, `merge`, `rebase` or `reset` while the current branch (`git rev-parse --abbrev-ref HEAD`) is in `guard.branches` is decided by `guard.mode`.
+4. **Push policy**: a part that runs `git push`, on any branch, is decided by `guard.push`.
+5. When both apply, the stronger decision is emitted: deny, then ask, then allow.
 
-Read-only git commands (`status`, `log`, `diff`, `branch`, `fetch`) and non-git commands are always allowed.
-
-The branch policy defaults to `block`; `guard.mode: ask` prompts instead, allowing legitimate overrides (emergency hotfix, manual recovery) without disabling the hook. The push policy is independent and also defaults to `block`.
-
-**pk-mediated pushes are never hooked.** `pk release`, `pk preserve --push`, and `pk setup --baseline --push` reach the hook as the command `pk release` etc. (not `git push`), so they are allowed. Their internal push is a child process of `pk` via `exec.Command`, not a Bash tool call, so it is never hooked. The agent cannot hand-push under `guard.push: "block"`; pk's deliberate publish flows still work.
+Anything else is allowed. `pk release`, `pk preserve --push`, `pk setup --baseline --push` and `pk init --push` reach the hook as `pk …`, not `git push`; their pushes are pk's own child processes and are never hooked.
 
 ## Flags
 
-`pk guard` reads its modes from `.pk.json`. These flags are **deprecated** overrides, kept only so an old hook that still passes them keeps working until `pk setup` rewrites the hook bare. Set `guard.mode` / `guard.push` in `.pk.json` instead.
+Deprecated overrides, kept so a hook written before the modes moved to `.pk.json` keeps working until `pk setup` rewrites it bare:
 
-- **--ask** *(deprecated)* — Force ask mode for the branch policy. Use `guard.mode: "ask"`.
-- **--push-guard `<block|ask|off>`** *(deprecated)* — Force the push policy. Use `guard.push`.
+- **--ask**: force `ask` for the branch policy. Use `guard.mode`.
+- **--push-guard `<block|ask|off>`**: force the push policy. Use `guard.push`.
 
 ## Configuration
 
-The `guard` key in `.pk.json` holds the branches plus the two modes (`pk setup` writes `mode`/`push`; `/pk-configure` or you set `branches`):
-
-```json
-{
-  "guard": {
-    "branches": ["main", "production"],
-    "mode": "block",
-    "push": "block"
-  }
-}
-```
-
-Any absent key falls back to its default (`mode` `block`, `push` `block`); `"off"` is an explicit, distinct value. With no `guard.branches`, the **branch** policy is a no-op. The **push** policy still applies (default `block`), so the agent's `git push` is blocked unless `guard.push` is `"off"`.
-
-The `/pk-configure` skill can set `guard.branches` for you, field-merging it into the `guard` object without disturbing the modes.
+`guard.branches`, `guard.mode` and `guard.push`: see [.pk.json](pk-json.md#guard).
 
 ## Hook protocol
 
-- **Input:** PreToolUse JSON on stdin (includes `tool_input.command` for Bash).
-- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` on stdout to block. With `--ask`, uses `"permissionDecision":"ask"` to prompt the user instead. No output to allow. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
-- **Exit code:** Always 0 by design. If the binary itself crashes before it can respond, Claude Code treats its exit 2 as a blocking error. Go fatal errors exit with status 2, running out of memory at startup among them. The command is blocked and stderr is fed back to Claude, so guard fails closed and a retry succeeds once the cause clears. A missing binary (exit 127) is non-blocking and the command proceeds unguarded — see [When pk is not installed](adoption.md#when-pk-is-not-installed). See [out of memory at startup](error-reference.md#out-of-memory-at-startup) in the error reference.
+- **Input:** PreToolUse JSON on stdin; `tool_input.command` is read.
+- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` to block, `"ask"` to prompt, nothing to allow.
+- **Exit code:** always 0. A crash before the response exits 2, which Claude Code treats as a block with stderr shown to Claude. A missing `pk` exits 127, which Claude Code treats as non-blocking: the command runs unguarded.
 
 ## Environment
 
-- **CLAUDE_PROJECT_DIR** — Used to resolve the project root. Falls back to `cwd` from the hook payload.
+- **CLAUDE_PROJECT_DIR**: see [Environment variables](environment-variables.md).
+
+## Limits
+
+- The guard reads the command text, not its intent: a heredoc line beginning `git push` is blocked.
+- Command substitution and subshells are not parsed.
+- It fails open: a missing binary leaves the session unguarded.

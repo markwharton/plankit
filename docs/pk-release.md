@@ -1,113 +1,44 @@
 # pk release
 
-Read the `Release-Tag` trailer from HEAD, validate, merge to the release branch, create the git tag, and push.
+Read the `Release-Tag` trailer from HEAD, merge to the release branch when there is one, tag, and push branch and tag together.
 
 ## Usage
 
 ```bash
-pk release                        # validate, merge, tag, and push
-pk release --dry-run              # validate without tagging, merging, or pushing
+pk release                        # merge, tag, push
+pk release --dry-run              # run every check and the preRelease hook; tag and push nothing
 ```
 
 ## How it works
 
-When `release.branch` is configured in `.pk.json`:
+With `release.branch` set (merge flow):
 
-1. **Note current branch** — this is the source branch (no hard-coded name).
-2. **Read `Release-Tag:` trailer from HEAD** (written by `pk changelog`) and validate it as semver. Refuses if the trailer is missing or invalid.
-3. **Check the tag doesn't already exist locally** — refuses if it does.
-4. **Pre-flight checks** — clean working tree, source branch exists on origin and is not behind remote. Release branch resolves locally or on origin, and has not diverged from origin.
-5. **Switch to release branch** and merge from source (`git merge --ff-only`). Fails if not fast-forward.
-6. **Run pre-release hook** if configured.
-7. **Create the git tag** on HEAD (the fast-forwarded release branch points at the same commit as the source branch).
-8. **Push** release branch + tag to origin atomically (`git push --atomic`), so a rejected push updates no refs on origin.
-9. **Switch back** to source branch and push it to sync origin.
+1. The current branch is the source branch.
+2. Reads the `Release-Tag:` trailer from HEAD and validates it as strict semver. Refuses without it: `no Release-Tag trailer on HEAD; run pk changelog first`.
+3. Refuses when the tag already exists locally.
+4. Pre-flight: clean tree; source branch on origin and not behind it; release branch present locally or on origin, and `origin/<release>` an ancestor of HEAD.
+5. Switches to the release branch and runs `git merge --ff-only` from the source branch. Not a fast-forward: `merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.`
+6. Runs `preRelease` when configured. A failure stops the run; nothing is tagged.
+7. Creates the tag on HEAD.
+8. Runs `prePush` when configured. A failure deletes the local tag; nothing is pushed.
+9. Pushes the release branch and the tag with `git push --atomic`: a rejected push updates no ref on origin.
+10. Switches back to the source branch and pushes it.
 
-When `release.branch` is NOT configured (trunk flow):
+Without `release.branch` (trunk flow): steps 2 and 3; pre-flight with the current branch, which must be origin's default branch, on origin and not behind it; then steps 6 to 9 on the current branch.
 
-1. Read `Release-Tag:` trailer from HEAD and validate it as semver.
-2. Check the tag doesn't already exist locally.
-3. Pre-flight checks — clean working tree, current branch is the default branch on origin, exists there, not behind remote.
-4. Run pre-release hook if configured.
-5. Create the git tag on HEAD.
-6. Push current branch + tag to origin atomically (`git push --atomic`).
-
-On any failure after the tag is created but before the push completes, `pk release` deletes the local tag automatically. The next run then starts from a clean state. Because the push is atomic, a rejected push updates no refs on origin — there is no partial remote state to clean up.
+After any failure past the tag, the local tag is deleted; after any failure past the switch, the source branch is checked out again.
 
 ## Flags
 
-- **--dry-run** — Run all checks without tagging, merging, or pushing. In the merge flow, verifies that a fast-forward merge is possible.
-
-## Requirements
-
-- **git 2.32 or newer** for `git log --format=%(trailers:...)` and `git commit --trailer`.
+- **--dry-run**: every check, including that the merge is a fast-forward, and the `preRelease` hook. No merge, tag or push. `prePush` does not run: its tag does not exist.
 
 ## Configuration
 
-Add a `release` key to `.pk.json`:
+`release.branch` and `release.hooks`: see [.pk.json](pk-json.md#release).
 
-```json
-{
-  "release": {
-    "branch": "main",
-    "hooks": {
-      "preRelease": "go test -race ./...",
-      "prePush": "sign-tag $TAG"
-    }
-  }
-}
-```
+## Limits
 
-- **branch** — The release branch that `pk release` merges to and pushes from. The current branch is the implicit source — no hard-coded "dev" name. If omitted, `pk release` uses the trunk flow (validate current branch and push). In trunk flow, both `pk changelog` and `pk release` refuse any branch that is not the default branch on origin.
-- **hooks.preRelease** — Shell command that runs after merge but before the tag is created. If it fails, the release is aborted and nothing is pushed. Rehearsed by `--dry-run`; the release tag does not exist yet when it runs.
-- **hooks.prePush** — Shell command that runs after tagging, before the push, so the tag ref exists (for signing or artifact builds). If it fails, the local tag is removed and nothing is pushed. Does not run under `--dry-run`.
-
-Both hooks receive `$VERSION` (no leading `v`) and `$TAG` (with it) as environment variables.
-
-Neither runs before a commit, so a file written by either hook leaves the working tree dirty after the release. To have a file edit committed and covered by the tag, use the `changelog` hooks instead: see [pk changelog — hooks](pk-changelog.md#hooks) and the [hook timeline](pk-json.md#hook-timeline) comparing all four.
-
-## Details
-
-### Workflows
-
-`pk release` supports two flows. Pick whichever matches the project:
-
-- **Merge flow** — projects with a protected main branch and a development branch where work happens before being promoted. Use when you want a separation between "where work lands" and "what gets released."
-- **Trunk flow** — single-branch projects (content sites, fast iteration). No develop branch, no merge step. Use when you commit directly on the branch you ship from.
-
-| Flow | Config | Command | What happens |
-|------|--------|---------|--------------|
-| Merge | `release.branch` set | `pk release` | Tag, merge to release branch, push both |
-| Trunk | no `release.branch` | `pk release` | Tag HEAD on the default branch, push it + tag |
-
-### Release-Tag trailer
-
-`pk release` reads the pending version from the `Release-Tag:` trailer on HEAD, which `pk changelog` wrote when it generated the release commit. See [pk changelog — Release-Tag trailer](pk-changelog.md#release-tag-trailer) for the format and rationale.
-
-The trailer value is validated as strict semver: it must parse via plankit's semver parser and round-trip back to the same string. Missing, malformed, or non-semver values are refused with a clear error.
-
-### Merge behavior
-
-The merge uses `git merge --ff-only`. If the release branch has diverged (e.g., someone committed directly to it from the terminal), the merge fails with:
-
-```
-Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
-```
-
-That check guards the local merge. A pre-flight check guards the push target. If `origin/main` carries a commit your source branch doesn't, `pk release` fails before creating the tag with `Error: origin/main has diverged from develop; the release push would be rejected`. The divergence is common when the release branch was set up outside the create-new-project flow. Both cases are reconciled the same way — see [Error recovery](#error-recovery).
-
-### Error recovery
-
-If any step fails after switching to the release branch (merge, hook, push), `pk release` automatically switches back to the source branch before exiting.
-
-Divergence means the release branch carries a commit that is not on the source branch, so the fast-forward merge can't proceed. Recovery is to reconcile that commit back into the source branch (`git merge origin/main`), not to drop it. If it was already pushed, never force push. When you have an unpushed `pk changelog` release commit, the order matters. Undo it before the merge and regenerate it after, so the `Release-Tag` trailer stays at HEAD, the only place `pk release` reads it. See [not fast-forward](error-reference.md#not-fast-forward) for the exact ordered steps.
-
-### Guard interaction
-
-`pk release` runs git commands internally via `exec.Command`, not through Claude Code's Bash tool. So `pk guard` (a PreToolUse hook that only intercepts Bash tool calls) does not block `pk release`. Guard blocks every other git mutation on protected branches — `pk release` is the single command that legitimately commits to and pushes the release branch.
-
-If you are already on the release branch when you run `pk release`, it refuses: "switch to your working branch first". The refusal prevents accidental pushes without a merge.
-
-### Scope
-
-Guard and `release.branch` are for the merge flow. Trunk-flow projects don't need guard or `release.branch` — they run `pk changelog` and `pk release` directly on the default branch on origin. Both commands refuse any other branch, so a feature branch can't publish a release tag on unmerged work. No configuration needed; an empty `.pk.json` (or no `.pk.json` at all) is fine.
+- Needs git 2.32 or newer, for `git log --format=%(trailers:...)` and `git commit --trailer`.
+- Refuses when run on the release branch: `you're on the release branch "main"; switch to your working branch first`.
+- `pk guard` never sees the push: `pk release` runs git as its own child process, not through the Bash tool. It is the one command that legitimately advances the release branch.
+- A commit on the release branch that the source branch lacks is reconciled by merging it back (`git merge origin/main` on the source branch), never by force-push; with an unpushed release commit at HEAD, `pk changelog --undo` first and `pk changelog` after the merge. See [not fast-forward](error-reference.md#not-fast-forward).

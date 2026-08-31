@@ -1,40 +1,24 @@
 # pk rules
 
-Report the always-on context footprint of the project's `.claude/rules/` and `CLAUDE.md`. `pk rules` only reports; it writes no files.
+Report the always-on context cost of `.claude/rules/` and `CLAUDE.md`, or lint the rule files. It writes no file.
 
 ## Usage
 
 ```bash
-pk rules                          # print the footprint report to stderr
-pk rules --lint                   # scan rules for hidden/Trojan-source characters
-pk rules --lint --strict          # also run plankit's house-style checks
-pk rules --project-dir /path      # specify project directory
+pk rules                          # the footprint report, on stderr
+pk rules --lint                   # scan for hidden characters
+pk rules --lint --strict          # and plankit's house style
+pk rules --project-dir /path      # start the git-root search there
 ```
 
 ## How it works
 
-1. Resolves the project root (walks up to the nearest `.git`; falls back to the directory if none).
-2. Reads every `.md` file under `.claude/rules/` recursively, including subdirectories like `plankit/` (where `pk setup` installs the shipped rules). Claude Code discovers rules recursively, so the footprint matches what actually loads. Rows are sorted by rule name, then path.
-3. Classifies each rule's provenance from its `pk_sha256` marker, exactly like `pk status`: `[managed]` (pk-shipped, body hash matches), `[modified]` (pk-shipped, edited), or `[local]` (no marker, user-authored).
-4. Reads the optional `kind:` frontmatter key (`craft` or `conduct`); absent values render as `unclassified`.
-5. Estimates each file's context cost using a calibrated characters-per-token ratio and sums it with `CLAUDE.md`, which Claude Code also loads every session. The ratio is model-specific, measured against a named model by `evals/calibrate`; figures are labelled `(estimated)` and gain `(estimated, calibrated against <model>)` once the calibration has been run. Plain `chars/4` runs ~25% low for this markdown.
-6. Separates always-on rules from conditional ones. A rule with a `paths:` frontmatter key loads only when Claude reads a matching file. It is reported under a `Conditional (loads on matching files)` group, so the always-on total counts only files loaded every session.
-7. Prints the report to stderr. First the `Always-on context` totals line and its rows: `CLAUDE.md` and each always-on rule, tagged with provenance and `kind`. Then the `Conditional` group if any, then a provenance tally. `--lint` runs the scan instead.
-
-## Flags
-
-- **--lint** — Scan the rule files for hidden/Trojan-source characters (control and Unicode-format characters, bare CR, invalid UTF-8) instead of the footprint report. Exits non-zero if any are found.
-- **--strict** — With `--lint`, also run plankit's house-style checks: em dashes, trailing whitespace, and hard-wrapped bullets. Requires `--lint`.
-- **--project-dir** — Starting directory for git root resolution (default: current directory).
-
-## Exit code
-
-- **0** — report printed, or `--lint` found nothing.
-- **1** — `--lint` found issues, `--strict` was passed without `--lint`, or an error occurred.
-
-## Details
-
-### Example output
+1. Reads every `.md` under `.claude/rules/`, recursively, as Claude Code does.
+2. Marks each file `[managed]` (its `pk_sha256` matches), `[modified]` (it does not), or `[local]` (no marker), as `pk status` does.
+3. Reads the `kind:` frontmatter key (`craft`, `conduct`, `docs`); absent, `unclassified`.
+4. Estimates tokens per file with a characters-per-token ratio measured against a named model by `evals/calibrate`; the report says `(estimated, calibrated against <model>)` once calibration has run. `chars/4` runs about 25% low on this markdown; `go run ./evals/calibrate` in the plankit repository reproduces the ratio.
+5. Lists a rule with a `paths:` key under `Conditional`: Claude Code loads it only when a matching file is read, so it is outside the always-on total.
+6. Prints the always-on total and its rows (`CLAUDE.md` first), the conditional group, and a provenance tally.
 
 ```
 Always-on context: 3 files, ~9 KB, 2,723 tokens (estimated, calibrated against claude-fable-5)
@@ -46,29 +30,17 @@ Conditional (loads on matching files): 1 files, 78 B, 27 tokens (estimated, cali
 Provenance: 2 managed (pristine), 0 modified, 1 user-authored.
 ```
 
-The shipped rules sit under `.claude/rules/plankit/`; a project's own rules (here `scoped.md`, with `paths:` frontmatter) are discovered too. The `paths:`-scoped rule is reported under `Conditional` and left out of the always-on total.
+## Flags
 
-### What it reports, and what it does not
+- **--lint**: scan the rule files for control and Unicode format characters, bare CR and invalid UTF-8 (the Trojan Source class, CVE-2021-42574), the policy `internal/safety` applies to the files pk ships. Exits 1 on a finding.
+- **--strict**: with `--lint`, also fail on em dashes, trailing whitespace and hard-wrapped bullets. See [The em-dash check](design.md#the-em-dash-check).
+- **--project-dir `<dir>`**: where the search for the repository root starts.
 
-The report is a context-cost and governance view. It shows how much always-on budget the rule set spends, and where each rule sits on the provenance/`kind` axes. It is a quick read, not a deep analysis — and it writes nothing.
+## Exit code
 
-Reviewing the rule set *as a system* is the job of the `/review-rules` skill, which reads the source rules directly. The review covers overlap, gaps, drift, unstated precedence, and whether each rule is stated at the right level of generality. `pk rules` deliberately does not produce a paste-able document for that; the skill's analysis is more than a concatenation can give.
+`0`: report printed, or `--lint` found nothing. `1`: `--lint` found something, `--strict` without `--lint`, or an error.
 
-### The `kind` frontmatter convention
+## Limits
 
-Managed rules carry an optional `kind:` frontmatter key recording the craft-vs-conduct split:
-
-- **`craft`** — developer-voiced standards for the work (`craft.md`: release flow invariants, development standards). Claude inherits them the way a teammate inherits house style.
-- **`conduct`** — Claude-voiced rules about the agent's own behavior (`conduct.md`: hook responses, git and session conduct).
-
-`pk rules` surfaces `kind` in the report but never writes or enforces it. Whether a rule is *correctly* classified, and whether craft and conduct are kept separate, is a semantic judgment left to `/review-rules`.
-
-### What `--lint` does and does not check
-
-The base scan is objective and universal. It catches hidden characters that could smuggle instructions past a human reviewer, in files an AI reads every session: the "Trojan Source" class, CVE-2021-42574. It is the same policy `internal/safety` applies to the files pk ships downstream.
-
-`--strict` adds plankit's own writing conventions, which are house style rather than universal, so they are opt-in. It does **not** check subjective or semantic qualities: alphabetical ordering (rule bullets are intentionally ordered by importance), craft-vs-conduct separation, or whether `kind` is correctly assigned. Those are left to the LLM review.
-
-### Related commands
-
-- `pk status` — report plankit configuration state, including which rules are pristine or modified.
+- `kind` is reported, not checked; whether a rule is classified correctly is a review question (`/review-rules` in the plankit repository).
+- The lint checks characters and house style, not meaning: overlap, gaps and precedence between rules are not scanned.

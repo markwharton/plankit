@@ -1,6 +1,70 @@
-# Error Reference
+# Error reference
 
-Common errors from pk commands, what causes them, and how to recover.
+Every message pk prints on stderr with an `Error:`, `Warning:` or `Note:` prefix, or with a hook's `pk <cmd>:` prefix, quoted as the source prints it, with its cause and the recovery. Hints (`To ...:` lines) are exact commands.
+
+## Any command
+
+### not a git repository
+
+```
+Error: not a git repository
+```
+
+**Cause:** `pk changelog`, `pk release`, `pk status` and `pk init` need a git working tree; none was found walking up from the directory.
+
+**Fix:** `git init`, or run from inside a repository.
+
+### working tree not clean
+
+```
+Error: working tree is not clean; commit or stash changes first
+```
+
+**Cause:** `pk changelog`, `pk release` and `pk init` commit or merge, and refuse to sweep uncommitted changes into it. `pk changelog --dry-run` does not check.
+
+**Fix:** commit or stash.
+
+### branch not on origin
+
+```
+Error: develop does not exist on origin
+  To push it: git push -u origin develop
+```
+
+**Cause:** `pk changelog` and `pk release` publish from the current branch; a branch origin lacks cannot be released.
+
+**Fix:** the hint.
+
+### not the default branch
+
+```
+Error: you're on "feature" but the default branch on origin is "main"; trunk flow releases from the default branch
+  To release this work from main: git switch main && git merge feature
+  Then: pk changelog && pk release
+```
+
+**Cause:** in trunk flow (no `release.branch`), `pk changelog` and `pk release` tag and push the branch they run on, so only origin's default branch may release. `pk release` prints `Then: pk release`. The check is skipped when origin advertises no HEAD.
+
+**Fix:** the hint. To release from another branch permanently, change the default branch on the host, or set `release.branch` for merge flow. A default branch listed in `guard.branches` cannot release in trunk flow; set `release.branch`.
+
+### unknown command
+
+```
+Error: unknown command "foo"
+```
+
+**Fix:** `pk --help` lists the commands.
+
+### malformed .pk.json
+
+```
+Error: failed to parse .pk.json: ...
+Error: failed to read .pk.json: ...
+```
+
+**Cause:** the file is not valid JSON, or cannot be read. A hook prints the same with its `pk guard:` prefix.
+
+**Fix:** correct the JSON; check the file's permissions.
 
 ## pk changelog
 
@@ -12,9 +76,9 @@ Error: no version tags found
   or: git tag v0.0.0 && git push origin v0.0.0
 ```
 
-**Cause:** `pk changelog` scans commits since the most recent semver tag. Without a tag, there is no starting point.
+**Cause:** the section is built from the commits since the latest semver tag, and there is none.
 
-**Fix:** Run `pk setup --baseline` to create a `v0.0.0` anchor tag. Add `--push` to publish it. Use `--at $(git rev-list --max-parents=0 HEAD)` to include all prior commits in the first changelog entry.
+**Fix:** the hint; `--at` cases in [pk setup](pk-setup.md#baseline).
 
 ### no version tags found locally
 
@@ -23,9 +87,9 @@ Error: no version tags found locally
   Origin has tags; fetch them: git fetch --tags
 ```
 
-**Cause:** The remote has tags but they are not present locally. Common in shallow-clone cloud sandboxes.
+**Cause:** a clone without tags, as in a sandbox that cloned one branch. `.claude/install-pk.sh` runs the fetch at session start.
 
-**Fix:** Run `git fetch --tags`. The `install-pk.sh` bootstrap script does this automatically in cloud sandboxes.
+**Fix:** the hint.
 
 ### protected branch
 
@@ -34,52 +98,19 @@ Error: you're on "main" which is a protected branch; switch to your development 
   To start one: git switch -c develop && git push -u origin develop
 ```
 
-**Cause:** `pk changelog` refuses to create release commits on branches listed in `guard.branches`.
+**Cause:** the branch is in `guard.branches`. The `To start one` hint appears only when no other local branch exists.
 
-**Fix:** Switch to your development branch (`git switch develop`). The create hint appears only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
+**Fix:** switch to the working branch; to create one, [Changing flow](changing-flow.md).
 
-### not the default branch
-
-```
-Error: you're on "feature" but the default branch on origin is "main"; trunk flow releases from the default branch
-  To release this work from main: git switch main && git merge feature
-  Then: pk changelog && pk release
-```
-
-**Cause:** In trunk flow (no `release.branch` in `.pk.json`), releases publish from the default branch on origin. A tag on any other branch would publish unmerged work. The check is skipped when origin advertises no HEAD.
-
-**Fix:** Merge the work into the default branch and rerun. To ship from a different branch permanently, change the repository's default branch on your host. To tag the branch anyway, deliberately: `git tag <tag> && git push origin <branch> <tag>`. If the default branch is listed in `guard.branches`, the config is a dead end — configure `release.branch` for the merge flow instead.
-
-### branch not on origin
-
-```
-Error: develop does not exist on origin
-  To push it: git push -u origin develop
-```
-
-**Cause:** `pk changelog` checks that the current branch exists on the remote before committing. Without this, `pk changelog` succeeds but `pk release` fails, leaving a Release-Tag commit that requires a manual push to continue.
-
-**Fix:** Push the branch: `git push -u origin develop`.
-
-### working tree not clean
-
-```
-Error: working tree is not clean; commit or stash changes first
-```
-
-**Cause:** `pk changelog` and `pk release` require a clean working tree before proceeding.
-
-**Fix:** Commit or stash your changes first.
-
-### HEAD already pushed (--undo)
+### HEAD already pushed
 
 ```
 Error: HEAD is already on the remote; cannot undo a pushed commit
 ```
 
-**Cause:** `pk changelog --undo` only rewinds unpushed commits to avoid rewriting shared history.
+**Cause:** `--undo` rewrites history, and refuses once the commit is on origin.
 
-**Fix:** If the changelog commit has been pushed, create a new commit to correct it. Do not force push.
+**Fix:** correct the changelog in a new commit. Never force-push.
 
 ### changelog already pending
 
@@ -89,9 +120,44 @@ Error: changelog for v0.19.9 is already pending (HEAD has Release-Tag: v0.19.9)
   To undo and start over:  pk changelog --undo
 ```
 
-**Cause:** `pk changelog` was already run and committed a Release-Tag trailer on HEAD. Running it again without `pk release` or `pk changelog --undo` in between would create duplicate changelog sections.
+**Cause:** HEAD is already a release commit.
 
-**Fix:** Run `pk release` to complete the release, or `pk changelog --undo` to unwind the pending release and start over.
+**Fix:** either hint.
+
+### invalid --bump
+
+```
+Error: invalid --bump value "big" (must be major, minor, or patch)
+```
+
+### unsupported versionFile type
+
+```
+Error: unsupported versionFile type "toml" for Cargo.toml (only "json" is supported)
+```
+
+**Cause:** `changelog.versionFiles` entries are JSON only.
+
+**Fix:** pin the file from `preCommit` with [pk pin](pk-pin.md).
+
+### hook failed
+
+```
+Error: postVersion hook failed: exit status 1
+Error: preCommit hook failed: exit status 1
+```
+
+**Cause:** the hook command exited non-zero; its own output precedes the line.
+
+**Fix:** nothing was committed. Fix what the hook reported and run `pk changelog` again. Version files the run already rewrote are left modified; `git checkout -- <file>` restores them, or the re-run rewrites them.
+
+### exclude did not match
+
+```
+Warning: --exclude abc1234 did not match any commit
+```
+
+**Cause:** the value is not the short hash as printed in the section's parentheses. The run continues.
 
 ## pk release
 
@@ -101,9 +167,17 @@ Error: changelog for v0.19.9 is already pending (HEAD has Release-Tag: v0.19.9)
 Error: no Release-Tag trailer on HEAD; run pk changelog first
 ```
 
-**Cause:** `pk release` reads the version from a git trailer on HEAD that `pk changelog` writes.
+**Fix:** `pk changelog`, or `/ship`, which runs both.
 
-**Fix:** Run `pk changelog` first, then `pk release`. Or use `/ship` which chains them.
+### invalid trailer
+
+```
+Error: Release-Tag trailer value is not valid semver: "v1.2"
+```
+
+**Cause:** the trailer value does not parse as strict semver and round-trip to the same string.
+
+**Fix:** `pk changelog --undo`, then `pk changelog`.
 
 ### on the release branch
 
@@ -113,9 +187,9 @@ Error: you're on the release branch "main"; switch to your working branch first
   Then: pk changelog && pk release
 ```
 
-**Cause:** `pk release` merges from the source branch into the release branch. Running it directly on the release branch would skip the merge.
+**Cause:** `pk release` merges from the working branch into the release branch; on the release branch there is nothing to merge. The `To start one` hint appears only when no other local branch exists.
 
-**Fix:** Switch to your working branch (`git switch develop`). The create hints appear only when no other local branch exists — the main-only adoption case. See [Moving between setups](adoption.md#moving-between-setups).
+**Fix:** switch to the working branch; to create one, [Changing flow](changing-flow.md).
 
 ### invalid release branch
 
@@ -123,9 +197,7 @@ Error: you're on the release branch "main"; switch to your working branch first
 Error: invalid release.branch "--output=/tmp/x" in .pk.json; branch names cannot start with -
 ```
 
-**Cause:** `.pk.json` names a `release.branch` beginning with `-`. Git branch names can never start with `-`, and passing one to git would be read as an option rather than a branch.
-
-**Fix:** Correct `release.branch` in `.pk.json` to a real branch name.
+**Fix:** correct `release.branch`.
 
 ### release branch missing
 
@@ -134,9 +206,7 @@ Error: release branch main does not exist locally or on origin
   To create it: git branch main && git push -u origin main
 ```
 
-**Cause:** `.pk.json` names a `release.branch` that resolves neither as a local branch nor as a remote-tracking ref. Without this pre-flight check the failure would surface as a raw `git switch` error mid-release.
-
-**Fix:** Create the branch and publish it, or correct `release.branch` in `.pk.json`.
+**Fix:** the hint, or correct `release.branch`.
 
 ### tag already exists
 
@@ -144,32 +214,9 @@ Error: release branch main does not exist locally or on origin
 Error: tag v0.8.1 already exists locally; nothing to release
 ```
 
-**Cause:** The tag from the `Release-Tag` trailer already exists. The release was already completed or partially completed.
+**Cause:** the release already ran, or a previous attempt left the tag.
 
-**Fix:** If the release was already pushed, there is nothing to do. If the tag is leftover from a failed attempt, delete it (`git tag -d v0.8.1`) and retry.
-
-### not the default branch
-
-```
-Error: you're on "feature" but the default branch on origin is "main"; trunk flow releases from the default branch
-  To release this work from main: git switch main && git merge feature
-  Then: pk release
-```
-
-**Cause:** In trunk flow (no `release.branch` in `.pk.json`), `pk release` tags and pushes the branch it runs on. Only the default branch on origin may publish a release; a tag elsewhere would publish unmerged work. The check is skipped when origin advertises no HEAD.
-
-**Fix:** Merge the work into the default branch. The fast-forward carries the Release-Tag trailer, so `pk release` works there directly. See the `pk changelog` entry above for the other options: change the host's default branch, tag manually with git, or configure `release.branch` when the default branch is guarded.
-
-### branch not on origin
-
-```
-Error: develop does not exist on origin
-  To push it: git push -u origin develop
-```
-
-**Cause:** `pk release` verifies the source branch exists on the remote before proceeding.
-
-**Fix:** Push the branch: `git push -u origin develop`.
+**Fix:** if origin has the tag, nothing; otherwise `git tag -d v0.8.1` and run again.
 
 ### behind remote
 
@@ -177,9 +224,15 @@ Error: develop does not exist on origin
 Error: local develop is behind origin/develop; pull first
 ```
 
-**Cause:** Someone pushed commits to the branch since your last pull.
+**Fix:** `git pull origin develop`.
 
-**Fix:** Pull the latest changes: `git pull origin develop`.
+### fetch failed
+
+```
+Warning: failed to fetch main from origin: ... (continuing with local state)
+```
+
+**Cause:** the pre-flight fetch of the release branch failed; the run continues with the last-fetched state, and the push is what will fail if origin moved.
 
 ### not fast-forward
 
@@ -187,20 +240,20 @@ Error: local develop is behind origin/develop; pull first
 Error: merge failed; main has diverged from develop (not fast-forward). Resolve on main manually, then try again.
 ```
 
-`pk release --dry-run` reports the same condition before any merge is attempted:
+`--dry-run` reports the same condition before merging:
 
 ```
 Error: merge would not be fast-forward; main has diverged from develop. Resolve on main manually, then try again.
 ```
 
-**Cause:** The release branch has commits that are not on the source branch. `pk release` only does fast-forward merges to avoid merge conflicts.
+**Cause:** the release branch has a commit the working branch lacks. `pk release` merges `--ff-only`.
 
-**Fix:** Reconcile the histories, then retry. If you have an unpushed `pk changelog` release commit at HEAD, undo it *before* the merge. Undoing first keeps the `Release-Tag` trailer at the released tip; `pk release` reads the trailer from HEAD only:
+**Fix:** in this order, because `pk release` reads the trailer from HEAD only:
 
-1. `pk changelog --undo` — drop the unpushed release commit (skip if you have not run `pk changelog` yet).
-2. `git merge origin/main` — merge the release branch into your source branch to reconcile the divergent commit. That commit is already pushed and can't be dropped (never force push), so merging is how you keep it.
-3. `pk changelog` — regenerate the release commit so the `Release-Tag` trailer sits at HEAD, above the merge commit.
-4. `pk release` — fast-forwards cleanly now, pushing the release branch, source branch, and tag.
+1. `pk changelog --undo`, if an unpushed release commit is at HEAD.
+2. `git merge origin/main` on the working branch. The stray commit is kept; never force-push.
+3. `pk changelog`.
+4. `pk release`.
 
 ### release branch diverged from origin
 
@@ -209,9 +262,9 @@ Error: origin/main has diverged from develop; the release push would be rejected
   To reconcile, on develop: git merge origin/main
 ```
 
-**Cause:** `origin/main` carries a commit that your source branch does not, so the release push (branch + tag) would be rejected as non-fast-forward. Unlike [not fast-forward](#not-fast-forward), which is caught by the local merge, this is caught by a pre-flight check against `origin` before any tag is created. It commonly appears when the release branch was set up outside the create-new-project flow (e.g. `origin/main` was auto-created with an initial commit).
+**Cause:** `origin/main` has a commit the working branch lacks; caught by pre-flight, before the local merge. A release branch created on the host with its own initial commit produces it.
 
-**Fix:** Reconcile `origin/main` into your source branch, then retry — the same ordered steps as [not fast-forward](#not-fast-forward). In short: `pk changelog --undo` (if you have an unpushed release commit), `git merge origin/main`, `pk changelog`, `pk release`.
+**Fix:** the steps under [not fast-forward](#not-fast-forward).
 
 ### push failed
 
@@ -219,29 +272,29 @@ Error: origin/main has diverged from develop; the release push would be rejected
 Error: git push failed: ...
 ```
 
-**Cause:** The push was rejected by the remote (permissions, branch protection rules, or network issues).
+**Cause:** origin rejected the push: permissions, a ruleset, the network. The push is `--atomic`, so origin has neither the branch nor the tag; the local tag is deleted.
 
-**Fix:** `pk release` automatically cleans up the local tag on push failure. The push is atomic (`git push --atomic`), so a rejected push updates no refs on origin — there is no stray remote tag to remove. Fix the underlying issue (permissions, network) and run `pk release` again.
+**Fix:** resolve what git reported; run `pk release` again.
 
 ### pre-release hook failed
 
 ```
-Error: pre-release hook failed: ...
+Error: pre-release hook failed: exit status 1
 ```
 
-**Cause:** The `release.hooks.preRelease` command exited non-zero. It runs after the merge but before the tag is created — commonly a final test or build gate that failed.
+**Cause:** `release.hooks.preRelease` exited non-zero, after the merge and before the tag; its output precedes the line.
 
-**Fix:** Nothing was tagged or pushed. Fix what the hook reported and run `pk release` again. The hook receives `$VERSION` (no leading `v`) and `$TAG` (with it). Because it runs before tagging, `pk release --dry-run` rehearses it, so you can reproduce the failure without releasing.
+**Fix:** nothing was tagged or pushed. Fix what the hook reported; `pk release --dry-run` reruns the hook without releasing.
 
 ### pre-push hook failed
 
 ```
-Error: pre-push hook failed: ...
+Error: pre-push hook failed: exit status 1
 ```
 
-**Cause:** The `release.hooks.prePush` command exited non-zero. It runs after the tag is created, before the push — commonly a signing or artifact-build step that needs the tag ref.
+**Cause:** `release.hooks.prePush` exited non-zero, after the tag and before the push.
 
-**Fix:** The release is aborted and nothing is published. `pk release` removes the local tag (and rolls back the merge in merge flow), so origin is untouched. Fix the hook and run `pk release` again. The hook receives `$VERSION` and `$TAG`, and the tag ref exists on disk while it runs. Note `--dry-run` does **not** exercise prePush (it returns before tagging); rehearse tag-dependent steps against a scratch tag instead.
+**Fix:** the local tag is deleted and, in merge flow, the merge is rolled back; origin is untouched. Fix the hook; run `pk release` again. `--dry-run` does not run `prePush`.
 
 ## pk setup
 
@@ -253,20 +306,15 @@ Error: invalid --guard mode "xyz" (must be block, ask, or off)
 Error: invalid --push-guard mode "xyz" (must be block, ask, or off)
 ```
 
-**Cause:** The `--preserve`, `--guard`, or `--push-guard` flag received an unrecognized value. (`pk guard --push-guard` emits the same error when run directly.)
-
-**Fix:** Use `auto`, `manual`, or `off` for `--preserve`; `block`, `ask`, or `off` for `--guard` and `--push-guard`.
+`pk guard --push-guard` prints the last one too.
 
 ### flag dependencies
 
 ```
 Error: --at requires --baseline
 Error: --push requires --baseline
+Error: --baseline requires a git repository
 ```
-
-**Cause:** `--at` and `--push` only apply to the baseline tag workflow.
-
-**Fix:** Add `--baseline` to the command.
 
 ### invalid --at ref
 
@@ -274,23 +322,33 @@ Error: --push requires --baseline
 Error: invalid --at ref "--force"; refs cannot start with -
 ```
 
-**Cause:** `--at` received a value beginning with `-`. Git refs can never start with `-`, and passing one to git would be read as an option rather than a ref.
-
-**Fix:** Pass a real ref (branch, tag, or commit SHA) to `--at`.
-
 ### not a git repository
+
+```
+Error: this is not a git repository. pk requires git for most commands.
+
+Run `git init` first, or pass --allow-non-git to proceed anyway
+```
+
+With `--allow-non-git`:
 
 ```
 Warning: this is not a git repository. Proceeding because --allow-non-git was set. Some commands (changelog, release) will not work until git is initialized.
 ```
 
-**Cause:** `pk setup` was run outside a git repository with `--allow-non-git`.
+### pk not on PATH
 
-**Fix:** Run `git init` when ready. Rules and `pk protect` work without git; other commands do not.
+```
+Warning: pk is not in your PATH. Hooks will silently skip until it is installed.
+```
+
+**Cause:** a hook line runs `pk`; a shell that cannot find it exits 127, which Claude Code treats as non-blocking.
+
+**Fix:** put `pk` on PATH (see the README).
 
 ## pk init
 
-Every `pk init` refusal happens in pre-flight, before anything is written, so the repository is unchanged when one of these appears.
+Every refusal is pre-flight: nothing has been written.
 
 ### not a git repository
 
@@ -298,29 +356,13 @@ Every `pk init` refusal happens in pre-flight, before anything is written, so th
 Error: this is not a git repository. Run git init first
 ```
 
-**Cause:** `pk init` shapes an existing repository; it does not create one.
-
-**Fix:** Run `git init`, make a first commit, then re-run. To create the GitHub repo too, use `gh repo create --clone` first.
-
 ### no commits
 
 ```
 Error: this repository has no commits. Make one first, so v0.0.0 has something to anchor to
 ```
 
-**Cause:** `pk init` tags `v0.0.0` on the current commit, and there isn't one.
-
-**Fix:** Make the project's first commit, then re-run. `git commit --allow-empty -m "chore: init"` works when there is nothing to commit yet.
-
-### working tree not clean
-
-```
-Error: working tree is not clean; commit or stash changes first
-```
-
-**Cause:** `pk init` commits the files it writes, so it needs to start from a clean tree to avoid sweeping unrelated changes into `chore: pk setup`.
-
-**Fix:** Commit or stash your changes first.
+**Fix:** `git commit --allow-empty -m "chore: init"` when there is nothing to commit yet.
 
 ### on the wrong branch
 
@@ -328,9 +370,9 @@ Error: working tree is not clean; commit or stash changes first
 Error: you are on "develop" but the release branch is "main"; switch to it first
 ```
 
-**Cause:** On its first run `pk init` anchors `v0.0.0` and the topology on the release branch, so it has to be the one checked out. A repository that is already shaped (its working branch exists) does not hit this: nothing is anchored, so `pk init` runs from any branch.
+**Cause:** the first run tags and commits on the release branch. A shaped repository runs from any branch.
 
-**Fix:** `git switch main`, then re-run. Or drop `--release` to use the branch you are on.
+**Fix:** `git switch main`, or drop `--release`.
 
 ### working branch exists but the repository is not shaped
 
@@ -338,11 +380,11 @@ Error: you are on "develop" but the release branch is "main"; switch to it first
 Error: branch "develop" already exists but the repository is not plankit-shaped (no version tag); pk init shapes a fresh repository, so shape this one by hand
 ```
 
-The parenthesis names what is missing: `no version tag`, `no release.branch in .pk.json`, or `release.branch in .pk.json is "main", not "trunk"`.
+The parenthesis is one of `no version tag`, `no release.branch in .pk.json`, or `release.branch in .pk.json is "main", not "trunk"`.
 
-**Cause:** `pk init` treats an existing working branch as proof it already ran, and from then on writes nothing on the release branch. A working branch on a repository with no anchor or no topology is an established project. Shaping it here would tag and commit on the release branch, unreachable from the working branch.
+**Cause:** an existing working branch marks a shaped repository; with the tag or topology missing, this is an established project, and shaping it would commit on the release branch where the working branch cannot reach.
 
-**Fix:** Follow [adoption.md](adoption.md): `pk setup` for the managed files, `guard.branches` and `release.branch` in `.pk.json` for the topology, `pk setup --baseline` for the anchor.
+**Fix:** [Adoption](adoption.md).
 
 ### detached HEAD
 
@@ -350,19 +392,13 @@ The parenthesis names what is missing: `no version tag`, `no release.branch in .
 Error: HEAD is detached; check out your release branch, or name it with --release
 ```
 
-**Cause:** With no branch checked out there is no default release branch to infer.
-
-**Fix:** Check out the release branch, or pass `--release <name>`.
-
 ### source branch equals release branch
 
 ```
 Error: source branch "main" is the release branch; they must differ
 ```
 
-**Cause:** The working branch and the release branch must be distinct: `pk release` fast-forward merges one into the other.
-
-**Fix:** Pass a different `--source`, or drop the flag to use the `develop` default.
+**Fix:** another `--source`, or drop the flag for `develop`.
 
 ### push without an origin
 
@@ -370,9 +406,7 @@ Error: source branch "main" is the release branch; they must differ
 Error: --push needs an origin remote, and this repository has none
 ```
 
-**Cause:** `--push` publishes the release branch, the tag, and the working branch, and there is nowhere to publish them.
-
-**Fix:** Add the remote (`git remote add origin <url>`), or drop `--push` and run `pk init` local-only.
+**Fix:** `git remote add origin <url>`, or drop `--push`.
 
 ## pk rules
 
@@ -382,10 +416,6 @@ Error: --push needs an origin remote, and this repository has none
 Error: --strict requires --lint
 ```
 
-**Cause:** `--strict` only adds house-style checks to the `--lint` safety scan; it does nothing on its own.
-
-**Fix:** Run `pk rules --lint --strict`.
-
 ### lint findings
 
 ```
@@ -394,28 +424,69 @@ Found 2 issue(s):
   .claude/rules/example.md: line 40: em dash (U+2014) [style]
 ```
 
-**Cause:** `pk rules --lint` found hidden/Trojan-source characters (always), or, under `--strict`, house-style violations. The command exits non-zero so scripts and CI can gate on it.
+**Cause:** `[safety]`: a control or Unicode format character, bare CR or invalid UTF-8. `[style]`: a house-style finding, `--strict` only. Exit 1.
 
-**Fix:** Remove the flagged characters. `[safety]` findings are genuine risks; `[style]` findings reflect plankit's house style and only appear with `--strict`.
+**Fix:** remove the character; see [The em-dash check](design.md#the-em-dash-check) for the style rule.
 
-## pk guard
+## pk guard, pk protect, pk preserve
+
+### failed to read input
+
+```
+pk guard: failed to read input: ...
+pk protect: failed to read input: ...
+```
+
+**Cause:** stdin was not a hook payload. The command exits 0 and allows.
+
+### write error
+
+```
+pk guard: write error: ...
+pk protect: write error: ...
+```
+
+**Cause:** the decision could not be written to stdout. Exit 0.
 
 ### out of memory at startup
 
 ```
 runtime: out of memory
 ...
-runtime.mallocgc(0x100, ...)
-    .../src/runtime/malloc.go:1150
-...
 runtime.schedinit()
     .../src/runtime/proc.go:878
-runtime.rt0_go()
 ```
 
-**Cause:** The machine ran out of memory (on Windows, commit charge: RAM plus pagefile) at the moment Claude Code spawned the hook binary. Every frame in the trace is Go runtime source (`runtime.schedinit`, `internal/cpu.doinit`). The process died during Go runtime bootstrap, before any pk code ran. Any Go binary would crash identically under the same pressure. `pk guard` runs on every Bash call, so it is usually the process that hits the limit first. The failure is memory pressure on the machine, not a pk leak.
+**Cause:** the machine (on Windows, RAM plus pagefile) was out of memory when Claude Code spawned the hook; every frame is Go runtime, before any pk code ran. `pk guard` runs on every Bash call, so it is the process that meets the limit first.
 
-**Fix:** Nothing is left unguarded. Go fatal errors exit with status 2, which Claude Code treats as a blocking error for PreToolUse hooks. The command was blocked, and retrying it succeeds once memory frees. If it recurs, find what is consuming memory. On Windows, Event Viewer > System log > Event ID 2004 names the largest consumers. Also check the pagefile is not disabled or capped small.
+**Fix:** the exit is 2, which Claude Code treats as a block, so the command did not run; retry once memory frees. On Windows, Event Viewer, System log, Event ID 2004 names the consumers; check the pagefile is not disabled.
+
+### pk preserve: no plan found
+
+```
+pk preserve --dry-run: no plan found (tool_response did not contain a .claude/plans/*.md path)
+pk preserve --dry-run: no plan found (plan file not found: /path/to/.claude/plans/my-plan.md)
+pk preserve --dry-run: no plan found (stdin had no valid hook payload and no pending-plan pointer was found)
+```
+
+**Cause:** in order: the payload's path is not under `.claude/plans/`; the file is missing; there was neither a payload nor `.git/pk-pending-plan`. A leading `~/` is expanded.
+
+### pk preserve: write failures
+
+```
+pk preserve: could not determine project directory
+pk preserve: not a git repository: /path/to/project
+pk preserve: failed to read plan: open /path/to/plan.md: no such file or directory
+pk preserve: failed to create directory: ...
+pk preserve: failed to write plan: ...
+pk preserve: git add failed: ...
+pk preserve: git commit failed: ...
+pk preserve: failed to write pending-plan pointer: ...
+```
+
+**Cause:** each names the step. The project directory is `CLAUDE_PROJECT_DIR`, then the payload's `cwd`; it must be inside a git working tree.
+
+**Fix:** resolve the named step; `/preserve` runs the preservation again.
 
 ## pk pin
 
@@ -425,10 +496,6 @@ runtime.rt0_go()
 Error: "abc" is not valid semver
 ```
 
-**Cause:** The version argument does not parse as valid semantic versioning.
-
-**Fix:** Use a valid semver string (e.g., `1.0.0`, `0.8.1-beta.1`).
-
 ### no matching pin
 
 ```
@@ -436,90 +503,32 @@ Warning: SKILL.md has no pin for "version"
 Warning: install-pk.sh has no VERSION pin
 ```
 
-**Cause:** The file exists but no line matches. The identifier was renamed, the file was reformatted, or the value is unquoted. The command exits 0 so a `preCommit` hook proceeds; the version was not stamped.
+**Cause:** no line matches the rules in [pk pin](pk-pin.md). Exit 0, so a hook proceeds; the version was not written. A missing file exits 0 without the warning.
 
-**Fix:** Check the identifier and quoting against the match rules in [pk pin](pk-pin.md#details). A missing file also exits 0, without the warning.
+## pk teardown
 
-## pk preserve
-
-### no plan found (dry-run)
+### malformed hooks
 
 ```
-pk preserve --dry-run: no plan found (tool_response did not contain a .claude/plans/*.md path)
-pk preserve --dry-run: no plan found (plan file not found: /path/to/.claude/plans/my-plan.md)
-pk preserve --dry-run: no plan found (stdin had no valid hook payload and no pending-plan pointer was found)
+Warning: skipping hooks.PreToolUse in .claude/settings.json; malformed JSON: ...
 ```
 
-**Cause:** `--dry-run` found no plan to preview. The diagnostic in parentheses explains why:
-
-- The `tool_response` didn't contain a path matching `.claude/plans/*.md`.
-- The matched path doesn't exist on disk.
-- Stdin had no valid JSON payload, and no pending-plan pointer was available.
-
-**Fix:** Ensure the `tool_response` contains an absolute path with `.claude/plans/` in it (e.g., `/Users/you/.claude/plans/my-plan.md`). A leading `~/` is expanded to the home directory; paths outside `.claude/plans/` are not recognized.
-
-### failed to read plan
-
-```
-pk preserve: failed to read plan: open /path/to/plan.md: no such file or directory
-```
-
-**Cause:** The plan path was extracted from `tool_response` and passed the existence check, but reading the file failed (permissions, race condition).
-
-**Fix:** Verify the plan file exists and is readable.
-
-### not a git repository
-
-```
-pk preserve: not a git repository: /path/to/project
-```
-
-**Cause:** The resolved project directory is not inside a git working tree. `pk preserve` needs git to commit the preserved plan.
-
-**Fix:** Run `git init` in the project directory, or set `CLAUDE_PROJECT_DIR` to a directory inside a git repository.
+**Cause:** the hook category could not be parsed; it is left as it is and the rest of the teardown proceeds.
 
 ## pk version
 
-### pinned version mismatch (binary behind)
+### pinned version mismatch
 
 ```
 Note: .claude/install-pk.sh pins v0.19.2 but you're running 0.19.1
   To update: go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
-**Cause:** A newer version was released and the bootstrap script was updated, but the local binary hasn't been reinstalled yet.
-
-**Fix:** Run `go install github.com/markwharton/plankit/cmd/pk@latest` to update the binary.
-
-### pinned version mismatch (script behind)
-
 ```
 Note: .claude/install-pk.sh pins v0.18.0 but you're running 0.19.0
   To refresh it: pk setup
 ```
 
-**Cause:** The local binary is newer than the version pinned in the bootstrap script. Cloud sandboxes will install the pinned version, not the version running locally.
+**Cause:** the first: the pin is newer than the binary. The second: the binary is newer than the pin, and a sandbox would install the pinned version.
 
-**Fix:** Run `pk setup` to update the pin to the current version.
-
-## .pk.json
-
-### malformed JSON
-
-```
-Error: failed to parse .pk.json: ...
-```
-
-**Cause:** `.pk.json` contains invalid JSON syntax.
-
-**Fix:** Check for missing commas, unmatched brackets, or trailing commas (not allowed in JSON).
-
-### read error
-
-```
-Error: failed to read .pk.json: ...
-```
-
-**Cause:** The file exists but could not be read (permissions, disk error).
-
-**Fix:** Check file permissions: `ls -la .pk.json`.
+**Fix:** the hint.

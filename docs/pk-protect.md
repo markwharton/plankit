@@ -1,23 +1,23 @@
 # pk protect
 
-Block Claude Code from editing or overwriting files in `docs/plans/`.
+Block Claude Code from editing or writing files under `docs/plans/`.
 
 ## Usage
 
-`pk protect` runs as a **PreToolUse hook** on `Edit` and `Write` tool calls. It is not intended to be run manually.
+`pk protect` runs as a PreToolUse hook on the `Edit` and `Write` tools. It is not run by hand, and it has no mode: it is on whenever the hook is installed.
 
 ## How it works
 
-1. Reads the hook payload from stdin to get the target file path.
-2. Checks if the file is under `docs/plans/` relative to the project directory.
-3. If yes, outputs a block decision. If no, exits silently to allow the operation.
+1. Reads `tool_input.file_path` from the hook payload.
+2. Resolves a relative path against the project directory and follows symlinks.
+3. Denies a path under `docs/plans/`; otherwise writes nothing, which allows the edit.
 
 ## Hook protocol
 
-- **Input:** PreToolUse JSON on stdin (includes `tool_input.file_path`).
-- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` on stdout to block. No output to allow. `hookEventName` is required by the Claude Code hook schema whenever `hookSpecificOutput` is present.
-- **Exit code:** Always 0.
+- **Input:** PreToolUse JSON on stdin; `tool_input.file_path` is read.
+- **Output:** `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}` to block; nothing to allow.
+- **Exit code:** always 0.
 
 ## Environment
 
-- **CLAUDE_PROJECT_DIR** — Used to resolve the project root. Falls back to `cwd` from the hook payload.
+- **CLAUDE_PROJECT_DIR**: see [Environment variables](environment-variables.md).
