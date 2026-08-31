@@ -1,39 +1,38 @@
 # Contributing
 
-## Build
+plankit is a standard-library Go module; `make build` writes `dist/pk`. Pull requests are reviewed by the maintainer.
+
+## Build and test
 
 ```bash
-make build                    # Build for current platform -> dist/pk
-make build VERSION=1.0.0      # Build with version injected
-make build-all                # Cross-compile for all 5 platforms
-make install                  # Install to GOPATH/bin (version: dev)
-make install VERSION=1.0.0    # Install with version injected
+make build                    # dist/pk, version dev
+make build VERSION=1.0.0      # version injected by ldflags
+make build-all                # darwin and linux on amd64 and arm64, windows on amd64
+make install                  # GOPATH/bin
+make test                     # go test -race ./...; scans the embedded managed files for hidden characters
+make lint                     # go vet and gofmt drift
+make rules-lint               # pk rules --lint --strict on .claude/rules/
+make vuln                     # govulncheck
+make cover                    # per-function coverage of .go files changed since the latest tag
 ```
 
-The default version is `dev`. To see the installed version:
-
-```bash
-pk version    # Shows "pk dev" or "pk 1.0.0" etc.
-```
-
-## Test
-
-```bash
-make test       # Run tests with race detector
-make lint       # Run go vet
-make rules-lint # Lint .claude/rules: hidden chars + house style
-make fmt        # Format code
-```
+`make cover` runs before `/ship`: Codecov's patch check (84%) reports on the release commit, after it is public.
 
 ## Documentation
 
-The prose standard for `docs/` and `README.md` is defined in `.claude/rules/plankit-development.md` (Documentation Prose) and loads into every Claude Code session in this repo. For a full audit-and-rewrite pass, paste this into a session:
+The local rule `.claude/rules/docs.md` governs sentences; the house convention [docs/design.md](docs/design.md) governs which files exist; `.claude/rules/plankit-development.md`, Documentation Prose, adds the plankit-specific points.
+
+Every `docs/pk-<command>.md` has these sections, in this order, each omitted when empty and never renamed: the one-line summary under the title, `## Usage`, `## How it works`, `## Flags`, `## Configuration`, `## Hook protocol`, `## Environment`, `## Decisions`, `## Limits`. Hook protocol states input, output and exit code; Environment lists the variables read, each as a link to `docs/environment-variables.md`. A change that adds a config key, an error message or an environment variable updates `docs/pk-json.md`, `docs/error-reference.md` or `docs/environment-variables.md` in the same commit; a change that adds a flag or mode updates every list that enumerates them (`grep` the repo for a sibling flag).
+
+For a full audit-and-rewrite pass, paste this into a session:
 
 ```text
 Audit and rewrite every file under docs/ except docs/plans/, plus
-README.md, against the Documentation Prose rules (already loaded from
-.claude/rules/). No fact may change in the style pass — only how it
-is said.
+README.md, against .claude/rules/plankit/docs.md, following its
+"Rewriting an existing document" steps, plus the Documentation Prose
+points in .claude/rules/plankit-development.md (both already loaded).
+No fact may change in the style pass; sentences that are not a fact,
+a command, a decision, or a limit are deleted, not restyled.
 
 1. Audit first: read every doc and list each violation with file:line,
    the exact sentence, the rule it breaks, and the fact it hides. Show
@@ -44,14 +43,14 @@ is said.
 3. Recurring phrases get the identical replacement everywhere. Grep the
    whole repo, including --help strings and error messages in internal/;
    where source strings share a doc's wording, list the pair with a
-   recommendation — never desync them one-sidedly.
+   recommendation; never desync them one-sidedly.
 4. Re-read every touched section in full before showing the diff, not
    only the sentences you changed.
 5. Commit fact corrections separately from style rewrites (both docs:),
    corrections first.
 6. Rule bullets (.claude/rules/ and internal/setup/rules/) are
    audit-and-propose: show each proposed rewrite old and new, and I
-   approve each bullet individually — these are behavioral instructions
+   approve each bullet individually; these are behavioral instructions
    to the model, so meaning drift matters more than style. Shipped
    rules follow the pk-managed file procedure: update the embedded
    source and the local copy together and recompute pk_sha256 per
@@ -62,62 +61,42 @@ phrase is gone from docs/; your report lists every fact correction and
 every doc/source shared-wording pair.
 ```
 
-The em dash check in `pk rules --lint` began as a proxy for this standard, added when nothing checked the content itself: the LLM tell was never the glyph, it was the vague clause the glyph joined. After a full rewrite pass has run under the standard, revisit the check. Removing it changes pk's shipped linter for every pk-managed project, so the removal is its own commit and release note, never a side effect.
+`pk rules --lint --strict` rejects em dashes in rule files; that check is a proxy, to be revisited after a rewrite pass: [docs/design.md](docs/design.md#the-em-dash-check).
 
 ## Workflow
 
-All changes go through `develop` — never commit directly to `main`.
+Work happens on `develop`; `main` advances only through `pk release`. Inside Claude Code, `pk guard` blocks a commit on `main`; in a terminal, only the GitHub ruleset rejects it, at push time, so check the branch yourself.
 
-In Claude Code, `pk guard` enforces this automatically — it blocks git mutations on `main`. In the terminal, GitHub branch protection rejects the push only at the server, after the commit exists locally; nothing blocks a local commit to `main` outside a session, so check the branch yourself.
-
-Dependabot PRs target `develop` via `.github/dependabot.yml`. If a hotfix or emergency PR lands directly on `main`, merge main into develop before releasing:
+A commit that lands on `main` by another route (a hotfix PR) is merged back before the next release, which keeps the fast-forward possible and puts it in the changelog:
 
 ```bash
 git switch develop
 git merge main
 ```
 
-The merge brings the commits that landed on `main` into the changelog and keeps the ancestry that `pk release` needs for fast-forward merges to main.
+After merging a PR on GitHub, `git pull --rebase` on `develop` keeps history linear; it is safe only while the local commits are unpushed.
 
-After merging PRs on GitHub, sync your local branch with rebase to avoid unnecessary merge commits:
-
-```bash
-git pull --rebase
-```
-
-`git pull --rebase` replays your unpushed local commits on top of the remote, keeping history linear. Only safe when your local commits haven't been pushed yet — which is exactly when you need it.
+Dependabot targets `develop` (`.github/dependabot.yml`). GitHub's Dependabot security updates stay off: they open PRs against the default branch and ignore `target-branch`; `make vuln` covers the Go side.
 
 ## Pull requests
 
-When merging PRs through GitHub, choose the merge method based on the branch:
-
-- **Rebase and merge** for most PRs (e.g., dependabot bumps) — replays commits on top of the target branch. Linear history, and each conventional commit is preserved individually for `pk changelog`.
-- **Merge commit** when the PR branch has tags — rebase creates new SHAs which would orphan tags pointing at the originals.
-- **Squash is disabled** — it collapses all commits into one, losing the conventional commit messages that `pk changelog` depends on. See [Squash Merge and Release Tags](docs/anti-patterns.md#squash-merge-and-release-tags).
+- **Rebase and merge** for most PRs: each conventional commit lands as itself, for `pk changelog`.
+- **Merge commit** when the PR branch carries tags: a rebase makes new SHAs and orphans them.
+- **Squash** is disabled by the ruleset: [Squash merge](docs/design.md#squash-merge-and-release-tags).
 
 ## Release
 
-With `release.branch` configured in `.pk.json`, the full release flow runs from Claude Code or terminal:
-
 ```bash
-pk changelog --dry-run            # preview changelog and version bump
-pk changelog                      # on develop: generate CHANGELOG.md and commit (no tag)
-pk release --dry-run              # preview the release flow
-pk release                        # read Release-Tag trailer, merge to main, tag, push main + tag, push develop
+pk changelog --dry-run            # the section and the version
+pk changelog                      # on develop: CHANGELOG.md, footprint line, install-pk.sh pin; one commit, no tag
+pk release --dry-run              # every check and the preRelease hook
+pk release                        # fast-forward main, tag, push main and the tag, push develop
 ```
 
-`pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
+The release needs the Go toolchain: `changelog.hooks.preCommit` runs `pk pin` on the bootstrap script and `go run ./evals/footprint`; `release.hooks.preRelease` runs `go test -race ./...`. The published binary has no runtime dependency.
 
-**The release flow needs the Go toolchain on PATH**, not only for `make build`. Two release hooks compile from source: `pk changelog`'s `preCommit` runs `pk pin` on the bootstrap script and then `go run ./evals/footprint` (refreshes the always-on rules footprint line in the README so it lands in the release commit), and `pk release`'s `preRelease` runs `go test -race ./...`. So a release can't be cut on a machine without Go, even though the published binary itself has no runtime dependencies.
+## Limits on contributions
 
-See [pk changelog](docs/pk-changelog.md) and [pk release](docs/pk-release.md) for details.
-
-Monitor at: https://github.com/markwharton/plankit/actions
-
-## Contributions & AI
-
-plankit is a solo/small-team toolkit. Pull requests are welcome and reviewed by the maintainer.
-
-- **No third-party Go dependencies.** plankit is standard-library only; a PR that adds a dependency won't be accepted.
-- **Managed files get extra scrutiny.** Changes to the files `pk setup` ships downstream — `internal/setup/rules/`, `internal/setup/skills/`, and `internal/setup/template/CLAUDE.md` — are read by AI agents in every Claude Code session. They are line-ending normalized to LF via [`.gitattributes`](.gitattributes) and scanned for hidden/control characters by `make test` (the "Trojan Source" class: ANSI escapes, zero-width characters, bidi overrides). When you edit one, update its paired `pk_sha256` as described in [CLAUDE.md](CLAUDE.md) under "Updating pk-managed files".
-- **Describe intent, not just the diff.** For substantive or behavior-changing PRs, say what you're changing and why in the PR body. No formal plan is required.
+- **No third-party Go dependency.** A PR that adds one is not accepted.
+- **Managed files are read by an AI in every session downstream.** `internal/setup/rules/`, `internal/setup/skills/` and `internal/setup/template/CLAUDE.md` are LF-normalised by `.gitattributes` and scanned by `make test` for hidden characters (the Trojan Source class: ANSI escapes, zero-width, bidi overrides). Editing one means updating its `pk_sha256` as CLAUDE.md, Updating pk-managed files, states.
+- **A PR body says what changed and why.** No plan is required.
