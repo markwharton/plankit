@@ -20,7 +20,7 @@ make cover                    # per-function coverage of .go files changed since
 
 ## Documentation
 
-The local rule `.claude/rules/docs.md` governs sentences; the house convention [docs/design.md](docs/design.md) governs which files exist; `.claude/rules/development.md`, Documentation Prose, adds the plankit-specific points.
+The local rule `.claude/rules/documentation.md` governs sentences; the house convention [docs/design.md](docs/design.md) governs which files exist; `.claude/rules/development.md`, Documentation Prose, adds the plankit-specific points.
 
 Every `docs/pk-<command>.md` has these sections, in this order, each omitted when empty and never renamed: the one-line summary under the title, `## Usage`, `## How it works`, `## Flags`, `## Configuration`, `## Hook protocol`, `## Environment`, `## Decisions`, `## Limits`. Hook protocol states input, output and exit code; Environment lists the variables read, each as a link to `docs/environment-variables.md`. A change that adds a config key, an error message or an environment variable updates `docs/pk-json.md`, `docs/error-reference.md` or `docs/environment-variables.md` in the same commit; a change that adds a flag or mode updates every list that enumerates them (`grep` the repo for a sibling flag).
 

@@ -1,6 +1,6 @@
 # Design
 
-plankit's documentation convention, and the decisions that shape the repository. The local rule ([docs.md](../.claude/rules/docs.md)) governs sentences and loads in this repository's sessions; another repository adopts it by copying the file. This convention governs which files exist, and is plankit's own.
+plankit's documentation convention, and the decisions that shape the repository. The local rule ([documentation.md](../.claude/rules/documentation.md)) governs sentences and loads in this repository's sessions; another repository adopts it by copying the file. This convention governs which files exist, and is plankit's own.
 
 ## The documentation convention
 

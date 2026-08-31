@@ -82,7 +82,7 @@ Replace the `pk_sha256` line in the local copy with the new value. The sed patte
 
 ### Documentation
 
-- The local rule `.claude/rules/docs.md` governs sentences; the house convention [docs/design.md](docs/design.md) governs which files exist; the command-doc sections are in [CONTRIBUTING.md](CONTRIBUTING.md). A new config key, message or env var updates its reference file in the same commit; grep for a sibling flag before declaring an option done.
+- The local rule `.claude/rules/documentation.md` governs sentences; the house convention [docs/design.md](docs/design.md) governs which files exist; the command-doc sections are in [CONTRIBUTING.md](CONTRIBUTING.md). A new config key, message or env var updates its reference file in the same commit; grep for a sibling flag before declaring an option done.
 - Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally).
 
 ### Commits and Releases

@@ -1,6 +1,6 @@
 ---
 description: Documentation says the fact - the four sentence kinds, one home per fact, a rule names its guard, numbers come from commands
-kind: docs
+kind: documentation
 paths: ["*.md", "**/*.md"]
 ---
 
