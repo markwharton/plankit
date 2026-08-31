@@ -53,7 +53,7 @@ pk release          # Read Release-Tag trailer, merge, create tag, and push
 - `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
 - `.claude/skills/` — managed skills (pk-configure, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
 - `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint line, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
-- `.claude/rules/plankit/` — managed rules (craft, conduct, docs), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
+- `.claude/rules/plankit/` — managed rules (craft, conduct, docs), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
 
 ### Design
 

@@ -31,7 +31,7 @@ Only for releases that contain at least one `feat`, `fix` a user would notice, `
 2. Read `CHANGELOG.md` and extract the section for that version, every category.
 3. Distill each commit:
    - **User-visible**, keep: new flags, behaviour changes, stderr message changes, new commands, breaking changes.
-   - **Rule updates**, case by case. Rules in `plankit-development.md` are maintainer-side and never appear. Rules that ship via `pk setup` (`craft.md`, `conduct.md`) may be mentioned only if the user will feel the difference; most are infrastructure and are skipped.
+   - **Rule updates**, case by case. Rules in `development.md` are maintainer-side and never appear. Rules that ship via `pk setup` (`craft.md`, `conduct.md`) may be mentioned only if the user will feel the difference; most are infrastructure and are skipped.
    - **Internal**, drop: refactors, test-only changes, release housekeeping (pinning `install-pk.sh`, footprint updates), doc reorganisation that changes no behaviour.
    When in doubt: would a pk user do something differently tomorrow because of this commit? If not, drop it.
 4. Rewrite each kept item in the voice below: what the user can do differently now, not what code moved.

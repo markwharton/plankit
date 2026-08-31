@@ -397,7 +397,7 @@ func Run(cfg Config) error {
 	// Migration: remove pristine pk-managed rules left at the old flat top-level
 	// location by pre-subdir installs. The empty kept-set means every pristine pk
 	// rule there is pruned; user-modified rules are preserved (with a warning) and
-	// non-pk files (plankit-development.md, the adopter's own rules) are skipped.
+	// non-pk files (development.md, the adopter's own rules) are skipped.
 	// pruneRules skips subdirectories, so the plankit/ subdir is untouched here.
 	if pruneRules(cfg, filepath.Join(settingsDir, "rules"), map[string]bool{}) {
 		anyChanged = true
