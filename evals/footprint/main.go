@@ -53,11 +53,11 @@ func main() {
 }
 
 func run(repo string) error {
-	always, skills, err := collect(repo)
+	always, conditional, skills, err := collect(repo)
 	if err != nil {
 		return err
 	}
-	report(os.Stdout, always, skills)
+	report(os.Stdout, always, conditional, skills)
 
 	_, alwaysTokens := totals(always)
 	readmePath := filepath.Join(repo, "README.md")
@@ -91,48 +91,75 @@ func run(repo string) error {
 // rules) and the on-demand skills, each newline-normalized and measured with the
 // shared calibrated estimator. A missing CLAUDE.md means this isn't the plankit
 // repo, which is a clear error — this tool is plankit-repo-only.
-func collect(repo string) (always, skills []file, err error) {
+func collect(repo string) (always, conditional, skills []file, err error) {
 	setupDir := filepath.Join(repo, "internal", "setup")
 	claudePath := filepath.Join(setupDir, "template", "CLAUDE.md")
 
 	claude, err := os.ReadFile(claudePath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read %s: %w (run this only inside the plankit repo)", claudePath, err)
+		return nil, nil, nil, fmt.Errorf("read %s: %w (run this only inside the plankit repo)", claudePath, err)
 	}
 	always = append(always, stat("template/CLAUDE.md", claude))
 
-	rulesFiles, err := mdFiles(filepath.Join(setupDir, "rules"), "rules/")
+	rulesFiles, conditionalFiles, err := mdFiles(filepath.Join(setupDir, "rules"), "rules/")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	always = append(always, rulesFiles...)
+	conditional = append(conditional, conditionalFiles...)
 
 	skills, err = skillFiles(filepath.Join(setupDir, "skills"))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return always, skills, nil
+	return always, conditional, skills, nil
 }
 
 // mdFiles reads every *.md directly under dir, sorted, labelled prefix+name.
-func mdFiles(dir, prefix string) ([]file, error) {
+// A file whose frontmatter carries a paths: key loads only when a matching file
+// is read, matching internal/rules' conditional grouping, so it is returned
+// separately and stays out of the always-on total.
+func mdFiles(dir, prefix string) (alwaysOn, conditional []file, err error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", dir, err)
+		return nil, nil, fmt.Errorf("read %s: %w", dir, err)
 	}
-	var fs []file
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", filepath.Join(dir, e.Name()), err)
+			return nil, nil, fmt.Errorf("read %s: %w", filepath.Join(dir, e.Name()), err)
 		}
-		fs = append(fs, stat(prefix+e.Name(), data))
+		f := stat(prefix+e.Name(), data)
+		if hasPathsKey(string(data)) {
+			conditional = append(conditional, f)
+		} else {
+			alwaysOn = append(alwaysOn, f)
+		}
 	}
-	sort.Slice(fs, func(i, j int) bool { return fs[i].label < fs[j].label })
-	return fs, nil
+	sort.Slice(alwaysOn, func(i, j int) bool { return alwaysOn[i].label < alwaysOn[j].label })
+	sort.Slice(conditional, func(i, j int) bool { return conditional[i].label < conditional[j].label })
+	return alwaysOn, conditional, nil
+}
+
+// hasPathsKey reports whether the file's frontmatter block declares a paths: key.
+func hasPathsKey(content string) bool {
+	content = rules.NormalizeLF(content)
+	if !strings.HasPrefix(content, "---\n") {
+		return false
+	}
+	end := strings.Index(content[4:], "\n---\n")
+	if end < 0 {
+		return false
+	}
+	for _, line := range strings.Split(content[4:4+end], "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "paths:") {
+			return true
+		}
+	}
+	return false
 }
 
 // skillFiles reads each skills/<name>/SKILL.md, sorted. A missing skills
@@ -202,10 +229,13 @@ func rewriteRegion(content string, tokens int) (result string, found bool, err e
 	return before + "\n" + footprintLine(tokens) + "\n" + after, true, nil
 }
 
-func report(w *os.File, always, skills []file) {
+func report(w *os.File, always, conditional, skills []file) {
 	var b strings.Builder
 	b.WriteString("Shipped footprint (the files `pk setup` installs), read from source:\n")
 	writeBlock(&b, "Always-on (rules + CLAUDE.md)", always)
+	if len(conditional) > 0 {
+		writeBlock(&b, "Conditional (paths-scoped rules, not always-on)", conditional)
+	}
 	if len(skills) > 0 {
 		writeBlock(&b, "On-demand (skills, not always-on)", skills)
 	}

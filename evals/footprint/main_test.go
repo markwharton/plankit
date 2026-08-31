@@ -34,16 +34,17 @@ func TestCollectAndRunRewritesReadme(t *testing.T) {
 	repo := t.TempDir()
 	write(t, filepath.Join(repo, "internal", "setup", "template", "CLAUDE.md"), "# CLAUDE\n\nrules\n")
 	write(t, filepath.Join(repo, "internal", "setup", "rules", "craft.md"), "# Git\n\n- commit\n")
+	write(t, filepath.Join(repo, "internal", "setup", "rules", "docs.md"), "---\npaths: [\"*.md\"]\n---\n# Docs\n\n- say the fact\n")
 	write(t, filepath.Join(repo, "internal", "setup", "skills", "ship", "SKILL.md"), "# Ship\n\non demand\n")
 	readme := "# plankit\n\n" + markerStart + "\nold\n" + markerEnd + "\n\ntail\n"
 	write(t, filepath.Join(repo, "README.md"), readme)
 
-	always, skills, err := collect(repo)
+	always, conditional, skills, err := collect(repo)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
-	if len(always) != 2 || len(skills) != 1 {
-		t.Fatalf("always=%d skills=%d, want 2 and 1", len(always), len(skills))
+	if len(always) != 2 || len(conditional) != 1 || len(skills) != 1 {
+		t.Fatalf("always=%d conditional=%d skills=%d, want 2, 1 and 1", len(always), len(conditional), len(skills))
 	}
 
 	if err := run(repo); err != nil {
@@ -63,7 +64,7 @@ func TestCollectAndRunRewritesReadme(t *testing.T) {
 }
 
 func TestCollectMissingSourceErrors(t *testing.T) {
-	if _, _, err := collect(t.TempDir()); err == nil {
+	if _, _, _, err := collect(t.TempDir()); err == nil {
 		t.Error("collect should error when internal/setup is absent")
 	}
 }
