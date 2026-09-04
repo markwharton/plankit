@@ -1,141 +1,15 @@
 # plankit
 
-[![CI](https://github.com/markwharton/plankit/actions/workflows/ci.yml/badge.svg)](https://github.com/markwharton/plankit/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/markwharton/plankit/graph/badge.svg?token=y1SS0kyj3v)](https://codecov.io/gh/markwharton/plankit)
-[![Go](https://img.shields.io/badge/Go-1.26-00ADD8.svg)](https://go.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+Plan-driven development for Claude Code.
 
-**Every new LLM session picks a different approach. Plans narrow a specific task to an approved approach before code is written. Rules reduce drift between sessions. Hooks preserve what was approved and guard what should not change.**
+This branch is the plugin-first rewrite, built in layers. plankit ships
+as a Claude Code plugin: the skills are the documentation, the hooks
+call the pk binary, and `pk help` renders the same pages in the
+terminal. The pk runtime is the smallest useful kernel with the help
+engine built in.
 
-A plan-driven development toolkit for [Claude Code](https://code.claude.com). Plans are shared artifacts: one or two developers review and approve an approach, and that becomes the record. Plan preservation and plan protection keep approved work from being lost or overwritten. Rules, testing, and branch protection keep the repository in the state the approved plan describes, so the plan stays worth keeping. Designed for small teams and independent developers.
+A configured repository carries exactly two things: `.pk.json`
+(committed repo policy) and `docs/plans/` (preserved plans).
 
-Anthropic's [Claude Code Best Practices](https://code.claude.com/docs/en/best-practices) covers the fundamentals that plankit builds on.
-
-## What it does
-
-`pk setup` installs the pieces that make plan-driven development work with Claude Code:
-
-- **Rules and guidelines:** CLAUDE.md with critical rules, plus detailed `.claude/rules/` covering development craft and agent conduct
-- **Claude Code skills:** `/pk-configure`, `/preserve`, `/ship`
-- **Plan preservation:** approved plans saved as timestamped documentation in `docs/plans/`, committed to git, and protected from accidental edits
-- **Branch protection:** git mutations blocked via hooks, locally, before the commit or push is created
-- **Release management:** automated changelogs and tagged releases from your commit history
-
-All five work on your repository as it stands, bare `main` included. Release management starts in trunk flow: `pk release` tags your default branch and pushes. When you want `main` to hold only released commits, adding `release.branch` to `.pk.json` is the one-key upgrade to the develop→main merge flow. Start where you are; enable each layer when you need what it does.
-
-<!-- shipped-footprint:start -->
-Always-on rules footprint: ≈2,602 tokens (estimated, calibrated against claude-fable-5) for the rules and CLAUDE.md `pk setup` installs, loaded every session. Your edits and added rules change it; run `pk rules` for your own estimate.
-<!-- shipped-footprint:end -->
-
-After setup, `/ship` is your release workflow. It chains `pk changelog` and `pk release` with preview+confirm at each step.
-
-## Install
-
-Works with [Claude Code](https://code.claude.com). Install `pk` with Homebrew, Go, or a prebuilt binary.
-
-Homebrew (macOS/Linux):
-
-```bash
-brew tap markwharton/plankit
-brew install plankit
-```
-
-With [Go](https://go.dev/doc/install):
-
-```bash
-go install github.com/markwharton/plankit/cmd/pk@latest
-```
-
-Or download a binary from the [releases page](https://github.com/markwharton/plankit/releases) (no Go required). `pk` is a command-line tool: run it from a terminal (PowerShell, Command Prompt, or Git Bash on Windows), not by double-clicking the binary.
-
-After installing, run `pk setup` in your project to configure hooks and skills. See [Setup](#setup) below for details.
-
-## Setup
-
-```bash
-cd your-project
-pk setup
-```
-
-`pk setup` configures `.claude/settings.json` with hooks and installs skills. Restart Claude Code to apply.
-
-Setting up a brand new project and want every layer from day one? `pk init` is the one command that produces the full topology. It creates the `main` + `develop` topology, managed files, the `v0.0.0` baseline tag, and the branch-protection ruleset ready to import.
-
-```bash
-cd your-new-project
-pk init --push
-```
-
-See [pk init](docs/pk-init.md) for the details, and [Adoption](docs/adoption.md) for established repositories.
-
-### Modes
-
-```bash
-pk setup                       # Defaults: guard block, push-guard block, preserve manual
-pk setup --baseline            # Anchor pk changelog with v0.0.0 tag
-pk setup --guard ask           # Prompt instead of blocking on protected branches
-pk setup --guard off           # Disable branch protection
-pk setup --push-guard off      # Allow the agent to git push (default: block)
-pk setup --preserve auto       # Auto-preserve plans on ExitPlanMode
-pk setup --preserve off        # Disable plan preservation
-```
-
-The modes are stored in `.pk.json` (`guard.mode`, `guard.push`, `preserve.mode`); hook commands are bare. Re-run setup to upgrade managed files; pass `--guard`/`--push-guard`/`--preserve` to change a mode, or edit `.pk.json` directly.
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `pk init` | Make a repo plankit-shaped: topology, managed files, `v0.0.0`, branches. [Details](docs/pk-init.md) |
-| `pk setup` | Install hooks, skills, rules, and CLAUDE.md; `--baseline` anchors `pk changelog`. [Details](docs/pk-setup.md) |
-| `pk status` | Report plankit configuration state and release readiness. [Details](docs/pk-status.md) |
-| `pk rules` | Report the always-on context footprint of `.claude/rules/` + CLAUDE.md; `--lint` scans for hidden chars. [Details](docs/pk-rules.md) |
-| `pk teardown` | Remove plankit hooks, skills, and rules. [Details](docs/pk-teardown.md) |
-| `pk changelog` | Generate CHANGELOG.md and commit (tag is created by `pk release`). [Details](docs/pk-changelog.md) |
-| `pk release` | Validate, merge to release branch, tag, and push. [Details](docs/pk-release.md) |
-| `pk guard` | Block git mutations on protected branches; guard `git push` against unbidden pushes. [Details](docs/pk-guard.md) |
-| `pk preserve` | Preserve approved plan. [Details](docs/pk-preserve.md) |
-| `pk protect` | Block edits to docs/plans/. [Details](docs/pk-protect.md) |
-| `pk pin` | Update pinned version in a file. [Details](docs/pk-pin.md) |
-| `pk version` | Print version and check for updates. [Details](docs/pk-version.md) |
-
-## Skills and commands
-
-plankit has three skills that wrap pk commands into workflows Claude Code can run:
-
-| Skill | Wraps | What it does |
-|-------|-------|--------------|
-| `/pk-configure` | — | Detect the git setup, ask about branch and release policy, and write `.pk.json` |
-| `/preserve` | `pk preserve` | Save the approved plan to `docs/plans/` and commit |
-| `/ship` | `pk changelog` + `pk release` | Preview and confirm changelog, then preview and confirm release |
-
-Skills add a preview+confirm cycle and handle the sequencing. The underlying pk commands work standalone from a terminal for power users who want to skip the prompts.
-
-## Documentation
-
-- [Adoption](docs/adoption.md): layered adoption from foundation to release management, and moving between setups
-- [Anti-Patterns](docs/anti-patterns.md): failure modes identified through real project experience
-- [Architecture](docs/architecture.md): three-layer model, provider boundaries, multi-environment design
-- [Methodology](docs/methodology.md): plans, guidelines, compounding effect, model resilience
-- [Resources](docs/resources.md): Claude Code best practices, git references, writing standards
-- [Versioning](docs/versioning.md): tags as source of truth, version flow into artifacts, and deploying a running service
-- [Working as a Team](docs/working-as-a-team.md): applying the methodology
-
-### Reference
-
-- [.pk.json](docs/pk-json.md): configuration schema
-- [Environment Variables](docs/environment-variables.md): variables pk reads and sets
-- [Error Reference](docs/error-reference.md): common errors, causes, and recovery
-
-## Known Limitations
-
-- **Ultraplan (preview)**: plankit hooks require `ExitPlanMode` and a local plan file in `~/.claude/plans/`. Ultraplan runs remotely and delivers plans inline. No local file is written and no `ExitPlanMode` fires, so preservation won't trigger. Use standard `/plan` mode for automatic preservation. ([Provide feedback](https://github.com/anthropics/claude-code/issues))
-- **Claude Code on the web**: `pk setup` installs a SessionStart hook that fetches the matching `pk` binary into the cloud sandbox at session start. Protective hooks (`pk guard`, `pk preserve`, `pk protect`) then work normally. Mobile has no shell environment; hooks degrade to no-ops there.
-
-## Cross-platform
-
-`pk` is a single Go binary with zero external dependencies. Builds for macOS, Linux, and Windows. Windows support relies on Git Bash, which is required by Claude Code.
-
-## License
-
-MIT
+The v1 implementation and its documentation live in git history on
+`main`.
