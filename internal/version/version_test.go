@@ -11,7 +11,7 @@ import (
 
 func TestTextOutput(t *testing.T) {
 	var out, errw bytes.Buffer
-	code := cli.RunIO([]string{"pk", "version"}, []*cli.Command{Cmd}, &out, &errw)
+	code := cli.RunIO([]string{"pk", "version"}, []*cli.Command{Cmd}, nil, &out, &errw)
 	if code != cli.ExitOK || !strings.HasPrefix(out.String(), "pk ") {
 		t.Fatalf("code=%d out=%q err=%q", code, out.String(), errw.String())
 	}
@@ -19,7 +19,7 @@ func TestTextOutput(t *testing.T) {
 
 func TestJSONOutput(t *testing.T) {
 	var out, errw bytes.Buffer
-	code := cli.RunIO([]string{"pk", "version", "--format", "json"}, []*cli.Command{Cmd}, &out, &errw)
+	code := cli.RunIO([]string{"pk", "version", "--format", "json"}, []*cli.Command{Cmd}, nil, &out, &errw)
 	if code != cli.ExitOK {
 		t.Fatalf("code=%d err=%q", code, errw.String())
 	}

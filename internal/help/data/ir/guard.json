@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "guard",
+    "description": "How pk guard protects branches - modes, the push policy, and how to change them"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-guard",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk guard"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Guard is a PreToolUse hook on shell commands. When the agent is about to run a git mutation ("
+        },
+        {
+          "type": "code",
+          "text": "commit"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "merge"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "push"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "rebase"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "reset"
+        },
+        {
+          "type": "text",
+          "text": "), guard checks "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " and answers with a permission decision. Two policies apply, and the strongest decision wins:"
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "branch policy ("
+              },
+              {
+                "type": "code",
+                "text": "guard.mode"
+              },
+              {
+                "type": "text",
+                "text": "): mutations while a protected branch ("
+              },
+              {
+                "type": "code",
+                "text": "guard.branches"
+              },
+              {
+                "type": "text",
+                "text": ") is checked out are denied ("
+              },
+              {
+                "type": "code",
+                "text": "block"
+              },
+              {
+                "type": "text",
+                "text": "), questioned ("
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": "), or ignored ("
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": ")"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "push policy ("
+              },
+              {
+                "type": "code",
+                "text": "guard.push"
+              },
+              {
+                "type": "text",
+                "text": "): any "
+              },
+              {
+                "type": "code",
+                "text": "git push"
+              },
+              {
+                "type": "text",
+                "text": ", on any branch, is denied, questioned, or ignored. Pushing is the developer's explicit action; commits stay local until you push them."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Guard recognizes git through chains ("
+        },
+        {
+          "type": "code",
+          "text": "\u0026\u0026"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": ";"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "|"
+        },
+        {
+          "type": "text",
+          "text": "), environment prefixes, absolute paths, "
+        },
+        {
+          "type": "code",
+          "text": "git -C"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "git.exe"
+        },
+        {
+          "type": "text",
+          "text": ", so a compound command is judged by its parts."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "what-guard-is",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "What guard is"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A guardrail against an agent following its defaults, not a security boundary. Internal errors fail open with a note on stderr, and an unconfigured repository (no "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ") is always a no-op."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "changing-policy",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Changing policy"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Edit "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " and commit it; policy travels with the repository."
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "json",
+      "text": "\"guard\": { \"branches\": [\"main\"], \"mode\": \"block\", \"push\": \"block\" }\n"
+    }
+  ]
+}

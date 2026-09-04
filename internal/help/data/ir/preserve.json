@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "preserve",
+    "description": "Preserve the approved plan into docs/plans - modes, the pending pointer, and /plankit:preserve"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-preserve",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk preserve"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Preserve captures an approved Claude Code plan, byte for byte, into "
+        },
+        {
+          "type": "code",
+          "text": "docs/plans/"
+        },
+        {
+          "type": "text",
+          "text": " under a dated, sequenced, slugged filename, and commits it with a "
+        },
+        {
+          "type": "code",
+          "text": "plan:"
+        },
+        {
+          "type": "text",
+          "text": " message. The plan lands exactly as approved; nothing rewrites it."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "modes",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Modes"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The automatic hook fires when a plan is approved (ExitPlanMode) and honors "
+        },
+        {
+          "type": "code",
+          "text": "preserve.mode"
+        },
+        {
+          "type": "text",
+          "text": " in "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ":"
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "auto"
+              },
+              {
+                "type": "text",
+                "text": ": preserve and commit immediately"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "manual"
+              },
+              {
+                "type": "text",
+                "text": " (default): record the approved plan in a pending pointer and say so; nothing is committed until you ask"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": ": do nothing"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "completing-a-manual-preserve",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Completing a manual preserve"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Type "
+        },
+        {
+          "type": "code",
+          "text": "/plankit:preserve"
+        },
+        {
+          "type": "text",
+          "text": ", or run "
+        },
+        {
+          "type": "code",
+          "text": "pk preserve"
+        },
+        {
+          "type": "text",
+          "text": " in the repository. The explicit invocation consumes the pending pointer and always commits, whatever the mode; running it is the consent. "
+        },
+        {
+          "type": "code",
+          "text": "--push"
+        },
+        {
+          "type": "text",
+          "text": " also pushes the commit; "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " previews the filename and commit message."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Identical plan bytes are never preserved twice: a duplicate reports the existing file instead. Short drafts under 50 bytes are ignored."
+        }
+      ]
+    }
+  ]
+}

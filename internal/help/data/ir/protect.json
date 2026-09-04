@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "protect",
+    "description": "Why docs/plans is immutable and how pk protect enforces it"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-protect",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk protect"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Protect is a PreToolUse hook on Edit and Write. Any attempt to modify a file under "
+        },
+        {
+          "type": "code",
+          "text": "docs/plans/"
+        },
+        {
+          "type": "text",
+          "text": " is denied: preserved plans are immutable historical records of what was approved, and their value is exactly that they cannot be quietly rewritten afterward."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The check resolves symlinks and compares case-insensitively on Windows, so the directory cannot be reached through an alias."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "amending-a-plan",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Amending a plan"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Plans are superseded, never edited. If the approach changes, write and approve a new plan; the sequence in "
+        },
+        {
+          "type": "code",
+          "text": "docs/plans/"
+        },
+        {
+          "type": "text",
+          "text": " is the history of decisions, including the reversals."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Protect is a no-op in an unconfigured repository (no "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ")."
+        }
+      ]
+    }
+  ]
+}

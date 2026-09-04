@@ -16,7 +16,7 @@ func testCmd(name string, hook bool, flags []FlagSpec, run func(*Context) error)
 func run(t *testing.T, argv []string, cmds ...*Command) (code int, stdout, stderr string) {
 	t.Helper()
 	var out, err bytes.Buffer
-	code = RunIO(append([]string{"pk"}, argv...), cmds, &out, &err)
+	code = RunIO(append([]string{"pk"}, argv...), cmds, nil, &out, &err)
 	return code, out.String(), err.String()
 }
 

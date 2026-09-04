@@ -40,7 +40,7 @@ func run(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var out, errw bytes.Buffer
 	code := cli.RunIO(append([]string{"pk"}, args...),
-		[]*cli.Command{InitCmd, StatusCmd}, &out, &errw)
+		[]*cli.Command{InitCmd, StatusCmd}, nil, &out, &errw)
 	return code, out.String(), errw.String()
 }
 

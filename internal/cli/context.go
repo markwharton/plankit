@@ -28,6 +28,7 @@ type Context struct {
 	Width      int  // wrap width for styled text output; 0 means no wrapping
 	IsTTY      bool // stdout is a terminal
 	Quiet      bool
+	Stdin      io.Reader
 	Stdout     io.Writer
 	Stderr     io.Writer
 

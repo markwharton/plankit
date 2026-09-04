@@ -9,7 +9,10 @@ import (
 	"os"
 
 	"github.com/markwharton/plankit/internal/cli"
+	"github.com/markwharton/plankit/internal/guard"
 	"github.com/markwharton/plankit/internal/help"
+	"github.com/markwharton/plankit/internal/preserve"
+	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/repo"
 	"github.com/markwharton/plankit/internal/version"
 )
@@ -22,7 +25,10 @@ func main() {
 // init-time magic, so reading this list is reading the product surface.
 func commands() []*cli.Command {
 	return []*cli.Command{
+		guard.Cmd,
 		help.Cmd,
+		preserve.Cmd,
+		protect.Cmd,
 		repo.InitCmd,
 		repo.StatusCmd,
 		version.Cmd,

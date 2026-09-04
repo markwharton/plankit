@@ -55,14 +55,14 @@ var universalFlags = []FlagSpec{
 }
 
 // Run dispatches argv against the registered commands and returns the
-// process exit code. Stdout and stderr default to the process streams;
-// tests substitute buffers via RunIO.
+// process exit code. Streams default to the process's; tests substitute
+// buffers via RunIO.
 func Run(argv []string, cmds []*Command) int {
-	return RunIO(argv, cmds, os.Stdout, os.Stderr)
+	return RunIO(argv, cmds, os.Stdin, os.Stdout, os.Stderr)
 }
 
-// RunIO is Run with explicit output streams.
-func RunIO(argv []string, cmds []*Command, stdout, stderr io.Writer) int {
+// RunIO is Run with explicit streams.
+func RunIO(argv []string, cmds []*Command, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(argv) < 2 {
 		printUsage(stderr, cmds)
 		return ExitUsage
@@ -89,7 +89,7 @@ func RunIO(argv []string, cmds []*Command, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 
-	ctx, err := parse(cmd, cmds, args, stdout, stderr)
+	ctx, err := parse(cmd, cmds, args, stdin, stdout, stderr)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			printCommandUsage(stdout, cmd)
@@ -135,7 +135,7 @@ func lookup(cmds []*Command, name string) *Command {
 
 // parse materializes the command's flag set (universal flags first),
 // parses args, and resolves the Context.
-func parse(cmd *Command, cmds []*Command, args []string, stdout, stderr io.Writer) (*Context, error) {
+func parse(cmd *Command, cmds []*Command, args []string, stdin io.Reader, stdout, stderr io.Writer) (*Context, error) {
 	fs := flag.NewFlagSet(cmd.Name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // usage and errors are printed by the frame
 
@@ -162,6 +162,7 @@ func parse(cmd *Command, cmds []*Command, args []string, stdout, stderr io.Write
 		Command:  cmd.Name,
 		Commands: cmds,
 		Quiet:    *bools["quiet"],
+		Stdin:    stdin,
 		Stdout:   stdout,
 		Stderr:   stderr,
 		bools:    bools,

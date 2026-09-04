@@ -11,7 +11,7 @@ import (
 func runHelp(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
 	var out, errw bytes.Buffer
-	code := cli.RunIO(append([]string{"pk", "help"}, args...), []*cli.Command{Cmd}, &out, &errw)
+	code := cli.RunIO(append([]string{"pk", "help"}, args...), []*cli.Command{Cmd}, nil, &out, &errw)
 	return code, out.String(), errw.String()
 }
 

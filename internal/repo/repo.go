@@ -14,10 +14,11 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
+	"github.com/markwharton/plankit/internal/paths"
 )
 
 // PlansDir is where preserved plans live, relative to the repo root.
-const PlansDir = "docs/plans"
+const PlansDir = paths.PlansRel
 
 // InitCmd configures a repository for plankit.
 var InitCmd = &cli.Command{
@@ -74,7 +75,7 @@ func runInit(ctx *cli.Context) error {
 	if err := do(config.FileName, func() error { return config.Write(root, cfg) }); err != nil {
 		return err
 	}
-	plans := filepath.Join(root, PlansDir)
+	plans := paths.Plans(root)
 	if _, err := os.Stat(plans); os.IsNotExist(err) {
 		if err := do(PlansDir+"/", func() error {
 			if err := os.MkdirAll(plans, 0o755); err != nil {
@@ -204,7 +205,7 @@ func runStatus(ctx *cli.Context) error {
 func silentState() error { return cli.Silent(cli.ExitState) }
 
 func countPlans(root string) int {
-	entries, err := os.ReadDir(filepath.Join(root, PlansDir))
+	entries, err := os.ReadDir(paths.Plans(root))
 	if err != nil {
 		return 0
 	}
