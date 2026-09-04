@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "version",
+    "description": "Print the pk build version"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-version",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk version"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Prints the version of the running pk binary. Release builds report the stamped semver; development builds report "
+        },
+        {
+          "type": "code",
+          "text": "dev"
+        },
+        {
+          "type": "text",
+          "text": " plus the commit."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk version\npk version --verbose\npk version --format json\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--verbose"
+        },
+        {
+          "type": "text",
+          "text": " adds the Go version and platform. "
+        },
+        {
+          "type": "code",
+          "text": "--format json"
+        },
+        {
+          "type": "text",
+          "text": " emits a single object with "
+        },
+        {
+          "type": "code",
+          "text": "version"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "go"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "os"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "arch"
+        },
+        {
+          "type": "text",
+          "text": " keys, for scripting."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "help",
+    "description": "Show documentation for pk and its commands"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-help",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk help"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Renders plankit's documentation in the terminal. The same pages ship as skills in the plankit plugin, compiled from one source, so the typeahead entry, "
+        },
+        {
+          "type": "code",
+          "text": "pk help \u003ctopic\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and the file in the repository never disagree."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk help\npk help \u003ctopic\u003e\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Without a topic, prints the index. Output adapts to the reader: a terminal gets styled, wrapped text; a pipe gets the raw authored bytes, so tools and Claude read exactly the source document. "
+        },
+        {
+          "type": "code",
+          "text": "--plain"
+        },
+        {
+          "type": "text",
+          "text": " forces undecorated output, and "
+        },
+        {
+          "type": "code",
+          "text": "NO_COLOR"
+        },
+        {
+          "type": "text",
+          "text": " is respected."
+        }
+      ]
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/markwharton/plankit/internal/cli"
+	"github.com/markwharton/plankit/internal/help"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -20,6 +21,7 @@ func main() {
 // init-time magic, so reading this list is reading the product surface.
 func commands() []*cli.Command {
 	return []*cli.Command{
+		help.Cmd,
 		version.Cmd,
 	}
 }
