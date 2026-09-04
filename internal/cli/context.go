@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/markwharton/plankit/internal/git"
 )
 
 // Style is the presentation decision for this invocation's stdout.
@@ -20,7 +22,7 @@ const (
 type Context struct {
 	Command    string
 	Commands   []*Command // full registry, for help and usage generation
-	ProjectDir string     // absolute; git-root resolution arrives in layer 2
+	ProjectDir string     // absolute; "." resolves to the enclosing git root
 	Format     string     // "text" or "json"
 	Style      Style
 	Width      int  // wrap width for styled text output; 0 means no wrapping
@@ -77,6 +79,14 @@ func (c *Context) resolve(projectDir, format string, plain bool) error {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return Usagef("resolving --project-dir: %v", err)
+	}
+	// A default or explicit "." means "this project": resolve to the
+	// enclosing git root, so pk works the same from any subdirectory.
+	// Any other explicit path is taken as given.
+	if dir == "." {
+		if root, ok := git.FindRoot(abs); ok {
+			abs = root
+		}
 	}
 	c.ProjectDir = abs
 

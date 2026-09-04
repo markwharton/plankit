@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "init",
+    "description": "Configure a repository for plankit - write .pk.json, create docs/plans, baseline a tag"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-init",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk init"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Configures the current repository for plan-driven development. One run creates the entire per-repo footprint:"
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": ".pk.json"
+              },
+              {
+                "type": "text",
+                "text": ", the committed policy: the conventional-commit type table, guard and preserve modes stated explicitly, and the release branch guarded"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "docs/plans/"
+              },
+              {
+                "type": "text",
+                "text": ", where approved plans are preserved"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "a "
+              },
+              {
+                "type": "code",
+                "text": "v0.0.0"
+              },
+              {
+                "type": "text",
+                "text": " baseline tag when the repository has commits but no tag, so release machinery has a starting point"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk init\npk init --release trunk\npk init --dry-run\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--release"
+        },
+        {
+          "type": "text",
+          "text": " names the branch to guard and release from; the default is the branch currently checked out. "
+        },
+        {
+          "type": "code",
+          "text": "--no-baseline"
+        },
+        {
+          "type": "text",
+          "text": " skips the tag. "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " previews without writing."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Init refuses to run twice: edit "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " directly once it exists. Commit the created files; the policy travels with the repository."
+        }
+      ]
+    }
+  ]
+}

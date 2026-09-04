@@ -30,6 +30,11 @@ func Statef(format string, a ...any) error {
 	return &exitError{code: ExitState, msg: fmt.Sprintf(format, a...)}
 }
 
+// Silent returns an error that carries only an exit code. Commands use
+// it when the report is already written and the code is the remaining
+// signal (pk status in an unconfigured repository).
+func Silent(code int) error { return &exitError{code: code} }
+
 // WithHint attaches a fix-naming hint to an error created by Usagef or
 // Statef. Hints print after the error unless --quiet is set.
 func WithHint(err error, format string, a ...any) error {

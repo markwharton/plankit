@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "status",
+    "description": "Report plankit configuration and repository state"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-status",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk status"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Reports what plankit sees in this repository: the resolved policy from "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ", the current branch and tree state, the preserved plan count, and the latest tag."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk status\npk status --format json\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Exit codes carry the answer for scripts: "
+        },
+        {
+          "type": "code",
+          "text": "0"
+        },
+        {
+          "type": "text",
+          "text": " means configured, "
+        },
+        {
+          "type": "code",
+          "text": "2"
+        },
+        {
+          "type": "text",
+          "text": " means not configured or not a git repository. "
+        },
+        {
+          "type": "code",
+          "text": "--format json"
+        },
+        {
+          "type": "text",
+          "text": " emits one object with the same fields as the text report."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "An unconfigured repository is not an error, it is a state: plankit is off wherever "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " is absent, and every hook exits immediately there."
+        }
+      ]
+    }
+  ]
+}

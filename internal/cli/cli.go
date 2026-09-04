@@ -112,7 +112,9 @@ func report(ctx *Context, err error) int {
 	}
 	var ee *exitError
 	if errors.As(err, &ee) {
-		msg.Errorf(ctx.Stderr, "%s", ee.msg)
+		if ee.msg != "" {
+			msg.Errorf(ctx.Stderr, "%s", ee.msg)
+		}
 		if ee.hint != "" && !ctx.Quiet {
 			msg.Hintf(ctx.Stderr, "%s", ee.hint)
 		}

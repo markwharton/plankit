@@ -10,6 +10,7 @@ import (
 
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/help"
+	"github.com/markwharton/plankit/internal/repo"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -22,6 +23,8 @@ func main() {
 func commands() []*cli.Command {
 	return []*cli.Command{
 		help.Cmd,
+		repo.InitCmd,
+		repo.StatusCmd,
 		version.Cmd,
 	}
 }
