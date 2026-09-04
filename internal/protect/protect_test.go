@@ -102,3 +102,26 @@ func TestSymlinkIntoPlansIsDenied(t *testing.T) {
 		t.Fatalf("symlink bypass: %q", out)
 	}
 }
+
+// Regression for the macOS failure: /var is a symlink to /private/var,
+// so the payload cwd arrives in symlinked form while the (nonexistent)
+// write target cannot be symlink-resolved. Reproduced portably with a
+// symlinked repo root: the plans dir resolves to the real path, the
+// missing target must resolve with it, or the prefixes never match.
+func TestSymlinkedRootStillDenied(t *testing.T) {
+	real := scratch(t, true)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"cwd":        link,
+		"tool_input": map[string]string{"file_path": "docs/plans/2026-01-01-001-new.md"},
+	})
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	var out, errw bytes.Buffer
+	cli.RunIO([]string{"pk", "protect"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
+	if !strings.Contains(out.String(), `"permissionDecision":"deny"`) {
+		t.Fatalf("symlinked root bypassed protect: %q", out.String())
+	}
+}

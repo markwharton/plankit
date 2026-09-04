@@ -61,24 +61,47 @@ func run(ctx *cli.Context) error {
 }
 
 // isUnderPlansDir checks whether filePath is under root/docs/plans/,
-// resolving symlinks (best-effort) to prevent bypass via links, and
-// comparing case-insensitively on Windows.
+// resolving symlinks to prevent bypass via links, and comparing
+// case-insensitively on Windows.
+//
+// Both sides resolve through resolveExisting, never EvalSymlinks
+// directly: the write target usually does not exist yet, and resolving
+// only the side that exists produces mismatched prefixes wherever the
+// path crosses a symlink. macOS makes that the common case, not the
+// edge: /var is a symlink to /private/var, so a payload cwd under
+// /var/folders (every TMPDIR) resolves to /private on the existing
+// side and stays /var on the missing side. v1 had this asymmetry too.
 func isUnderPlansDir(filePath, root string) bool {
 	plansDir := paths.Plans(root)
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(root, filePath)
 	}
-	cleanFile := filepath.Clean(filePath)
-	cleanPlans := filepath.Clean(plansDir)
-	if resolved, err := filepath.EvalSymlinks(cleanFile); err == nil {
-		cleanFile = resolved
-	}
-	if resolved, err := filepath.EvalSymlinks(cleanPlans); err == nil {
-		cleanPlans = resolved
-	}
+	cleanFile := resolveExisting(filePath)
+	cleanPlans := resolveExisting(plansDir)
 	if runtime.GOOS == "windows" {
 		cleanFile = strings.ToLower(cleanFile)
 		cleanPlans = strings.ToLower(cleanPlans)
 	}
 	return strings.HasPrefix(cleanFile, cleanPlans+string(filepath.Separator))
+}
+
+// resolveExisting resolves symlinks through the nearest existing
+// ancestor: EvalSymlinks the deepest path element that exists, then
+// rejoin the missing tail. A path with no resolvable ancestor comes
+// back cleaned but unresolved, which still compares consistently
+// because both sides of the check go through this same function.
+func resolveExisting(path string) string {
+	p := filepath.Clean(path)
+	suffix := ""
+	for {
+		if resolved, err := filepath.EvalSymlinks(p); err == nil {
+			return filepath.Join(resolved, suffix)
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return filepath.Clean(path)
+		}
+		suffix = filepath.Join(filepath.Base(p), suffix)
+		p = parent
+	}
 }
