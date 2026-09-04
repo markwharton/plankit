@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "pin",
+    "description": "Update a version pin in a file, for release hooks"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-pin",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk pin"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Updates a pinned version string in a file. Release and changelog hooks call it with "
+        },
+        {
+          "type": "code",
+          "text": "$VERSION"
+        },
+        {
+          "type": "text",
+          "text": " so pinned copies (workflow files, install scripts, documentation) track the release automatically."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "pin-forms",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Pin forms"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Without "
+        },
+        {
+          "type": "code",
+          "text": "--name"
+        },
+        {
+          "type": "text",
+          "text": ", the first shell-style "
+        },
+        {
+          "type": "code",
+          "text": "SOMETHING_VERSION=\"vX.Y.Z\""
+        },
+        {
+          "type": "text",
+          "text": " line is updated. With "
+        },
+        {
+          "type": "code",
+          "text": "--name \u003cidentifier\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", the first assignment of a quoted string to that identifier is updated; "
+        },
+        {
+          "type": "code",
+          "text": "="
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": ":="
+        },
+        {
+          "type": "text",
+          "text": ", and a bare YAML colon all match, and the "
+        },
+        {
+          "type": "code",
+          "text": "v"
+        },
+        {
+          "type": "text",
+          "text": " prefix is inferred from the existing value."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk pin --file .github/workflows/ci.yml --name pk-version $VERSION\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A missing file is a no-op and a file without a matching pin is a warning, never a failure, so a renamed target cannot abort a release from inside a hook."
+        }
+      ]
+    }
+  ]
+}

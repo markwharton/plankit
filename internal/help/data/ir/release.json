@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "release",
+    "description": "Tag the pending release from the Release-Tag trailer and push it, with pre-flight checks and rollback"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-release",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk release"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Completes what "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " staged: reads the "
+        },
+        {
+          "type": "code",
+          "text": "Release-Tag"
+        },
+        {
+          "type": "text",
+          "text": " trailer on HEAD, runs pre-flight checks, creates the tag, and pushes atomically to origin."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "two-flows",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Two flows"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "With "
+        },
+        {
+          "type": "code",
+          "text": "release.branch"
+        },
+        {
+          "type": "text",
+          "text": " configured, the merge flow: fast-forward the release branch to your working branch, tag, push branch and tag together, switch back, push the working branch. Without it, trunk flow: tag and push the default branch directly, and refuse to run anywhere else."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "pre-flight",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Pre-flight"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Clean tree, branch exists on origin and is not behind it, release branch resolvable and not diverged from your work. Failures after tagging roll everything back: the local tag is deleted, the merge is reset, and you are returned to your working branch, so an aborted release leaves the repository as it found it."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "hooks",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Hooks"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "preRelease"
+        },
+        {
+          "type": "text",
+          "text": " runs before the tag exists and is rehearsed by "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": "; a hook that commits produces a commit the tag then covers. "
+        },
+        {
+          "type": "code",
+          "text": "prePush"
+        },
+        {
+          "type": "text",
+          "text": " runs with the tag ref in existence, for signing or artifact builds keyed on the tag. Both receive "
+        },
+        {
+          "type": "code",
+          "text": "$VERSION"
+        },
+        {
+          "type": "text",
+          "text": " (no v) and "
+        },
+        {
+          "type": "code",
+          "text": "$TAG"
+        },
+        {
+          "type": "text",
+          "text": " (with it)."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk release --dry-run\npk release\n"
+    }
+  ]
+}

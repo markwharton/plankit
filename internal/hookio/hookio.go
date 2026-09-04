@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"os/exec"
+	"runtime"
 )
 
 // Input is the JSON payload Claude Code writes to a hook's stdin.
@@ -132,4 +134,38 @@ func WritePostToolUse(w io.Writer, systemMessage, additionalContext string) erro
 	}
 	_, err = w.Write(data)
 	return err
+}
+
+// RunScript runs a lifecycle hook command through the platform shell
+// ("sh -c", or "cmd /c" on Windows), inheriting output onto w. env
+// variables are pre-expanded in the command string ($VAR and ${VAR}) and
+// also set as real environment variables, so a hook can write $VERSION
+// once and have it work on every platform (cmd does not expand $VAR).
+func RunScript(w io.Writer, dir, command string, env map[string]string) error {
+	if len(env) > 0 {
+		command = os.Expand(command, func(key string) string {
+			if v, ok := env[key]; ok {
+				return v
+			}
+			return "$" + key
+		})
+	}
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", command)
+	} else {
+		cmd = exec.Command("sh", "-c", command)
+	}
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	cmd.Stdout = w
+	cmd.Stderr = w
+	if len(env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+	return cmd.Run()
 }

@@ -69,3 +69,18 @@ func Notef(w io.Writer, format string, a ...any) {
 func Hintf(w io.Writer, format string, a ...any) {
 	fmt.Fprintf(w, "Hint: "+format+"\n", a...)
 }
+
+// Section writes a section header: the title followed by a colon.
+func Section(w io.Writer, title string) {
+	fmt.Fprintf(w, "%s:\n", title)
+}
+
+// Itemf writes a two-space-indented line under the nearest Section.
+func Itemf(w io.Writer, format string, a ...any) {
+	fmt.Fprintf(w, "  "+format+"\n", a...)
+}
+
+// Banner writes the release frame: "=== <s> ===". pk release only.
+func Banner(w io.Writer, s string) {
+	fmt.Fprintf(w, "=== %s ===\n", s)
+}

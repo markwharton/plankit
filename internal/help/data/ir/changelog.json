@@ -1,0 +1,236 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "changelog",
+    "description": "Generate CHANGELOG.md from conventional commits and stage a release with the Release-Tag trailer"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-changelog",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk changelog"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Reads the conventional commits since the last version tag, infers the next version, writes the section into "
+        },
+        {
+          "type": "code",
+          "text": "CHANGELOG.md"
+        },
+        {
+          "type": "text",
+          "text": ", and commits with a "
+        },
+        {
+          "type": "code",
+          "text": "Release-Tag"
+        },
+        {
+          "type": "text",
+          "text": " trailer. No git tag is created here; that is "
+        },
+        {
+          "type": "code",
+          "text": "pk release"
+        },
+        {
+          "type": "text",
+          "text": "'s moment, so the release stays a two-step: generate and review, then tag and push."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "version-inference",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Version inference"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A breaking change ("
+        },
+        {
+          "type": "code",
+          "text": "type!:"
+        },
+        {
+          "type": "text",
+          "text": " or a "
+        },
+        {
+          "type": "code",
+          "text": "BREAKING CHANGE:"
+        },
+        {
+          "type": "text",
+          "text": " footer) bumps major, "
+        },
+        {
+          "type": "code",
+          "text": "feat"
+        },
+        {
+          "type": "text",
+          "text": " bumps minor, anything else bumps patch. "
+        },
+        {
+          "type": "code",
+          "text": "--bump\nmajor|minor|patch"
+        },
+        {
+          "type": "text",
+          "text": " overrides. Types map to sections via "
+        },
+        {
+          "type": "code",
+          "text": "changelog.types"
+        },
+        {
+          "type": "text",
+          "text": " in "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": "; hidden types (like "
+        },
+        {
+          "type": "code",
+          "text": "plan"
+        },
+        {
+          "type": "text",
+          "text": ") are tracked but never listed."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk changelog --dry-run\npk changelog\npk changelog --exclude abc1234,def5678\npk changelog --undo\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " prints the section to stdout, redirectable, and works on a dirty tree. "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " drops commits by short hash before bump inference. "
+        },
+        {
+          "type": "code",
+          "text": "--undo"
+        },
+        {
+          "type": "text",
+          "text": " unwinds an unpushed release commit, restoring "
+        },
+        {
+          "type": "code",
+          "text": "CHANGELOG.md"
+        },
+        {
+          "type": "text",
+          "text": " and version files."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "changelog.versionFiles"
+        },
+        {
+          "type": "text",
+          "text": " names JSON files whose root "
+        },
+        {
+          "type": "code",
+          "text": "version"
+        },
+        {
+          "type": "text",
+          "text": " field is spliced in place, formatting preserved. "
+        },
+        {
+          "type": "code",
+          "text": "postVersion"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "preCommit"
+        },
+        {
+          "type": "text",
+          "text": " hooks run with "
+        },
+        {
+          "type": "code",
+          "text": "$VERSION"
+        },
+        {
+          "type": "text",
+          "text": " (no v prefix)."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Run it from your working branch: the release commit belongs there, and a protected branch is refused."
+        }
+      ]
+    }
+  ]
+}
