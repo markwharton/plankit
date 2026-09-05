@@ -1,0 +1,137 @@
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// repoRoot walks up from the test binary's working directory to the
+// directory holding go.mod.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("go.mod not found above test directory")
+		}
+		dir = parent
+	}
+}
+
+// TestCommandsAndSkillsAreOneToOne enforces the design rule that skills
+// mirror commands exactly: every registered command has skills/<name>/
+// SKILL.md whose frontmatter name matches, and every skill directory
+// (minus the plankit overview) is a registered command. A drifted pair
+// means either an undocumented command or a skill promising a command
+// that does not exist.
+func TestCommandsAndSkillsAreOneToOne(t *testing.T) {
+	root := repoRoot(t)
+	registered := map[string]bool{}
+	for _, c := range commands() {
+		registered[c.Name] = true
+	}
+
+	entries, err := os.ReadDir(filepath.Join(root, "skills"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	skillDirs := map[string]bool{}
+	nameRe := regexp.MustCompile(`(?m)^name:\s*(\S+)\s*$`)
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		skillDirs[e.Name()] = true
+		md, err := os.ReadFile(filepath.Join(root, "skills", e.Name(), "SKILL.md"))
+		if err != nil {
+			t.Errorf("skills/%s has no SKILL.md: %v", e.Name(), err)
+			continue
+		}
+		m := nameRe.FindSubmatch(md)
+		if m == nil || string(m[1]) != e.Name() {
+			t.Errorf("skills/%s: frontmatter name %q must match the directory", e.Name(), m)
+		}
+	}
+
+	for name := range registered {
+		if !skillDirs[name] {
+			t.Errorf("command %q has no skills/%s/SKILL.md", name, name)
+		}
+	}
+	for dir := range skillDirs {
+		if dir == "plankit" {
+			continue // the overview topic, not a command
+		}
+		if !registered[dir] {
+			t.Errorf("skills/%s does not correspond to a registered command", dir)
+		}
+	}
+}
+
+// TestHookWiringMatchesRegisteredCommands parses hooks/hooks.json and
+// checks every command entry is the shim invoking a registered command
+// through the documented quoting: "${CLAUDE_PLUGIN_ROOT}"/bin/pk <cmd>.
+func TestHookWiringMatchesRegisteredCommands(t *testing.T) {
+	root := repoRoot(t)
+	raw, err := os.ReadFile(filepath.Join(root, "hooks", "hooks.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Hooks map[string][]struct {
+			Matcher string `json:"matcher"`
+			Hooks   []struct {
+				Type    string `json:"type"`
+				Command string `json:"command"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("hooks.json does not parse: %v", err)
+	}
+	if len(cfg.Hooks) == 0 {
+		t.Fatal("hooks.json declares no hooks")
+	}
+
+	registered := map[string]bool{}
+	for _, c := range commands() {
+		registered[c.Name] = true
+	}
+	const prefix = `"${CLAUDE_PLUGIN_ROOT}"/bin/pk `
+	seen := map[string]bool{}
+	for event, entries := range cfg.Hooks {
+		for _, entry := range entries {
+			for _, h := range entry.Hooks {
+				if h.Type != "command" {
+					t.Errorf("%s[%s]: unexpected hook type %q", event, entry.Matcher, h.Type)
+					continue
+				}
+				if !strings.HasPrefix(h.Command, prefix) {
+					t.Errorf("%s[%s]: command %q must start with %q (double-quoted plugin root)", event, entry.Matcher, h.Command, prefix)
+					continue
+				}
+				name := strings.TrimPrefix(h.Command, prefix)
+				if !registered[name] {
+					t.Errorf("%s[%s]: %q is not a registered command", event, entry.Matcher, name)
+				}
+				seen[name] = true
+			}
+		}
+	}
+	for _, want := range []string{"guard", "protect", "preserve"} {
+		if !seen[want] {
+			t.Errorf("hooks.json does not wire %q", want)
+		}
+	}
+}

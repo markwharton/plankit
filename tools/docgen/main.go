@@ -182,8 +182,8 @@ func splitFrontmatter(source []byte) (map[string]string, []byte, error) {
 		fm[strings.TrimSpace(key)] = strings.TrimSpace(value)
 	}
 	for k := range fm {
-		if k != "name" && k != "description" {
-			return nil, nil, fmt.Errorf("unknown frontmatter key %q (allowed: name, description)", k)
+		if k != "name" && k != "description" && k != "argument-hint" {
+			return nil, nil, fmt.Errorf("unknown frontmatter key %q (allowed: name, description, argument-hint)", k)
 		}
 	}
 	body := rest[end+1+len(fence):]

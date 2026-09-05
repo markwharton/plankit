@@ -1,6 +1,7 @@
 ---
 name: help
 description: Show documentation for pk and its commands
+argument-hint: <topic>
 ---
 
 # pk help

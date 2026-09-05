@@ -1,0 +1,26 @@
+#!/bin/sh
+# Dispatch to the platform binary sitting next to this shim. The binaries
+# are release assets (pk-<os>-<arch>), not committed files; `make bin-local`
+# builds the current platform's one for development.
+set -e
+dir=$(dirname "$0")
+os=$(uname -s)
+arch=$(uname -m)
+case "$os" in
+  Darwin) os=darwin ;;
+  Linux) os=linux ;;
+  MINGW*|MSYS*|CYGWIN*) os=windows ;;
+  *) echo "pk: unsupported platform: $os" >&2; exit 3 ;;
+esac
+case "$arch" in
+  x86_64|amd64) arch=amd64 ;;
+  arm64|aarch64) arch=arm64 ;;
+  *) echo "pk: unsupported architecture: $arch" >&2; exit 3 ;;
+esac
+bin="$dir/pk-$os-$arch"
+if [ "$os" = windows ]; then bin="$bin.exe"; fi
+if [ ! -x "$bin" ]; then
+  echo "pk: $bin not found; run 'make bin-local' in the plankit repo, or reinstall the plugin" >&2
+  exit 3
+fi
+exec "$bin" "$@"

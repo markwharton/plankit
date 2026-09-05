@@ -1,0 +1,15 @@
+{
+  "name": "plankit",
+  "description": "plankit and its marketplace: install plan-driven development for Claude Code straight from this repository",
+  "owner": {
+    "name": "Mark Wharton",
+    "url": "https://github.com/markwharton"
+  },
+  "plugins": [
+    {
+      "name": "plankit",
+      "source": "./",
+      "description": "Plan-driven development for Claude Code: guarded branches, immutable plan records, conventional-commit releases"
+    }
+  ]
+}

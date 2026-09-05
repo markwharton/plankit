@@ -58,6 +58,12 @@
         "section": "Plans",
         "hidden": true
       }
+    ],
+    "versionFiles": [
+      {
+        "path": ".claude-plugin/plugin.json",
+        "type": "json"
+      }
     ]
   },
   "guard": {

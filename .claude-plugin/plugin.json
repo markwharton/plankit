@@ -1,0 +1,12 @@
+{
+  "name": "plankit",
+  "version": "0.0.0",
+  "description": "Plan-driven development for Claude Code: guarded branches, immutable plan records, conventional-commit releases",
+  "author": {
+    "name": "Mark Wharton",
+    "url": "https://github.com/markwharton"
+  },
+  "repository": "https://github.com/markwharton/plankit",
+  "license": "MIT",
+  "keywords": ["planning", "git", "workflow", "release", "changelog"]
+}

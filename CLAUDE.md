@@ -12,6 +12,9 @@ IMPORTANT: Follow these rules at all times.
 
 ## Project Conventions
 
+This file is development context for working on the plankit repository.
+It is not plugin content: the plugin ships context through skills/.
+
 ### Branch & Workflow
 
 - All changes go through `develop` — never commit directly to `main`.
@@ -21,95 +24,85 @@ IMPORTANT: Follow these rules at all times.
 ### Quick Commands
 
 ```bash
-make build          # Build for current platform -> dist/pk
-make test           # Run tests with race detector
-go test -run TestName ./internal/<pkg>   # Run a single test
-make build-all      # Cross-compile for 5 platforms
-make install        # Install to GOPATH/bin
-make lint           # Run go vet + gofmt drift check
-make rules-lint     # Lint .claude/rules: hidden chars + house style (--strict)
-make vuln           # Scan for known vulnerabilities (govulncheck)
-make cover          # Per-function coverage for .go files changed since the latest tag; run before /ship
-pk changelog        # Generate CHANGELOG.md and commit (no tag)
-pk changelog --undo # Unwind an unpushed release commit
-pk release          # Read Release-Tag trailer, merge, create tag, and push
+make build          # docgen + go build -> ./pk
+make test           # go vet + go test ./... (repo and tools/docgen)
+make docs           # compile skills/ into internal/help/data (committed)
+make fmt            # gofmt the tree
+make bin-local      # build bin/pk-<os>-<arch> so the bin/pk shim works
+make dist           # cross-compile all shim targets into bin/
+go test -run TestName ./internal/<pkg>   # single test
 ```
-
-- **Always use `make build`, never `go build ./cmd/pk` directly.** Bare `go build` leaves a binary in the working directory; the Makefile routes output to `dist/`.
 
 ### Language & Build
 
-- **Go 1.26**, standard library only — no third-party dependencies.
-- Binary: `pk` — single entrypoint at `cmd/pk/main.go`.
-- Build: `make build` (output to `dist/`).
-- Test: `make test` (runs `go test -v -race ./...`).
-- Cross-compile: `make build-all` (darwin/linux amd64+arm64, windows amd64).
-- Version injected via ldflags (`-X .../version.version=$(VERSION)`).
-- All user messages to stderr, stdout reserved for hook protocol JSON.
-- `CGO_ENABLED=0` enforced via Makefile — pure-Go static binaries, no implicit glibc dependency on linux.
+- **Go, standard library only** in the main module — no third-party
+  dependencies. Markdown parsing (goldmark) lives in `tools/docgen`,
+  a separate module that runs at build time only.
+- Binary: `pk`, single entrypoint at `cmd/pk/main.go`; commands are
+  registered in `commands()` there.
+- Version injected via ldflags; a dev build reports the VCS commit.
 - CLI flags use `--kebab-case` (e.g., `--dry-run`, `--project-dir`).
 
-### Directory Structure
+### The plugin is the repository
 
-- `cmd/pk/` — CLI entrypoint, flag parsing, subcommand dispatch.
-- `internal/` — all packages: `changelog`, `config`, `git`, `guard`, `hooks`, `preserve`, `protect`, `release`, `scaffold`, `setup`, `status`, `teardown`, `update`, `version`.
-- `internal/setup/` — organized by concern: `claude.go` for Claude Code-specific wiring (hooks, settings, bootstrap), `managed.go`/`pin.go`/`baseline.go` for universal logic, `setup.go` for orchestration.
-- `docs/` — user-facing documentation. `docs/plans/` — preserved plans (immutable after creation).
-- `.claude/skills/` — managed skills (pk-configure, preserve, ship) plus maintainer-only skills (new-plankit-project, review-code, review-rules, review-staged, workshop-notes) that do not ship via `pk setup`.
-- `evals/` — maintainer-only eval harness: rules-ablation and guard-enforcement scripts (`run-evals.sh`, `world.sh`, `guard-eval.sh`, `cases.md`), `footprint` (writes the README footprint line, runs in the changelog preCommit hook), `calibrate` (token-ratio calibration).
-- `.claude/rules/plankit/` — managed rules (craft, conduct), installed under a `plankit/` subdirectory so they never collide with a project's own `.claude/rules/` files (Claude Code discovers rules recursively). `plankit-development.md` (maintainer-only, not shipped) stays at `.claude/rules/`.
+- `skills/` is the documentation source: one topic per command plus the
+  `plankit` overview. docgen compiles them into IR for `pk help`; the
+  plugin ships the same files verbatim. Skills mirror commands 1:1 and
+  `cmd/pk/main_test.go` enforces it.
+- `.claude-plugin/` holds plugin.json and marketplace.json (the repo is
+  its own marketplace). `hooks/hooks.json` wires guard, protect, and
+  preserve through `"${CLAUDE_PLUGIN_ROOT}"/bin/pk`. `bin/` holds the
+  committed shims; the per-platform binaries next to them are release
+  assets, gitignored.
+- `claude plugin validate . --strict` must pass (marketplace run).
 
 ### Design
 
-- **All commands resolve to the git repository root.** A pk command can be invoked from any subdirectory; it walks up to find `.git` and operates there. Commands don't require being at the root; running from a subdirectory gives the same result as running at the root. Non-git fallback: when no `.git` exists up the tree, the command uses the provided directory as-is.
-- **Safe defaults, opt-in for escalation.** Manual over auto, commit over push — the default should always be the safer, more local action.
-- **Three command layers, three flag patterns.**
-  - **Hook commands** (guard, preserve, protect, pin) — called by Claude Code automatically. Act immediately; no preview needed.
-  - **Skill-managed commands** (ship) — `/ship` handles the preview/confirm cycle for `pk changelog` and `pk release`. `--dry-run` exists for the skill to preview before executing. Power users typing `pk changelog` or `pk release` in the terminal bypass the skill and execute directly.
-  - **User-only commands** (init, teardown) — no skill wrapping. `teardown` is destructive, so it previews by default and takes `--confirm` to execute; `init` is additive and runs immediately, with `--dry-run` to preview.
+- **All commands resolve to the git repository root** from any
+  subdirectory; explicit `--project-dir` paths are taken as given.
+- **Safe defaults, opt-in for escalation.** Manual over auto, commit
+  over push.
+- **Exit taxonomy**: 0 success, 1 usage, 2 state/precondition,
+  3 internal. Errors name the fix.
+- **Stream discipline**: artifacts on stdout (dry-run sections, JSON
+  state), narration on stderr; commit paths keep stdout empty.
+- **Presentation is never configured**: flags (`--format`, `--plain`)
+  beat env (`NO_COLOR`, `CLICOLOR_FORCE`) beat the TTY probe. Non-TTY
+  help output is the exact authored bytes.
+- **Hooks fail open and gate on config**: every hook exits 0, and a
+  repository without `.pk.json` gets a fast silent no-op.
 
 ### Code Patterns
 
-- **Dependency injection via Config structs.** Every package exports a `Config` struct with injectable deps (`Stdin`, `Stdout`, `Stderr`, `GitExec`, `ReadFile`, etc.) and a `DefaultConfig()` factory wired to real implementations. DI extends to standalone utility functions too: any function that does file I/O accepts injected `readFile`/`writeFile` parameters rather than calling `os.ReadFile`/`os.WriteFile` directly. The call site in `cmd/pk/main.go` passes the real implementations.
-- **Tests use Config mocks** — no external test frameworks, no mocking libraries. Tests inject functions that return canned data. Tests use `t.TempDir()` for filesystem tests. Test error paths, not just happy paths: file I/O failures, git operation failures, and config parse errors all need coverage because untested error paths can hide silent data corruption.
-- **Hook commands** read JSON from stdin, write JSON to stdout, and always exit 0. Shared types and helpers live in `internal/hooks`: `ResolveProjectDir` for project-dir resolution (env var then CWD fallback), `ReadInput` for payload parsing, `WritePostToolUse`/`WritePermissionDecision` for response writing. Response writers return errors; callers log to stderr and continue (hooks never fail on write errors).
-- **Shared git helpers** live in `internal/git`: `RepoRoot` (stat-based, no subprocess) resolves a directory to the git repository root and is the single resolution mechanism for all commands. `IsRepo` wraps `RepoRoot` when only the boolean is needed. Commands differ only in failure policy: `changelog` and `release` exit when no repo is found, while `setup` falls back to the given directory (`--allow-non-git`).
-- **Managed files** embed a SHA marker (HTML comment for CLAUDE.md, YAML frontmatter `pk_sha256` for skills) so `pk setup` can detect user modifications.
-- **Embedded assets** via `//go:embed` — templates, skills, and rules are compiled into the binary.
-
-### Updating pk-managed files
-
-When editing a file that has `pk_sha256` in its frontmatter (skills, rules), update both the embedded source in `internal/setup/` and the local copy in `.claude/`, then recompute the body hash with:
-
-```bash
-sed -n '/^---$/,/^---$/!p' <embedded-source> | shasum -a 256
-```
-
-Replace the `pk_sha256` line in the local copy with the new value. The sed pattern excludes the frontmatter `---`...`---` block, matching Go's body hash calculation byte-for-byte. Replacing the line by hand avoids running `pk setup`, which would also rewrite the other managed files.
+- Commands are `cli.Command` values with declarative `FlagSpec`s; `Run`
+  receives a `cli.Context` (resolved project dir, IO, format). Tests
+  drive them through `cli.RunIO` with buffers and real repos in
+  `t.TempDir()` (bare origins for push flows). No mocking libraries.
+- Package-level `now` variables are stubbed for date-sensitive tests.
+- Hook commands read JSON on stdin via `internal/hookio` and never fail
+  the tool call on their own errors.
 
 ### Configuration
 
-- `.pk.json` is the project-level config file. Top-level keys map to `pk` subcommands (`changelog`, `guard`, `release`).
-- `changelog.types` controls commit type → changelog section mapping.
-- `changelog.hooks` supports `preCommit`, `postVersion` lifecycle hooks.
-- `release.hooks` supports `preRelease` (before tag creation) and `prePush` (after tagging, before push) lifecycle hooks; both receive `$VERSION`/`$TAG`.
-- `guard.branches` lists branches where git mutations are blocked.
-- `release.branch` configures which branch `pk release` merges to and pushes from.
+- `.pk.json` is the project config; top-level keys map to commands
+  (`guard`, `preserve`, `changelog`, `release`). Strict decode: unknown
+  keys are named and refused.
+- `changelog.versionFiles` stamps JSON version fields (this repo stamps
+  `.claude-plugin/plugin.json`). `changelog.hooks` (`postVersion`,
+  `preCommit`) and `release.hooks` (`preRelease`, `prePush`) receive
+  `$VERSION`; release hooks also get `$TAG`.
+- `guard.branches` lists protected branches; `release.branch` selects
+  merge flow, empty selects trunk flow.
 
-### Documentation
+### Hook Protocol
 
-- Convention format: bold principle, then concise context — plain statement when no context is needed.
-- Documentation tight loop: code → tests → command doc (`docs/pk-<command>.md`) → reference docs. New command docs follow `docs/command-doc-template.md`. Reference docs (`docs/pk-json.md`, `docs/error-reference.md`, `docs/environment-variables.md`) centralize information that spans multiple commands: when a change adds a config key, error message, or environment variable, update the relevant reference doc in the same pass. Higher-level docs (README, methodology) link to command docs and only change when concepts change. When they already enumerate options or modes, a new option is a concept change — update them too.
-- Terminology: "developer" for the role (reviewing, testing, directing), "builder" for the audience (who plankit serves generally).
+- **PreToolUse**: permission decisions go on stdout
+  (`hookSpecificOutput` with allow/deny/ask); exit 0 always.
+- **PostToolUse**: `systemMessage` for the user,
+  `hookSpecificOutput.additionalContext` for Claude's next turn.
+- A crashed hook must not block work: pk hooks exit 0 on their own
+  failures by design.
 
 ### Commits and Releases
 
 - GitHub Actions are pinned to commit SHAs, not mutable tags.
-
-### Hook Protocol
-
-Claude Code hooks receive JSON on stdin and produce JSON on stdout:
-
-- **PreToolUse**: Output `{"decision":"block","reason":"..."}` + exit 0 to block. Exit 0 with no output to allow. Exit 2 blocks the tool call with stderr fed back to Claude — a crashed hook binary fails closed, because Go fatal errors exit 2. Any other non-zero exit (including command-not-found 127) is non-blocking.
-- **PostToolUse**: Output `{"systemMessage":"..."}` + exit 0 for user-visible feedback. Use `{"hookSpecificOutput":{"additionalContext":"..."}}` to inject context into Claude's next turn. Both fields can be combined in one response. PostToolUse cannot block (the tool already ran); exit 2 shows stderr to Claude, any other non-zero exit is a non-blocking error.
-- **SessionStart**: `.claude/install-pk.sh` bootstraps `pk` into cloud sandboxes. No action needed — if `pk` is on PATH, the script exits immediately.

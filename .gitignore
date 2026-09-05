@@ -1,9 +1,7 @@
 # Build output
 dist/
 /pk
-# Stray binaries from `go build ./evals/<tool>` (use `go run`); the main-package name lands at root
-/calibrate
-/footprint
+bin/pk-*
 
 # Sketches
 _sketch*

@@ -1,6 +1,7 @@
 ---
 name: pin
 description: Update a version pin in a file, for release hooks
+argument-hint: --file <path> [--name <identifier>] <version>
 ---
 
 # pk pin
