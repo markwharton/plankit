@@ -1,123 +1,81 @@
 # Contributing
 
-## Build
+## Build and test
 
 ```bash
-make build                    # Build for current platform -> dist/pk
-make build VERSION=1.0.0      # Build with version injected
-make build-all                # Cross-compile for all 5 platforms
-make install                  # Install to GOPATH/bin (version: dev)
-make install VERSION=1.0.0    # Install with version injected
+make build      # docgen + go build -> ./pk
+make test       # go vet + go test ./... (repo and tools/docgen)
+make docs       # compile skills/ into internal/help/data (committed)
+make fmt        # gofmt the tree
+make bin-local  # build bin/pk-<os>-<arch> behind the bin/pk shim
+make dist       # cross-compile every shim target into bin/
 ```
 
-The default version is `dev`. To see the installed version:
-
-```bash
-pk version    # Shows "pk dev" or "pk 1.0.0" etc.
-```
-
-## Test
-
-```bash
-make test       # Run tests with race detector
-make lint       # Run go vet
-make rules-lint # Lint .claude/rules: hidden chars + house style
-make fmt        # Format code
-```
-
-## Documentation
-
-The prose standard for `docs/` and `README.md` is defined in `.claude/rules/plankit-development.md` (Documentation Prose) and loads into every Claude Code session in this repo. For a full audit-and-rewrite pass, paste this into a session:
-
-```text
-Audit and rewrite every file under docs/ except docs/plans/, plus
-README.md, against the Documentation Prose rules (already loaded from
-.claude/rules/). No fact may change in the style pass — only how it
-is said.
-
-1. Audit first: read every doc and list each violation with file:line,
-   the exact sentence, the rule it breaks, and the fact it hides. Show
-   me the full list before rewriting anything.
-2. Verify before rewriting: confirm each behavior sentence in the Go
-   source or reproduce it in a scratch repository. Where doc and code
-   disagree, record it as a fact correction instead of restyling it.
-3. Recurring phrases get the identical replacement everywhere. Grep the
-   whole repo, including --help strings and error messages in internal/;
-   where source strings share a doc's wording, list the pair with a
-   recommendation — never desync them one-sidedly.
-4. Re-read every touched section in full before showing the diff, not
-   only the sentences you changed.
-5. Commit fact corrections separately from style rewrites (both docs:),
-   corrections first.
-6. Rule bullets (.claude/rules/ and internal/setup/rules/) are
-   audit-and-propose: show each proposed rewrite old and new, and I
-   approve each bullet individually — these are behavioral instructions
-   to the model, so meaning drift matters more than style. Shipped
-   rules follow the pk-managed file procedure: update the embedded
-   source and the local copy together and recompute pk_sha256 per
-   CLAUDE.md. Run make rules-lint after.
-
-Verify: make test and make lint pass; a final grep proves each replaced
-phrase is gone from docs/; your report lists every fact correction and
-every doc/source shared-wording pair.
-```
-
-The em dash check in `pk rules --lint` began as a proxy for this standard, added when nothing checked the content itself: the LLM tell was never the glyph, it was the vague clause the glyph joined. After a full rewrite pass has run under the standard, revisit the check. Removing it changes pk's shipped linter for every pk-managed project, so the removal is its own commit and release note, never a side effect.
+CI runs `make test`, checks gofmt and docgen drift, and runs
+`claude plugin validate . --strict`. A change to any skill must be
+committed together with its recompiled `internal/help/data` output or
+the drift check fails.
 
 ## Workflow
 
-All changes go through `develop` — never commit directly to `main`.
+All changes go through `develop`; never commit directly to `main`.
 
-In Claude Code, `pk guard` enforces this automatically — it blocks git mutations on `main`. In the terminal, GitHub branch protection rejects the push only at the server, after the commit exists locally; nothing blocks a local commit to `main` outside a session, so check the branch yourself.
+In Claude Code, `pk guard` enforces this automatically. In the
+terminal, GitHub branch protection rejects the push only at the
+server, after the commit exists locally, so check the branch yourself.
 
-Dependabot PRs target `develop` via `.github/dependabot.yml`. If a hotfix or emergency PR lands directly on `main`, merge main into develop before releasing:
-
-```bash
-git switch develop
-git merge main
-```
-
-The merge brings the commits that landed on `main` into the changelog and keeps the ancestry that `pk release` needs for fast-forward merges to main.
-
-After merging PRs on GitHub, sync your local branch with rebase to avoid unnecessary merge commits:
-
-```bash
-git pull --rebase
-```
-
-`git pull --rebase` replays your unpushed local commits on top of the remote, keeping history linear. Only safe when your local commits haven't been pushed yet — which is exactly when you need it.
+After merging PRs on GitHub, sync your local branch with
+`git pull --rebase`. It replays your unpushed local commits on top of
+the remote, keeping history linear, and is only safe when your local
+commits haven't been pushed yet, which is exactly when you need it.
 
 ## Pull requests
 
-When merging PRs through GitHub, choose the merge method based on the branch:
-
-- **Rebase and merge** for most PRs (e.g., dependabot bumps) — replays commits on top of the target branch. Linear history, and each conventional commit is preserved individually for `pk changelog`.
-- **Merge commit** when the PR branch has tags — rebase creates new SHAs which would orphan tags pointing at the originals.
-- **Squash is disabled** — it collapses all commits into one, losing the conventional commit messages that `pk changelog` depends on. See [Squash Merge and Release Tags](docs/anti-patterns.md#squash-merge-and-release-tags).
+- **Rebase and merge** for most PRs: linear history, and each
+  conventional commit is preserved individually for `pk changelog`.
+- **Merge commit** when the PR branch has tags: rebase creates new
+  SHAs, which would orphan tags pointing at the originals.
+- **Squash is disabled**: it collapses all commits into one, losing
+  the conventional commit messages `pk changelog` depends on.
 
 ## Release
 
-With `release.branch` configured in `.pk.json`, the full release flow runs from Claude Code or terminal:
+The repository releases itself with its own machinery:
 
 ```bash
-pk changelog --dry-run            # preview changelog and version bump
-pk changelog                      # on develop: generate CHANGELOG.md and commit (no tag)
-pk release --dry-run              # preview the release flow
-pk release                        # read Release-Tag trailer, merge to main, tag, push main + tag, push develop
+pk changelog --dry-run   # preview the section and version bump
+pk changelog             # on develop: CHANGELOG.md, plugin.json version, Release-Tag commit
+pk release --dry-run     # rehearse the flow
+pk release               # merge to main, tag, push main + tag, push develop
 ```
 
-`pk release` merges the current branch into the release branch, validates, pushes, and switches back. See [pk release](docs/pk-release.md) for details.
+The pushed tag triggers `.github/workflows/release.yml`, which
+cross-compiles the platform binaries, assembles the plugin archive,
+publishes the GitHub release, and commits the archive URL and sha256
+pin into `.claude-plugin/marketplace.json` on main. That pin bump is
+what makes installers see the update.
 
-**The release flow needs the Go toolchain on PATH**, not only for `make build`. Two release hooks compile from source: `pk changelog`'s `preCommit` runs `pk pin` on the bootstrap script and then `go run ./evals/footprint` (refreshes the always-on rules footprint line in the README so it lands in the release commit), and `pk release`'s `preRelease` runs `go test -race ./...`. So a release can't be cut on a machine without Go, even though the published binary itself has no runtime dependencies.
+Pre-release checklist:
 
-See [pk changelog](docs/pk-changelog.md) and [pk release](docs/pk-release.md) for details.
-
-Monitor at: https://github.com/markwharton/plankit/actions
+- `make test` green and `claude plugin validate . --strict` clean.
+- `make bin-local`, then in a scratch repository
+  `claude --plugin-dir <this checkout>`: `/plankit:status` answers,
+  and a `git commit` on a protected branch is blocked.
+- **Bashless Windows gate**: on a Windows machine or VM without Git
+  for Windows (so Claude Code falls back to PowerShell), install the
+  release candidate and verify the guard hook fires. The plugin bin/
+  PATH injection is a Bash-tool behavior; PowerShell sessions reach pk
+  through the hook wiring's explicit `${CLAUDE_PLUGIN_ROOT}` path, and
+  this gate is what proves that path end to end.
 
 ## Contributions & AI
 
-plankit is a solo/small-team toolkit. Pull requests are welcome and reviewed by the maintainer.
+plankit is a solo/small-team toolkit. Pull requests are welcome and
+reviewed by the maintainer.
 
-- **No third-party Go dependencies.** plankit is standard-library only; a PR that adds a dependency won't be accepted.
-- **Managed files get extra scrutiny.** Changes to the files `pk setup` ships downstream — `internal/setup/rules/`, `internal/setup/skills/`, and `internal/setup/template/CLAUDE.md` — are read by AI agents in every Claude Code session. They are line-ending normalized to LF via [`.gitattributes`](.gitattributes) and scanned for hidden/control characters by `make test` (the "Trojan Source" class: ANSI escapes, zero-width characters, bidi overrides). When you edit one, update its paired `pk_sha256` as described in [CLAUDE.md](CLAUDE.md) under "Updating pk-managed files".
-- **Describe intent, not just the diff.** For substantive or behavior-changing PRs, say what you're changing and why in the PR body. No formal plan is required.
+- **No third-party Go dependencies in the main module.** The one
+  build-time exception is goldmark inside `tools/docgen`, a separate
+  module that never links into pk.
+- **Describe intent, not just the diff.** For substantive or
+  behavior-changing PRs, say what you're changing and why in the PR
+  body. No formal plan is required.
