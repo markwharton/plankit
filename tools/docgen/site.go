@@ -22,6 +22,7 @@ import (
 type topic struct {
 	name, desc string
 	body       []byte
+	command    bool // opening heading is "pk <name>"; documents open with the name alone
 }
 
 type navItem struct {
@@ -77,15 +78,15 @@ func buildSite(root, skillsDir, out, pk string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
-		topics = append(topics, topic{name, fm["description"], body})
+		topics = append(topics, topic{name, fm["description"], body, bytes.HasPrefix(bytes.TrimSpace(body), []byte("# pk "+name+"\n")) || bytes.Equal(bytes.TrimSpace(body), []byte("# pk "+name))})
 		topicNav = append(topicNav, navItem{Href: "/docs/" + name + ".html", Label: name, Desc: fm["description"]})
 	}
 
 	nav := []navItem{
 		{Href: "/", Label: "Home"},
-		{Href: "/design.html", Label: "Design"},
-		{Href: "/architecture.html", Label: "Architecture"},
+		{Href: "/architecture.html", Label: "How it works"},
 		{Href: "/changelog.html", Label: "Changelog"},
+		{Href: "https://github.com/markwharton/plankit/blob/main/docs/design.md", Label: "Design (GitHub)"},
 	}
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
@@ -111,8 +112,8 @@ func buildSite(root, skillsDir, out, pk string) error {
 
 	for _, t := range topics {
 		title := "pk " + t.name
-		if t.name == "plankit" {
-			title = "plankit"
+		if !t.command {
+			title = t.name
 		}
 		if err := write("docs/"+t.name+".html", title, t.body); err != nil {
 			return err
@@ -126,8 +127,7 @@ func buildSite(root, skillsDir, out, pk string) error {
 		return err
 	}
 	for _, src := range []struct{ file, path, title string }{
-		{filepath.Join("docs", "design.md"), "design.html", "Design"},
-		{filepath.Join("docs", "architecture.md"), "architecture.html", "Architecture"},
+		{filepath.Join("docs", "architecture.md"), "architecture.html", "How it works"},
 		{"CHANGELOG.md", "changelog.html", "Changelog"},
 	} {
 		md, err := os.ReadFile(filepath.Join(root, src.file))
@@ -189,8 +189,8 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 	b.WriteString(string(demoHTML(steps)))
 	b.WriteString(`<section class="commands"><h2>Commands</h2><p class="muted">One page per command, the same page in the terminal as <code>pk help &lt;name&gt;</code>.</p><div class="grid">`)
 	for _, t := range topics {
-		if t.name == "plankit" {
-			continue
+		if !t.command {
+			continue // documents have pages but no command card
 		}
 		b.WriteString(`<a class="card" href="/docs/` + t.name + `.html"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
 	}

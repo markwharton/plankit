@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -36,5 +38,22 @@ func TestScanHidden(t *testing.T) {
 	multi := scanHidden([]byte("a\u200bb\nc\u202ed"))
 	if len(multi) != 2 || !strings.Contains(multi[1], "line 2") {
 		t.Errorf("want two findings with line numbers, got %v", multi)
+	}
+}
+
+// TestCompileAllLabelsItsOutput checks the generated directory carries
+// its own do-not-edit README, so a reader landing there is told where
+// the source is.
+func TestCompileAllLabelsItsOutput(t *testing.T) {
+	skills := t.TempDir()
+	os.MkdirAll(filepath.Join(skills, "demo"), 0o755)
+	os.WriteFile(filepath.Join(skills, "demo", "SKILL.md"), []byte("---\nname: demo\ndescription: d\n---\n\n# demo\n\nBody.\n"), 0o644)
+	out := t.TempDir()
+	if err := compileAll(skills, out); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(out, "README.md"))
+	if err != nil || !strings.Contains(string(b), "Do not edit") || !strings.Contains(string(b), "skills/<topic>/SKILL.md") {
+		t.Fatalf("generated marker missing or incomplete: %v %q", err, b)
 	}
 }

@@ -106,3 +106,64 @@ go test -run TestName ./internal/<pkg>   # single test
 ### Commits and Releases
 
 - GitHub Actions are pinned to commit SHAs, not mutable tags.
+
+## Changing pk
+
+Run the test suite at the start of a session and report the status,
+then before and after each change, so failures are attributable.
+
+### Development Standards
+
+- **Preserve the structure you were given.** Let the data model drive
+  the code. Never flatten structured data into flat lists then
+  reconstruct with heuristics; the context is already lost.
+- **Fail fast, no silent fallbacks.** When something required is
+  missing or wrong, fail with a clear message, never a made-up default.
+  A documented default for an optional setting is not a fallback. The
+  hooks fail the same way, loudly to stderr with their name, but they
+  exit 0 and decline to decide rather than block the person's work;
+  they never guess a decision.
+- **Grep before done.** Update every related location together: when
+  fixing a pattern or renaming, grep the repo for all instances. One
+  fix is not done until every occurrence is fixed.
+- **Work isn't done until automated checks and a smoke test pass.**
+  Build, tests, and lint; then a manual end-to-end check with specific
+  commands and observable outcomes, including at least one negative
+  case, whenever the change alters observable behavior. Skip the smoke
+  test for pure internal refactors. A proof whose output you did not
+  see is not a proof.
+- **Diagnostic scripts over rebuild cycles.** If you are about to do
+  your second full rebuild while debugging, stop and write a minimal
+  script that tests the specific issue.
+- **A failed text search means "not found by this method", never "not
+  present".** When absence drives a root cause or code change, confirm
+  by parsing the structure (walk the JSON/XML/AST), not by
+  string-matching the text.
+
+### Versions and History
+
+- **The git tag is the single source of truth for the version.** pk
+  computes the next version from the latest tag and the commits since
+  it, and stamps it into files (`versionFiles`, `pk pin`). Never read a
+  version out of a file in code you write; a task that needs the
+  release version goes through the changelog config.
+- **Don't rewrite history between `pk changelog` and `pk release`.**
+  Changelog records commit SHAs; release publishes them.
+- **Rewrite only unpushed commits.** Confirm the target appears in
+  `git log --oneline @{push}..HEAD`; if the command errors or the
+  target is absent, it has been pushed: make a new commit instead.
+
+### This Repository's Shape
+
+- Follow the recipes in docs/design.md for a new command, policy,
+  document, or composed command.
+- Facts that live in code are never hand-copied into docs. Generate
+  them, or state the concept once in the document that owns it.
+- One-liners (a command's `Summary`, a skill's `description`) state
+  purpose, not features.
+- When behavior changes, reread the affected `Summary`, `description`,
+  and docs/architecture.md before committing.
+- Skills ship verbatim into model contexts: plain markdown, no
+  placeholders, no diagrams.
+- Derived values (digests, pins, compiled output) are never committed
+  to a source branch.

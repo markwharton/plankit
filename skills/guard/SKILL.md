@@ -1,6 +1,6 @@
 ---
 name: guard
-description: How pk guard protects branches - modes, the push policy, and how to change them
+description: How pk guard protects branches - the mode, push, and breaking-marker dials, and how to change them
 ---
 
 # pk guard

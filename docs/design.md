@@ -1,8 +1,10 @@
 # Design
 
-architecture.md maps the components. This document explains the method
-that shaped them, so a change made without the original context still
-lands in the right place. The method is one rule applied everywhere:
+architecture.md explains how plankit works, for a reader. This
+document is for the person changing it: the method that shaped the
+code, where things live, and how to extend it so a change made without
+the original context still lands in the right place. The method is one
+rule applied everywhere:
 
 **State lives in exactly one place, typed; everything else is derived
 from it on demand.**
@@ -64,9 +66,15 @@ invocation; behavior is derived from the struct, never remembered
 between runs. Absence of the file is itself state: plankit is off.
 
 **`skills/`.** All narrative documentation. docgen derives the typed
-IR and the committed raw copies; the plugin ships the same files;
+IR and the raw copies under `internal/help/data`, committed only for
+`go:embed` and never edited (the directory says so itself); the plugin ships the same files;
 `pk help` renders them; the website renders them again as HTML. One
-authored source, three consumers, drift impossible. The flag reference is the other documentation view,
+authored source, three consumers: the copies cannot drift from the
+source. The source itself can go stale against the behavior it
+describes, and no derivation can fix an authored sentence; that is
+what the coverage tests (dials named on their pages, default tables
+and struct listings pinned to code) and the recipes' reread steps
+exist for, with review as the last guard. The flag reference is the other documentation view,
 derived from the registry: `--help` and usage errors print the
 Summary and every flag from the `Command` struct, so the reference
 cannot disagree with the code, and it cross-links to the narrative.
@@ -114,6 +122,7 @@ flowchart LR
   R --> U["--help and usage"]
   R --> T
   C --> K["hook decisions"]
+  C --> BR["session brief"]
   C --> L["changelog, release, ship"]
   G --> K
   G --> L
@@ -241,6 +250,111 @@ frame:
 This split is what makes pk a kernel in architecture.md's sense: the
 shells hold wiring and words, the binary holds every decision.
 
+## Where things live
+
+- `cmd/pk/main.go`: the command registry and entry point.
+- `internal/cli`: the execution frame. `Command` and `FlagSpec`,
+  universal flags, `Context`, the exit taxonomy, `MaxArgs` arity
+  refusal, and the usage printers that derive from the registry.
+- `internal/msg`: the message contract. Every severity prefix
+  (`Error:`, `Warning:`, `Note:`, `Hint:`) and layout helper lives
+  here and nowhere else.
+- `internal/help`: the IR types, the strict loader, the TTY renderer,
+  and the embedded `data/` (compiled IR and raw bytes; generated,
+  never edited, labeled by its own README).
+- `internal/config`: `PkConfig` and its sections, strict decode,
+  `Validate`, `Default`, the `Resolved*` accessors, and the protocol
+  constants (`PlanType`).
+- `internal/git`: the git CLI wrapper and shared helpers (`FindRoot`
+  by filesystem walk, `CurrentBranch`, `DefaultBranch` via the origin
+  HEAD symref, `LatestTag`, `CheckCleanTree`).
+- `internal/hookio`: the Claude Code hook protocol. Payload parsing,
+  project-dir resolution (an explicit `--project-dir` or
+  `PK_PROJECT_DIR` first, then the payload's cwd, then
+  `CLAUDE_PROJECT_DIR`, then the process directory: explicit beats
+  ambient, where the session is beats where it began), and the
+  permission-decision, PostToolUse, and SessionStart writers.
+- `internal/brief`: the SessionStart hook, rendering the resolved config
+  as instructions for the session; `pk status` for a different reader.
+- `internal/guard`, `internal/protect`, `internal/preserve`: the other
+  three hooks. Guard's quote-aware shell splitting and commit-message
+  inspection; protect's symlink-canonical path comparison; preserve's
+  pointer file under `.git/` for manual mode.
+- `internal/changelog`: conventional-commit parsing into `Commit`,
+  bump inference, section grouping in config order, the
+  format-preserving JSON version splice, the Release-Tag trailer, and
+  `--undo`.
+- `internal/release`: the trailer-driven release with its preflight
+  ladder, merge and trunk flows, hooks, atomic push, and rollback
+  defer; `pin.go` for version pins in files.
+- `internal/ship`: changelog then release, composed through
+  `cli.RunIO`, stateless, resumable from the trailer.
+- `internal/version`: version resolution (stamp, module version, VCS
+  revision, `dev`).
+- `tools/docgen`: a separate module (the only goldmark dependency,
+  build time only). Compiles `skills/` to the IR and raw bytes,
+  validates frontmatter (`name` matching the directory, required
+  `description`, only known keys), a single opening H1, and the
+  absence of hidden, control, and bidirectional characters; builds the
+  site with `-site`, running the built `pk` for the front page demo.
+- `skills/`: one `<topic>/SKILL.md` per command plus the `plankit`
+  overview; the only place documentation is written.
+- `hooks/hooks.json`: the five hook wires, quoted shim form; changes
+  only when a new interception point is needed.
+- `bin/`: the `pk` and `pk.cmd` shims (committed) and the per-platform
+  binaries (gitignored release assets; `make bin-local` for
+  development, `make dist` for all six).
+- `.claude-plugin/`: `plugin.json` (version stamped by changelog) and
+  the development `marketplace.json` that the published one is
+  derived from.
+- `site/`: the layout, stylesheet, and redirects; `site/dist` is
+  output.
+- `.github/workflows/`: `ci.yml` (tests, gofmt and docgen drift,
+  strict plugin validation, site build), `release.yml` (tag to
+  release assets, then the site job), `site.yml` (build and deploy,
+  mirroring the published marketplace from the latest release).
+
+## Debugging the hooks
+
+Every hook is a function of two inputs, the JSON payload on stdin and
+`.pk.json`, and it answers on stdout. That makes each one reproducible
+from a terminal with a pipe, which is how to learn what a hook does
+and how to debug it when it does something else. Silence means allow.
+`cwd` in the payload is how the hook finds the repository.
+
+```bash
+# guard: PreToolUse on Bash. A breaking marker gets ask; on a
+# protected branch, deny; a plain feat: gets silence.
+echo '{"cwd":"'"$PWD"'","tool_input":{"command":"git commit -m \"feat!: drop the session cookie\""}}' | pk guard | jq
+
+# protect: PreToolUse on Edit/Write. A path under docs/plans/ gets deny.
+echo '{"cwd":"'"$PWD"'","tool_input":{"file_path":"'"$PWD"'/docs/plans/example.md"}}' | pk protect | jq
+
+# preserve: PostToolUse on ExitPlanMode. tool_response carries the
+# approved plan's path under ~/.claude/plans/. With no readable plan of
+# at least 50 bytes at that path the hook is silent: nothing to
+# preserve, nothing to say. --dry-run prints the reason to stderr.
+echo '{"cwd":"'"$PWD"'","tool_response":{"filePath":"~/.claude/plans/example.md"}}' | pk preserve --dry-run
+# Do this in a scratch repository: a real plan file makes manual mode
+# write a pending-plan pointer under .git/ and answer with the message
+# telling the session to run /plankit:preserve; auto mode commits it.
+mkdir -p ~/.claude/plans && printf '# Example plan\n\nEnough content here to pass the minimum size for a real plan.\n' > ~/.claude/plans/example.md
+echo '{"cwd":"'"$PWD"'","tool_response":{"filePath":"~/.claude/plans/example.md"}}' | pk preserve | jq
+
+# brief: SessionStart. The envelope with the policy text; with no
+# payload, the same text as prose.
+echo '{"cwd":"'"$PWD"'","hook_event_name":"SessionStart","source":"startup"}' | pk brief | jq
+pk brief < /dev/null
+```
+
+Decisions come back as `hookSpecificOutput` with the event name and,
+for PreToolUse, a `permissionDecision` of `deny` or `ask` with its
+reason. The exit code is 0 in every case, including malformed input,
+because a hook that blocks work by failing is worse than one that
+lets something through; errors go to stderr as narration. The test
+suites for the four packages drive them with these same payloads, so
+what you see at the terminal is what the tests assert.
+
 ## Derivation under test
 
 Tests check derivations against real state, not mocks: scripted
@@ -263,7 +377,11 @@ until the skill exists; `make docs` compiles it into help.
 **A new policy**: add the field to the config struct, a `Resolved*()`
 default, a `Validate()` rule, and the value in `Default()`; derive the
 behavior from the field where the decision is made. No wiring changes,
-no migration: absent keys mean the default.
+no migration: absent keys mean the default. Then reread the affected
+command's `Summary` and its skill's `description`: those two lines are
+the only prose nothing derives, and a behavior change that skips them
+ships a stale one-liner to the typeahead, the help index, and the
+site.
 
 **A new document**: define the struct, decode strictly, validate at
 load, and choose the write mode by ownership — canonical if pk owns

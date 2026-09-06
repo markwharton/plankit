@@ -306,9 +306,7 @@ func loadConfig(root string) (*fullConfig, error) {
 	if err != nil {
 		return nil, cli.Statef("%v", err)
 	}
-	if len(pk.Changelog.Types) == 0 {
-		pk.Changelog.Types = config.Default("").Changelog.Types
-	}
+	pk.Changelog.Types = pk.Changelog.ResolvedTypes()
 	return &fullConfig{Changelog: pk.Changelog, Guard: pk.Guard, Release: pk.Release}, nil
 }
 

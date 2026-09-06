@@ -117,6 +117,8 @@ func runDemo(pk string) ([]demoStep, error) {
 
 	s, _ = run("See the state", "pk status", "", "status")
 	steps = append(steps, s)
+	s, _ = run("What every session is told at start", "pk brief", "", "brief")
+	steps = append(steps, s)
 	s, _ = run("Preview the release", "pk changelog --dry-run", "", "changelog", "--dry-run")
 	steps = append(steps, s)
 

@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 )
 
 // Input is the JSON payload Claude Code writes to a hook's stdin.
@@ -33,17 +34,42 @@ type ToolInput struct {
 
 // ReadInput reads and parses the hook payload. When stdin is a terminal
 // (someone ran the hook command by hand), it returns io.EOF immediately
-// instead of blocking; callers treat that as "no payload".
+// instead of blocking; callers treat that as "no payload". An open pipe
+// with nothing on it (a shell tool that keeps stdin attached) gets the
+// same answer after a short wait: a real hook writes its payload and
+// closes stdin at once, so a second of silence means no payload. The
+// wait is a goroutine racing a timer because stdin is a blocking
+// descriptor outside Go's poller and read deadlines cannot attach to
+// it; on timeout the reader goroutine is abandoned, which is fine for
+// a process about to exit.
 func ReadInput(r io.Reader) (Input, error) {
 	if r == nil {
 		return Input{}, io.EOF
 	}
+	var data []byte
+	var err error
 	if f, ok := r.(*os.File); ok {
-		if stat, err := f.Stat(); err == nil && stat.Mode()&os.ModeCharDevice != 0 {
+		if stat, serr := f.Stat(); serr == nil && stat.Mode()&os.ModeCharDevice != 0 {
 			return Input{}, io.EOF
 		}
+		type result struct {
+			data []byte
+			err  error
+		}
+		done := make(chan result, 1)
+		go func() {
+			d, e := io.ReadAll(f)
+			done <- result{d, e}
+		}()
+		select {
+		case res := <-done:
+			data, err = res.data, res.err
+		case <-time.After(time.Second):
+			return Input{}, io.EOF
+		}
+	} else {
+		data, err = io.ReadAll(r)
 	}
-	data, err := io.ReadAll(r)
 	if err != nil {
 		return Input{}, err
 	}
@@ -67,17 +93,24 @@ func (i Input) ToolResponseString() string {
 	return string(i.ToolResponse)
 }
 
-// ResolveDir picks the project directory a hook operates on:
-// CLAUDE_PROJECT_DIR from the harness, else the payload's cwd, else the
-// fallback (the frame's resolved project dir).
-func ResolveDir(env func(string) string, payloadCWD, fallback string) string {
-	if dir := env("CLAUDE_PROJECT_DIR"); dir != "" {
-		return dir
+// ResolveDir picks the directory a hook acts on. Precedence, most
+// deliberate first: a project directory the person stated
+// (--project-dir or PK_PROJECT_DIR) always wins; then the payload's cwd,
+// the hook's own statement of where the session is now; then
+// CLAUDE_PROJECT_DIR, where the session was started, for payloads that
+// carry no cwd; then the context's default, the process directory.
+// Explicit beats ambient, and where the session is beats where it began.
+func ResolveDir(env func(string) string, payloadCWD, contextDir string, contextExplicit bool) string {
+	if contextExplicit && contextDir != "" {
+		return contextDir
 	}
 	if payloadCWD != "" {
 		return payloadCWD
 	}
-	return fallback
+	if dir := env("CLAUDE_PROJECT_DIR"); dir != "" {
+		return dir
+	}
+	return contextDir
 }
 
 // Permission decisions accepted inside hookSpecificOutput for PreToolUse.
@@ -168,4 +201,22 @@ func RunScript(w io.Writer, dir, command string, env map[string]string) error {
 		}
 	}
 	return cmd.Run()
+}
+
+// WriteSessionStart emits a SessionStart response whose additionalContext
+// is injected into the session as it begins. Empty context writes
+// nothing at all, which Claude Code treats as no-op.
+func WriteSessionStart(w io.Writer, additionalContext string) error {
+	if additionalContext == "" {
+		return nil
+	}
+	resp := struct {
+		HookSpecificOutput struct {
+			HookEventName     string `json:"hookEventName"`
+			AdditionalContext string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}{}
+	resp.HookSpecificOutput.HookEventName = "SessionStart"
+	resp.HookSpecificOutput.AdditionalContext = additionalContext
+	return json.NewEncoder(w).Encode(resp)
 }

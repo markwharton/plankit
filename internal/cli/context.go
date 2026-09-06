@@ -23,14 +23,19 @@ type Context struct {
 	Command    string
 	Commands   []*Command // full registry, for help and usage generation
 	ProjectDir string     // absolute; "." resolves to the enclosing git root
-	Format     string     // "text" or "json"
-	Style      Style
-	Width      int  // wrap width for styled text output; 0 means no wrapping
-	IsTTY      bool // stdout is a terminal
-	Quiet      bool
-	Stdin      io.Reader
-	Stdout     io.Writer
-	Stderr     io.Writer
+	// ProjectDirExplicit is true when the person stated the project
+	// directory (--project-dir or PK_PROJECT_DIR) rather than letting it
+	// default to the current directory. Hooks use it to keep an explicit
+	// instruction above anything the environment or payload says.
+	ProjectDirExplicit bool
+	Format             string // "text" or "json"
+	Style              Style
+	Width              int  // wrap width for styled text output; 0 means no wrapping
+	IsTTY              bool // stdout is a terminal
+	Quiet              bool
+	Stdin              io.Reader
+	Stdout             io.Writer
+	Stderr             io.Writer
 
 	bools map[string]*bool
 	strs  map[string]*string
@@ -74,6 +79,7 @@ func (c *Context) resolve(projectDir, format string, plain bool) error {
 	if dir == "" {
 		dir = os.Getenv("PK_PROJECT_DIR")
 	}
+	c.ProjectDirExplicit = dir != ""
 	if dir == "" {
 		dir = "."
 	}

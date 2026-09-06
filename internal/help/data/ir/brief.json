@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "brief",
+    "description": "What each session is told about this repository's plankit policy at start, generated from .pk.json"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-brief",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk brief"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The repository's policy, rendered as instructions for a session. The SessionStart hook runs it on every start, resume, and compaction and injects the text as context, so a session knows the commit convention, the breaking-marker rule, the protected branches, and how plans are kept before its first command. Nothing is copied into the repository: the text is derived from "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " each time, so it cannot disagree with what guard, protect, and preserve then enforce."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk brief\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "At a terminal it prints the same text a session receives, so you can read exactly what your sessions are told; "
+        },
+        {
+          "type": "code",
+          "text": "--format json"
+        },
+        {
+          "type": "text",
+          "text": " prints the SessionStart envelope the hook emits. In an unconfigured repository the hook is silent and the command says so."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "what-it-says",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "What it says"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Two sentences are constant, the first and the last. Everything between follows the dials: "
+        },
+        {
+          "type": "code",
+          "text": "changelog.types"
+        },
+        {
+          "type": "text",
+          "text": " lists the commit types (the default table when the file leaves it empty), "
+        },
+        {
+          "type": "code",
+          "text": "guard.breaking"
+        },
+        {
+          "type": "text",
+          "text": " decides whether the marker rule mentions the ask, "
+        },
+        {
+          "type": "code",
+          "text": "guard.mode"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "guard.push"
+        },
+        {
+          "type": "text",
+          "text": " describe the protected branches and pushing, "
+        },
+        {
+          "type": "code",
+          "text": "release.branch"
+        },
+        {
+          "type": "text",
+          "text": " names where releases merge, and "
+        },
+        {
+          "type": "code",
+          "text": "preserve.mode"
+        },
+        {
+          "type": "text",
+          "text": " describes how plans are kept. A dial set to off drops its paragraph."
+        }
+      ]
+    }
+  ]
+}

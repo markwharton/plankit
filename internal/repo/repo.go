@@ -110,9 +110,9 @@ func runInit(ctx *cli.Context) error {
 		msg.Notef(ctx.Stdout, "no baseline tag: the repository has no commits yet")
 	}
 	if !ctx.Quiet {
-		msg.Notef(ctx.Stdout, "commit convention: Conventional Commits with types %s (from %s changelog.types)", typeNames(cfg.Changelog.Types), config.FileName)
+		msg.Notef(ctx.Stdout, "commit convention: Conventional Commits with types %s (from %s changelog.types)", typeNames(cfg.Changelog.ResolvedTypes()), config.FileName)
 		msg.Notef(ctx.Stdout, "breaking markers (! or BREAKING CHANGE) are the developer's call: guard asks before one is committed")
-		msg.Hintf(ctx.Stdout, "record it in CLAUDE.md so every session writes commits pk changelog can read")
+		msg.Notef(ctx.Stdout, "every Claude Code session in this repository is briefed on this policy at start (pk brief shows the text)")
 		msg.Hintf(ctx.Stdout, "commit %s and %s; run pk status to review the policy", config.FileName, PlansDir)
 	}
 	return nil
@@ -147,6 +147,7 @@ type state struct {
 	Preserve   string   `json:"preserve,omitempty"`
 	GuardMode  string   `json:"guardMode,omitempty"`
 	GuardPush  string   `json:"guardPush,omitempty"`
+	GuardBreak string   `json:"guardBreaking,omitempty"`
 	Guarded    []string `json:"guardedBranches,omitempty"`
 	Release    string   `json:"releaseBranch,omitempty"`
 	Plans      int      `json:"plans"`
@@ -167,6 +168,7 @@ func runStatus(ctx *cli.Context) error {
 		s.Preserve = cfg.Preserve.ResolvedMode()
 		s.GuardMode = cfg.Guard.ResolvedMode()
 		s.GuardPush = cfg.Guard.ResolvedPush()
+		s.GuardBreak = cfg.Guard.ResolvedBreaking()
 		s.Guarded = cfg.Guard.Branches
 		s.Release = cfg.Release.Branch
 	case err == config.ErrNotConfigured:
@@ -206,7 +208,7 @@ func runStatus(ctx *cli.Context) error {
 	line("project", s.Root)
 	line("branch", fmt.Sprintf("%s (%s)", s.Branch, tree))
 	line("preserve", s.Preserve)
-	line("guard", fmt.Sprintf("%s (push: %s) on %s", s.GuardMode, s.GuardPush, strings.Join(s.Guarded, ", ")))
+	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, strings.Join(s.Guarded, ", ")))
 	line("protect", PlansDir+"/ immutable")
 	line("release", s.Release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))

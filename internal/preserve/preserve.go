@@ -78,7 +78,7 @@ func run(ctx *cli.Context) error {
 	// consumes the pointer and always commits.
 	hookInvocation := err == nil
 
-	dir := hookio.ResolveDir(os.Getenv, payloadCWD, ctx.ProjectDir)
+	dir := hookio.ResolveDir(os.Getenv, payloadCWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, rootOK := git.FindRoot(dir)
 
 	if hookInvocation {

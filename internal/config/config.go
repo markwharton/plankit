@@ -112,6 +112,17 @@ type ChangelogConfig struct {
 	Hooks        ChangelogHooks `json:"hooks,omitempty"`
 }
 
+// ResolvedTypes returns changelog.types, or the default table when the
+// file leaves it empty. Every reader of the table resolves it here so
+// "empty means defaults" is a property of the config, not a habit of
+// its readers.
+func (c ChangelogConfig) ResolvedTypes() []TypeConfig {
+	if len(c.Types) == 0 {
+		return Default("").Changelog.Types
+	}
+	return c.Types
+}
+
 // ReleaseHooks holds lifecycle hooks for the release process. preRelease
 // runs before the tag is created; prePush runs after tagging, before the
 // push, when the tag ref exists.

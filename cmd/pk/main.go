@@ -8,6 +8,7 @@ package main
 import (
 	"os"
 
+	"github.com/markwharton/plankit/internal/brief"
 	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/guard"
@@ -30,6 +31,7 @@ func commands() []*cli.Command {
 	return []*cli.Command{
 		changelog.Cmd,
 		guard.Cmd,
+		brief.Cmd,
 		help.Cmd,
 		preserve.Cmd,
 		protect.Cmd,

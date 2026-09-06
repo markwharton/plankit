@@ -22,7 +22,7 @@ import (
 // Cmd is the guard hook command.
 var Cmd = &cli.Command{
 	Name:    "guard",
-	Summary: "Hook: block or question git mutations on protected branches",
+	Summary: "Hook: block or question git mutations on protected branches, pushes, and breaking-change markers",
 	Hook:    true,
 	Run:     run,
 }
@@ -51,7 +51,7 @@ func run(ctx *cli.Context) error {
 		return nil
 	}
 
-	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir)
+	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, ok := git.FindRoot(dir)
 	if !ok {
 		return nil

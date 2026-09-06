@@ -40,19 +40,22 @@ func TestToolResponseObjectPassesThrough(t *testing.T) {
 func TestResolveDirPrecedence(t *testing.T) {
 	env := func(k string) string {
 		if k == "CLAUDE_PROJECT_DIR" {
-			return "/env"
+			return "/started-here"
 		}
 		return ""
 	}
-	if got := ResolveDir(env, "/payload", "/fallback"); got != "/env" {
-		t.Fatalf("env should win: %q", got)
-	}
 	noEnv := func(string) string { return "" }
-	if got := ResolveDir(noEnv, "/payload", "/fallback"); got != "/payload" {
-		t.Fatalf("payload next: %q", got)
+	if got := ResolveDir(env, "/session-is-here", "/stated", true); got != "/stated" {
+		t.Fatalf("an explicit project dir beats everything: %q", got)
 	}
-	if got := ResolveDir(noEnv, "", "/fallback"); got != "/fallback" {
-		t.Fatalf("fallback last: %q", got)
+	if got := ResolveDir(env, "/session-is-here", "/default", false); got != "/session-is-here" {
+		t.Fatalf("the payload's cwd beats where the session started: %q", got)
+	}
+	if got := ResolveDir(env, "", "/default", false); got != "/started-here" {
+		t.Fatalf("CLAUDE_PROJECT_DIR fills in when the payload has no cwd: %q", got)
+	}
+	if got := ResolveDir(noEnv, "", "/default", false); got != "/default" {
+		t.Fatalf("the process directory is the last resort: %q", got)
 	}
 }
 

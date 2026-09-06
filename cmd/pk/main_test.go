@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -72,8 +73,16 @@ func TestCommandsAndSkillsAreOneToOne(t *testing.T) {
 		}
 	}
 	for dir := range skillDirs {
-		if dir == "plankit" {
-			continue // the overview topic, not a command
+		md, _ := os.ReadFile(filepath.Join(root, "skills", dir, "SKILL.md"))
+		// The opening heading declares the page's kind: "pk <name>" is a
+		// command page and must have its command; "<name>" alone is a
+		// document (the overview, craft) and is exempt.
+		isCommand := regexp.MustCompile(`(?m)^# pk ` + regexp.QuoteMeta(dir) + `\s*$`).Match(md)
+		if !isCommand {
+			if registered[dir] {
+				t.Errorf("skills/%s is a command page but its heading does not read \"# pk %s\"", dir, dir)
+			}
+			continue
 		}
 		if !registered[dir] {
 			t.Errorf("skills/%s does not correspond to a registered command", dir)
@@ -189,6 +198,52 @@ func TestDesignDocCodeBlocksMatchSource(t *testing.T) {
 		}
 		if !strings.Contains(norm(string(src)), norm(m[2])) {
 			t.Errorf("design.md code block pinned to %s no longer matches the source:\n%s", m[1], m[2])
+		}
+	}
+}
+
+// TestHookSkillsNameEveryDial requires each hook command's skill to
+// name every dial its config section exposes, in the page body and in
+// the one-line description that feeds the typeahead, the help index,
+// and the site. A dial added to a struct and left out of either line
+// fails here; whether the prose is still true beyond naming is
+// review's job.
+func TestHookSkillsNameEveryDial(t *testing.T) {
+	root := repoRoot(t)
+	sections := []struct {
+		skill string
+		cfg   any
+		skip  map[string]bool
+	}{
+		{"guard", config.GuardConfig{}, map[string]bool{"branches": true}}, // the list the dials apply to
+		{"preserve", config.PreserveConfig{}, nil},
+	}
+	for _, s := range sections {
+		md, err := os.ReadFile(filepath.Join(root, "skills", s.skill, "SKILL.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := string(md)
+		desc := ""
+		for _, line := range strings.SplitN(body, "\n---", 2)[0:1] {
+			for _, l := range strings.Split(line, "\n") {
+				if strings.HasPrefix(l, "description:") {
+					desc = strings.ToLower(strings.TrimPrefix(l, "description:"))
+				}
+			}
+		}
+		rt := reflect.TypeOf(s.cfg)
+		for i := 0; i < rt.NumField(); i++ {
+			key := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]
+			if key == "" || s.skip[key] {
+				continue
+			}
+			if !strings.Contains(body, s.skill+"."+key) && !strings.Contains(body, "`"+key+"`") {
+				t.Errorf("skills/%s/SKILL.md body does not document the %s.%s dial", s.skill, s.skill, key)
+			}
+			if !strings.Contains(desc, key) {
+				t.Errorf("skills/%s/SKILL.md description does not name the %s dial: %q", s.skill, key, strings.TrimSpace(desc))
+			}
 		}
 	}
 }
