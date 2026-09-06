@@ -39,6 +39,12 @@ Breaking markers.
 `pk help` prints the topic index. Each command's page is also a
 `/plankit:` shortcut in Claude Code.
 
+## Updating
+
+`/plugin marketplace update plankit`, then `/plugin update
+plankit@plankit`, then `/reload-plugins`. A new release changes the
+plugin only; no repository changes.
+
 ## Migrating from pre-plugin plankit (v0.x)
 
 The plugin replaces the files `pk setup` copied into a repository. In

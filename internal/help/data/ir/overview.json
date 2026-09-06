@@ -240,6 +240,46 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "updating",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Updating"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "/plugin marketplace update plankit"
+        },
+        {
+          "type": "text",
+          "text": ", then "
+        },
+        {
+          "type": "code",
+          "text": "/plugin update plankit@plankit"
+        },
+        {
+          "type": "text",
+          "text": ", then "
+        },
+        {
+          "type": "code",
+          "text": "/reload-plugins"
+        },
+        {
+          "type": "text",
+          "text": ". A new release changes the plugin only; no repository changes."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "migrating-from-pre-plugin-plankit-v0-x",
       "inlines": [
         {

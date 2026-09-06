@@ -21,6 +21,17 @@ The same marketplace file is attached to every GitHub release, so
 `https://github.com/markwharton/plankit/releases/latest/download/marketplace.json`
 works as the source too.
 
+To update to a new release:
+
+```
+/plugin marketplace update plankit
+/plugin update plankit@plankit
+/reload-plugins
+```
+
+With auto-update enabled for the marketplace (`/plugin`, Marketplaces),
+Claude Code runs the first two at startup and prompts for the third.
+
 Then, in a repository you want plankit to manage:
 
 ```
