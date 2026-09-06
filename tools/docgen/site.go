@@ -194,7 +194,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	if err := os.WriteFile(filepath.Join(out, config.SchemaFile), schema, 0o644); err != nil {
 		return err
 	}
-	for _, static := range []string{"style.css", "_redirects"} {
+	for _, static := range []string{"style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join(root, "site", static))
 		if err != nil {
 			return err

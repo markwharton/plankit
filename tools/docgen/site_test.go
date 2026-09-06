@@ -20,7 +20,7 @@ func TestBuildSite(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects"} {
+	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
@@ -40,7 +40,7 @@ func TestBuildSite(t *testing.T) {
 	out := filepath.Join(root, "dist")
 	must(buildSite(root, skills, out, "", false))
 
-	for _, p := range []string{"index.html", "architecture.html", "changelog.html",
+	for _, p := range []string{"index.html", "architecture.html", "changelog.html", "favicon.svg", "favicon.ico", "apple-touch-icon.png",
 		"help/overview.html", "help/alpha.html", "help/zeta.html", "style.css", "_redirects"} {
 		if _, err := os.Stat(filepath.Join(out, p)); err != nil {
 			t.Errorf("missing %s", p)
@@ -126,7 +126,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 		cmd.Dir = root
 		must(cmd.Run())
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects"} {
+	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
@@ -192,7 +192,7 @@ func TestFrontPageRequiresTheReadmeSections(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects"} {
+	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
