@@ -18,18 +18,18 @@ func runHelp(t *testing.T, args ...string) (int, string, string) {
 func TestNonTTYGetsRawAuthoredBytes(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("CLICOLOR_FORCE", "")
-	_, raw, ok := Topic("plankit")
+	_, raw, ok := Topic("overview")
 	if !ok {
 		t.Fatal("plankit topic not embedded")
 	}
-	code, out, _ := runHelp(t, "plankit")
+	code, out, _ := runHelp(t, "overview")
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
 	if out != string(raw) {
 		t.Fatalf("pipe output is not the authored bytes\ngot:  %q\nwant: %q", out[:40], string(raw)[:40])
 	}
-	if !strings.HasPrefix(out, "---\nname: plankit\n") {
+	if !strings.HasPrefix(out, "---\nname: overview\n") {
 		t.Fatalf("raw output should include frontmatter, got %q", out[:30])
 	}
 }
@@ -37,7 +37,7 @@ func TestNonTTYGetsRawAuthoredBytes(t *testing.T) {
 func TestForcedColorRendersIR(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("CLICOLOR_FORCE", "1")
-	code, out, _ := runHelp(t, "plankit")
+	code, out, _ := runHelp(t, "overview")
 	if code != cli.ExitOK || !strings.Contains(out, "\x1b[1;4m") {
 		t.Fatalf("code=%d, want rendered ANSI, got %q", code, out[:40])
 	}
@@ -52,12 +52,18 @@ func TestTOCListsTopicsOverviewFirst(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"plankit", "help", "version"} {
+	for _, want := range []string{"overview", "craft", "help", "version"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("TOC missing %q", want)
 		}
 	}
-	if strings.Index(out, "plankit") > strings.Index(out, "version") {
+	if strings.Index(out, "overview") > strings.Index(out, "craft") || strings.Index(out, "craft") > strings.Index(out, "brief") {
+		t.Fatalf("documents lead, then commands:\n%s", out)
+	}
+	if !strings.Contains(out, "prompt\n\n  brief") {
+		t.Fatalf("a blank line separates documents from commands:\n%s", out)
+	}
+	if strings.Index(out, "overview") > strings.Index(out, "version") {
 		t.Fatal("overview should be pinned first")
 	}
 }

@@ -32,9 +32,6 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
-	if ctx.Format == "json" {
-		return cli.Usagef("--format json is not supported by pk ship")
-	}
 	root, ok := git.FindRoot(ctx.ProjectDir)
 	if !ok {
 		return cli.Statef("not a git repository: %s", ctx.ProjectDir)

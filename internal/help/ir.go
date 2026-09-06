@@ -30,6 +30,7 @@ type Doc struct {
 type Meta struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	Command     bool   `json:"-"` // the page documents a command: its heading is "pk <name>"
 }
 
 // Block is one block-level node. Type selects which fields are set:

@@ -30,3 +30,12 @@ marker rule mentions the ask. `guard.mode` and `guard.push` describe
 the protected branches and pushing. `release.branch` names where
 releases merge. `preserve.mode` describes how plans are kept. A dial
 set to off drops its paragraph.
+
+## Flags
+
+<!-- generated: flags -->
+```
+  --format <value>
+        Output format: text or json (default text)
+```
+<!-- /generated: flags -->

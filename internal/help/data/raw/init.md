@@ -25,11 +25,13 @@ gains the directory.
 pk init
 pk init --release trunk
 pk init --dry-run
+pk init --format json
 ```
 
 `--release` names the branch to guard and release from; the default
 is the branch checked out. `--no-baseline` skips the tag. `--dry-run`
-previews without writing.
+previews without writing. `--format json` emits one object: `root`,
+`release`, `created`, `baseline`, and `dryRun`.
 
 `pk init` refuses to run twice; edit `.pk.json` once it exists, and
 `pk status` reads it back and reports the first problem. Commit the
@@ -45,5 +47,7 @@ created files.
         Skip creating the v0.0.0 baseline tag
   --dry-run
         Preview without making any changes
+  --format <value>
+        Output format: text or json (default text)
 ```
 <!-- /generated: flags -->

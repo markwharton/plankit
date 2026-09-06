@@ -57,7 +57,10 @@ func toc(ctx *cli.Context) error {
 		strong, reset = "\x1b[1m", "\x1b[0m"
 	}
 	fmt.Fprintf(ctx.Stdout, "Documentation topics:\n\n")
-	for _, m := range metas {
+	for i, m := range metas {
+		if i > 0 && m.Command && !metas[i-1].Command {
+			fmt.Fprintln(ctx.Stdout) // documents above, commands below
+		}
 		pad := strings.Repeat(" ", width-len(m.Name))
 		fmt.Fprintf(ctx.Stdout, "  %s%s%s%s  %s\n", strong, m.Name, reset, pad, m.Description)
 	}

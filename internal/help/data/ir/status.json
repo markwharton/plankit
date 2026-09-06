@@ -98,6 +98,21 @@
           "text": " is absent."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n"
     }
   ]
 }

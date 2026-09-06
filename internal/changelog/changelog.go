@@ -14,6 +14,7 @@ package changelog
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -73,9 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 `
 
 func run(ctx *cli.Context) error {
-	if ctx.Format == "json" {
-		return cli.Usagef("--format json is not supported by pk changelog")
-	}
 	root, ok := git.FindRoot(ctx.ProjectDir)
 	if !ok {
 		return cli.Statef("not a git repository: %s", ctx.ProjectDir)
@@ -201,6 +199,17 @@ func run(ctx *cli.Context) error {
 	}
 
 	ver := strings.TrimPrefix(nextTag, "v")
+	// Every file written before the commit is restored if a hook fails,
+	// so a refused release leaves the tree as clean as it found it.
+	var written []string
+	restore := func(stage string, err error) error {
+		for _, p := range written {
+			if _, cerr := git.Exec(root, "checkout", "--", p); cerr != nil {
+				os.Remove(filepath.Join(root, p)) // new in this run: not in HEAD
+			}
+		}
+		return cli.WithHint(cli.Statef("%s hook failed: %v", stage, err), "restored %s; the tree is clean", strings.Join(written, ", "))
+	}
 	for _, vf := range cfg.Changelog.VersionFiles {
 		if vf.Type != "" && vf.Type != "json" {
 			return cli.Usagef("unsupported versionFile type %q for %s (only \"json\" is supported)", vf.Type, vf.Path)
@@ -208,12 +217,13 @@ func run(ctx *cli.Context) error {
 		if err := updateVersionFile(filepath.Join(root, vf.Path), ver); err != nil {
 			return cli.Statef("failed to update %s: %v", vf.Path, err)
 		}
+		written = append(written, vf.Path)
 		fmt.Fprintf(ctx.Stderr, "Updated %s\n", vf.Path)
 	}
 	if h := cfg.Changelog.Hooks.PostVersion; h != "" {
 		fmt.Fprintln(ctx.Stderr, "Running postVersion hook...")
 		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return cli.Statef("postVersion hook failed: %v", err)
+			return restore("postVersion", err)
 		}
 	}
 
@@ -230,11 +240,12 @@ func run(ctx *cli.Context) error {
 	if err := writeFile(changelogPath, []byte(updated)); err != nil {
 		return fmt.Errorf("failed to write CHANGELOG.md: %v", err)
 	}
+	written = append(written, "CHANGELOG.md")
 
 	if h := cfg.Changelog.Hooks.PreCommit; h != "" {
 		fmt.Fprintln(ctx.Stderr, "Running preCommit hook...")
 		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return cli.Statef("preCommit hook failed: %v", err)
+			return restore("preCommit", err)
 		}
 	}
 

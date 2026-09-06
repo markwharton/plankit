@@ -149,17 +149,26 @@ the change.
 - **Don't rewrite history between `pk changelog` and `pk release`.**
   Changelog records commit SHAs; release publishes them.
 - **A minor or major release has release notes.** Before shipping one,
-  write `docs/notes/<version>.md` with `version`, `date`, and `title`
+  commit `docs/notes/<version>.md` with `version`, `date`, and `title`
   frontmatter and the notes as prose; `pk changelog --dry-run` gives
   the version. The site renders notes whose tag exists;
   `make site-preview` renders them all for a local look. Patch
-  releases get none.
+  releases get none. Check: this repository's
+  `changelog.hooks.postVersion` fails `pk changelog` for a minor or
+  major whose note is missing, naming the file, and the tree is left
+  clean.
 - **Rewrite only unpushed commits.** Confirm the target appears in
   `git log --oneline @{push}..HEAD`; if the command errors or the
   target is absent, it has been pushed: make a new commit instead.
 
 ### This Repository's Shape
 
+- A new surface is a new reader of an existing source, never a new
+  copy. The typeahead, the help index, the site's cards, the Flags
+  and Settings sections, and the schema all read the frontmatter, the
+  flag declarations, and the settings table. If a surface needs its
+  own copy of a fact, the design has a leak: fix the source, not the
+  copy.
 - Follow the recipes in docs/design.md for a new command, policy,
   document, or composed command.
 - Facts that live in code are never hand-copied into docs. Generate
@@ -174,5 +183,9 @@ the change.
   sentence: `plankit`, `pk`, `craft`, and the command names. A command
   as the subject of a sentence is `pk guard` or "the guard hook",
   never `Guard`.
+- Pages name commands in the `pk <name>` form. The `/plankit:` form
+  appears where the reader is a session (the brief, a hook message),
+  where the thing exists only in Claude Code (craft's prompts), and
+  once per document to say what the shortcut form is.
 - Derived values (digests, pins, compiled output) are never committed
   to a source branch.

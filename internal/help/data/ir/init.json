@@ -107,7 +107,7 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk init\npk init --release trunk\npk init --dry-run\n"
+      "text": "pk init\npk init --release trunk\npk init --dry-run\npk init --format json\n"
     },
     {
       "type": "para",
@@ -134,7 +134,55 @@
         },
         {
           "type": "text",
-          "text": " previews without writing."
+          "text": " previews without writing. "
+        },
+        {
+          "type": "code",
+          "text": "--format json"
+        },
+        {
+          "type": "text",
+          "text": " emits one object: "
+        },
+        {
+          "type": "code",
+          "text": "root"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "release"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "created"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "baseline"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "dryRun"
+        },
+        {
+          "type": "text",
+          "text": "."
         }
       ]
     },
@@ -180,7 +228,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --dry-run\n        Preview without making any changes\n"
+      "text": "  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n"
     }
   ]
 }

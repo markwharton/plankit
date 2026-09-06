@@ -1,18 +1,18 @@
 {
   "schema": 1,
   "meta": {
-    "name": "plankit",
+    "name": "overview",
     "description": "Plan-driven development for Claude Code - the model, the modes, and the per-repo footprint"
   },
   "blocks": [
     {
       "type": "heading",
       "level": 1,
-      "id": "plankit",
+      "id": "overview",
       "inlines": [
         {
           "type": "text",
-          "text": "plankit"
+          "text": "overview"
         }
       ]
     },
@@ -408,30 +408,6 @@
           "text": " shows the placeholder verbatim."
         }
       ]
-    },
-    {
-      "type": "heading",
-      "level": 2,
-      "id": "universal-flags",
-      "inlines": [
-        {
-          "type": "text",
-          "text": "Universal flags"
-        }
-      ]
-    },
-    {
-      "type": "para",
-      "inlines": [
-        {
-          "type": "text",
-          "text": "Every command accepts these:"
-        }
-      ]
-    },
-    {
-      "type": "codeblock",
-      "text": "  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --plain\n        Undecorated output: no color, no wrapping\n  --quiet\n        Suppress notes and hints (errors still print)\n"
     }
   ]
 }

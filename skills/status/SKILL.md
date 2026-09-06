@@ -21,3 +21,12 @@ the text report.
 
 An unconfigured repository is a state, not an error: plankit is off
 wherever `.pk.json` is absent.
+
+## Flags
+
+<!-- generated: flags -->
+```
+  --format <value>
+        Output format: text or json (default text)
+```
+<!-- /generated: flags -->

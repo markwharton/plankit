@@ -129,9 +129,17 @@ func TestHelpFlagExitsZero(t *testing.T) {
 }
 
 func TestFormatValidation(t *testing.T) {
-	cmd := testCmd("demo", false, nil, nil)
+	// A command that declares --format validates its value.
+	cmd := testCmd("demo", false, []FlagSpec{FormatFlag}, nil)
 	code, _, stderr := run(t, []string{"demo", "--format", "yaml"}, cmd)
 	if code != ExitUsage || !strings.Contains(stderr, "invalid --format") {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+	// A command that does not declare it refuses it as unknown, and its
+	// usage block does not list it.
+	plain := testCmd("plain", false, nil, nil)
+	code, _, stderr = run(t, []string{"plain", "--format", "json"}, plain)
+	if code != ExitUsage || !strings.Contains(stderr, "not defined") || strings.Contains(stderr, "Output format") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
 }
@@ -230,5 +238,30 @@ func TestCommandUsageCrossLinksDocumentation(t *testing.T) {
 	RunIO([]string{"pk", "demo", "--help"}, []*Command{cmd}, nil, &out, &errw)
 	if !strings.Contains(out.String(), "Documentation: pk help demo") {
 		t.Fatalf("usage block missing the documentation cross-link:\n%s", out.String())
+	}
+}
+
+// TestFlagsMayFollowPositionals pins that a flag after a positional is
+// still a flag, and that -- ends flags.
+func TestFlagsMayFollowPositionals(t *testing.T) {
+	var args []string
+	var force bool
+	cmd := testCmd("demo", false, []FlagSpec{{Name: "force", Type: BoolFlag}}, func(c *Context) error {
+		args, force = c.Args(), c.Bool("force")
+		return nil
+	})
+	cmd.MaxArgs = 2
+	if code, _, errw := run(t, []string{"demo", "a", "--force", "b", "--plain"}, cmd); code != ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	if !force || strings.Join(args, ",") != "a,b" {
+		t.Fatalf("force=%v args=%v", force, args)
+	}
+	force = false
+	if code, _, _ := run(t, []string{"demo", "--", "--force", "b"}, cmd); code != ExitOK {
+		t.Fatal("-- must end flags")
+	}
+	if force || strings.Join(args, ",") != "--force,b" {
+		t.Fatalf("after --: force=%v args=%v", force, args)
 	}
 }

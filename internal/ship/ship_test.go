@@ -189,9 +189,11 @@ func TestDryRunWithPendingRehearsesRelease(t *testing.T) {
 	}
 }
 
-func TestFormatJSONRefused(t *testing.T) {
+// TestFormatIsNotShipFlag: --format is declared only by the commands
+// with a structured output, so ship refuses it as an unknown flag.
+func TestFormatIsNotShipFlag(t *testing.T) {
 	dir, _ := repo(t)
-	if code, _, errw := runShip(t, dir, "--format", "json"); code != cli.ExitUsage || !strings.Contains(errw, "not supported") {
+	if code, _, errw := runShip(t, dir, "--format", "json"); code != cli.ExitUsage || !strings.Contains(errw, "format") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 }

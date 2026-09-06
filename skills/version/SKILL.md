@@ -26,5 +26,7 @@ one object with `version`, `go`, `os`, and `arch` keys.
 ```
   --verbose
         Show build details
+  --format <value>
+        Output format: text or json (default text)
 ```
 <!-- /generated: flags -->

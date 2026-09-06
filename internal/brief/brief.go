@@ -28,6 +28,7 @@ var Cmd = &cli.Command{
 	Name:    "brief",
 	Summary: "Hook: tell the session this repository's plankit policy",
 	Hook:    true,
+	Flags:   []cli.FlagSpec{cli.FormatFlag},
 	Run:     run,
 }
 

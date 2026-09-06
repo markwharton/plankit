@@ -3,6 +3,7 @@ package help
 import (
 	"embed"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -39,6 +40,7 @@ func load() error {
 				loadErr = err
 				return
 			}
+			d.Meta.Command = isCommandDoc(d)
 			docs[d.Meta.Name] = d
 			raw, err := dataFS.ReadFile("data/raw/" + d.Meta.Name + ".md")
 			if err != nil {
@@ -48,15 +50,12 @@ func load() error {
 			raws[d.Meta.Name] = raw
 			order = append(order, d.Meta.Name)
 		}
-		// Alphabetical, with the overview pinned first.
+		// The overview first, then the other documents, then the commands,
+		// each group alphabetical. The kind comes from the page's own
+		// heading; the overview is the one page named here, because it
+		// is the page a reader meets first.
 		sort.Slice(order, func(i, j int) bool {
-			if order[i] == "plankit" {
-				return true
-			}
-			if order[j] == "plankit" {
-				return false
-			}
-			return order[i] < order[j]
+			return rank(docs[order[i]].Meta) < rank(docs[order[j]].Meta)
 		})
 	})
 	return loadErr
@@ -84,4 +83,35 @@ func Topic(name string) (*Doc, []byte, bool) {
 		return nil, nil, false
 	}
 	return d, raws[name], true
+}
+
+// isCommandDoc reports whether a page's opening heading is "pk <name>",
+// the declaration that it documents a command rather than being a
+// document such as the overview.
+func isCommandDoc(d *Doc) bool {
+	if len(d.Blocks) == 0 || d.Blocks[0].Type != "heading" {
+		return false
+	}
+	var text strings.Builder
+	for _, s := range d.Blocks[0].Inlines {
+		text.WriteString(s.Text)
+	}
+	return text.String() == "pk "+d.Meta.Name
+}
+
+// Overview is the name of the overview page, the document that leads
+// every index. The site's sidebar reads the same constant.
+const Overview = "overview"
+
+// rank orders the index: the overview, then documents by name, then
+// commands by name.
+func rank(m Meta) string {
+	switch {
+	case m.Name == Overview:
+		return "0"
+	case !m.Command:
+		return "1" + m.Name
+	default:
+		return "2" + m.Name
+	}
 }

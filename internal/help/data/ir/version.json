@@ -123,7 +123,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --verbose\n        Show build details\n"
+      "text": "  --verbose\n        Show build details\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n"
     }
   ]
 }

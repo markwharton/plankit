@@ -22,11 +22,12 @@ const PlansDir = paths.PlansRel
 // InitCmd configures a repository for plankit.
 var InitCmd = &cli.Command{
 	Name:    "init",
-	Summary: "Configure this repository: write .pk.json, create docs/plans, baseline a tag",
+	Summary: "Configure this repository: write .pk.json and baseline a tag",
 	Flags: []cli.FlagSpec{
 		{Name: "release", Type: cli.StringFlag, Usage: "Release branch to guard (default: the branch currently checked out)"},
 		{Name: "no-baseline", Type: cli.BoolFlag, Usage: "Skip creating the v0.0.0 baseline tag"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without making any changes"},
+		cli.FormatFlag,
 	},
 	Run: runInit,
 }
@@ -126,6 +127,7 @@ func typeNames(types []config.TypeConfig) string {
 var StatusCmd = &cli.Command{
 	Name:    "status",
 	Summary: "Report plankit configuration and repository state",
+	Flags:   []cli.FlagSpec{cli.FormatFlag},
 	Run:     runStatus,
 }
 

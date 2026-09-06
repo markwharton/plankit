@@ -65,6 +65,30 @@
           "text": " is respected."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "universal-flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Universal flags"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command accepts these:"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --plain\n        Undecorated output: no color, no wrapping\n  --quiet\n        Suppress notes and hints (errors still print)\n"
     }
   ]
 }

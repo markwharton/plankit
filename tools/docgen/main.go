@@ -71,7 +71,7 @@ func main() {
 	outDir := flag.String("out", "", "Output directory for ir/ and raw/ (required)")
 	siteDir := flag.String("site", "", "Also build the website into this directory (optional)")
 	notesAll := flag.String("notes", "released", "Which release notes the site renders: released (tag exists) or all (local preview)")
-	links := flag.String("links", "clean", "Internal link form: clean (/docs/ship, for Cloudflare Pages) or html (/docs/ship.html, for a local static server)")
+	links := flag.String("links", "clean", "Internal link form: clean (/help/ship, for Cloudflare Pages) or html (/help/ship.html, for a local static server)")
 	rootDir := flag.String("root", "", "Repository root, for -site (README.md, docs/, CHANGELOG.md, site/)")
 	pkBin := flag.String("pk", "", "Built pk binary; when given, the site's front page runs it in a scratch repository")
 	flag.Parse()

@@ -76,8 +76,9 @@ func updateRegions(skillsDir string) ([]string, error) {
 			changed = append(changed, section)
 		}
 	}
-	// Universal flags, once, on the overview.
-	path := filepath.Join(skillsDir, "plankit", "SKILL.md")
+	// Universal flags, once, on the help page: they are about invoking
+	// any pk command, which is that page's subject.
+	path := filepath.Join(skillsDir, "help", "SKILL.md")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return changed, nil
@@ -91,7 +92,7 @@ func updateRegions(skillsDir string) ([]string, error) {
 		if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
 			return nil, err
 		}
-		changed = append(changed, "plankit")
+		changed = append(changed, "help")
 	}
 	return changed, nil
 }

@@ -63,6 +63,7 @@ var Cmd = &cli.Command{
 	Summary: "Print the pk version",
 	Flags: []cli.FlagSpec{
 		{Name: "verbose", Type: cli.BoolFlag, Usage: "Show build details"},
+		cli.FormatFlag,
 	},
 	Run: run,
 }

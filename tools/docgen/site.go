@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"html/template"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/help"
 	"github.com/yuin/goldmark"
 )
 
@@ -29,6 +31,7 @@ type topic struct {
 type navItem struct {
 	Href, Label, Desc string
 	Current           bool
+	Command           bool // false for a document such as the overview
 }
 
 type sitePage struct {
@@ -40,25 +43,35 @@ type sitePage struct {
 	Mermaid    bool
 	Home       bool   // the front page; the wordmark carries the current marker
 	SchemaFile string // the policy file's schema, linked in the footer
+	StyleHref  string // the stylesheet with its content hash, so a cache can only hold the right one
 }
 
 // buildSite renders every page into out. root is the repository root
 // (for README.md, docs/, CHANGELOG.md, and site/ templates).
 // linkExt is appended to every internal page link. Deployed, it is
-// empty: Cloudflare Pages serves ship.html at /docs/ship and redirects
+// empty: Cloudflare Pages serves ship.html at /help/ship and redirects
 // the .html form there. For a local preview under a plain static
 // server it is ".html".
 var linkExt = ""
+
+// helpDir is where the command pages live on the site: plankit.com/help/ship
+// is pk help ship. The sidebar that lists them is labeled the same.
+const helpDir = "help"
 
 func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	layout, err := template.ParseFiles(filepath.Join(root, "site", "layout.html"))
 	if err != nil {
 		return fmt.Errorf("site layout: %w", err)
 	}
+	css, err := os.ReadFile(filepath.Join(root, "site", "style.css"))
+	if err != nil {
+		return err
+	}
+	styleHref := fmt.Sprintf("/style.css?v=%x", sha256.Sum256(css))[:len("/style.css?v=")+12]
 	if err := os.RemoveAll(out); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(out, "docs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(out, helpDir), 0o755); err != nil {
 		return err
 	}
 
@@ -74,7 +87,6 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 		}
 	}
 	sort.Strings(names)
-	sort.SliceStable(names, func(i, j int) bool { return names[i] == "plankit" && names[j] != "plankit" })
 
 	var topics []topic
 	var topicNav []navItem
@@ -88,12 +100,21 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 		topics = append(topics, topic{name, fm["description"], body, bytes.HasPrefix(bytes.TrimSpace(body), []byte("# pk "+name+"\n")) || bytes.Equal(bytes.TrimSpace(body), []byte("# pk "+name))})
-		topicNav = append(topicNav, navItem{Href: "/docs/" + name + linkExt, Label: name, Desc: fm["description"]})
+		topicNav = append(topicNav, navItem{Href: "/" + helpDir + "/" + name + linkExt, Label: name, Desc: fm["description"]})
 	}
 
 	notes, err := readNotes(root, notesAll)
 	if err != nil {
 		return err
+	}
+	// The same order as pk help: the overview, then documents, then
+	// commands, each alphabetical.
+	sort.SliceStable(topics, func(i, j int) bool {
+		return rank(topics[i]) < rank(topics[j])
+	})
+	topicNav = topicNav[:0]
+	for _, t := range topics {
+		topicNav = append(topicNav, navItem{Href: "/" + helpDir + "/" + t.name + linkExt, Label: t.name, Desc: t.desc, Command: t.command})
 	}
 	nav := []navItem{
 		{Href: "/architecture" + linkExt, Label: "How it works"},
@@ -107,7 +128,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	)
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
-		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile}
+		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile, StyleHref: styleHref}
 		clean := "/" + strings.TrimSuffix(path, ".html") + linkExt
 		for _, n := range nav {
 			n.Current = n.Href == clean
@@ -133,7 +154,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 		if !t.command {
 			title = t.name
 		}
-		if err := write("docs/"+t.name+".html", title, t.body); err != nil {
+		if err := write(helpDir+"/"+t.name+".html", title, t.body); err != nil {
 			return err
 		}
 	}
@@ -208,6 +229,9 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 		return "", err
 	}
 	intro, install := readmeSections(string(readme))
+	if strings.TrimSpace(intro) == "" || strings.TrimSpace(install) == "" {
+		return "", fmt.Errorf("README.md must open with prose before its first heading and carry an \"## Install\" section; the front page is composed from both")
+	}
 	introHTML, _ := renderHTML([]byte(intro))
 	installHTML, _ := renderHTML([]byte(install))
 
@@ -229,7 +253,7 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 		if !t.command {
 			continue // documents have pages but no command card
 		}
-		b.WriteString(`<a class="card" href="/docs/` + t.name + linkExt + `"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
+		b.WriteString(`<a class="card" href="/` + helpDir + `/` + t.name + linkExt + `"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
 	}
 	b.WriteString(`</div></section>`)
 	if tag := latestTag(root); tag != "" {
@@ -259,4 +283,17 @@ func latestTag(root string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// rank mirrors the help index's order: the overview first, then
+// documents by name, then commands by name.
+func rank(t topic) string {
+	switch {
+	case t.name == help.Overview:
+		return "0"
+	case !t.command:
+		return "1" + t.name
+	default:
+		return "2" + t.name
+	}
 }

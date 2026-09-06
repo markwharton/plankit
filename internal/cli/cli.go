@@ -51,7 +51,6 @@ type Command struct {
 // receive their resolved values through Context and never redeclare them.
 var universalFlags = []FlagSpec{
 	{Name: "project-dir", Type: StringFlag, Usage: "Project directory (default: PK_PROJECT_DIR, else the current directory)"},
-	{Name: "format", Type: StringFlag, Default: "text", Usage: "Output format: text or json"},
 	{Name: "plain", Type: BoolFlag, Usage: "Undecorated output: no color, no wrapping"},
 	{Name: "quiet", Type: BoolFlag, Usage: "Suppress notes and hints (errors still print)"},
 }
@@ -156,11 +155,30 @@ func parse(cmd *Command, cmds []*Command, args []string, stdin io.Reader, stdout
 	declare(universalFlags)
 	declare(cmd.Flags)
 
-	if err := fs.Parse(args); err != nil {
-		return nil, err
+	// Go's flag parser stops at the first positional; keep parsing
+	// after each one so a flag may follow a positional (pk help craft
+	// --plain). "--" still ends flags: everything after it is
+	// positional.
+	var positionals []string
+	remaining := args
+	for {
+		if err := fs.Parse(remaining); err != nil {
+			return nil, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			break
+		}
+		consumed := len(remaining) - len(rest)
+		if consumed > 0 && remaining[consumed-1] == "--" {
+			positionals = append(positionals, rest...)
+			break
+		}
+		positionals = append(positionals, rest[0])
+		remaining = rest[1:]
 	}
-	if extra := fs.Args(); len(extra) > cmd.MaxArgs {
-		return nil, fmt.Errorf("unexpected argument: %q", extra[cmd.MaxArgs])
+	if len(positionals) > cmd.MaxArgs {
+		return nil, fmt.Errorf("unexpected argument: %q", positionals[cmd.MaxArgs])
 	}
 
 	ctx := &Context{
@@ -172,9 +190,13 @@ func parse(cmd *Command, cmds []*Command, args []string, stdin io.Reader, stdout
 		Stderr:   stderr,
 		bools:    bools,
 		strs:     strs,
-		args:     fs.Args(),
+		args:     positionals,
 	}
-	if err := ctx.resolve(*strs["project-dir"], *strs["format"], *bools["plain"]); err != nil {
+	format := "text"
+	if f, ok := strs["format"]; ok {
+		format = *f
+	}
+	if err := ctx.resolve(*strs["project-dir"], format, *bools["plain"]); err != nil {
 		return nil, err
 	}
 	return ctx, nil
@@ -264,3 +286,8 @@ func FlagBlock(specs []FlagSpec) string {
 
 // UniversalFlags returns the flags every command accepts.
 func UniversalFlags() []FlagSpec { return universalFlags }
+
+// FormatFlag is --format, declared by the commands whose output has a
+// structured form. It is not universal: a command that lists it
+// honors it, and one that does not refuses it as an unknown flag.
+var FormatFlag = FlagSpec{Name: "format", Type: StringFlag, Default: "text", Usage: "Output format: text or json"}

@@ -1,6 +1,9 @@
 {
   "$schema": "https://plankit.com/pk.schema.json",
   "changelog": {
+    "hooks": {
+      "postVersion": "case \"$VERSION\" in *.0) [ -f \"docs/notes/v$VERSION.md\" ] || { echo \"docs/notes/v$VERSION.md is missing: commit the release notes, then run pk changelog again\" >&2; exit 1; }; esac"
+    },
     "types": [
       {
         "section": "Added",

@@ -362,6 +362,25 @@ func TestFailingHookAborts(t *testing.T) {
 	if headSubject(t, dir) != "feat: x" {
 		t.Fatal("failed hook must not commit")
 	}
+	if status, _ := git.Exec(dir, "status", "--porcelain"); status != "" {
+		t.Fatalf("a failed hook must leave the tree clean, got:\n%s", status)
+	}
+	if !strings.Contains(errw, "the tree is clean") {
+		t.Fatalf("the error must say the tree is clean: %q", errw)
+	}
+
+	// The same after CHANGELOG.md is written: a failing preCommit hook
+	// restores it too.
+	dir = repo(t, func(c *config.PkConfig) {
+		c.Changelog.Hooks.PreCommit = "exit 3"
+	})
+	commit(t, dir, "feat: y")
+	if code, _, errw := runCL(t, dir); code != cli.ExitState || !strings.Contains(errw, "preCommit hook failed") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if status, _ := git.Exec(dir, "status", "--porcelain"); status != "" {
+		t.Fatalf("preCommit failure must leave the tree clean, got:\n%s", status)
+	}
 }
 
 func TestUndo(t *testing.T) {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · plankit</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="{{.StyleHref}}">
 {{if .Mermaid}}<script type="module">
 import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
 for (const code of document.querySelectorAll('pre code.language-mermaid')) {
@@ -25,7 +25,7 @@ await mermaid.run();
 <div class="wrap">
 <aside>
   <p class="label">pk help</p>
-  <nav class="topics">{{range .Topics}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}} title="{{.Desc}}">{{.Label}}</a>{{end}}</nav>
+  <nav class="topics">{{range .Topics}}{{if not .Command}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}} title="{{.Desc}}">{{.Label}}</a>{{end}}{{end}}<hr>{{range .Topics}}{{if .Command}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}} title="{{.Desc}}">{{.Label}}</a>{{end}}{{end}}</nav>
 </aside>
 <main>
 {{.Body}}

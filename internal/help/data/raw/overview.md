@@ -1,9 +1,9 @@
 ---
-name: plankit
+name: overview
 description: Plan-driven development for Claude Code - the model, the modes, and the per-repo footprint
 ---
 
-# plankit
+# overview
 
 plankit preserves approved Claude Code plans, guards protected
 branches, and derives releases from commit messages. It ships as a
@@ -63,20 +63,3 @@ Invoke pk by its full path:
 
 Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` when it loads this
 page. In a terminal, `pk help` shows the placeholder verbatim.
-
-## Universal flags
-
-<!-- generated: universal-flags -->
-Every command accepts these:
-
-```
-  --project-dir <value>
-        Project directory (default: PK_PROJECT_DIR, else the current directory)
-  --format <value>
-        Output format: text or json (default text)
-  --plain
-        Undecorated output: no color, no wrapping
-  --quiet
-        Suppress notes and hints (errors still print)
-```
-<!-- /generated: universal-flags -->

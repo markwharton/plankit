@@ -1,6 +1,6 @@
 ---
 name: preserve
-description: Preserve the approved plan into docs/plans - modes, the pending pointer, and /plankit:preserve
+description: Keep each approved plan as a record in docs/plans, on approval or on request
 ---
 
 # pk preserve

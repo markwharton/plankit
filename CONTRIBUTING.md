@@ -73,7 +73,7 @@ Publishing prerequisites, once per repository:
   fast-forward push from `pk release`. No bot ever pushes to a source
   branch.
 - plankit.com deploys from `.github/workflows/site.yml` to a Cloudflare
-  Pages project named `plankit`; set the `CLOUDFLARE_API_TOKEN` and
+  Pages project named `plankit-com`; set the `CLOUDFLARE_API_TOKEN` and
   `CLOUDFLARE_ACCOUNT_ID` repository secrets. Without them the job
   builds the site and skips the deploy.
 - Until the first release exists there is no published marketplace;

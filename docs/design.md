@@ -202,7 +202,7 @@ breaking marker, and guard asks there.
   absence of hidden characters; builds plankit.com with `-site`,
   including the policy file's JSON Schema.
 - `skills/`: the pages. A page opening `# pk <name>` documents a
-  command; a page opening `# <name>` is a document (`plankit`,
+  command; a page opening `# <name>` is a document (`overview`,
   `craft`).
 - `hooks/hooks.json`: the wiring. `grep -c '"type": "command"'
   hooks/hooks.json` prints the wire count.
