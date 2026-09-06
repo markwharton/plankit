@@ -1,0 +1,45 @@
+name: site
+
+# Builds plankit.com from the repository (make site) and deploys it to
+# Cloudflare Pages. Runs on pushes to main (docs changes), on demand,
+# and as a job called by release.yml after a release (a release created
+# with the workflow token does not fire other workflows, so the call is
+# explicit). The published marketplace.json is mirrored from the latest
+# release: the site never holds a pin of its own.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # the front page reports the latest tag
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - run: make site
+      - name: Mirror the published marketplace from the latest release
+        run: |
+          if curl -fsSL -o site/dist/marketplace.json \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/marketplace.json"; then
+            echo "marketplace.json mirrored from the latest release"
+          else
+            echo "no release yet: the site ships without marketplace.json"
+          fi
+      - name: Deploy to Cloudflare Pages
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npx --yes wrangler@3 pages deploy site/dist --project-name plankit --branch main
+      - name: Skipped deploy
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "CLOUDFLARE_API_TOKEN not set; built site/dist without deploying"

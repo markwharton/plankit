@@ -1,10 +1,13 @@
-.PHONY: build test docs vet fmt
+.PHONY: build test docs site vet fmt
 
 build: docs
 	go build -o pk ./cmd/pk
 
 docs:
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data
+
+site: build
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk
 
 test:
 	go vet ./...

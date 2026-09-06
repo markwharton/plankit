@@ -1,6 +1,6 @@
 {
   "name": "plankit",
-  "description": "plankit and its marketplace: install plan-driven development for Claude Code straight from this repository",
+  "description": "Development marketplace for --plugin-dir and validation. Install from the published one: https://plankit.com/marketplace.json",
   "owner": {
     "name": "Mark Wharton",
     "url": "https://github.com/markwharton"

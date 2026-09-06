@@ -65,8 +65,8 @@ between runs. Absence of the file is itself state: plankit is off.
 
 **`skills/`.** All narrative documentation. docgen derives the typed
 IR and the committed raw copies; the plugin ships the same files;
-`pk help` renders them. One authored source, two consumers, drift
-impossible. The flag reference is the other documentation view,
+`pk help` renders them; the website renders them again as HTML. One
+authored source, three consumers, drift impossible. The flag reference is the other documentation view,
 derived from the registry: `--help` and usage errors print the
 Summary and every flag from the `Command` struct, so the reference
 cannot disagree with the code, and it cross-links to the narrative.
@@ -109,6 +109,7 @@ flowchart LR
   end
   S --> D["docgen: IR + raw"] --> H["pk help"]
   S --> P["/plankit: skills"]
+  S --> W["plankit.com"]
   S --> T["invariant and drift tests"]
   R --> U["--help and usage"]
   R --> T
@@ -133,7 +134,8 @@ inference → next version → CHANGELOG.md section → version stamped into
 `.claude-plugin/plugin.json` (a splice into the file's own bytes) →
 Release-Tag trailer on the release commit → `pk release` reads the
 trailer and derives the tag → the tag push derives the archive, the
-digest, and the marketplace pin.
+digest, and the published marketplace file, which ride on the release
+as assets. The pin is derived, so it never enters a source branch.
 
 No step invents state; each reads the committed artifact of the step
 before. The trailer is the handoff between changelog and release, and

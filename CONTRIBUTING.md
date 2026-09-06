@@ -6,6 +6,7 @@
 make build      # docgen + go build -> ./pk
 make test       # go vet + go test ./... (repo and tools/docgen)
 make docs       # compile skills/ into internal/help/data (committed)
+make site       # render the website into site/dist (not committed)
 make fmt        # gofmt the tree
 make bin-local  # build bin/pk-<os>-<arch> behind the bin/pk shim
 make dist       # cross-compile every shim target into bin/
@@ -60,22 +61,26 @@ pk release               # merge to main, tag, push main + tag, push develop
 
 The pushed tag triggers `.github/workflows/release.yml`, which
 cross-compiles the platform binaries, assembles the plugin archive,
-publishes the GitHub release, and commits the archive URL and sha256
-pin into `.claude-plugin/marketplace.json` on main. That pin bump is
-what makes installers see the update.
+and publishes the GitHub release with the archive (versioned and as
+`plankit.zip`), the binaries, and the published `marketplace.json`
+whose archive source carries the versioned URL and sha256. The pin is
+a derived value: it lives on the release as an asset and the site
+mirrors it. Nothing is ever committed back to a source branch, so
+develop and main stay equal after every release.
 
 Publishing prerequisites, once per repository:
 
-- The release workflow pushes two things to `main`: the fast-forward
-  from `pk release`, and its own marketplace-pin commit as
-  `github-actions[bot]`. Branch protection on `main` must let both
-  through (allow the maintainer and the Actions bot to push, or add
-  them to the rule's bypass list) or the release fails at the push.
-- The maiden release is what flips `marketplace.json` from the `./`
-  development source to the archive-plus-sha256 form. Until it runs,
-  marketplace installs fetch a repo with an empty `bin/`; use
-  `claude --plugin-dir` with `make bin-local` for local work before
-  the first release.
+- Branch protection on `main` must admit the maintainer's
+  fast-forward push from `pk release`. No bot ever pushes to a source
+  branch.
+- plankit.com deploys from `.github/workflows/site.yml` to a Cloudflare
+  Pages project named `plankit`; set the `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID` repository secrets. Without them the job
+  builds the site and skips the deploy.
+- Until the first release exists there is no published marketplace;
+  `.claude-plugin/marketplace.json` in the tree is the development
+  manifest for `claude --plugin-dir` and validation only. Use that
+  with `make bin-local` for local work before the first release.
 
 Pre-release checklist:
 

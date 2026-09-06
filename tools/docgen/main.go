@@ -68,14 +68,27 @@ type run struct {
 func main() {
 	skillsDir := flag.String("skills", "", "Directory of <topic>/SKILL.md sources (required)")
 	outDir := flag.String("out", "", "Output directory for ir/ and raw/ (required)")
+	siteDir := flag.String("site", "", "Also build the website into this directory (optional)")
+	rootDir := flag.String("root", "", "Repository root, for -site (README.md, docs/, CHANGELOG.md, site/)")
+	pkBin := flag.String("pk", "", "Built pk binary; when given, the site's front page runs it in a scratch repository")
 	flag.Parse()
 	if *skillsDir == "" || *outDir == "" {
-		fmt.Fprintln(os.Stderr, "usage: docgen -skills <dir> -out <dir>")
+		fmt.Fprintln(os.Stderr, "usage: docgen -skills <dir> -out <dir> [-site <dir> -root <dir>]")
 		os.Exit(2)
 	}
 	if err := compileAll(*skillsDir, *outDir); err != nil {
 		fmt.Fprintf(os.Stderr, "docgen: %v\n", err)
 		os.Exit(1)
+	}
+	if *siteDir != "" {
+		if *rootDir == "" {
+			fmt.Fprintln(os.Stderr, "docgen: -site requires -root")
+			os.Exit(2)
+		}
+		if err := buildSite(*rootDir, *skillsDir, *siteDir, *pkBin); err != nil {
+			fmt.Fprintf(os.Stderr, "docgen: site: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 

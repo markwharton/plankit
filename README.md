@@ -15,9 +15,13 @@ the plugin only ever added the wiring and the pages.
 ## Install
 
 ```
-/plugin marketplace add markwharton/plankit
+/plugin marketplace add https://plankit.com/marketplace.json
 /plugin install plankit
 ```
+
+The same marketplace file is attached to every GitHub release, so
+`https://github.com/markwharton/plankit/releases/latest/download/marketplace.json`
+works as the source too.
 
 Then, in a repository you want plankit to manage:
 

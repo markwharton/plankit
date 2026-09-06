@@ -1,11 +1,12 @@
 name: release
 
 # pk release pushes the version tag; this workflow turns the tag into a
-# GitHub release with the plugin archive and platform binaries attached,
-# then points the marketplace entry on main at the new archive with its
-# sha256 pin. Bumping the pin is what makes installers see the update
-# (plugin.json's explicit version, stamped by pk changelog, is already
-# inside the archive).
+# GitHub release carrying everything installers need: the versioned
+# plugin archive, a fixed-name copy for latest/download URLs, the raw
+# platform binaries, and the published marketplace.json whose archive
+# source carries the versioned URL and sha256. The pin is a derived
+# value, so it lives on the release as an asset and is mirrored by the
+# site; it is never committed to a source branch.
 on:
   push:
     tags: ["v*"]
@@ -18,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
@@ -27,8 +26,7 @@ jobs:
       - name: Cross-compile platform binaries
         run: make dist
 
-      - name: Assemble plugin archive
-        id: archive
+      - name: Assemble plugin archive and marketplace
         run: |
           TAG="${GITHUB_REF_NAME}"
           STAGE=$(mktemp -d)
@@ -37,30 +35,25 @@ jobs:
           cp -R skills hooks bin "$STAGE/"
           cp LICENSE CHANGELOG.md README.md "$STAGE/"
           (cd "$STAGE" && zip -qr "$GITHUB_WORKSPACE/plankit-$TAG.zip" .)
+          cp "plankit-$TAG.zip" plankit.zip
           SHA=$(sha256sum "plankit-$TAG.zip" | cut -d' ' -f1)
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/plankit-$TAG.zip"
+          # The in-repo manifest is the template: name, owner, and
+          # descriptions come from it; only the source is derived.
+          jq --arg url "$URL" --arg sha "$SHA" \
+            '.plugins[0].source = {source: "archive", url: $url, sha256: $sha}
+             | .description = "plankit marketplace: install plan-driven development for Claude Code"' \
+            .claude-plugin/marketplace.json > marketplace.json
 
       - name: Create GitHub release with assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ steps.archive.outputs.tag }}"
+          TAG="${GITHUB_REF_NAME}"
           gh release create "$TAG" --title "plankit $TAG" --generate-notes \
-            "plankit-$TAG.zip" bin/pk-*
+            "plankit-$TAG.zip" plankit.zip marketplace.json bin/pk-*
 
-      - name: Point marketplace at the release archive
-        run: |
-          TAG="${{ steps.archive.outputs.tag }}"
-          SHA="${{ steps.archive.outputs.sha }}"
-          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/plankit-$TAG.zip"
-          git switch main
-          jq --arg url "$URL" --arg sha "$SHA" \
-            '.plugins[0].source = {source: "archive", url: $url, sha256: $sha}' \
-            .claude-plugin/marketplace.json > mp.tmp
-          mv mp.tmp .claude-plugin/marketplace.json
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .claude-plugin/marketplace.json
-          git commit -m "chore: point marketplace at $TAG [skip ci]"
-          git push origin main
+  site:
+    needs: release
+    uses: ./.github/workflows/site.yml
+    secrets: inherit

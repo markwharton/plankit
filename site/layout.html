@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · plankit</title>
+<link rel="stylesheet" href="/style.css">
+{{if .Mermaid}}<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+for (const code of document.querySelectorAll('pre code.language-mermaid')) {
+  const pre = document.createElement('pre');
+  pre.className = 'mermaid';
+  pre.textContent = code.textContent;
+  code.parentElement.replaceWith(pre);
+}
+mermaid.initialize({ startOnLoad: false, theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral' });
+await mermaid.run();
+</script>{{end}}
+</head>
+<body>
+<header>
+  <a class="brand" href="/">plankit</a>
+  <nav>{{range .Nav}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}</nav>
+</header>
+<div class="wrap">
+<aside>
+  <p class="label">pk help</p>
+  <nav class="topics">{{range .Topics}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}} title="{{.Desc}}">{{.Label}}</a>{{end}}</nav>
+</aside>
+<main>
+{{.Body}}
+</main>
+</div>
+<footer><a href="/marketplace.json">marketplace.json</a> · <a href="https://github.com/markwharton/plankit">GitHub</a></footer>
+</body>
+</html>

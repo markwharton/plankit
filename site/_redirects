@@ -1,0 +1,7 @@
+/plankit.zip        https://github.com/markwharton/plankit/releases/latest/download/plankit.zip 302
+/pk/darwin-arm64    https://github.com/markwharton/plankit/releases/latest/download/pk-darwin-arm64 302
+/pk/darwin-amd64    https://github.com/markwharton/plankit/releases/latest/download/pk-darwin-amd64 302
+/pk/linux-amd64     https://github.com/markwharton/plankit/releases/latest/download/pk-linux-amd64 302
+/pk/linux-arm64     https://github.com/markwharton/plankit/releases/latest/download/pk-linux-arm64 302
+/pk/windows-amd64   https://github.com/markwharton/plankit/releases/latest/download/pk-windows-amd64.exe 302
+/pk/windows-arm64   https://github.com/markwharton/plankit/releases/latest/download/pk-windows-arm64.exe 302

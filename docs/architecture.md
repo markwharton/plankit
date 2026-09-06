@@ -44,13 +44,17 @@ anything that is judgment or orchestration lives in skills.
 `skills/` is the documentation. Each command has a topic directory
 (`skills/status/SKILL.md`) plus the `plankit` overview; the frontmatter
 is `name`, `description`, and optionally `argument-hint`. The same
-files serve two consumers:
+files serve three consumers:
 
 - Claude Code discovers them as `/plankit:` shortcuts when the plugin
   is enabled.
 - `tools/docgen` compiles them at build time into `internal/help/data`
   (a strict JSON IR per topic plus the raw bytes), and `pk help`
   renders that in the terminal.
+- `make site` renders them, with the README, the design documents,
+  and the changelog, into plankit.com through `site/layout.html`;
+  `site.yml` deploys the result and mirrors the published
+  marketplace.json from the latest release.
 
 docgen is a separate Go module so goldmark never links into pk; the
 main module is standard library only. docgen also validates: required
@@ -161,11 +165,17 @@ builds the current platform for `--plugin-dir` development and
 `pk release` pushing the tag triggers `.github/workflows/release.yml`:
 cross-compile, assemble the plugin archive (`.claude-plugin/
 plugin.json`, `skills/`, `hooks/`, `bin/` with binaries, LICENSE,
-CHANGELOG.md, README.md at zip root), publish the GitHub release, and
-commit the archive URL and sha256 into the marketplace entry on main
-as an archive source. The pin bump is the update signal; the explicit
+CHANGELOG.md, README.md at zip root), and publish the GitHub release
+with the archive, the binaries, and the published `marketplace.json`,
+whose archive source carries the versioned URL and sha256. That pin is
+a derived value, so it lives on the release as an asset and is
+mirrored by the site; it is never committed to a source branch, which
+keeps develop and main equal after every release. The explicit
 version inside plugin.json wins version resolution, so installers
-update exactly when a release is cut. `ci.yml` runs the suite, gofmt
+update exactly when a release is cut. The in-repo
+`.claude-plugin/marketplace.json` is the development manifest for
+`--plugin-dir` and validation, and the template the published one is
+derived from. `ci.yml` runs the suite, gofmt
 and docgen drift checks, and `claude plugin validate . --strict`.
 
 The `binaries` map observed in the Claude Code validator (basename →

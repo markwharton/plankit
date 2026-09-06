@@ -9,3 +9,4 @@ _sketch*
 # Editor and OS
 *.bak
 .DS_Store
+site/dist/
