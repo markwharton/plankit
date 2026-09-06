@@ -21,6 +21,7 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
 	"github.com/markwharton/plankit/internal/msg"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // Cmd is the brief command: hook-driven and explicitly invocable.
@@ -81,10 +82,13 @@ func run(ctx *cli.Context) error {
 
 // Text renders the policy as prose for a session. Two sentences are
 // constant, the first and the last; everything between is the resolved
-// config in words, and paragraphs come and go with the dials.
+// config in words, and paragraphs come and go with the dials. The first
+// names the version: the brief runs the plugin's own binary, so its
+// version is the plugin's, and a session shows it beside whatever pk
+// sits on the PATH.
 func Text(cfg *config.PkConfig) string {
 	var b strings.Builder
-	b.WriteString("plankit is configured in this repository.\n\n")
+	fmt.Fprintf(&b, "plankit %s is configured in this repository.\n\n", version.Version())
 
 	var types []string
 	for _, tc := range cfg.Changelog.ResolvedTypes() {

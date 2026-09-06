@@ -23,7 +23,9 @@ unconfigured repository the hook is silent and the command says so.
 
 ## What it says
 
-The first and last sentences are constant. The rest follows the
+The first sentence names the plugin's version, which is the version
+of the binary the brief runs, so a session shows it beside whatever
+`pk` sits on the PATH. The last sentence is constant. The rest follows the
 dials. `changelog.types` lists the commit types, the default table
 when the file leaves it empty. `guard.breaking` decides whether the
 marker rule mentions the ask. `guard.mode` and `guard.push` describe

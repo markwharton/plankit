@@ -12,6 +12,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // TestTextFollowsTheDials pins what each dial changes in the text.
@@ -99,7 +100,7 @@ func TestHookShapeInjectsContextOnlyWhenConfigured(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &resp); err != nil {
 		t.Fatalf("not a hook envelope: %v\n%s", err, out)
 	}
-	if resp.HookSpecificOutput.HookEventName != "SessionStart" || !strings.Contains(resp.HookSpecificOutput.AdditionalContext, "plankit is configured") {
+	if resp.HookSpecificOutput.HookEventName != "SessionStart" || !strings.Contains(resp.HookSpecificOutput.AdditionalContext, "plankit "+version.Version()+" is configured") {
 		t.Fatalf("wrong envelope: %+v", resp)
 	}
 }
@@ -110,7 +111,7 @@ func TestExplicitShapePrintsTextOrRefuses(t *testing.T) {
 	if code := cli.RunIO([]string{"pk", "brief", "--project-dir", dir}, []*cli.Command{Cmd}, nil, &out, &errw); code != 0 {
 		t.Fatalf("exit %d: %s", code, errw.String())
 	}
-	if !strings.HasPrefix(out.String(), "plankit is configured in this repository.") || strings.Contains(out.String(), "hookSpecificOutput") {
+	if !strings.HasPrefix(out.String(), "plankit "+version.Version()+" is configured in this repository.") || strings.Contains(out.String(), "hookSpecificOutput") {
 		t.Fatalf("explicit shape must print plain text:\n%s", out.String())
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".pk.json")); err != nil {
@@ -149,7 +150,7 @@ func TestHookActsWhereTheSessionIs(t *testing.T) {
 	if code := cli.RunIO([]string{"pk", "brief"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw); code != 0 {
 		t.Fatalf("exit %d: %s", code, errw.String())
 	}
-	if !strings.Contains(out.String(), "plankit is configured") {
+	if !strings.Contains(out.String(), "plankit "+version.Version()+" is configured") {
 		t.Fatalf("hook followed CLAUDE_PROJECT_DIR instead of the session's cwd: %q", out.String())
 	}
 }

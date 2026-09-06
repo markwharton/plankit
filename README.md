@@ -31,6 +31,8 @@ To update to a new release:
 
 With auto-update enabled for the marketplace (`/plugin`, Marketplaces),
 Claude Code runs the first two at startup and prompts for the third.
+The brief at the start of every session names the plugin's version, so
+a plugin behind the latest release is visible without asking.
 
 Then, in a repository you want plankit to manage:
 
