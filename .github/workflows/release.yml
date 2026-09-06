@@ -68,11 +68,13 @@ jobs:
         if: env.TAP_DISPATCH_TOKEN != ''
         continue-on-error: true
         run: |
-          curl -sf -X POST \
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $TAP_DISPATCH_TOKEN" \
             https://api.github.com/repos/markwharton/homebrew-plankit/dispatches \
-            -d '{"event_type":"bump-formula"}'
+            -d '{"event_type":"bump-formula"}')
+          echo "tap dispatch: HTTP $status (204 is accepted)"
+          test "$status" = 204
 
 
   site:

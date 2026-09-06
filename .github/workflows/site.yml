@@ -1,14 +1,13 @@
 name: site
 
 # Builds plankit.com from the repository (make site) and deploys it to
-# Cloudflare Pages. Runs on pushes to main (docs changes), on demand,
-# and as a job called by release.yml after a release (a release created
-# with the workflow token does not fire other workflows, so the call is
-# explicit). The published marketplace.json is mirrored from the latest
-# release: the site never holds a pin of its own.
+# Cloudflare Pages. Runs as a job called by release.yml after every
+# release, and on demand. Not on pushes to main: main moves only at a
+# release, and a push-triggered deploy would race the release job for
+# the latest marketplace.json. The published marketplace.json is
+# mirrored from the latest release: the site never holds a pin of its
+# own.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
   workflow_call:
 
