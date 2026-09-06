@@ -20,8 +20,12 @@
       "type": "para",
       "inlines": [
         {
+          "type": "code",
+          "text": "pk preserve"
+        },
+        {
           "type": "text",
-          "text": "Preserve copies an approved Claude Code plan, byte for byte, into "
+          "text": " copies an approved Claude Code plan, byte for byte, into "
         },
         {
           "type": "code",
@@ -184,7 +188,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Limit: identical plan bytes are never preserved twice; a duplicate reports the existing file. Limit: a plan shorter than "
+          "text": "Identical plan bytes are never preserved twice; a duplicate reports the existing file. A plan shorter than "
         },
         {
           "type": "code",
@@ -201,6 +205,146 @@
         {
           "type": "text",
           "text": ")."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --push\n        Push to origin after committing\n  --dry-run\n        Preview without writing or committing\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "settings",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Settings"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The "
+        },
+        {
+          "type": "code",
+          "text": "preserve"
+        },
+        {
+          "type": "text",
+          "text": " section of "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ":"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "\"preserve\": {\n  \"mode\": \"auto\" | \"manual\" | \"off\"\n}\n"
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "preserve.mode"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "auto"
+              },
+              {
+                "type": "text",
+                "text": ", "
+              },
+              {
+                "type": "code",
+                "text": "manual"
+              },
+              {
+                "type": "text",
+                "text": ", or "
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "manual"
+              },
+              {
+                "type": "text",
+                "text": ". An approved plan is committed at once, recorded for "
+              },
+              {
+                "type": "code",
+                "text": "/plankit:preserve"
+              },
+              {
+                "type": "text",
+                "text": " to commit, or ignored."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: "
+        },
+        {
+          "type": "code",
+          "text": "pk"
+        },
+        {
+          "type": "text",
+          "text": " commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " reads the file back and reports the first problem."
         }
       ]
     }

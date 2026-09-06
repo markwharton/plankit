@@ -45,9 +45,8 @@ The plugin replaces the files `pk setup` copied into a repository. In
 a repository configured by a v0.x release:
 
 1. Remove the plankit hook entries (guard, protect, preserve, and the
-   install-pk SessionStart entry) from `.claude/settings.json`.
-   Reason: the plugin wires the same hooks, and leftover entries fire
-   twice.
+   install-pk SessionStart entry) from `.claude/settings.json`. The
+   plugin wires the same hooks, and leftover entries fire twice.
 2. Delete `.claude/install-pk.sh`, the copied `.claude/skills/`, and
    `.claude/rules/plankit/`.
 3. Keep `.pk.json` and `docs/plans/`. The config schema is unchanged.
@@ -64,3 +63,20 @@ Invoke pk by its full path:
 
 Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` when it loads this
 page. In a terminal, `pk help` shows the placeholder verbatim.
+
+## Universal flags
+
+<!-- generated: universal-flags -->
+Every command accepts these:
+
+```
+  --project-dir <value>
+        Project directory (default: PK_PROJECT_DIR, else the current directory)
+  --format <value>
+        Output format: text or json (default text)
+  --plain
+        Undecorated output: no color, no wrapping
+  --quiet
+        Suppress notes and hints (errors still print)
+```
+<!-- /generated: universal-flags -->

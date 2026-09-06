@@ -16,8 +16,8 @@ header { display: flex; gap: 1.5rem; align-items: baseline; flex-wrap: wrap;
 .brand { font-weight: 700; font-size: 1.15rem; color: var(--fg); }
 header nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 header nav a[aria-current], .topics a[aria-current] { color: var(--fg); font-weight: 600; }
-.wrap { display: grid; grid-template-columns: 12rem minmax(0, 44rem); gap: 2rem;
-  padding: 1.5rem 1.25rem; max-width: 62rem; }
+.wrap { display: grid; grid-template-columns: 12rem minmax(0, 54rem); gap: 2rem;
+  padding: 1.5rem 1.25rem; max-width: 72rem; }
 @media (max-width: 48rem) { .wrap { grid-template-columns: 1fr; } }
 aside .label { margin: 0 0 .5rem; color: var(--muted); font: 600 .75rem/1 monospace;
   text-transform: uppercase; letter-spacing: .06em; }
@@ -27,7 +27,8 @@ main h1 { font-size: 1.7rem; margin-top: 0; }
 main h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em;
   background: var(--code-bg); padding: .1em .3em; border-radius: 3px; }
-pre { background: var(--code-bg); padding: .85rem 1rem; overflow-x: auto; border-radius: 4px; }
+pre { background: var(--code-bg); padding: .85rem 1rem; overflow-x: auto; border-radius: 4px;
+  font-size: .84rem; line-height: 1.45; }
 pre code { background: none; padding: 0; }
 pre.mermaid { background: none; padding: 0; margin: 1.25rem 0; text-align: center; }
 footer { color: var(--muted); font-size: .85rem; padding: 1.5rem 1.25rem;
@@ -38,7 +39,7 @@ footer { color: var(--muted); font-size: .85rem; padding: 1.5rem 1.25rem;
 .terminal figcaption { font: 600 .78rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--muted); padding: .5rem .85rem; border-bottom: 1px solid var(--line);
   text-transform: uppercase; letter-spacing: .05em; }
-.terminal pre { margin: 0; border-radius: 0; font-size: .86rem; }
+.terminal pre { margin: 0; border-radius: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .terminal .prompt { color: var(--muted); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .75rem; }
 .card { display: flex; flex-direction: column; gap: .35rem; padding: .85rem; border: 1px solid var(--line);

@@ -5,7 +5,7 @@ description: Preserve the approved plan into docs/plans - modes, the pending poi
 
 # pk preserve
 
-Preserve copies an approved Claude Code plan, byte for byte, into
+`pk preserve` copies an approved Claude Code plan, byte for byte, into
 `docs/plans/` under a dated, sequenced, slugged filename and commits
 it with a `plan:` message.
 
@@ -26,6 +26,32 @@ explicit invocation consumes the pending pointer and commits, whatever
 the mode. `--push` also pushes the commit. `--dry-run` previews the
 filename and commit message.
 
-Limit: identical plan bytes are never preserved twice; a duplicate
-reports the existing file. Limit: a plan shorter than `minPlanSize`
-bytes is ignored (`grep minPlanSize internal/preserve/preserve.go`).
+Identical plan bytes are never preserved twice; a duplicate reports
+the existing file. A plan shorter than `minPlanSize` bytes is ignored (`grep minPlanSize internal/preserve/preserve.go`).
+
+## Flags
+
+<!-- generated: flags -->
+```
+  --push
+        Push to origin after committing
+  --dry-run
+        Preview without writing or committing
+```
+<!-- /generated: flags -->
+
+## Settings
+
+<!-- generated: settings -->
+The `preserve` section of `.pk.json`:
+
+```
+"preserve": {
+  "mode": "auto" | "manual" | "off"
+}
+```
+
+- `preserve.mode`: `auto`, `manual`, or `off`; default `manual`. An approved plan is committed at once, recorded for `/plankit:preserve` to commit, or ignored.
+
+An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: `pk` commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. `pk status` reads the file back and reports the first problem.
+<!-- /generated: settings -->

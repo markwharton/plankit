@@ -110,27 +110,28 @@ go test -run TestName ./internal/<pkg>   # single test
 ## Changing pk
 
 Run the test suite at the start of a session and report the status.
-Run it before and after each change. Reason: failures are then
-attributable to the change.
+Run it before and after each change, so a failure is attributable to
+the change.
 
 ### Development Standards
 
 - **Preserve the structure you were given.** Let the data model drive
   the code. Never flatten structured data into lists and reconstruct
-  it with heuristics. Reason: the context is lost at the flattening.
+  it with heuristics; the context is lost at the flattening.
 - **Fail fast, no silent fallbacks.** When something required is
   missing or wrong, fail with a message naming it, never a made-up
-  default. Limit: a documented default for an optional setting is not
-  a fallback. The hooks report to stderr the same way, then exit 0 and
-  decline to decide. They never guess a decision.
+  default. A documented default for an optional setting is not a
+  fallback. The hooks report to stderr the same way with exit 1, which
+  Claude Code shows without blocking, and decline to decide; they never
+  guess a decision and never exit 2.
 - **Grep before done.** When fixing a pattern or renaming, find every
   instance in the repository and change them together. Check: a
   second search shows no hits.
 - **Work is done when the checks and a smoke test pass.** Build,
   tests, and lint; then an end-to-end run with specific commands,
   their output, and one case that must fail. A proof whose output you
-  did not see is not a proof. Limit: a pure internal refactor needs
-  the suite only.
+  did not see is not a proof. A pure internal refactor needs the suite
+  only.
 - **Diagnostic scripts over rebuild cycles.** Before a second full
   rebuild while debugging, write a minimal script that tests the
   specific issue.
@@ -169,5 +170,9 @@ attributable to the change.
   and docs/architecture.md before committing.
 - Skills ship verbatim into model contexts: plain markdown, no
   placeholders, no diagrams.
+- Names keep their spelling everywhere, including at the start of a
+  sentence: `plankit`, `pk`, `craft`, and the command names. A command
+  as the subject of a sentence is `pk guard` or "the guard hook",
+  never `Guard`.
 - Derived values (digests, pins, compiled output) are never committed
   to a source branch.

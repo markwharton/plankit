@@ -46,11 +46,12 @@ func run(ctx *cli.Context) error {
 			return nil
 		}
 		cfg, err := config.Load(root)
+		if errors.Is(err, config.ErrNotConfigured) {
+			return nil // off here; the hook fires everywhere
+		}
 		if err != nil {
-			if !errors.Is(err, config.ErrNotConfigured) {
-				msg.Hookf(ctx.Stderr, "brief", "%v", err)
-			}
-			return nil // off here, or broken: never block a session
+			msg.Hookf(ctx.Stderr, "brief", "%v", err)
+			return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
 		}
 		if err := hookio.WriteSessionStart(ctx.Stdout, Text(cfg)); err != nil {
 			msg.Hookf(ctx.Stderr, "brief", "%v", err)

@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strings"
 
+	"errors"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -77,6 +78,12 @@ func main() {
 	if *skillsDir == "" || *outDir == "" {
 		fmt.Fprintln(os.Stderr, "usage: docgen -skills <dir> -out <dir> [-site <dir> -root <dir>]")
 		os.Exit(2)
+	}
+	if changed, err := updateRegions(*skillsDir); err != nil {
+		fmt.Fprintf(os.Stderr, "docgen: regions: %v\n", err)
+		os.Exit(1)
+	} else if len(changed) > 0 {
+		fmt.Fprintf(os.Stderr, "docgen: regions rewritten: %s\n", strings.Join(changed, ", "))
 	}
 	if err := compileAll(*skillsDir, *outDir); err != nil {
 		fmt.Fprintf(os.Stderr, "docgen: %v\n", err)
@@ -232,10 +239,17 @@ type compiler struct {
 	ids    map[string]int
 }
 
+// errSkipBlock marks a block that compiles to nothing: a region
+// marker comment.
+var errSkipBlock = errors.New("skip")
+
 func (c *compiler) blocks(parent ast.Node) ([]block, error) {
 	out := []block{}
 	for n := parent.FirstChild(); n != nil; n = n.NextSibling() {
 		b, err := c.block(n)
+		if errors.Is(err, errSkipBlock) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -290,6 +304,15 @@ func (c *compiler) block(n ast.Node) (block, error) {
 	case *ast.ThematicBreak:
 		return block{Type: "rule"}, nil
 	case *ast.HTMLBlock:
+		// Only region markers, which are comments; nothing else renders.
+		var raw bytes.Buffer
+		for i := 0; i < v.Lines().Len(); i++ {
+			seg := v.Lines().At(i)
+			raw.Write(seg.Value(c.source))
+		}
+		if text := strings.TrimSpace(raw.String()); strings.HasPrefix(text, "<!--") && strings.HasSuffix(text, "-->") {
+			return block{}, errSkipBlock
+		}
 		return block{}, fmt.Errorf("HTML block: outside the subset")
 	default:
 		return block{}, fmt.Errorf("unsupported block %s: outside the subset", n.Kind())

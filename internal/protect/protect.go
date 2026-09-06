@@ -44,10 +44,11 @@ func run(ctx *cli.Context) error {
 		return nil
 	}
 	if _, err := config.Load(root); err != nil {
-		if !errors.Is(err, config.ErrNotConfigured) {
-			msg.Hookf(ctx.Stderr, "protect", "%v", err)
+		if errors.Is(err, config.ErrNotConfigured) {
+			return nil // off here; the hook fires everywhere
 		}
-		return nil // off, or policy unreadable: fail open
+		msg.Hookf(ctx.Stderr, "protect", "%v", err)
+		return cli.Silent(hookio.ExitReport) // shown, not blocking; protect takes no action
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, root) {

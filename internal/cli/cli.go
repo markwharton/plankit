@@ -18,6 +18,7 @@ import (
 	"sort"
 
 	"github.com/markwharton/plankit/internal/msg"
+	"strings"
 )
 
 // FlagType enumerates the flag kinds a command may declare.
@@ -238,16 +239,28 @@ func printFlagBlock(w io.Writer, title string, specs []FlagSpec) {
 	if len(specs) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "\n%s\n", title)
+	fmt.Fprintf(w, "\n%s\n%s", title, FlagBlock(specs))
+}
+
+// FlagBlock renders flag specs as the reference lines --help prints:
+// the flag with <value> for string flags, then its usage and default.
+// docgen writes the same block into each command's page, so the page
+// and --help are one rendering of one declaration.
+func FlagBlock(specs []FlagSpec) string {
+	var b strings.Builder
 	for _, s := range specs {
 		line := "  --" + s.Name
 		if s.Type == StringFlag {
 			line += " <value>"
 		}
-		fmt.Fprintf(w, "%s\n        %s", line, s.Usage)
+		fmt.Fprintf(&b, "%s\n        %s", line, s.Usage)
 		if s.Default != "" && s.Default != "false" {
-			fmt.Fprintf(w, " (default %s)", s.Default)
+			fmt.Fprintf(&b, " (default %s)", s.Default)
 		}
-		fmt.Fprintln(w)
+		b.WriteString("\n")
 	}
+	return b.String()
 }
+
+// UniversalFlags returns the flags every command accepts.
+func UniversalFlags() []FlagSpec { return universalFlags }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/markwharton/plankit/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,6 +62,9 @@ func TestBuildSite(t *testing.T) {
 	}
 	if !strings.Contains(s, `class="brand" href="/" aria-current="page"`) {
 		t.Error("the wordmark carries the current marker on the front page")
+	}
+	if !strings.Contains(s, `href="/`+config.SchemaFile+`"`) {
+		t.Error("the footer links the policy file's schema")
 	}
 	if !strings.Contains(s, `class="card" href="/docs/alpha"`) || strings.Contains(s, `class="card" href="/docs/plankit"`) || strings.Contains(s, `class="card" href="/docs/craft"`) {
 		t.Error("command grid must list command pages and skip documents")

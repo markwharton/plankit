@@ -45,7 +45,7 @@
         },
         {
           "type": "text",
-          "text": " creates it. Reason: the release stays a two-step, generate and review, then tag and push."
+          "text": " creates it, so the release stays a two-step: generate and review, then tag and push."
         }
       ]
     },
@@ -250,6 +250,238 @@
         {
           "type": "text",
           "text": "Run it from the working branch. A protected branch is refused."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --bump \u003cvalue\u003e\n        Override the version bump: major, minor, or patch\n  --dry-run\n        Print the section to stdout without writing or committing\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section\n  --undo\n        Unwind the last pk changelog commit (must be unpushed)\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "settings",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Settings"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The "
+        },
+        {
+          "type": "code",
+          "text": "changelog"
+        },
+        {
+          "type": "text",
+          "text": " section of "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ":"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "\"changelog\": {\n  \"hooks\": {\n    \"postVersion\": \"\u003ccommand\u003e\",\n    \"preCommit\": \"\u003ccommand\u003e\"\n  },\n  \"showScope\": true | false,\n  \"types\": [{ \"hidden\": true | false, \"section\": \"\u003csection\u003e\", \"type\": \"\u003ctype\u003e\" }, ...],\n  \"versionFiles\": [{ \"path\": \"\u003cpath\u003e\", \"type\": \"json\" }, ...]\n}\n"
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "changelog.hooks.postVersion"
+              },
+              {
+                "type": "text",
+                "text": ": a shell command; default none. Runs after the version files are stamped and before CHANGELOG.md is written, with "
+              },
+              {
+                "type": "code",
+                "text": "$VERSION"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "changelog.hooks.preCommit"
+              },
+              {
+                "type": "text",
+                "text": ": a shell command; default none. Runs before the release commit, with "
+              },
+              {
+                "type": "code",
+                "text": "$VERSION"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "changelog.showScope"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "true"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "false"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "false"
+              },
+              {
+                "type": "text",
+                "text": ". Includes each commit's scope in its changelog entry."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "changelog.types"
+              },
+              {
+                "type": "text",
+                "text": ": a list of "
+              },
+              {
+                "type": "code",
+                "text": "{\"type\", \"section\", \"hidden\"}"
+              },
+              {
+                "type": "text",
+                "text": " rows; default the table under "
+              },
+              {
+                "type": "code",
+                "text": "pk help changelog"
+              },
+              {
+                "type": "text",
+                "text": ". Maps commit types to changelog sections; a hidden type is tracked and never listed; an empty list means the default table."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "changelog.versionFiles"
+              },
+              {
+                "type": "text",
+                "text": ": a list of "
+              },
+              {
+                "type": "code",
+                "text": "{\"path\", \"type\"}"
+              },
+              {
+                "type": "text",
+                "text": " rows; default none. JSON files whose root "
+              },
+              {
+                "type": "code",
+                "text": "version"
+              },
+              {
+                "type": "text",
+                "text": " field is stamped in place at release."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: "
+        },
+        {
+          "type": "code",
+          "text": "pk"
+        },
+        {
+          "type": "text",
+          "text": " commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " reads the file back and reports the first problem."
         }
       ]
     }

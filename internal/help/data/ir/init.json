@@ -46,7 +46,15 @@
               },
               {
                 "type": "text",
-                "text": "), guard and preserve modes stated in full, and the release branch guarded"
+                "text": "), guard and preserve modes stated in full, and the release branch guarded. Its first line names the file's JSON Schema, "
+              },
+              {
+                "type": "code",
+                "text": "https://plankit.com/pk.schema.json"
+              },
+              {
+                "type": "text",
+                "text": ", generated from the same table as each page's Settings section, so an editor validates the file as it is typed."
               }
             ]
           }
@@ -81,7 +89,7 @@
         },
         {
           "type": "text",
-          "text": " is not created here. Preserve creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+          "text": " is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
         }
       ]
     },
@@ -134,8 +142,12 @@
       "type": "para",
       "inlines": [
         {
+          "type": "code",
+          "text": "pk init"
+        },
+        {
           "type": "text",
-          "text": "Init refuses to run twice; edit "
+          "text": " refuses to run twice; edit "
         },
         {
           "type": "code",
@@ -143,9 +155,32 @@
         },
         {
           "type": "text",
-          "text": " once it exists. Commit the created files."
+          "text": " once it exists, and "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " reads it back and reports the first problem. Commit the created files."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --dry-run\n        Preview without making any changes\n"
     }
   ]
 }

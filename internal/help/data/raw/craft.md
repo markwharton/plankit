@@ -16,8 +16,8 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 ### Working
 
 - **Test at the start of a session and report the status; test before
-  and after each change.** Reason: a failure is then attributable to
-  the change. Check: the suite output before and after appears in the
+  and after each change.** A failure is then attributable to the
+  change. Check: the suite output before and after appears in the
   session.
 - **Grep before done.** When fixing a pattern or renaming, change every
   instance in the repository together. Check: a second search shows no
@@ -25,7 +25,7 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 - **Work is done when the checks and a smoke test pass.** Build, tests,
   lint, then an end-to-end run with specific commands, their output,
   and one case that must fail. A proof whose output you did not see is
-  not a proof. Limit: a pure internal refactor needs the suite only.
+  not a proof. A pure internal refactor needs the suite only.
 - **Write a diagnostic script before a second full rebuild while
   debugging.** Check: the script exists and reproduces the issue.
 - **A failed text search means not found by this method.** When
@@ -35,10 +35,10 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 ### Code
 
 - **Preserve the structure you were given.** Do not flatten structured
-  data into lists and reconstruct it with heuristics. Reason: the
-  context is lost at the flattening. Check: none automated; caught only in review.
+  data into lists and reconstruct it with heuristics; the context is
+  lost at the flattening. Check: none automated; caught only in review.
 - **Fail fast, no silent fallbacks.** When something required is
-  missing or wrong, stop with a message naming it. Limit: a documented
+  missing or wrong, stop with a message naming it. A documented
   default for an optional setting is not a fallback. Check: a test for
   the error path.
 

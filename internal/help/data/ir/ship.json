@@ -37,7 +37,15 @@
         },
         {
           "type": "text",
-          "text": " as one invocation. Ship carries no state of its own; the trailer decides what remains. A run interrupted between the halves resumes at release on rerun."
+          "text": " as one invocation. "
+        },
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": " carries no state of its own; the trailer decides what remains. A run interrupted between the halves resumes at release on rerun."
         }
       ]
     },
@@ -82,7 +90,7 @@
         },
         {
           "type": "text",
-          "text": " previews the section when nothing is pending, or rehearses the release when a Release-Tag commit exists. Limit: the release half cannot be rehearsed before its changelog commit exists."
+          "text": " previews the section when nothing is pending, or rehearses the release when a Release-Tag commit exists; the release half cannot be rehearsed before its changelog commit exists."
         }
       ]
     },
@@ -167,9 +175,24 @@
         },
         {
           "type": "text",
-          "text": ". Decision: a major ships only on the developer's go."
+          "text": ". A major ships only on the developer's go."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --bump \u003cvalue\u003e\n        Override the version bump: major, minor, or patch (passed to changelog)\n  --dry-run\n        Rehearse: preview the section, or the release when one is already pending\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (passed to changelog)\n"
     }
   ]
 }

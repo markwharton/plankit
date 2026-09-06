@@ -128,7 +128,7 @@ func run(ctx *cli.Context) error {
 			return nil // plankit is off here; the hook fires everywhere
 		case err != nil:
 			msg.Hookf(ctx.Stderr, "preserve", "%v", err)
-			return nil
+			return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
 		}
 		mode = cfg.Preserve.ResolvedMode()
 	}

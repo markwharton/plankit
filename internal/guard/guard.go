@@ -62,7 +62,7 @@ func run(ctx *cli.Context) error {
 	}
 	if err != nil {
 		msg.Hookf(ctx.Stderr, "guard", "%v", err)
-		return nil
+		return cli.Silent(hookio.ExitReport) // shown, not blocking; guard takes no action
 	}
 
 	// Branch policy: a mutation while a protected branch is checked out.

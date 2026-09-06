@@ -220,3 +220,10 @@ func WriteSessionStart(w io.Writer, additionalContext string) error {
 	resp.HookSpecificOutput.AdditionalContext = additionalContext
 	return json.NewEncoder(w).Encode(resp)
 }
+
+// ExitReport is the exit code a hook uses to report a problem it
+// cannot act on: a policy file that fails to load, an unreadable
+// payload. Claude Code shows the hook's stderr to the person and
+// continues; exit 2 would block the tool call, so a hook never uses
+// it, and exit 0 would hide the message.
+const ExitReport = 1

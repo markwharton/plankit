@@ -38,3 +38,34 @@ signing or artifact builds keyed on the tag. Both receive `$VERSION`
 pk release --dry-run
 pk release
 ```
+
+## Flags
+
+<!-- generated: flags -->
+```
+  --dry-run
+        Validate without merging, tagging, or pushing
+```
+<!-- /generated: flags -->
+
+## Settings
+
+<!-- generated: settings -->
+The `release` section of `.pk.json`:
+
+```
+"release": {
+  "branch": "<branch>",
+  "hooks": {
+    "prePush": "<command>",
+    "preRelease": "<command>"
+  }
+}
+```
+
+- `release.branch`: a branch name; default the branch `pk init` ran on. The branch releases merge into; empty selects the trunk flow, which tags the default branch.
+- `release.hooks.prePush`: a shell command; default none. Runs after the tag exists and before the push, with `$VERSION` and `$TAG`.
+- `release.hooks.preRelease`: a shell command; default none. Runs before the tag is created, with `$VERSION` and `$TAG`; `--dry-run` rehearses it.
+
+An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: `pk` commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. `pk status` reads the file back and reports the first problem.
+<!-- /generated: settings -->

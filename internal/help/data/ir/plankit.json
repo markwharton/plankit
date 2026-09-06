@@ -283,7 +283,7 @@
               },
               {
                 "type": "text",
-                "text": ". Reason: the plugin wires the same hooks, and leftover entries fire twice."
+                "text": ". The plugin wires the same hooks, and leftover entries fire twice."
               }
             ]
           }
@@ -408,6 +408,30 @@
           "text": " shows the placeholder verbatim."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "universal-flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Universal flags"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command accepts these:"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --plain\n        Undecorated output: no color, no wrapping\n  --quiet\n        Suppress notes and hints (errors still print)\n"
     }
   ]
 }

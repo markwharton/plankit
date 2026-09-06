@@ -85,7 +85,7 @@
               },
               {
                 "type": "text",
-                "text": " Reason: a failure is then attributable to the change. Check: the suite output before and after appears in the session."
+                "text": " A failure is then attributable to the change. Check: the suite output before and after appears in the session."
               }
             ]
           }
@@ -125,7 +125,7 @@
               },
               {
                 "type": "text",
-                "text": " Build, tests, lint, then an end-to-end run with specific commands, their output, and one case that must fail. A proof whose output you did not see is not a proof. Limit: a pure internal refactor needs the suite only."
+                "text": " Build, tests, lint, then an end-to-end run with specific commands, their output, and one case that must fail. A proof whose output you did not see is not a proof. A pure internal refactor needs the suite only."
               }
             ]
           }
@@ -189,7 +189,7 @@
               },
               {
                 "type": "text",
-                "text": " Do not flatten structured data into lists and reconstruct it with heuristics. Reason: the context is lost at the flattening. Check: none automated; caught only in review."
+                "text": " Do not flatten structured data into lists and reconstruct it with heuristics; the context is lost at the flattening. Check: none automated; caught only in review."
               }
             ]
           }
@@ -205,7 +205,7 @@
               },
               {
                 "type": "text",
-                "text": " When something required is missing or wrong, stop with a message naming it. Limit: a documented default for an optional setting is not a fallback. Check: a test for the error path."
+                "text": " When something required is missing or wrong, stop with a message naming it. A documented default for an optional setting is not a fallback. Check: a test for the error path."
               }
             ]
           }

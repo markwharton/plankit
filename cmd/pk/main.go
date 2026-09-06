@@ -8,38 +8,13 @@ package main
 import (
 	"os"
 
-	"github.com/markwharton/plankit/internal/brief"
-	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
-	"github.com/markwharton/plankit/internal/guard"
-	"github.com/markwharton/plankit/internal/help"
-	"github.com/markwharton/plankit/internal/preserve"
-	"github.com/markwharton/plankit/internal/protect"
-	"github.com/markwharton/plankit/internal/release"
-	"github.com/markwharton/plankit/internal/repo"
-	"github.com/markwharton/plankit/internal/ship"
-	"github.com/markwharton/plankit/internal/version"
+	"github.com/markwharton/plankit/internal/registry"
 )
 
 func main() {
-	os.Exit(cli.Run(os.Args, commands()))
+	os.Exit(cli.Run(os.Args, registry.Commands()))
 }
 
 // commands is the explicit registry. Each layer appends here; there is no
 // init-time magic, so reading this list is reading the product surface.
-func commands() []*cli.Command {
-	return []*cli.Command{
-		changelog.Cmd,
-		guard.Cmd,
-		brief.Cmd,
-		help.Cmd,
-		preserve.Cmd,
-		protect.Cmd,
-		release.Cmd,
-		release.PinCmd,
-		ship.Cmd,
-		repo.InitCmd,
-		repo.StatusCmd,
-		version.Cmd,
-	}
-}

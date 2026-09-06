@@ -117,8 +117,9 @@ sessions.
 
 ## Two promises
 
-A hook never blocks work by failing. Whatever goes wrong inside it, it
-reports on stderr, exits 0, and Claude Code continues.
+A hook never blocks work by failing. Whatever goes wrong inside it,
+including a policy file that no longer loads, it reports the problem,
+Claude Code shows the message, and the command continues.
 
 A repository without a policy file gets no action from any hook. The
 plugin is installed everywhere; it is on only where `pk init` ran.

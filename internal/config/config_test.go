@@ -1,7 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,5 +97,50 @@ func TestAbsentModesResolveToDefaults(t *testing.T) {
 	}
 	if cfg.Guard.ResolvedMode() != DefaultGuardMode || cfg.Guard.ResolvedPush() != DefaultGuardPush || cfg.Preserve.ResolvedMode() != DefaultPreserveMode {
 		t.Fatalf("defaults: %+v", cfg)
+	}
+}
+
+// TestWrittenConfigIsSorted holds the file pk init writes to sorted
+// keys at every level. Struct field order is what json.Marshal
+// follows, so a field appended out of order fails here.
+func TestWrittenConfigIsSorted(t *testing.T) {
+	data, err := json.Marshal(Default("main"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	var walk func(path string)
+	walk = func(path string) {
+		tok, err := dec.Token()
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, ok := tok.(json.Delim)
+		if !ok {
+			return // scalar
+		}
+		switch d {
+		case '{':
+			prev := ""
+			for dec.More() {
+				k, _ := dec.Token()
+				key := k.(string)
+				if prev != "" && key < prev {
+					t.Errorf("%s: key %q follows %q; the written config must be sorted at every level", path, key, prev)
+				}
+				prev = key
+				walk(path + "." + key)
+			}
+			dec.Token() // '}'
+		case '[':
+			for i := 0; dec.More(); i++ {
+				walk(fmt.Sprintf("%s[%d]", path, i))
+			}
+			dec.Token() // ']'
+		}
+	}
+	walk("$")
+	if _, err := dec.Token(); err != io.EOF {
+		t.Fatalf("trailing tokens: %v", err)
 	}
 }

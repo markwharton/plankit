@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/config"
 	"github.com/yuin/goldmark"
 )
 
@@ -31,13 +32,14 @@ type navItem struct {
 }
 
 type sitePage struct {
-	Path    string // output path relative to the site root
-	Title   string
-	Body    template.HTML
-	Nav     []navItem
-	Topics  []navItem
-	Mermaid bool
-	Home    bool // the front page; the wordmark carries the current marker
+	Path       string // output path relative to the site root
+	Title      string
+	Body       template.HTML
+	Nav        []navItem
+	Topics     []navItem
+	Mermaid    bool
+	Home       bool   // the front page; the wordmark carries the current marker
+	SchemaFile string // the policy file's schema, linked in the footer
 }
 
 // buildSite renders every page into out. root is the repository root
@@ -105,7 +107,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	)
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
-		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html"}
+		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile}
 		clean := "/" + strings.TrimSuffix(path, ".html") + linkExt
 		for _, n := range nav {
 			n.Current = n.Href == clean
@@ -162,6 +164,13 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	// Without a root 404.html, Cloudflare Pages answers every unknown
 	// path with the front page.
 	if err := writeHTML("404.html", "Not found", template.HTML(`<h1>Not found</h1><p>There is no page at this address. <a href="/">Home</a>.</p>`), false); err != nil {
+		return err
+	}
+	schema, err := schemaJSON()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(out, config.SchemaFile), schema, 0o644); err != nil {
 		return err
 	}
 	for _, static := range []string{"style.css", "_redirects"} {

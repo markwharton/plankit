@@ -168,6 +168,184 @@
       "type": "codeblock",
       "lang": "bash",
       "text": "pk release --dry-run\npk release\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --dry-run\n        Validate without merging, tagging, or pushing\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "settings",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Settings"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The "
+        },
+        {
+          "type": "code",
+          "text": "release"
+        },
+        {
+          "type": "text",
+          "text": " section of "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ":"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "\"release\": {\n  \"branch\": \"\u003cbranch\u003e\",\n  \"hooks\": {\n    \"prePush\": \"\u003ccommand\u003e\",\n    \"preRelease\": \"\u003ccommand\u003e\"\n  }\n}\n"
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "release.branch"
+              },
+              {
+                "type": "text",
+                "text": ": a branch name; default the branch "
+              },
+              {
+                "type": "code",
+                "text": "pk init"
+              },
+              {
+                "type": "text",
+                "text": " ran on. The branch releases merge into; empty selects the trunk flow, which tags the default branch."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "release.hooks.prePush"
+              },
+              {
+                "type": "text",
+                "text": ": a shell command; default none. Runs after the tag exists and before the push, with "
+              },
+              {
+                "type": "code",
+                "text": "$VERSION"
+              },
+              {
+                "type": "text",
+                "text": " and "
+              },
+              {
+                "type": "code",
+                "text": "$TAG"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "release.hooks.preRelease"
+              },
+              {
+                "type": "text",
+                "text": ": a shell command; default none. Runs before the tag is created, with "
+              },
+              {
+                "type": "code",
+                "text": "$VERSION"
+              },
+              {
+                "type": "text",
+                "text": " and "
+              },
+              {
+                "type": "code",
+                "text": "$TAG"
+              },
+              {
+                "type": "text",
+                "text": "; "
+              },
+              {
+                "type": "code",
+                "text": "--dry-run"
+              },
+              {
+                "type": "text",
+                "text": " rehearses it."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: "
+        },
+        {
+          "type": "code",
+          "text": "pk"
+        },
+        {
+          "type": "text",
+          "text": " commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " reads the file back and reports the first problem."
+        }
+      ]
     }
   ]
 }

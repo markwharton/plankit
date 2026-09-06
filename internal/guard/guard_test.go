@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/markwharton/plankit/internal/hookio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -176,12 +177,17 @@ func TestMalformedPayloadFailsOpen(t *testing.T) {
 	}
 }
 
-func TestBadConfigFailsOpen(t *testing.T) {
+// TestBadConfigIsReportedNotBlocking: a policy file that fails to load
+// exits 1 with the message naming the key, which Claude Code shows to
+// the person and then continues; guard makes no decision.
+func TestBadConfigIsReportedNotBlocking(t *testing.T) {
 	dir := scratch(t, "block", "block")
 	os.WriteFile(config.Path(dir), []byte(`{"guard": {"mode": "blok"}}`), 0o644)
-	out, errw := runGuard(t, dir, "git commit -m x")
-	if out != "" || !strings.Contains(errw, "guard.mode") {
-		t.Fatalf("out=%q errw=%q", out, errw)
+	payload, _ := json.Marshal(map[string]any{"cwd": dir, "tool_input": map[string]string{"command": "git commit -m x"}})
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "guard"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "guard.mode") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
 	}
 }
 

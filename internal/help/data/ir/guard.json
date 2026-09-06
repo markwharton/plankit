@@ -2,7 +2,7 @@
   "schema": 1,
   "meta": {
     "name": "guard",
-    "description": "How pk guard protects branches - the mode, push, and breaking-marker dials, and how to change them"
+    "description": "How pk guard decides what an agent may do to git, and how to tune it"
   },
   "blocks": [
     {
@@ -20,8 +20,12 @@
       "type": "para",
       "inlines": [
         {
+          "type": "code",
+          "text": "pk guard"
+        },
+        {
           "type": "text",
-          "text": "Guard is a PreToolUse hook on shell commands. Before the agent runs a git mutation ("
+          "text": " is a PreToolUse hook on shell commands. Before the agent runs a git mutation ("
         },
         {
           "type": "code",
@@ -149,7 +153,7 @@
               },
               {
                 "type": "text",
-                "text": ", on any branch, is denied, questioned, or ignored. Reason: pushing is the developer's action."
+                "text": ", on any branch, is denied, questioned, or ignored, because pushing is the developer's action"
               }
             ]
           }
@@ -196,7 +200,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Guard recognizes git through chains ("
+          "text": "The hook recognizes git through chains ("
         },
         {
           "type": "code",
@@ -256,7 +260,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A guardrail against an agent following its defaults, not a security boundary. Limit: an internal error fails open with a note on stderr. An unconfigured repository (no "
+          "text": "A guardrail against an agent following its defaults, not a security boundary. An internal error fails open with a note on stderr. An unconfigured repository (no "
         },
         {
           "type": "code",
@@ -292,14 +296,14 @@
         },
         {
           "type": "text",
-          "text": " and commit it."
+          "text": " and commit it. The keys, their values, and their defaults are under Settings below."
         }
       ]
     },
     {
       "type": "codeblock",
       "lang": "json",
-      "text": "\"guard\": { \"branches\": [\"main\"], \"mode\": \"block\", \"push\": \"block\", \"breaking\": \"ask\" }\n"
+      "text": "\"guard\": {\n  \"branches\": [\"main\"],\n  \"breaking\": \"ask\",\n  \"mode\": \"block\",\n  \"push\": \"block\"\n}\n"
     },
     {
       "type": "heading",
@@ -333,7 +337,7 @@
         },
         {
           "type": "text",
-          "text": " footer) drives the next major version. Decision: the marker is the developer's claim; an agent never adds one on its own judgment. Guard asks before a "
+          "text": " footer) drives the next major version. The marker is the developer's claim, and an agent never adds one on its own judgment. The hook asks before a "
         },
         {
           "type": "code",
@@ -358,7 +362,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Limit: only "
+          "text": "Only "
         },
         {
           "type": "code",
@@ -374,7 +378,7 @@
         },
         {
           "type": "text",
-          "text": " arguments are inspected. "
+          "text": " arguments are inspected; "
         },
         {
           "type": "code",
@@ -382,7 +386,7 @@
         },
         {
           "type": "text",
-          "text": " files and editor commits pass through. Reason: agent commits are "
+          "text": " files and editor commits pass through. That covers the case the rule exists for, since agent commits are "
         },
         {
           "type": "code",
@@ -391,6 +395,256 @@
         {
           "type": "text",
           "text": " commits."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "settings",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Settings"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The "
+        },
+        {
+          "type": "code",
+          "text": "guard"
+        },
+        {
+          "type": "text",
+          "text": " section of "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ":"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "\"guard\": {\n  \"branches\": [\"\u003cbranch\u003e\", ...],\n  \"breaking\": \"ask\" | \"off\",\n  \"mode\": \"block\" | \"ask\" | \"off\",\n  \"push\": \"block\" | \"ask\" | \"off\"\n}\n"
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.branches"
+              },
+              {
+                "type": "text",
+                "text": ": a list of branch names; default the release branch. The protected branches: a git mutation while one is checked out is judged by "
+              },
+              {
+                "type": "code",
+                "text": "guard.mode"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.breaking"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": ". A commit whose message carries a breaking marker ("
+              },
+              {
+                "type": "code",
+                "text": "!"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "BREAKING CHANGE"
+              },
+              {
+                "type": "text",
+                "text": ") is questioned, or not."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.mode"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "block"
+              },
+              {
+                "type": "text",
+                "text": ", "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": ", or "
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "block"
+              },
+              {
+                "type": "text",
+                "text": ". A git mutation while a protected branch is checked out is denied, questioned, or ignored."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.push"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "block"
+              },
+              {
+                "type": "text",
+                "text": ", "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": ", or "
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "block"
+              },
+              {
+                "type": "text",
+                "text": ". Any "
+              },
+              {
+                "type": "code",
+                "text": "git push"
+              },
+              {
+                "type": "text",
+                "text": ", on any branch, is denied, questioned, or ignored."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: "
+        },
+        {
+          "type": "code",
+          "text": "pk"
+        },
+        {
+          "type": "text",
+          "text": " commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " reads the file back and reports the first problem."
         }
       ]
     }

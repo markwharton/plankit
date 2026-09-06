@@ -109,6 +109,21 @@
           "text": " keys."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --verbose\n        Show build details\n"
     }
   ]
 }

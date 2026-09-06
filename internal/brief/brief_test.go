@@ -11,6 +11,7 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/hookio"
 )
 
 // TestTextFollowsTheDials pins what each dial changes in the text.
@@ -150,5 +151,20 @@ func TestHookActsWhereTheSessionIs(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "plankit is configured") {
 		t.Fatalf("hook followed CLAUDE_PROJECT_DIR instead of the session's cwd: %q", out.String())
+	}
+}
+
+// TestBrokenPolicyFileIsReportedAtSessionStart: with a policy file
+// that fails to load, the hook exits 1 with the message, which Claude
+// Code shows as the session starts, and injects nothing.
+func TestBrokenPolicyFileIsReportedAtSessionStart(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	dir := scratch(t, true)
+	os.WriteFile(filepath.Join(dir, ".pk.json"), []byte(`{"guard": {"breaking": "skip"}}`), 0o644)
+	payload, _ := json.Marshal(map[string]any{"cwd": dir, "hook_event_name": "SessionStart"})
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "brief"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), `guard.breaking: "skip"`) {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
 	}
 }

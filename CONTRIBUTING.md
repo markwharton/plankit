@@ -13,10 +13,13 @@ make dist       # cross-compile every shim target into bin/
 ```
 
 CI runs `make test`, checks gofmt and docgen drift, and runs
-`claude plugin validate . --strict`. A change to any skill must be
-committed together with its recompiled `internal/help/data` output or
+`claude plugin validate . --strict`. `make docs` rewrites the
+generated regions in `skills/` (each command's Flags section, the
+overview's universal flags, the Settings sections) from the command
+list and the settings table, then compiles the pages. A change to a skill or to a command's flags must be committed
+with the rewritten pages and the recompiled `internal/help/data`, or
 the drift check fails. docgen also rejects hidden, control, and
-bidirectional characters in skills. Reason: skills ship verbatim into
+bidirectional characters in skills, because skills ship verbatim into
 other people's model contexts.
 
 ## Workflow
@@ -28,7 +31,7 @@ protection rejects the push at the server, after the commit exists
 locally. Check the branch before committing.
 
 After merging PRs on GitHub, sync the local branch with
-`git pull --rebase`. Limit: only while the local commits are unpushed.
+`git pull --rebase`, only while the local commits are unpushed.
 
 ## Pull requests
 
@@ -86,10 +89,10 @@ Pre-release checklist:
   and a `git commit` on a protected branch is blocked.
 - **Bashless Windows gate**: on a Windows machine or VM without Git
   for Windows, so Claude Code falls back to PowerShell, install the
-  release candidate and verify the guard hook fires. Reason: plugin
-  `bin/` PATH injection is a Bash-tool behavior; PowerShell sessions
-  reach pk only through the hook wiring's explicit
-  `${CLAUDE_PLUGIN_ROOT}` path.
+  release candidate and verify the guard hook fires. Plugin `bin/`
+  PATH injection is a Bash-tool behavior, so a PowerShell session
+  reaches pk only through the hook wiring's explicit
+  `${CLAUDE_PLUGIN_ROOT}` path, and this is the run that proves it.
 
 ## Contributions & AI
 

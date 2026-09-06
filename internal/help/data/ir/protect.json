@@ -20,8 +20,12 @@
       "type": "para",
       "inlines": [
         {
+          "type": "code",
+          "text": "pk protect"
+        },
+        {
           "type": "text",
-          "text": "Protect is a PreToolUse hook on Edit and Write. It denies any write under "
+          "text": " is a PreToolUse hook on Edit and Write. It denies any write under "
         },
         {
           "type": "code",
@@ -29,7 +33,7 @@
         },
         {
           "type": "text",
-          "text": ". Reason: a preserved plan is a record of what was approved, and a record that can be edited is not one."
+          "text": ", because a preserved plan is a record of what was approved, and a record that can be edited is not one."
         }
       ]
     },
@@ -38,7 +42,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The check resolves symlinks and compares case-insensitively on Windows. Limit: the directory cannot be reached through an alias."
+          "text": "The check resolves symlinks and compares case-insensitively on Windows, so the directory cannot be reached through an alias."
         }
       ]
     },
@@ -74,8 +78,12 @@
       "type": "para",
       "inlines": [
         {
+          "type": "code",
+          "text": "pk protect"
+        },
+        {
           "type": "text",
-          "text": "Protect is a no-op in an unconfigured repository (no "
+          "text": " is a no-op in an unconfigured repository (no "
         },
         {
           "type": "code",

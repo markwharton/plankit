@@ -21,7 +21,23 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Updates a pinned version string in a file. Release and changelog hooks call it with "
+          "text": "Updates a pinned version string in a file. The "
+        },
+        {
+          "type": "code",
+          "text": "release"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "changelog"
+        },
+        {
+          "type": "text",
+          "text": " hooks call it with "
         },
         {
           "type": "code",
@@ -122,9 +138,24 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Limit: a missing file is a no-op and a file without a matching pin is a warning, never a failure. Reason: a renamed target must not abort a release from inside a hook."
+          "text": "A missing file is a no-op and a file without a matching pin is a warning, never a failure, so a renamed target cannot abort a release from inside a hook."
         }
       ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --file \u003cvalue\u003e\n        File containing the pin (relative to the project directory)\n  --name \u003cvalue\u003e\n        Identifier of a named pin; default is the SOMETHING_VERSION=\"v...\" shell form\n"
     }
   ]
 }

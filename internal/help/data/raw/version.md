@@ -19,3 +19,12 @@ pk version --format json
 
 `--verbose` adds the Go version and platform. `--format json` emits
 one object with `version`, `go`, `os`, and `arch` keys.
+
+## Flags
+
+<!-- generated: flags -->
+```
+  --verbose
+        Show build details
+```
+<!-- /generated: flags -->

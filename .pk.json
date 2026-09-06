@@ -1,62 +1,63 @@
 {
+  "$schema": "https://plankit.com/pk.schema.json",
   "changelog": {
     "types": [
       {
-        "type": "feat",
-        "section": "Added"
+        "section": "Added",
+        "type": "feat"
       },
       {
-        "type": "fix",
-        "section": "Fixed"
+        "section": "Fixed",
+        "type": "fix"
       },
       {
-        "type": "deprecate",
-        "section": "Deprecated"
+        "section": "Deprecated",
+        "type": "deprecate"
       },
       {
-        "type": "revert",
-        "section": "Removed"
+        "section": "Removed",
+        "type": "revert"
       },
       {
-        "type": "security",
-        "section": "Security"
+        "section": "Security",
+        "type": "security"
       },
       {
-        "type": "refactor",
-        "section": "Changed"
+        "section": "Changed",
+        "type": "refactor"
       },
       {
-        "type": "perf",
-        "section": "Changed"
+        "section": "Changed",
+        "type": "perf"
       },
       {
-        "type": "docs",
-        "section": "Documentation"
+        "section": "Documentation",
+        "type": "docs"
       },
       {
-        "type": "chore",
-        "section": "Maintenance"
+        "section": "Maintenance",
+        "type": "chore"
       },
       {
-        "type": "test",
-        "section": "Maintenance"
+        "section": "Maintenance",
+        "type": "test"
       },
       {
-        "type": "build",
-        "section": "Maintenance"
+        "section": "Maintenance",
+        "type": "build"
       },
       {
-        "type": "ci",
-        "section": "Maintenance"
+        "section": "Maintenance",
+        "type": "ci"
       },
       {
-        "type": "style",
-        "section": "Maintenance"
+        "section": "Maintenance",
+        "type": "style"
       },
       {
-        "type": "plan",
+        "hidden": true,
         "section": "Plans",
-        "hidden": true
+        "type": "plan"
       }
     ],
     "versionFiles": [
@@ -70,9 +71,9 @@
     "branches": [
       "main"
     ],
+    "breaking": "ask",
     "mode": "block",
-    "push": "block",
-    "breaking": "ask"
+    "push": "block"
   },
   "preserve": {
     "mode": "manual"

@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/registry"
 )
 
 // repoRoot walks up from the test binary's working directory to the
@@ -41,7 +41,7 @@ func repoRoot(t *testing.T) string {
 func TestCommandsAndSkillsAreOneToOne(t *testing.T) {
 	root := repoRoot(t)
 	registered := map[string]bool{}
-	for _, c := range commands() {
+	for _, c := range registry.Commands() {
 		registered[c.Name] = true
 	}
 
@@ -116,7 +116,7 @@ func TestHookWiringMatchesRegisteredCommands(t *testing.T) {
 	}
 
 	registered := map[string]bool{}
-	for _, c := range commands() {
+	for _, c := range registry.Commands() {
 		registered[c.Name] = true
 	}
 	const prefix = `"${CLAUDE_PLUGIN_ROOT}"/bin/pk `
@@ -202,48 +202,37 @@ func TestDesignDocCodeBlocksMatchSource(t *testing.T) {
 	}
 }
 
-// TestHookSkillsNameEveryDial requires each hook command's skill to
-// name every dial its config section exposes, in the page body and in
-// the one-line description that feeds the typeahead, the help index,
-// and the site. A dial added to a struct and left out of either line
-// fails here; whether the prose is still true beyond naming is
-// review's job.
-func TestHookSkillsNameEveryDial(t *testing.T) {
+// TestSettingsTableIsSortedAndSound holds the settings table: keys
+// sorted, every enumerated default among its values, every
+// enumerated setting able to report its value for Validate, and every
+// section owned by a page of the same name.
+func TestSettingsTableIsSortedAndSound(t *testing.T) {
 	root := repoRoot(t)
-	sections := []struct {
-		skill string
-		cfg   any
-		skip  map[string]bool
-	}{
-		{"guard", config.GuardConfig{}, map[string]bool{"branches": true}}, // the list the dials apply to
-		{"preserve", config.PreserveConfig{}, nil},
+	for _, sec := range config.Sections() {
+		if _, err := os.Stat(filepath.Join(root, "skills", sec, "SKILL.md")); err != nil {
+			t.Errorf("settings section %q has no page skills/%s/SKILL.md", sec, sec)
+		}
 	}
-	for _, s := range sections {
-		md, err := os.ReadFile(filepath.Join(root, "skills", s.skill, "SKILL.md"))
-		if err != nil {
-			t.Fatal(err)
+	prev := ""
+	for _, s := range config.Settings() {
+		if s.Key < prev {
+			t.Errorf("settings out of order: %q after %q", s.Key, prev)
 		}
-		body := string(md)
-		desc := ""
-		for _, line := range strings.SplitN(body, "\n---", 2)[0:1] {
-			for _, l := range strings.Split(line, "\n") {
-				if strings.HasPrefix(l, "description:") {
-					desc = strings.ToLower(strings.TrimPrefix(l, "description:"))
-				}
+		prev = s.Key
+		if len(s.Values) == 0 {
+			if s.Kind == "" {
+				t.Errorf("%s: neither values nor kind", s.Key)
+			}
+			continue
+		}
+		found := false
+		for _, v := range s.Values {
+			if v == s.Default {
+				found = true
 			}
 		}
-		rt := reflect.TypeOf(s.cfg)
-		for i := 0; i < rt.NumField(); i++ {
-			key := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]
-			if key == "" || s.skip[key] {
-				continue
-			}
-			if !strings.Contains(body, s.skill+"."+key) && !strings.Contains(body, "`"+key+"`") {
-				t.Errorf("skills/%s/SKILL.md body does not document the %s.%s dial", s.skill, s.skill, key)
-			}
-			if !strings.Contains(desc, key) {
-				t.Errorf("skills/%s/SKILL.md description does not name the %s dial: %q", s.skill, key, strings.TrimSpace(desc))
-			}
+		if !found {
+			t.Errorf("%s: default %q is not among %v", s.Key, s.Default, s.Values)
 		}
 	}
 }
