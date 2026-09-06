@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.0.2] - 2026-09-06
+
+### Maintenance
+
+- the site deploys once per release; the tap dispatch reports its status (1869fab)
+- the old site's /pk and /pk/notes paths redirect to their new homes (9ab36b0)
+
 ## [v1.0.1] - 2026-09-06
 
 ### Fixed
@@ -1166,3 +1173,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.30.0]: https://github.com/markwharton/plankit/compare/v0.29.3...v0.30.0
 [v1.0.0]: https://github.com/markwharton/plankit/compare/v0.30.0...v1.0.0
 [v1.0.1]: https://github.com/markwharton/plankit/compare/v1.0.0...v1.0.1
+[v1.0.2]: https://github.com/markwharton/plankit/compare/v1.0.1...v1.0.2
