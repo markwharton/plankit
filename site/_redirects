@@ -5,3 +5,8 @@
 /pk/linux-arm64     https://github.com/markwharton/plankit/releases/latest/download/pk-linux-arm64 302
 /pk/windows-amd64   https://github.com/markwharton/plankit/releases/latest/download/pk-windows-amd64.exe 302
 /pk/windows-arm64   https://github.com/markwharton/plankit/releases/latest/download/pk-windows-arm64.exe 302
+# The old site's paths for plankit and its release notes.
+/pk                 / 301
+/pk/                / 301
+/pk/notes           /notes 301
+/pk/notes/          /notes 301
