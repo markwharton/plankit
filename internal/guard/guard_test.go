@@ -189,3 +189,98 @@ func ExampleCmd() {
 	fmt.Println(Cmd.Name)
 	// Output: guard
 }
+
+// scratchOn is scratch on an arbitrary branch, with a config mutator.
+func scratchOn(t *testing.T, branch string, mutate func(*config.PkConfig)) string {
+	t.Helper()
+	dir := scratch(t, "block", "block")
+	if branch != "main" {
+		if _, err := git.Exec(dir, "switch", "-q", "-c", branch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if mutate != nil {
+		cfg, err := config.Load(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mutate(cfg)
+		if err := config.Write(dir, cfg); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func TestBreakingMarkerAsks(t *testing.T) {
+	cases := []struct {
+		name    string
+		command string
+		wantAsk bool
+	}{
+		{"bang subject", `git commit -m "feat!: drop the v1 keys"`, true},
+		{"bang with scope", `git commit -m 'refactor(docgen)!: rewrite'`, true},
+		{"breaking footer in body", `git commit -m "feat: add x" -m "BREAKING CHANGE: y is gone"`, true},
+		{"breaking hyphen footer", `git commit -m 'fix: z' -m 'BREAKING-CHANGE: q'`, true},
+		{"message equals form", `git commit --message="feat!: x"`, true},
+		{"attached short form", `git commit -m"feat!: x"`, true},
+		{"cluster short form", `git commit -am "feat!: x"`, true},
+		{"amend keeps the check", `git commit --amend -m "feat!: x"`, true},
+		{"plain feat", `git commit -m "feat: add x"`, false},
+		{"bang not in marker position", `git commit -m "feat: use x! carefully"`, false},
+		{"breaking words mid-line", `git commit -m "docs: explain the BREAKING CHANGE: footer"`, false},
+		{"no inline message", `git commit -F msg.txt`, false},
+		{"chained after safe command", `go test ./... && git commit -m "chore!: retire it"`, true},
+	}
+	for _, tc := range cases {
+		dir := scratchOn(t, "develop", nil)
+		out, _ := runGuard(t, dir, tc.command)
+		if tc.wantAsk {
+			if !strings.Contains(out, `"ask"`) || !strings.Contains(out, "breaking change") {
+				t.Errorf("%s: want ask, got %q", tc.name, out)
+			}
+		} else if out != "" {
+			t.Errorf("%s: want silent allow, got %q", tc.name, out)
+		}
+	}
+}
+
+func TestBreakingMarkerPrecedenceAndDial(t *testing.T) {
+	// On a protected branch, the branch deny wins over the breaking ask.
+	dir := scratchOn(t, "main", nil)
+	out, _ := runGuard(t, dir, `git commit -m "feat!: x"`)
+	if !strings.Contains(out, `"deny"`) {
+		t.Fatalf("branch deny should win: %q", out)
+	}
+
+	// breaking: off restores silence for markers.
+	dir = scratchOn(t, "develop", func(c *config.PkConfig) { c.Guard.Breaking = "off" })
+	out, _ = runGuard(t, dir, `git commit -m "feat!: x"`)
+	if out != "" {
+		t.Fatalf("breaking off: want silence, got %q", out)
+	}
+}
+
+func TestShellWords(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{`git commit -m "feat!: a b"`, []string{"git", "commit", "-m", "feat!: a b"}},
+		{`git commit -m 'one two'`, []string{"git", "commit", "-m", "one two"}},
+		{`git commit -m "say \"hi\""`, []string{"git", "commit", "-m", `say "hi"`}},
+		{"git commit -m \"line one\nline two\"", []string{"git", "commit", "-m", "line one\nline two"}},
+	}
+	for _, tc := range cases {
+		got := shellWords(tc.in)
+		if len(got) != len(tc.want) {
+			t.Errorf("shellWords(%q) = %q, want %q", tc.in, got, tc.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Errorf("shellWords(%q)[%d] = %q, want %q", tc.in, i, got[i], tc.want[i])
+			}
+		}
+	}
+}

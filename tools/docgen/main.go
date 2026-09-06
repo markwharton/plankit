@@ -104,6 +104,9 @@ func compileAll(skillsDir, outDir string) error {
 		if err != nil {
 			return err
 		}
+		if bad := scanHidden(raw); len(bad) > 0 {
+			return fmt.Errorf("%s: %s", src, strings.Join(bad, "; "))
+		}
 		d, err := compile(topic, raw)
 		if err != nil {
 			return fmt.Errorf("%s: %w", src, err)
@@ -361,4 +364,56 @@ func (c *compiler) slug(title string) string {
 		return fmt.Sprintf("%s-%d", s, n)
 	}
 	return s
+}
+
+// hiddenRunes are invisible or direction-altering code points that have
+// no place in an English skill file. Skills ship verbatim into other
+// people's model contexts, so anything a reader cannot see is rejected
+// at build time: C0 controls (except \n and \t) and DEL cover ANSI
+// escapes and raw control bytes; the rest are the Trojan Source set of
+// bidirectional controls plus the zero-width and invisible joiners.
+var hiddenRunes = map[rune]string{
+	0x00AD: "soft hyphen",
+	0x034F: "combining grapheme joiner",
+	0x061C: "arabic letter mark",
+	0x200B: "zero width space",
+	0x200C: "zero width non-joiner",
+	0x200D: "zero width joiner",
+	0x200E: "left-to-right mark",
+	0x200F: "right-to-left mark",
+	0x202A: "left-to-right embedding",
+	0x202B: "right-to-left embedding",
+	0x202C: "pop directional formatting",
+	0x202D: "left-to-right override",
+	0x202E: "right-to-left override",
+	0x2060: "word joiner",
+	0x2066: "left-to-right isolate",
+	0x2067: "right-to-left isolate",
+	0x2068: "first strong isolate",
+	0x2069: "pop directional isolate",
+	0xFEFF: "zero width no-break space (BOM)",
+}
+
+// scanHidden reports every hidden or control character in the file,
+// one finding per line/rune, so a poisoned skill cannot compile.
+func scanHidden(raw []byte) []string {
+	var bad []string
+	line := 1
+	for _, r := range string(raw) {
+		if r == '\n' {
+			line++
+			continue
+		}
+		if r == '\t' {
+			continue
+		}
+		if r < 0x20 || r == 0x7F {
+			bad = append(bad, fmt.Sprintf("line %d: control character U+%04X", line, r))
+			continue
+		}
+		if name, ok := hiddenRunes[r]; ok {
+			bad = append(bad, fmt.Sprintf("line %d: hidden character U+%04X (%s)", line, r, name))
+		}
+	}
+	return bad
 }

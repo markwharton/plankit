@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/cli"
@@ -85,6 +86,14 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
+	// Breaking policy: a commit message carrying ! or BREAKING CHANGE,
+	// on any branch. The marker is a user-approved claim, so the agent
+	// writing one gets an ask.
+	breakingAsk := false
+	if cfg.Guard.ResolvedBreaking() == "ask" && hasBreakingCommit(command) {
+		breakingAsk = true
+	}
+
 	// Push policy: any git push, regardless of branch.
 	pushDeny, pushAsk := false, false
 	if isGitPush(command) {
@@ -107,6 +116,8 @@ func run(ctx *cli.Context) error {
 		writeDecision(ctx, hookio.PermissionAsk, pushAskReason)
 	case branchAsk:
 		writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
+	case breakingAsk:
+		writeDecision(ctx, hookio.PermissionAsk, "pk guard: the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
 	}
 	return nil
 }
@@ -242,4 +253,160 @@ func isEnvAssignment(word string) bool {
 		}
 	}
 	return true
+}
+
+// hasBreakingCommit reports whether any git commit in the command line
+// carries a breaking-change marker in a -m/--message argument: ! before
+// the colon in the subject, or a BREAKING CHANGE / BREAKING-CHANGE line
+// in any message. Only inline messages are inspectable; -F files and
+// editor commits pass through, as does anything hidden behind command
+// substitution. That covers the authored path this check exists for:
+// agent commits are -m commits.
+func hasBreakingCommit(command string) bool {
+	for _, cmd := range splitShellCommands(command) {
+		if gitSubcommand(cmd) != "commit" {
+			continue
+		}
+		msgs := commitMessages(shellWords(cmd))
+		if len(msgs) == 0 {
+			continue
+		}
+		if breakingSubjectRe.MatchString(msgs[0]) {
+			return true
+		}
+		for _, m := range msgs {
+			if hasBreakingLine(m) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// breakingSubjectRe matches a conventional subject whose type carries
+// the breaking !: type(scope)!: message.
+var breakingSubjectRe = regexp.MustCompile(`^\s*\w+(?:\([^)]*\))?!\s*:`)
+
+func hasBreakingLine(msg string) bool {
+	for _, line := range strings.Split(msg, "\n") {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "BREAKING CHANGE:") || strings.HasPrefix(t, "BREAKING-CHANGE:") {
+			return true
+		}
+	}
+	return false
+}
+
+// commitMessages extracts the -m/--message values from a tokenized git
+// commit invocation, in order (the first is the subject). Handled
+// forms: -m msg, -mmsg, --message msg, --message=msg, and short
+// clusters ending in m (-am msg), where git gives the trailing option
+// the next argument.
+func commitMessages(words []string) []string {
+	// Find the git word, skipping env assignments and "command".
+	i := 0
+	for i < len(words) && (isEnvAssignment(words[i]) || words[i] == "command") {
+		i++
+	}
+	if i >= len(words) || baseName(words[i]) != "git" {
+		return nil
+	}
+	// Advance past global options to the commit subcommand.
+	i++
+	for i < len(words) && words[i] != "commit" {
+		if words[i] == "-C" || words[i] == "-c" {
+			i++
+		}
+		i++
+	}
+	if i >= len(words) {
+		return nil
+	}
+	var msgs []string
+	for j := i + 1; j < len(words); j++ {
+		w := words[j]
+		switch {
+		case w == "-m" || w == "--message":
+			if j+1 < len(words) {
+				msgs = append(msgs, words[j+1])
+				j++
+			}
+		case strings.HasPrefix(w, "--message="):
+			msgs = append(msgs, strings.TrimPrefix(w, "--message="))
+		case strings.HasPrefix(w, "-m") && len(w) > 2 && w[2] != '-':
+			msgs = append(msgs, w[2:])
+		case isShortCluster(w) && strings.HasSuffix(w, "m"):
+			if j+1 < len(words) {
+				msgs = append(msgs, words[j+1])
+				j++
+			}
+		}
+	}
+	return msgs
+}
+
+// isShortCluster reports a bundled short-option word like -am or -sm:
+// a dash followed only by letters.
+func isShortCluster(w string) bool {
+	if len(w) < 3 || w[0] != '-' || w[1] == '-' {
+		return false
+	}
+	for _, c := range w[1:] {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {
+			return false
+		}
+	}
+	return true
+}
+
+// shellWords splits one shell command into words, honoring single and
+// double quotes and backslash escapes, and stripping the quotes. It is
+// deliberately small: enough to read a -m argument the way the shell
+// hands it to git.
+func shellWords(cmd string) []string {
+	var words []string
+	var b strings.Builder
+	inWord := false
+	quote := byte(0)
+	flush := func() {
+		if inWord {
+			words = append(words, b.String())
+			b.Reset()
+			inWord = false
+		}
+	}
+	for i := 0; i < len(cmd); i++ {
+		c := cmd[i]
+		switch {
+		case quote == '\'':
+			if c == '\'' {
+				quote = 0
+			} else {
+				b.WriteByte(c)
+			}
+		case quote == '"':
+			if c == '"' {
+				quote = 0
+			} else if c == '\\' && i+1 < len(cmd) && (cmd[i+1] == '"' || cmd[i+1] == '\\' || cmd[i+1] == '$' || cmd[i+1] == '`') {
+				b.WriteByte(cmd[i+1])
+				i++
+			} else {
+				b.WriteByte(c)
+			}
+		case c == '\'' || c == '"':
+			quote = c
+			inWord = true
+		case c == '\\' && i+1 < len(cmd):
+			b.WriteByte(cmd[i+1])
+			i++
+			inWord = true
+		case c == ' ' || c == '\t' || c == '\n':
+			flush()
+		default:
+			b.WriteByte(c)
+			inWord = true
+		}
+	}
+	flush()
+	return words
 }

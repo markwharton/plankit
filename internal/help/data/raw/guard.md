@@ -34,3 +34,17 @@ Edit `.pk.json` and commit it; policy travels with the repository.
 ```json
 "guard": { "branches": ["main"], "mode": "block", "push": "block" }
 ```
+
+## Breaking markers
+
+A breaking-change marker (`!` after the type, or a `BREAKING CHANGE:`
+footer) drives the next major version, and that claim is the
+developer's to make, not the agent's. With `guard.breaking: "ask"`
+(the default), a `git commit` whose inline message carries a marker
+gets an ask instead of an allow: confirm the change is breaking, or
+reword without the marker. Set `"off"` to disable.
+
+Only `-m`/`--message` arguments are inspectable; `-F` files and
+editor commits pass through. That covers the path this check exists
+for: agent commits are `-m` commits.
+

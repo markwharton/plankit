@@ -41,6 +41,17 @@ pk release      # tag from the trailer, merge or trunk flow, push
 `pk help` lists every topic; `pk status` reports the repository's
 configuration and state.
 
+## pk outside Claude Code
+
+The guard, changelog, release, and pin commands are plain git
+discipline and work in any terminal. Install the binary directly:
+
+```
+go install github.com/markwharton/plankit/cmd/pk@latest
+```
+
+or download a platform binary from the GitHub release assets.
+
 ## Building from source
 
 ```
@@ -52,5 +63,5 @@ make bin-local  # build the platform binary behind the bin/pk shim
 The main module is standard-library Go; the markdown compiler
 (goldmark) lives in `tools/docgen` and runs at build time only.
 
-plankit v1 and its documentation live in git history before the
-plugin-first rewrite.
+The pre-plugin plankit (v0.x) and its documentation live in git
+history before the plugin-first rewrite.

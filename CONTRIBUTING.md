@@ -14,7 +14,9 @@ make dist       # cross-compile every shim target into bin/
 CI runs `make test`, checks gofmt and docgen drift, and runs
 `claude plugin validate . --strict`. A change to any skill must be
 committed together with its recompiled `internal/help/data` output or
-the drift check fails.
+the drift check fails. docgen also rejects hidden, control, and
+bidirectional characters in skills: they ship verbatim into other
+people's model contexts, so nothing a reader cannot see may compile.
 
 ## Workflow
 

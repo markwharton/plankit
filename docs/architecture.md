@@ -1,72 +1,158 @@
 # Architecture
 
-pk's functionality falls into three layers with different levels of environment coupling.
+plankit is a Claude Code plugin with a Go kernel. This document maps
+the components; the method behind their shape is docs/design.md. The repository is the
+plugin and its own marketplace; the pk binary is the deterministic core
+the plugin's hooks and skills drive. The split rule that shaped the
+rewrite: anything that must be deterministic (git operations, config,
+hook decisions, changelog and release mechanics) lives in the binary;
+anything that is judgment or orchestration lives in skills.
 
-## Three layers
+## One source, two consumers
 
-### Git workflow (zero coupling)
+`skills/` is the documentation. Each command has a topic directory
+(`skills/status/SKILL.md`) plus the `plankit` overview; the frontmatter
+is `name`, `description`, and optionally `argument-hint`. The same
+files serve two consumers:
 
-Commands that operate on git directly: `pk changelog`, `pk release`, `pk guard`, `pk pin`, `pk version`. These work with any AI coding tool or none at all. They read `.pk.json` for configuration and produce git artifacts (tags, commits, changelogs).
+- Claude Code discovers them as `/plankit:` shortcuts when the plugin
+  is enabled.
+- `tools/docgen` compiles them at build time into `internal/help/data`
+  (a strict JSON IR per topic plus the raw bytes), and `pk help`
+  renders that in the terminal.
 
-### AI governance (protocol-specific)
+docgen is a separate Go module so goldmark never links into pk; the
+main module is standard library only. docgen also validates: required
+frontmatter, name matching the directory, a single opening H1,
+unknown keys refused. `cmd/pk/main_test.go` enforces the 1:1 rule
+mechanically — every command has a skill, every skill (minus the
+overview) is a command, and `hooks/hooks.json` references only
+registered commands through the quoted shim form.
 
-Rules and skills that shape AI behavior. Rules are markdown files that AI coding tools load as context. Skills are workflow scripts that tools execute on user request. The content is universal, but the file paths and frontmatter format are environment-specific: Claude Code reads `.claude/rules/` and `.claude/skills/`, other tools use different locations.
+At runtime, a TTY gets the IR rendered with a conservative ANSI
+palette and width-clamped wrapping; a non-TTY consumer gets the exact
+authored bytes. Presentation is never configured: flags (`--format`,
+`--plain`) beat env (`NO_COLOR`, `CLICOLOR_FORCE`) beat the TTY probe.
 
-### Environment wiring (deep coupling)
+## The execution frame
 
-Hooks, settings, and bootstrap that integrate pk into a specific AI coding tool. Claude Code's hook protocol (PreToolUse, PostToolUse, SessionStart) enables enforcement: `pk guard` can block a git mutation before it happens, `pk protect` can block an edit to a preserved plan. This layer is inherently Claude Code-specific because no other tool currently offers pre-tool interception.
+`cmd/pk/main.go` holds the explicit command registry. `internal/cli`
+supplies the frame: declarative `FlagSpec`s, universal flags
+(`--project-dir`, `--format`, `--plain`, `--quiet`), and a `Context`
+carrying resolved project dir and IO. The default project dir walks up
+to the git root; explicit paths are taken as given.
 
-## File structure
+Two contracts hold everywhere:
 
-The `internal/setup/` package is organized by concern to make these boundaries visible:
+- **Exit taxonomy**: 0 success, 1 usage, 2 state or precondition,
+  3 internal. Errors name the fix (`cli.Usagef`, `cli.Statef`,
+  `cli.WithHint`).
+- **Stream discipline**: artifacts on stdout (dry-run sections, JSON
+  state), narration on stderr. Commit and release paths keep stdout
+  empty.
 
-```
-internal/setup/
-├── baseline.go           Git tag baseline (universal)
-├── claude.go             Claude Code provider (hooks, settings, bootstrap)
-├── managed.go            SHA-tracked file management (universal)
-├── pin.go                Version pinning (universal)
-├── ruleset.go            GitHub branch-protection ruleset template (universal)
-├── setup.go              Config, Run() orchestrator, OrderedObject
-├── walk.go               Rule-file directory walking (universal)
-├── rules/                Rule content (universal, embedded)
-├── skills/               Skill content (Claude Code format, embedded)
-└── template/             CLAUDE.md template, install-pk.sh
-```
+## Repo model
 
-**Universal files** (`baseline.go`, `managed.go`, `pin.go`) contain logic reusable across any provider: version pinning, SHA-tracked file management, git tag operations.
+`.pk.json` at the repository root is the committed policy, decoded
+strictly: unknown keys are named and refused. `pk init` writes the
+canonical default (guard on the release branch, the full changelog
+type table, a v0.0.0 baseline tag when history exists untagged) and
+`pk status` reports configuration and state, `--format json` included.
+A configured repository carries exactly two things: `.pk.json` and
+`docs/plans/`. No `.pk.json` means off.
 
-**Provider file** (`claude.go`) contains everything specific to Claude Code: hook types, settings merge, permission management, install script generation.
+`internal/git` wraps the git CLI (`Exec` with stderr folded into
+errors) plus the helpers the flows share: `FindRoot` (filesystem walk,
+no subprocess), `CheckCleanTree`, `DefaultBranch` (origin HEAD
+symref), `LatestTag`, `ParseRepoURL`.
 
-**Orchestrator** (`setup.go`) holds `Config`, `Run()`, and `OrderedObject`. `Run()` calls into both universal and provider-specific code.
+## Hooks
 
-## Adding a new provider
+`hooks/hooks.json` wires three hooks through
+`"${CLAUDE_PLUGIN_ROOT}"/bin/pk`:
 
-When a second AI coding tool needs support, the path is:
+- **guard** (PreToolUse, Bash|PowerShell): parses the shell command
+  quote-aware, finds git mutations, and denies or asks per
+  `guard.branches` and the push policy. Handles backslash paths and
+  `.exe` suffixes so the PowerShell fallback is covered.
+- **protect** (PreToolUse, Edit and Write): denies writes under
+  `docs/plans/`, resolving symlinks through the nearest existing
+  ancestor so both sides of the comparison are canonical.
+- **preserve** (PostToolUse, ExitPlanMode): captures the approved plan
+  into `docs/plans/` as a dated, slugged, deduplicated file and
+  commits it (auto mode), or records a pointer and notifies (manual).
 
-1. Copy `claude.go` to `<provider>.go`.
-2. Adapt hook types, settings paths, and file formats to the new tool's conventions.
-3. Wire the new provider's steps into `Run()` alongside the existing Claude Code steps, gated on a configuration flag or auto-detection.
+`internal/hookio` owns the protocol: payload parsing, project-dir
+resolution (`CLAUDE_PROJECT_DIR`, then payload cwd, then context), and
+the PreToolUse permission-decision and PostToolUse response writers.
+Two behavioral contracts: every hook exits 0 whatever happens (a
+broken hook must never block work), and an unconfigured repository is
+a fast silent no-op.
 
-The universal files (`managed.go`, `pin.go`, `baseline.go`) and the orchestrator (`setup.go`) do not change.
+## Release machinery
 
-## AI coding landscape
+Releases are a trailer-driven two-step. `pk changelog` parses the
+conventional commits since the last tag, infers the bump (breaking →
+major, feat → minor, else patch), writes the section into
+CHANGELOG.md, stamps any `changelog.versionFiles` (a streaming JSON
+splice that preserves formatting; this repo stamps
+`.claude-plugin/plugin.json`), runs the `postVersion` and `preCommit`
+hooks, and commits with a `Release-Tag` trailer. No tag yet: the
+commit is reviewable and `--undo` unwinds it while unpushed.
 
-Not all environments offer the same capabilities. pk adapts its governance model to what each tool provides.
+`pk release` reads the trailer, runs the pre-flight ladder (clean
+tree, branch on origin and not behind, release branch resolvable and
+not diverged), then either fast-forwards the release branch and tags
+(merge flow, `release.branch` set) or tags the default branch (trunk
+flow, `release.branch` empty), runs `preRelease` before the tag and
+`prePush` after it, and pushes atomically. Everything mutating sits
+under a rollback defer: an aborted release deletes the unpushed tag,
+resets the merge, and returns to the source branch.
 
-| Capability | Claude Code | Cursor | Windsurf | Cline | Bob IDE |
-|------------|-------------|--------|----------|-------|---------|
-| Rules (context files) | Yes | Yes | Yes | Yes | Yes |
-| Skills (workflows) | Yes | No | No | No | Yes |
-| Pre-tool hooks (enforcement) | Yes | No | No | No | No |
-| Post-tool hooks (reactions) | Yes | No | No | No | No |
-| Plan mode | Yes | No | No | No | No |
+`pk pin` updates version pins in files from hooks; a missing file is a
+no-op and a pinless file a warning, so a renamed target never aborts a
+release. `pk ship` composes the two-step into one invocation for
+unattended releases, deriving what remains from the trailer: pending
+means resume at release, absent means run both.
 
-### Enforcement vs. advisory
+## Supply chain
 
-Claude Code is the only environment with pre-tool interception hooks. So:
+`bin/` holds two committed shims: `bin/pk` (POSIX sh, uname dispatch,
+MINGW-aware) and `bin/pk.cmd` (cmd, PROCESSOR_ARCHITECTURE dispatch,
+CRLF pinned by `.gitattributes`). The per-platform binaries beside
+them (`pk-<os>-<arch>`) are gitignored release assets; `make bin-local`
+builds the current platform for `--plugin-dir` development and
+`make dist` cross-compiles all targets.
 
-- **Claude Code**: full enforcement. `pk guard` blocks git mutations. `pk protect` blocks edits to preserved plans. `pk preserve` reacts to plan approval.
-- **Other environments**: advisory governance. Rules carry the behavioral guidance (which covers the majority of value), but there is no backstop for the cases where the AI ignores a rule. Git workflow commands (`pk changelog`, `pk release`) work identically regardless of environment.
+`pk release` pushing the tag triggers `.github/workflows/release.yml`:
+cross-compile, assemble the plugin archive (`.claude-plugin/
+plugin.json`, `skills/`, `hooks/`, `bin/` with binaries, LICENSE,
+CHANGELOG.md, README.md at zip root), publish the GitHub release, and
+commit the archive URL and sha256 into the marketplace entry on main
+as an archive source. The pin bump is the update signal; the explicit
+version inside plugin.json wins version resolution, so installers
+update exactly when a release is cut. `ci.yml` runs the suite, gofmt
+and docgen drift checks, and `claude plugin validate . --strict`.
 
-Rules carry most of the behavioral value. The model follows them in the majority of cases. Hooks are a backstop for the remaining cases where enforcement matters: protecting immutable plans, guarding release branches, and preserving approved work.
+The `binaries` map observed in the Claude Code validator (basename →
+sha256, install-time fetch) would let installs pull one platform's
+binary instead of the whole set; its fetch semantics are not yet
+published, so the archive stays the channel until they are.
+
+## Testing
+
+Tests drive commands through `cli.RunIO` with buffers and real
+repositories in `t.TempDir()`. Push flows use a bare origin;
+divergence and behind-origin states come from a second clone, and the
+release rollback is proven by a `pre-receive` hook in the bare origin
+that rejects the push. Date-sensitive output pins a package-level
+`now`. No mocking libraries, no third-party test dependencies.
+
+## What moved out of Go
+
+v1's setup, teardown, update, rules, scaffold, and readiness packages
+dissolved: the plugin install replaced per-repository file copying,
+skills replaced the docs corpus and shipped workflow scripts, and the
+update notice machinery is unnecessary when the marketplace carries
+versioning. Their durable behaviors (baseline tagging, pinning, the
+hook wiring) live on in `pk init`, `pk pin`, and `hooks/hooks.json`.

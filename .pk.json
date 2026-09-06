@@ -71,7 +71,8 @@
       "main"
     ],
     "mode": "block",
-    "push": "block"
+    "push": "block",
+    "breaking": "ask"
   },
   "preserve": {
     "mode": "manual"

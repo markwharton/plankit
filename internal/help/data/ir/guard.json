@@ -265,6 +265,107 @@
       "type": "codeblock",
       "lang": "json",
       "text": "\"guard\": { \"branches\": [\"main\"], \"mode\": \"block\", \"push\": \"block\" }\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "breaking-markers",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Breaking markers"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A breaking-change marker ("
+        },
+        {
+          "type": "code",
+          "text": "!"
+        },
+        {
+          "type": "text",
+          "text": " after the type, or a "
+        },
+        {
+          "type": "code",
+          "text": "BREAKING CHANGE:"
+        },
+        {
+          "type": "text",
+          "text": " footer) drives the next major version, and that claim is the developer's to make, not the agent's. With "
+        },
+        {
+          "type": "code",
+          "text": "guard.breaking: \"ask\""
+        },
+        {
+          "type": "text",
+          "text": " (the default), a "
+        },
+        {
+          "type": "code",
+          "text": "git commit"
+        },
+        {
+          "type": "text",
+          "text": " whose inline message carries a marker gets an ask instead of an allow: confirm the change is breaking, or reword without the marker. Set "
+        },
+        {
+          "type": "code",
+          "text": "\"off\""
+        },
+        {
+          "type": "text",
+          "text": " to disable."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Only "
+        },
+        {
+          "type": "code",
+          "text": "-m"
+        },
+        {
+          "type": "text",
+          "text": "/"
+        },
+        {
+          "type": "code",
+          "text": "--message"
+        },
+        {
+          "type": "text",
+          "text": " arguments are inspectable; "
+        },
+        {
+          "type": "code",
+          "text": "-F"
+        },
+        {
+          "type": "text",
+          "text": " files and editor commits pass through. That covers the path this check exists for: agent commits are "
+        },
+        {
+          "type": "code",
+          "text": "-m"
+        },
+        {
+          "type": "text",
+          "text": " commits."
+        }
+      ]
     }
   ]
 }

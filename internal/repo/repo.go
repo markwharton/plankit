@@ -110,9 +110,25 @@ func runInit(ctx *cli.Context) error {
 		msg.Notef(ctx.Stdout, "no baseline tag: the repository has no commits yet")
 	}
 	if !ctx.Quiet {
+		msg.Notef(ctx.Stdout, "commit convention: Conventional Commits with types %s (from %s changelog.types)", typeNames(cfg.Changelog.Types), config.FileName)
+		msg.Notef(ctx.Stdout, "breaking markers (! or BREAKING CHANGE) are the developer's call: guard asks before one is committed")
+		msg.Hintf(ctx.Stdout, "record it in CLAUDE.md so every session writes commits pk changelog can read")
 		msg.Hintf(ctx.Stdout, "commit %s and %s; run pk status to review the policy", config.FileName, PlansDir)
 	}
 	return nil
+}
+
+// typeNames renders the non-hidden commit types for the conventions
+// note; hidden types (like plan) are pk machinery, not the convention
+// a session writes.
+func typeNames(types []config.TypeConfig) string {
+	var names []string
+	for _, tc := range types {
+		if !tc.Hidden {
+			names = append(names, tc.Type)
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 // StatusCmd reports configuration and repository state.

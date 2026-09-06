@@ -29,16 +29,32 @@ A configured repository carries exactly two things:
 No `.pk.json` means off: every hook exits immediately in an
 unconfigured repository.
 
+## Commit conventions
+
+Work commits follow Conventional Commits: `type(scope): subject`, with
+`!` or a `BREAKING CHANGE:` footer marking a breaking change. The type
+table lives in `.pk.json` under `changelog.types`; `pk init` writes
+the default set, and whatever the file says is what `pk changelog`
+reads on release day, so the convention is what turns daily work into
+the changelog. `pk changelog --dry-run` previews how the current
+commits will land.
+
+One rule stands over the table: never add a breaking marker (`!` or a
+`BREAKING CHANGE:` footer) on your own judgment. Markers drive the
+next major version and are the developer's claim to make; write one
+only on explicit user direction. Guard asks before a marked commit is
+created.
+
 ## Commands
 
 Run `pk help` for the topic index. Each command's page is also a
 /plankit: shortcut in Claude Code, so one name means the same thing in
 the typeahead, the terminal, and this repository.
 
-## Migrating from plankit v1
+## Migrating from pre-plugin plankit (v0.x)
 
 The plugin replaces everything `pk setup` used to copy into a
-repository. In a repository configured by v1:
+repository. In a repository configured by a v0.x release:
 
 1. Remove the plankit hook entries (guard, protect, preserve, and the
    install-pk SessionStart entry) from `.claude/settings.json`. The
@@ -50,6 +66,21 @@ repository. In a repository configured by v1:
 3. Keep `.pk.json` and `docs/plans/` exactly as they are. The config
    schema is unchanged and the plans remain the immutable record.
 
-Nothing else changes: the guard, protect, and preserve behavior is the
-v1 behavior, now arriving with the plugin instead of per-repository
+Nothing else changes: the guard, protect, and preserve behavior is
+unchanged, now arriving with the plugin instead of per-repository
 copies.
+
+## Windows without Git Bash
+
+When Git for Windows is absent, Claude Code's shell tool is PowerShell,
+and the plugin's `bin/` directory is not on that shell's PATH. Invoke
+pk by its full path instead:
+
+```
+& "${CLAUDE_PLUGIN_ROOT}\bin\pk.cmd" status
+```
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` when it loads this
+page, so inside a session the line above already carries the real
+install location. In the terminal, `pk help` shows the placeholder
+verbatim.

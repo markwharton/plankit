@@ -16,6 +16,7 @@ import (
 	"github.com/markwharton/plankit/internal/protect"
 	"github.com/markwharton/plankit/internal/release"
 	"github.com/markwharton/plankit/internal/repo"
+	"github.com/markwharton/plankit/internal/ship"
 	"github.com/markwharton/plankit/internal/version"
 )
 
@@ -34,6 +35,7 @@ func commands() []*cli.Command {
 		protect.Cmd,
 		release.Cmd,
 		release.PinCmd,
+		ship.Cmd,
 		repo.InitCmd,
 		repo.StatusCmd,
 		version.Cmd,

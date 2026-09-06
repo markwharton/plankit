@@ -64,6 +64,16 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if got := git.LatestTag(dir); got != "v0.0.0" {
 		t.Fatalf("baseline tag = %q", got)
 	}
+	// The conventions note lists the non-hidden types from the config
+	// just written; the hidden plan type stays out.
+	for _, want := range []string{"Conventional Commits", "feat, fix,", "changelog.types"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("init output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "plan") && strings.Contains(out, "style, plan") {
+		t.Errorf("hidden plan type leaked into the conventions note:\n%s", out)
+	}
 
 	code, out, _ = run(t, "status", "--project-dir", dir)
 	if code != cli.ExitOK {

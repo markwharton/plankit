@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"github.com/markwharton/plankit/internal/cli"
 )
@@ -16,29 +17,42 @@ import (
 //	-ldflags "-X github.com/markwharton/plankit/internal/version.stamped=1.2.3"
 var stamped = ""
 
-// Version returns the stamped release version, or a dev identifier
-// derived from VCS metadata when running an unstamped build.
+// Version returns the stamped release version, the module version for
+// a go-install build, or a dev identifier derived from VCS metadata
+// when building from a source checkout.
 func Version() string {
 	if stamped != "" {
 		return stamped
 	}
 	if info, ok := debug.ReadBuildInfo(); ok {
-		rev, dirty := "", false
-		for _, s := range info.Settings {
-			switch s.Key {
-			case "vcs.revision":
-				rev = s.Value
-			case "vcs.modified":
-				dirty = s.Value == "true"
-			}
+		return fromBuildInfo(info)
+	}
+	return "dev"
+}
+
+// fromBuildInfo resolves a version from build metadata. A module build
+// (go install module@version) carries the tag as Main.Version; a
+// source-checkout build reports "(devel)" there and carries vcs.*
+// settings instead.
+func fromBuildInfo(info *debug.BuildInfo) string {
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return strings.TrimPrefix(v, "v")
+	}
+	rev, dirty := "", false
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			rev = s.Value
+		case "vcs.modified":
+			dirty = s.Value == "true"
 		}
-		if rev != "" {
-			v := "dev+" + rev[:min(9, len(rev))]
-			if dirty {
-				v += ".dirty"
-			}
-			return v
+	}
+	if rev != "" {
+		v := "dev+" + rev[:min(9, len(rev))]
+		if dirty {
+			v += ".dirty"
 		}
+		return v
 	}
 	return "dev"
 }

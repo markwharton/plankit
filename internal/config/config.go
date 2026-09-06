@@ -25,9 +25,10 @@ var ErrNotConfigured = errors.New("not configured (no " + FileName + ")")
 // Default modes applied when a key is absent. The literal lives exactly
 // once, here; init writes them explicitly so the policy file reads whole.
 const (
-	DefaultGuardMode    = "block"  // guard.mode
-	DefaultGuardPush    = "block"  // guard.push
-	DefaultPreserveMode = "manual" // preserve.mode
+	DefaultGuardMode     = "block"  // guard.mode
+	DefaultGuardPush     = "block"  // guard.push
+	DefaultGuardBreaking = "ask"    // guard.breaking
+	DefaultPreserveMode  = "manual" // preserve.mode
 )
 
 // GuardConfig holds the guard section.
@@ -35,6 +36,10 @@ type GuardConfig struct {
 	Branches []string `json:"branches,omitempty"`
 	Mode     string   `json:"mode,omitempty"` // block | ask | off
 	Push     string   `json:"push,omitempty"` // block | ask | off
+	// Breaking governs commits whose message carries a breaking-change
+	// marker (! or a BREAKING CHANGE footer). Markers are user-approved
+	// claims, not agent judgment, so guard asks before one is written.
+	Breaking string `json:"breaking,omitempty"` // ask | off
 }
 
 // ResolvedMode returns guard.mode with the default applied.
@@ -51,6 +56,14 @@ func (g GuardConfig) ResolvedPush() string {
 		return DefaultGuardPush
 	}
 	return g.Push
+}
+
+// ResolvedBreaking returns guard.breaking with the default applied.
+func (g GuardConfig) ResolvedBreaking() string {
+	if g.Breaking == "" {
+		return DefaultGuardBreaking
+	}
+	return g.Breaking
 }
 
 // PreserveConfig holds the preserve section.
@@ -150,6 +163,9 @@ func (c *PkConfig) Validate() error {
 	if err := oneOf("guard.push", c.Guard.Push, "block", "ask", "off"); err != nil {
 		return err
 	}
+	if err := oneOf("guard.breaking", c.Guard.Breaking, "ask", "off"); err != nil {
+		return err
+	}
 	if err := oneOf("preserve.mode", c.Preserve.Mode, "auto", "manual", "off"); err != nil {
 		return err
 	}
@@ -202,6 +218,7 @@ func Default(releaseBranch string) *PkConfig {
 		Guard: GuardConfig{
 			Branches: []string{releaseBranch},
 			Mode:     DefaultGuardMode,
+			Breaking: DefaultGuardBreaking,
 			Push:     DefaultGuardPush,
 		},
 		Preserve: PreserveConfig{Mode: DefaultPreserveMode},

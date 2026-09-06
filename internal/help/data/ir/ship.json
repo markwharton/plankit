@@ -1,0 +1,175 @@
+{
+  "schema": 1,
+  "meta": {
+    "name": "ship",
+    "description": "Cut the pending work as one release - changelog then release in a single command"
+  },
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 1,
+      "id": "pk-ship",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "pk ship"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Runs "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " then "
+        },
+        {
+          "type": "code",
+          "text": "pk release"
+        },
+        {
+          "type": "text",
+          "text": " as one invocation: the section is generated and committed with its Release-Tag trailer, the release is tagged and pushed, and CI takes over. Ship carries no state of its own; the trailer decides what remains, so a run interrupted between the halves resumes at release on rerun."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "usage",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Usage"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk ship --dry-run\npk ship\npk ship --bump patch\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " pass through to changelog. "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " previews the section when nothing is pending, or rehearses the release when a Release-Tag commit already exists; the release half cannot be rehearsed before its changelog commit exists."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "If the release half fails, the changelog commit stands: rerun "
+        },
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": " to retry, or "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog --undo"
+        },
+        {
+          "type": "text",
+          "text": " to unwind."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "unattended-releases",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Unattended releases"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Invoked from Claude Code, run "
+        },
+        {
+          "type": "code",
+          "text": "pk ship --dry-run"
+        },
+        {
+          "type": "text",
+          "text": " first. If the inferred bump is patch or minor, run "
+        },
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": " and report the result: the release completes without further input. If the preview shows a major, stop: list the commits carrying "
+        },
+        {
+          "type": "code",
+          "text": "!"
+        },
+        {
+          "type": "text",
+          "text": " or "
+        },
+        {
+          "type": "code",
+          "text": "BREAKING CHANGE"
+        },
+        {
+          "type": "text",
+          "text": ", show the section, and wait for the developer's confirmation before running "
+        },
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": ". A major is never wrong by inference (the markers were ratified by guard when written), but shipping one is the developer's moment to double-check."
+        }
+      ]
+    }
+  ]
+}
