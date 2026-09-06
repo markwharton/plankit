@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/markwharton/plankit/internal/config"
 )
 
 // repoRoot walks up from the test binary's working directory to the
@@ -132,6 +134,61 @@ func TestHookWiringMatchesRegisteredCommands(t *testing.T) {
 	for _, want := range []string{"guard", "protect", "preserve"} {
 		if !seen[want] {
 			t.Errorf("hooks.json does not wire %q", want)
+		}
+	}
+}
+
+// TestChangelogSkillListsDefaultTypeTable pins the hand-written table
+// on the changelog page to config.Default(): the page is a derived
+// copy of the type table, so drift between them must fail the build.
+func TestChangelogSkillListsDefaultTypeTable(t *testing.T) {
+	root := repoRoot(t)
+	md, err := os.ReadFile(filepath.Join(root, "skills", "changelog", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range config.Default("main").Changelog.Types {
+		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(tc.Type) + `\s`)
+		if !re.Match(md) {
+			t.Errorf("skills/changelog/SKILL.md does not list default type %q", tc.Type)
+		}
+		if tc.Hidden {
+			// The hidden annotation is part of the page's claim; pin it.
+			hiddenRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(tc.Type) + `\s+\(hidden`)
+			if !hiddenRe.Match(md) {
+				t.Errorf("skills/changelog/SKILL.md must mark hidden type %q with (hidden...)", tc.Type)
+			}
+		} else if !strings.Contains(string(md), tc.Section) {
+			t.Errorf("skills/changelog/SKILL.md missing section %q for type %q", tc.Section, tc.Type)
+		}
+	}
+}
+
+// TestDesignDocCodeBlocksMatchSource pins every fenced Go block in
+// docs/design.md that names a source file (```go path/to/file.go) to
+// that file: the block, whitespace-normalized, must appear verbatim in
+// the source. Struct listings in the design are hand copies of code,
+// and this is what keeps them honest.
+func TestDesignDocCodeBlocksMatchSource(t *testing.T) {
+	root := repoRoot(t)
+	doc, err := os.ReadFile(filepath.Join(root, "docs", "design.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fence := regexp.MustCompile("(?s)```go (\\S+\\.go)\\n(.*?)```")
+	matches := fence.FindAllStringSubmatch(string(doc), -1)
+	if len(matches) == 0 {
+		t.Fatal("design.md has no source-pinned code blocks; the test expects at least one")
+	}
+	norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	for _, m := range matches {
+		src, err := os.ReadFile(filepath.Join(root, m[1]))
+		if err != nil {
+			t.Errorf("design.md pins %s, which cannot be read: %v", m[1], err)
+			continue
+		}
+		if !strings.Contains(norm(string(src)), norm(m[2])) {
+			t.Errorf("design.md code block pinned to %s no longer matches the source:\n%s", m[1], m[2])
 		}
 	}
 }

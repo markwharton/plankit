@@ -195,3 +195,20 @@ func TestFormatJSONRefused(t *testing.T) {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 }
+
+// TestStrayArgumentRefusedBeforeAnythingRuns pins the incident that
+// motivated frame-wide arity checking: pk ship help must be a usage
+// error, not a release.
+func TestStrayArgumentRefusedBeforeAnythingRuns(t *testing.T) {
+	dir, _ := repo(t)
+	work(t, dir, "feat: x")
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+
+	code, _, errw := runShip(t, dir, "help")
+	if code != cli.ExitUsage || !strings.Contains(errw, "unexpected argument") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if h, _ := git.Exec(dir, "rev-parse", "HEAD"); h != head {
+		t.Fatal("something committed")
+	}
+}

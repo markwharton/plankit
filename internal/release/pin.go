@@ -17,6 +17,7 @@ import (
 var PinCmd = &cli.Command{
 	Name:    "pin",
 	Summary: "Update a version pin in a file (for release hooks)",
+	MaxArgs: 1,
 	Flags: []cli.FlagSpec{
 		{Name: "file", Type: cli.StringFlag, Usage: "File containing the pin (relative to the project directory)"},
 		{Name: "name", Type: cli.StringFlag, Usage: "Identifier of a named pin; default is the SOMETHING_VERSION=\"v...\" shell form"},

@@ -24,6 +24,12 @@ var ErrNotConfigured = errors.New("not configured (no " + FileName + ")")
 
 // Default modes applied when a key is absent. The literal lives exactly
 // once, here; init writes them explicitly so the policy file reads whole.
+// PlanType is the conventional-commit type pk preserve writes when it
+// commits a plan. It is pk's protocol vocabulary, like the Release-Tag
+// trailer, not user policy: the .pk.json entry for it controls only
+// its changelog presentation (hidden by default).
+const PlanType = "plan"
+
 const (
 	DefaultGuardMode     = "block"  // guard.mode
 	DefaultGuardPush     = "block"  // guard.push
@@ -212,7 +218,7 @@ func Default(releaseBranch string) *PkConfig {
 				{Type: "build", Section: "Maintenance"},
 				{Type: "ci", Section: "Maintenance"},
 				{Type: "style", Section: "Maintenance"},
-				{Type: "plan", Section: "Plans", Hidden: true},
+				{Type: PlanType, Section: "Plans", Hidden: true},
 			},
 		},
 		Guard: GuardConfig{

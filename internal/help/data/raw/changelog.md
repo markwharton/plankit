@@ -16,8 +16,28 @@ review, then tag and push.
 A breaking change (`type!:` or a `BREAKING CHANGE:` footer) bumps
 major, `feat` bumps minor, anything else bumps patch. `--bump
 major|minor|patch` overrides. Types map to sections via
-`changelog.types` in `.pk.json`; hidden types (like `plan`) are
-tracked but never listed.
+`changelog.types` in `.pk.json`; hidden types are tracked but never
+listed. The default table `pk init` writes:
+
+```
+feat       Added
+fix        Fixed
+deprecate  Deprecated
+revert     Removed
+security   Security
+refactor   Changed
+perf       Changed
+docs       Documentation
+chore      Maintenance
+test       Maintenance
+build      Maintenance
+ci         Maintenance
+style      Maintenance
+plan       (hidden: written by pk preserve, never listed)
+```
+
+Edit `changelog.types` to rename sections, add types, or hide more;
+whatever the file says is what this command reads.
 
 ## Usage
 

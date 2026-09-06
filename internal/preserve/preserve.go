@@ -191,7 +191,7 @@ func run(ctx *cli.Context) error {
 		writeResponse(ctx, "Plan unchanged, no commit needed.", "")
 		return nil
 	}
-	if _, err := git.Exec(root, "commit", "-m", fmt.Sprintf("plan: %s [skip ci]", title)); err != nil {
+	if _, err := git.Exec(root, "commit", "-m", fmt.Sprintf("%s: %s [skip ci]", config.PlanType, title)); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "git commit failed: %v", err)
 		return nil
 	}

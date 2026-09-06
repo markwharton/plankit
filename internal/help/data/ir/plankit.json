@@ -197,7 +197,15 @@
         },
         {
           "type": "text",
-          "text": " writes the default set, and whatever the file says is what "
+          "text": " writes the default set, listed under "
+        },
+        {
+          "type": "code",
+          "text": "pk help changelog"
+        },
+        {
+          "type": "text",
+          "text": ", and whatever the file says is what "
         },
         {
           "type": "code",

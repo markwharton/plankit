@@ -45,6 +45,13 @@ commits haven't been pushed yet, which is exactly when you need it.
 The repository releases itself with its own machinery:
 
 ```bash
+pk ship --dry-run        # preview the section (or rehearse the release when one is pending)
+pk ship                  # changelog then release as one command
+```
+
+or step by step, when you want to review between the halves:
+
+```bash
 pk changelog --dry-run   # preview the section and version bump
 pk changelog             # on develop: CHANGELOG.md, plugin.json version, Release-Tag commit
 pk release --dry-run     # rehearse the flow
@@ -56,6 +63,19 @@ cross-compiles the platform binaries, assembles the plugin archive,
 publishes the GitHub release, and commits the archive URL and sha256
 pin into `.claude-plugin/marketplace.json` on main. That pin bump is
 what makes installers see the update.
+
+Publishing prerequisites, once per repository:
+
+- The release workflow pushes two things to `main`: the fast-forward
+  from `pk release`, and its own marketplace-pin commit as
+  `github-actions[bot]`. Branch protection on `main` must let both
+  through (allow the maintainer and the Actions bot to push, or add
+  them to the rule's bypass list) or the release fails at the push.
+- The maiden release is what flips `marketplace.json` from the `./`
+  development source to the archive-plus-sha256 form. Until it runs,
+  marketplace installs fetch a repo with an empty `bin/`; use
+  `claude --plugin-dir` with `make bin-local` for local work before
+  the first release.
 
 Pre-release checklist:
 

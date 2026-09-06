@@ -39,9 +39,10 @@ type FlagSpec struct {
 // Command declares one pk command as data.
 type Command struct {
 	Name    string
-	Summary string // one line: usage index, help TOC, skill description
-	Hook    bool   // hook-driven: invoked by Claude Code, not by people
-	Flags   []FlagSpec
+	Summary string     // one line for the CLI usage index; the skill's frontmatter description is deliberately separate
+	Hook    bool       // hook-driven: invoked by Claude Code, not by people
+	Flags   []FlagSpec // each spec both registers its flag and documents it: --help derives from here
+	MaxArgs int        // positional arguments accepted; zero for most commands
 	Run     func(*Context) error
 }
 
@@ -157,6 +158,9 @@ func parse(cmd *Command, cmds []*Command, args []string, stdin io.Reader, stdout
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
+	if extra := fs.Args(); len(extra) > cmd.MaxArgs {
+		return nil, fmt.Errorf("unexpected argument: %q", extra[cmd.MaxArgs])
+	}
 
 	ctx := &Context{
 		Command:  cmd.Name,
@@ -227,6 +231,7 @@ func printCommandUsage(w io.Writer, cmd *Command) {
 	}
 	printFlagBlock(w, "Flags:", cmd.Flags)
 	printFlagBlock(w, "Universal flags:", universalFlags)
+	fmt.Fprintf(w, "\nDocumentation: pk help %s\n", cmd.Name)
 }
 
 func printFlagBlock(w io.Writer, title string, specs []FlagSpec) {

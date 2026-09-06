@@ -38,7 +38,15 @@
               },
               {
                 "type": "text",
-                "text": ", the committed policy: the conventional-commit type table, guard and preserve modes stated explicitly, and the release branch guarded"
+                "text": ", the committed policy: the conventional-commit type table (listed under "
+              },
+              {
+                "type": "code",
+                "text": "pk help changelog"
+              },
+              {
+                "type": "text",
+                "text": "), guard and preserve modes stated explicitly, and the release branch guarded"
               }
             ]
           }

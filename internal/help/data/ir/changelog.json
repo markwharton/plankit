@@ -113,15 +113,36 @@
         },
         {
           "type": "text",
-          "text": "; hidden types (like "
+          "text": "; hidden types are tracked but never listed. The default table "
         },
         {
           "type": "code",
-          "text": "plan"
+          "text": "pk init"
         },
         {
           "type": "text",
-          "text": ") are tracked but never listed."
+          "text": " writes:"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "feat       Added\nfix        Fixed\ndeprecate  Deprecated\nrevert     Removed\nsecurity   Security\nrefactor   Changed\nperf       Changed\ndocs       Documentation\nchore      Maintenance\ntest       Maintenance\nbuild      Maintenance\nci         Maintenance\nstyle      Maintenance\nplan       (hidden: written by pk preserve, never listed)\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Edit "
+        },
+        {
+          "type": "code",
+          "text": "changelog.types"
+        },
+        {
+          "type": "text",
+          "text": " to rename sections, add types, or hide more; whatever the file says is what this command reads."
         }
       ]
     },

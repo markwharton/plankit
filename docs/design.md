@@ -49,18 +49,37 @@ under `.git/`, the last version as the highest semver tag. Every
 command re-reads git at invocation, so pk can never disagree with the
 repository.
 
+The names these mechanisms travel under — the `Release-Tag` trailer
+key, the `plan` commit type, the pending-plan pointer filename — are
+protocol vocabulary: each is a single Go constant, the machinery's
+own language rather than policy or documentation. Config may govern a
+protocol name's presentation (`.pk.json` hides the `plan` type from
+changelogs by default) but never its spelling; the docs may narrate
+it, pinned by drift tests where they do.
+
 **`.pk.json`.** All policy: guard modes and branches, the breaking
 dial, preserve mode, the changelog type table, version files, hooks,
 the release branch. Decoded strictly into `PkConfig` at every
 invocation; behavior is derived from the struct, never remembered
 between runs. Absence of the file is itself state: plankit is off.
 
-**`skills/`.** All documentation. docgen derives the typed IR and the
-committed raw copies; the plugin ships the same files; `pk help`
-renders them. One authored source, two consumers, drift impossible.
+**`skills/`.** All narrative documentation. docgen derives the typed
+IR and the committed raw copies; the plugin ships the same files;
+`pk help` renders them. One authored source, two consumers, drift
+impossible. The flag reference is the other documentation view,
+derived from the registry: `--help` and usage errors print the
+Summary and every flag from the `Command` struct, so the reference
+cannot disagree with the code, and it cross-links to the narrative.
+The two one-liners are deliberately independent: `Summary` is the CLI
+index line, the skill's `description` is the typeahead line, and for
+hook commands they rightly differ in kind. Where both views could
+state a fact, the reference owns flags and the narrative owns
+concepts.
 
-**`commands()` in `cmd/pk/main.go`.** The command registry. Usage
-listings derive from it, and two invariant tests derive the rest:
+**`commands()` in `cmd/pk/main.go`.** The command registry. The
+`--help` and usage reference derives from it — a flag's registration
+and its documentation are one declaration, so the reference cannot
+desync from parsing — and two invariant tests derive the rest:
 every command has its skill and every hook wire references a
 registered command (`TestCommandsAndSkillsAreOneToOne`,
 `TestHookWiringMatchesRegisteredCommands`).
@@ -73,6 +92,35 @@ VCS revision for source checkouts, then `dev`.
 environment (`NO_COLOR`, `CLICOLOR_FORCE`), then the TTY probe. It is
 never configured, because it is a property of this invocation, not of
 the repository.
+
+The same picture as a graph: each source has one owner on the left
+and its readers on the right; no artifact on the right is ever edited
+by hand.
+
+```mermaid
+flowchart LR
+  subgraph sources["Sources of truth"]
+    G["git refs and history"]
+    C[".pk.json"]
+    S["skills/"]
+    R["commands() registry"]
+    B["build metadata"]
+    I["invocation context"]
+  end
+  S --> D["docgen: IR + raw"] --> H["pk help"]
+  S --> P["/plankit: skills"]
+  S --> T["invariant and drift tests"]
+  R --> U["--help and usage"]
+  R --> T
+  C --> K["hook decisions"]
+  C --> L["changelog, release, ship"]
+  G --> K
+  G --> L
+  G --> ST["pk status"]
+  C --> ST
+  B --> V["pk version"]
+  I --> PR["presentation: color, wrap"]
+```
 
 ## The release as one derivation chain
 
@@ -98,6 +146,22 @@ derivation downstream never needs a correction mechanism.
 
 Every document pk reads or writes has a Go struct that is its schema.
 The struct declares what the file can say; the decoder enforces it.
+The guard section of `.pk.json`, for example, is exactly this:
+
+```go internal/config/config.go
+type GuardConfig struct {
+	Branches []string `json:"branches,omitempty"`
+	Mode     string   `json:"mode,omitempty"` // block | ask | off
+	Push     string   `json:"push,omitempty"` // block | ask | off
+	// Breaking governs commits whose message carries a breaking-change
+	// marker (! or a BREAKING CHANGE footer). Markers are user-approved
+	// claims, not agent judgment, so guard asks before one is written.
+	Breaking string `json:"breaking,omitempty"` // ask | off
+}
+```
+
+(Code blocks in this document that name a source file are checked
+against it by the test suite, so they cannot drift from the code.)
 
 - **Strict decode at the boundary.** `.pk.json` and the help IR both
   decode with unknown fields refused, so a typo fails loudly at load
@@ -123,6 +187,19 @@ The struct declares what the file can say; the decoder enforces it.
   `Commit` values, hook payloads become `hookio.Input`, versions
   become `Semver` with round-trip validation (`parsed.String()` must
   equal the input). Decisions are made on types, never on strings.
+
+The whole of what changelog knows about a commit is one such
+intermediate:
+
+```go internal/changelog/changelog.go
+type Commit struct {
+	Hash     string
+	Type     string
+	Scope    string
+	Message  string
+	Breaking bool
+}
+```
 
 The IR is the pattern applied to documentation: SKILL.md compiles into
 `Doc`/`Block`/`Span` structs serialized as JSON, and the runtime
@@ -158,6 +235,9 @@ frame:
   stable: features arrive through config and binary, never through
   wiring, which is why a behavior change reaches every repo as one
   plugin update.
+
+This split is what makes pk a kernel in architecture.md's sense: the
+shells hold wiring and words, the binary holds every decision.
 
 ## Derivation under test
 

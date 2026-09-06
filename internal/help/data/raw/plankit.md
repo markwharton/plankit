@@ -34,10 +34,10 @@ unconfigured repository.
 Work commits follow Conventional Commits: `type(scope): subject`, with
 `!` or a `BREAKING CHANGE:` footer marking a breaking change. The type
 table lives in `.pk.json` under `changelog.types`; `pk init` writes
-the default set, and whatever the file says is what `pk changelog`
-reads on release day, so the convention is what turns daily work into
-the changelog. `pk changelog --dry-run` previews how the current
-commits will land.
+the default set, listed under `pk help changelog`, and whatever the
+file says is what `pk changelog` reads on release day, so the
+convention is what turns daily work into the changelog.
+`pk changelog --dry-run` previews how the current commits will land.
 
 One rule stands over the table: never add a breaking marker (`!` or a
 `BREAKING CHANGE:` footer) on your own judgment. Markers drive the

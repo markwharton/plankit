@@ -8,7 +8,7 @@ description: Configure a repository for plankit - write .pk.json, create docs/pl
 Configures the current repository for plan-driven development. One run
 creates the entire per-repo footprint:
 
-- `.pk.json`, the committed policy: the conventional-commit type table,
+- `.pk.json`, the committed policy: the conventional-commit type table (listed under `pk help changelog`),
   guard and preserve modes stated explicitly, and the release branch
   guarded
 - `docs/plans/`, where approved plans are preserved

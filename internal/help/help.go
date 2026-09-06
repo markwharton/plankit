@@ -12,6 +12,7 @@ import (
 var Cmd = &cli.Command{
 	Name:    "help",
 	Summary: "Show documentation for pk and its commands",
+	MaxArgs: 1,
 	Run:     run,
 }
 

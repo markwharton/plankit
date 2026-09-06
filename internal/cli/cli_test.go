@@ -51,6 +51,7 @@ func TestDeclaredFlagsReachContext(t *testing.T) {
 		flagged = c.Bool("force")
 		return nil
 	})
+	cmd.MaxArgs = 1 // the trailing "rest" word below is deliberate
 	code, _, _ := run(t, []string{"demo", "--file", "x.txt", "--force", "rest"}, cmd)
 	if code != ExitOK || got != "x.txt" || !flagged {
 		t.Fatalf("code=%d file=%q force=%v", code, got, flagged)
@@ -60,6 +61,7 @@ func TestDeclaredFlagsReachContext(t *testing.T) {
 func TestPositionalArgs(t *testing.T) {
 	var args []string
 	cmd := testCmd("demo", false, nil, func(c *Context) error { args = c.Args(); return nil })
+	cmd.MaxArgs = 2
 	run(t, []string{"demo", "a", "b"}, cmd)
 	if len(args) != 2 || args[0] != "a" || args[1] != "b" {
 		t.Fatalf("args = %v", args)
@@ -193,5 +195,40 @@ func TestHookCommandUsage(t *testing.T) {
 	code, stdout, _ := run(t, []string{"guard", "--help"}, cmd)
 	if code != ExitOK || !strings.Contains(stdout, "reads JSON on stdin") {
 		t.Fatalf("code=%d stdout=%q", code, stdout)
+	}
+}
+
+func TestUnexpectedPositionalArgumentsRefused(t *testing.T) {
+	ran := false
+	strict := &Command{Name: "strict", Summary: "s", Run: func(*Context) error { ran = true; return nil }}
+	loose := &Command{Name: "loose", Summary: "l", MaxArgs: 1, Run: func(*Context) error { return nil }}
+	cmds := []*Command{strict, loose}
+
+	var out, errw bytes.Buffer
+	if code := RunIO([]string{"pk", "strict", "help"}, cmds, nil, &out, &errw); code != ExitUsage {
+		t.Fatalf("extra arg: exit %d, want %d", code, ExitUsage)
+	}
+	if ran {
+		t.Fatal("command ran despite the unexpected argument")
+	}
+	if !strings.Contains(errw.String(), `unexpected argument: "help"`) {
+		t.Fatalf("message missing: %s", errw.String())
+	}
+
+	errw.Reset()
+	if code := RunIO([]string{"pk", "loose", "topic"}, cmds, nil, &out, &errw); code != ExitOK {
+		t.Fatalf("MaxArgs 1 with one arg: exit %d (%s)", code, errw.String())
+	}
+	if code := RunIO([]string{"pk", "loose", "topic", "extra"}, cmds, nil, &out, &errw); code != ExitUsage {
+		t.Fatal("MaxArgs 1 with two args must refuse")
+	}
+}
+
+func TestCommandUsageCrossLinksDocumentation(t *testing.T) {
+	cmd := testCmd("demo", false, nil, func(*Context) error { return nil })
+	var out, errw bytes.Buffer
+	RunIO([]string{"pk", "demo", "--help"}, []*Command{cmd}, nil, &out, &errw)
+	if !strings.Contains(out.String(), "Documentation: pk help demo") {
+		t.Fatalf("usage block missing the documentation cross-link:\n%s", out.String())
 	}
 }

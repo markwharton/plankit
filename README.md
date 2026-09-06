@@ -2,12 +2,15 @@
 
 Plan-driven development for Claude Code: guarded branches, immutable
 plan records, and conventional-commit releases, shipped as a plugin.
+plankit is the plugin; pk is the command it installs.
 
 The skills are the documentation. The same pages load as /plankit:
 shortcuts in Claude Code and render in the terminal as `pk help`, so
 one source describes every command in both places. The pk binary is
 the deterministic kernel behind them: hooks that guard protected
 branches and preserve plans, and the changelog and release machinery.
+Uninstall the plugin and pk still does everything from a terminal;
+the plugin only ever added the wiring and the pages.
 
 ## Install
 
@@ -38,19 +41,34 @@ pk changelog    # generate CHANGELOG.md, commit with a Release-Tag trailer
 pk release      # tag from the trailer, merge or trunk flow, push
 ```
 
+or as one command: `pk ship` runs both, resuming at release if a
+Release-Tag commit is already pending.
+
 `pk help` lists every topic; `pk status` reports the repository's
 configuration and state.
 
 ## pk outside Claude Code
 
 The guard, changelog, release, and pin commands are plain git
-discipline and work in any terminal. Install the binary directly:
+discipline and work in any terminal. With Go installed:
 
 ```
 go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
-or download a platform binary from the GitHub release assets.
+Without Go, download your platform's binary from the latest GitHub
+release (six are attached: `pk-darwin-arm64`, `pk-darwin-amd64`,
+`pk-linux-amd64`, `pk-linux-arm64`, `pk-windows-amd64.exe`,
+`pk-windows-arm64.exe`). On macOS or Linux:
+
+```
+chmod +x pk-<os>-<arch>
+mv pk-<os>-<arch> ~/.local/bin/pk    # any PATH directory
+```
+
+On Windows, rename `pk-windows-<arch>.exe` to `pk.exe` and place it
+in a directory on your PATH. Verify with `pk version`, then `pk init`
+in the repository you want plankit to manage.
 
 ## Building from source
 

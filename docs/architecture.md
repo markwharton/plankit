@@ -1,10 +1,41 @@
 # Architecture
 
-plankit is a Claude Code plugin with a Go kernel. This document maps
-the components; the method behind their shape is docs/design.md. The repository is the
-plugin and its own marketplace; the pk binary is the deterministic core
-the plugin's hooks and skills drive. The split rule that shaped the
-rewrite: anything that must be deterministic (git operations, config,
+plankit is a Claude Code plugin with a Go kernel. pk is the binary
+the plugin ships and the command you run, inside Claude Code and in
+any terminal. This document maps the components; the method behind
+their shape is docs/design.md.
+
+pk is a kernel in a specific sense: a deterministic core with a fixed
+contract surface (the exit taxonomy, the stream discipline, the hook
+guarantees, deny-over-ask), no runtime dependencies, and every
+behavior derived from typed state it re-reads on each invocation.
+Around it sit two thin shells, the Claude Code plugin and the bare
+CLI, which add wiring and documentation but no logic. The asymmetry
+is the test: remove the shells and pk still does everything from a
+terminal; remove pk and the shells are empty.
+
+```mermaid
+flowchart TB
+  subgraph plugin["Plugin shell (Claude Code)"]
+    hooks["hooks/hooks.json<br/>when pk runs"]
+    skills["skills/<br/>pages and typeahead"]
+    shim["bin/pk shim"]
+  end
+  subgraph cli["CLI shell (any terminal)"]
+    term["pk on PATH<br/>go install or release binary"]
+  end
+  kernel["pk kernel<br/>deterministic core, fixed contracts, no runtime deps"]
+  cfg[".pk.json<br/>policy"]
+  git["git<br/>refs, history, Release-Tag trailer"]
+  hooks --> shim --> kernel
+  skills -. documents .-> kernel
+  term --> kernel
+  kernel --> cfg
+  kernel --> git
+```
+
+The repository is the plugin and its own marketplace. The split rule
+that shaped the rewrite: anything that must be deterministic (git operations, config,
 hook decisions, changelog and release mechanics) lives in the binary;
 anything that is judgment or orchestration lives in skills.
 
@@ -39,7 +70,10 @@ authored bytes. Presentation is never configured: flags (`--format`,
 `cmd/pk/main.go` holds the explicit command registry. `internal/cli`
 supplies the frame: declarative `FlagSpec`s, universal flags
 (`--project-dir`, `--format`, `--plain`, `--quiet`), and a `Context`
-carrying resolved project dir and IO. The default project dir walks up
+carrying resolved project dir and IO. The `--help` and usage-error
+output derives from those same structs, so registering a flag and
+documenting it are one declaration, and positionals beyond a
+command's declared `MaxArgs` are refused before `Run` is reached. The default project dir walks up
 to the git root; explicit paths are taken as given.
 
 Two contracts hold everywhere:
