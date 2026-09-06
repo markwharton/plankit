@@ -4,13 +4,11 @@ Plan-driven development for Claude Code: guarded branches, immutable
 plan records, and conventional-commit releases, shipped as a plugin.
 plankit is the plugin; pk is the command it installs.
 
-The skills are the documentation. The same pages load as /plankit:
-shortcuts in Claude Code and render in the terminal as `pk help`, so
-one source describes every command in both places. The pk binary is
-the deterministic kernel behind them: hooks that guard protected
-branches and preserve plans, and the changelog and release machinery.
-Uninstall the plugin and pk still does everything from a terminal;
-the plugin only ever added the wiring and the pages.
+The skills are the documentation. The same pages load as `/plankit:`
+shortcuts in Claude Code and render in a terminal as `pk help`. The pk
+binary holds every decision: the hooks that guard branches and
+preserve plans, and the changelog and release machinery. Uninstall the
+plugin and pk still does everything from a terminal.
 
 ## Install
 
@@ -29,9 +27,9 @@ Then, in a repository you want plankit to manage:
 pk init
 ```
 
-A configured repository carries exactly two things: `.pk.json`
-(committed repo policy) and `docs/plans/` (the preserved plans).
-No `.pk.json` means off: every hook exits immediately.
+A configured repository carries `.pk.json`, the committed policy.
+`docs/plans/` appears when the first plan is preserved. No `.pk.json`
+means off: every hook exits immediately.
 
 ## The loop
 

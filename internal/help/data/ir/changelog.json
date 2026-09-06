@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "text": " trailer. No git tag is created here; that is "
+          "text": " trailer. No git tag is created; "
         },
         {
           "type": "code",
@@ -45,7 +45,7 @@
         },
         {
           "type": "text",
-          "text": "'s moment, so the release stays a two-step: generate and review, then tag and push."
+          "text": " creates it. Reason: the release stays a two-step, generate and review, then tag and push."
         }
       ]
     },
@@ -93,7 +93,7 @@
         },
         {
           "type": "code",
-          "text": "--bump\nmajor|minor|patch"
+          "text": "--bump major|minor|patch"
         },
         {
           "type": "text",
@@ -142,7 +142,7 @@
         },
         {
           "type": "text",
-          "text": " to rename sections, add types, or hide more; whatever the file says is what this command reads."
+          "text": " to rename sections, add types, or hide more. An empty table means the default table."
         }
       ]
     },
@@ -171,7 +171,7 @@
         },
         {
           "type": "text",
-          "text": " prints the section to stdout, redirectable, and works on a dirty tree. "
+          "text": " prints the section to stdout and runs on a dirty tree. "
         },
         {
           "type": "code",
@@ -249,7 +249,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Run it from your working branch: the release commit belongs there, and a protected branch is refused."
+          "text": "Run it from the working branch. A protected branch is refused."
         }
       ]
     }

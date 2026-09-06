@@ -3,6 +3,7 @@ package help
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/markwharton/plankit/internal/cli"
 )
@@ -139,11 +140,14 @@ func renderCode(sb *strings.Builder, b Block, c codes, prefix string) {
 	}
 }
 
-// token is one wrappable unit: a word with its style opening.
+// token is one wrappable unit: a word with its style opening. glue
+// means no space separates it from the token before it, which is how
+// "(`x`)" stays "(x)" and "`pk`'s" stays "pk's" through wrapping.
 type token struct {
 	word string
 	open string
 	br   bool
+	glue bool
 }
 
 // wrapSpans flattens spans to tokens and wraps them greedily by rune
@@ -169,10 +173,15 @@ func wrapSpans(spans []Span, c codes, width int, firstPrefix, contPrefix string)
 			continue
 		}
 		wlen := len([]rune(t.word))
-		if width > 0 && curLen > 0 && len(prefix)+curLen+1+wlen > width {
-			flush()
+		sep := 0
+		if curLen > 0 && !t.glue {
+			sep = 1
 		}
-		if curLen > 0 {
+		if width > 0 && curLen > 0 && !t.glue && len(prefix)+curLen+sep+wlen > width {
+			flush()
+			sep = 0
+		}
+		if sep == 1 {
 			cur.WriteString(" ")
 			curLen++
 		}
@@ -187,19 +196,35 @@ func wrapSpans(spans []Span, c codes, width int, firstPrefix, contPrefix string)
 
 func tokens(spans []Span, c codes) []token {
 	toks := []token{}
+	// spaceBefore is whether the next token follows whitespace: true at
+	// the start of a paragraph, after a break, and after any text that
+	// ends in whitespace. A code span glues to its neighbors unless
+	// whitespace stood between them in the source.
+	spaceBefore := true
 	for _, s := range spans {
 		switch s.Type {
 		case "br":
 			toks = append(toks, token{br: true})
+			spaceBefore = true
 		case "code":
-			toks = append(toks, token{word: s.Text, open: sgr(c.code)})
+			toks = append(toks, token{word: s.Text, open: sgr(c.code), glue: !spaceBefore})
 			toks = appendURL(toks, s.Text, s.URL, c)
+			spaceBefore = false
 		case "text":
 			open := spanOpen(s, c)
-			for _, w := range strings.Fields(s.Text) {
-				toks = append(toks, token{word: w, open: open})
+			leading := len(s.Text) > 0 && unicode.IsSpace(rune(s.Text[0]))
+			trailing := len(s.Text) > 0 && unicode.IsSpace(rune(s.Text[len(s.Text)-1]))
+			words := strings.Fields(s.Text)
+			for i, w := range words {
+				glue := i == 0 && !leading && !spaceBefore
+				toks = append(toks, token{word: w, open: open, glue: glue})
 			}
 			toks = appendURL(toks, s.Text, s.URL, c)
+			if len(words) == 0 {
+				spaceBefore = spaceBefore || len(s.Text) > 0
+			} else {
+				spaceBefore = trailing
+			}
 		}
 	}
 	return toks

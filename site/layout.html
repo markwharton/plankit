@@ -19,7 +19,7 @@ await mermaid.run();
 </head>
 <body>
 <header>
-  <a class="brand" href="/">plankit</a>
+  <a class="brand" href="/"{{if .Home}} aria-current="page"{{end}}>plankit</a>
   <nav>{{range .Nav}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}</nav>
 </header>
 <div class="wrap">

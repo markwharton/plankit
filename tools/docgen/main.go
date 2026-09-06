@@ -69,6 +69,8 @@ func main() {
 	skillsDir := flag.String("skills", "", "Directory of <topic>/SKILL.md sources (required)")
 	outDir := flag.String("out", "", "Output directory for ir/ and raw/ (required)")
 	siteDir := flag.String("site", "", "Also build the website into this directory (optional)")
+	notesAll := flag.String("notes", "released", "Which release notes the site renders: released (tag exists) or all (local preview)")
+	links := flag.String("links", "clean", "Internal link form: clean (/docs/ship, for Cloudflare Pages) or html (/docs/ship.html, for a local static server)")
 	rootDir := flag.String("root", "", "Repository root, for -site (README.md, docs/, CHANGELOG.md, site/)")
 	pkBin := flag.String("pk", "", "Built pk binary; when given, the site's front page runs it in a scratch repository")
 	flag.Parse()
@@ -85,7 +87,10 @@ func main() {
 			fmt.Fprintln(os.Stderr, "docgen: -site requires -root")
 			os.Exit(2)
 		}
-		if err := buildSite(*rootDir, *skillsDir, *siteDir, *pkBin); err != nil {
+		if *links == "html" {
+			linkExt = ".html"
+		}
+		if err := buildSite(*rootDir, *skillsDir, *siteDir, *pkBin, *notesAll == "all"); err != nil {
 			fmt.Fprintf(os.Stderr, "docgen: site: %v\n", err)
 			os.Exit(1)
 		}
@@ -321,7 +326,9 @@ func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
 			}
 			out = append(out, inner...)
 		case *ast.CodeSpan:
-			out = append(out, span{Type: "code", Text: nodeText(n, c.source), URL: state.URL})
+			// A code span may cross a source line; CommonMark treats the
+			// line ending as a space, and so does the terminal.
+			out = append(out, span{Type: "code", Text: strings.ReplaceAll(nodeText(n, c.source), "\n", " "), URL: state.URL})
 		case *ast.Link:
 			sub := state
 			sub.URL = string(v.Destination)

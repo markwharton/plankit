@@ -109,36 +109,34 @@ go test -run TestName ./internal/<pkg>   # single test
 
 ## Changing pk
 
-Run the test suite at the start of a session and report the status,
-then before and after each change, so failures are attributable.
+Run the test suite at the start of a session and report the status.
+Run it before and after each change. Reason: failures are then
+attributable to the change.
 
 ### Development Standards
 
 - **Preserve the structure you were given.** Let the data model drive
-  the code. Never flatten structured data into flat lists then
-  reconstruct with heuristics; the context is already lost.
+  the code. Never flatten structured data into lists and reconstruct
+  it with heuristics. Reason: the context is lost at the flattening.
 - **Fail fast, no silent fallbacks.** When something required is
-  missing or wrong, fail with a clear message, never a made-up default.
-  A documented default for an optional setting is not a fallback. The
-  hooks fail the same way, loudly to stderr with their name, but they
-  exit 0 and decline to decide rather than block the person's work;
-  they never guess a decision.
-- **Grep before done.** Update every related location together: when
-  fixing a pattern or renaming, grep the repo for all instances. One
-  fix is not done until every occurrence is fixed.
-- **Work isn't done until automated checks and a smoke test pass.**
-  Build, tests, and lint; then a manual end-to-end check with specific
-  commands and observable outcomes, including at least one negative
-  case, whenever the change alters observable behavior. Skip the smoke
-  test for pure internal refactors. A proof whose output you did not
-  see is not a proof.
-- **Diagnostic scripts over rebuild cycles.** If you are about to do
-  your second full rebuild while debugging, stop and write a minimal
-  script that tests the specific issue.
-- **A failed text search means "not found by this method", never "not
-  present".** When absence drives a root cause or code change, confirm
-  by parsing the structure (walk the JSON/XML/AST), not by
-  string-matching the text.
+  missing or wrong, fail with a message naming it, never a made-up
+  default. Limit: a documented default for an optional setting is not
+  a fallback. The hooks report to stderr the same way, then exit 0 and
+  decline to decide. They never guess a decision.
+- **Grep before done.** When fixing a pattern or renaming, find every
+  instance in the repository and change them together. Check: a
+  second search shows no hits.
+- **Work is done when the checks and a smoke test pass.** Build,
+  tests, and lint; then an end-to-end run with specific commands,
+  their output, and one case that must fail. A proof whose output you
+  did not see is not a proof. Limit: a pure internal refactor needs
+  the suite only.
+- **Diagnostic scripts over rebuild cycles.** Before a second full
+  rebuild while debugging, write a minimal script that tests the
+  specific issue.
+- **A failed text search means not found by this method.** When
+  absence drives a change, confirm by parsing the structure (JSON,
+  XML, AST), not by matching the text.
 
 ### Versions and History
 
@@ -149,6 +147,12 @@ then before and after each change, so failures are attributable.
   release version goes through the changelog config.
 - **Don't rewrite history between `pk changelog` and `pk release`.**
   Changelog records commit SHAs; release publishes them.
+- **A minor or major release has release notes.** Before shipping one,
+  write `docs/notes/<version>.md` with `version`, `date`, and `title`
+  frontmatter and the notes as prose; `pk changelog --dry-run` gives
+  the version. The site renders notes whose tag exists;
+  `make site-preview` renders them all for a local look. Patch
+  releases get none.
 - **Rewrite only unpushed commits.** Confirm the target appears in
   `git log --oneline @{push}..HEAD`; if the command errors or the
   target is absent, it has been pushed: make a new commit instead.

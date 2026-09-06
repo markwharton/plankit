@@ -2,7 +2,7 @@
   "schema": 1,
   "meta": {
     "name": "init",
-    "description": "Configure a repository for plankit - write .pk.json, create docs/plans, baseline a tag"
+    "description": "Configure a repository for plankit - write .pk.json and baseline a tag"
   },
   "blocks": [
     {
@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Configures the current repository for plan-driven development. One run creates the entire per-repo footprint:"
+          "text": "Configures the current repository. One run creates:"
         }
       ]
     },
@@ -38,7 +38,7 @@
               },
               {
                 "type": "text",
-                "text": ", the committed policy: the conventional-commit type table (listed under "
+                "text": ", the committed policy: the commit-type table (listed under "
               },
               {
                 "type": "code",
@@ -46,22 +46,7 @@
               },
               {
                 "type": "text",
-                "text": "), guard and preserve modes stated explicitly, and the release branch guarded"
-              }
-            ]
-          }
-        ],
-        [
-          {
-            "type": "para",
-            "inlines": [
-              {
-                "type": "code",
-                "text": "docs/plans/"
-              },
-              {
-                "type": "text",
-                "text": ", where approved plans are preserved"
+                "text": "), guard and preserve modes stated in full, and the release branch guarded"
               }
             ]
           }
@@ -80,11 +65,24 @@
               },
               {
                 "type": "text",
-                "text": " baseline tag when the repository has commits but no tag, so release machinery has a starting point"
+                "text": " baseline tag when the repository has commits but no tag"
               }
             ]
           }
         ]
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "docs/plans/"
+        },
+        {
+          "type": "text",
+          "text": " is not created here. Preserve creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+        }
       ]
     },
     {
@@ -112,7 +110,7 @@
         },
         {
           "type": "text",
-          "text": " names the branch to guard and release from; the default is the branch currently checked out. "
+          "text": " names the branch to guard and release from; the default is the branch checked out. "
         },
         {
           "type": "code",
@@ -137,7 +135,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Init refuses to run twice: edit "
+          "text": "Init refuses to run twice; edit "
         },
         {
           "type": "code",
@@ -145,7 +143,7 @@
         },
         {
           "type": "text",
-          "text": " directly once it exists. Commit the created files; the policy travels with the repository."
+          "text": " once it exists. Commit the created files."
         }
       ]
     }

@@ -21,15 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Renders plankit's documentation in the terminal. The same pages ship as skills in the plankit plugin, compiled from one source, so the typeahead entry, "
-        },
-        {
-          "type": "code",
-          "text": "pk help \u003ctopic\u003e"
-        },
-        {
-          "type": "text",
-          "text": ", and the file in the repository never disagree."
+          "text": "Renders plankit's documentation in a terminal. The same pages ship as skills in the plugin, compiled from one source."
         }
       ]
     },
@@ -54,7 +46,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Without a topic, prints the index. Output adapts to the reader: a terminal gets styled, wrapped text; a pipe gets the raw authored bytes, so tools and Claude read exactly the source document. "
+          "text": "Without a topic, prints the index. A terminal gets styled, wrapped text. A pipe gets the raw authored bytes. "
         },
         {
           "type": "code",
@@ -62,7 +54,7 @@
         },
         {
           "type": "text",
-          "text": " forces undecorated output, and "
+          "text": " forces undecorated output. "
         },
         {
           "type": "code",

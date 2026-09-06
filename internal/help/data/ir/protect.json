@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Protect is a PreToolUse hook on Edit and Write. Any attempt to modify a file under "
+          "text": "Protect is a PreToolUse hook on Edit and Write. It denies any write under "
         },
         {
           "type": "code",
@@ -29,7 +29,7 @@
         },
         {
           "type": "text",
-          "text": " is denied: preserved plans are immutable historical records of what was approved, and their value is exactly that they cannot be quietly rewritten afterward."
+          "text": ". Reason: a preserved plan is a record of what was approved, and a record that can be edited is not one."
         }
       ]
     },
@@ -38,7 +38,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The check resolves symlinks and compares case-insensitively on Windows, so the directory cannot be reached through an alias."
+          "text": "The check resolves symlinks and compares case-insensitively on Windows. Limit: the directory cannot be reached through an alias."
         }
       ]
     },
@@ -58,7 +58,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Plans are superseded, never edited. If the approach changes, write and approve a new plan; the sequence in "
+          "text": "Plans are superseded, never edited. When the approach changes, write and approve a new plan. The sequence in "
         },
         {
           "type": "code",
@@ -66,7 +66,7 @@
         },
         {
           "type": "text",
-          "text": " is the history of decisions, including the reversals."
+          "text": " is the history of decisions, reversals included."
         }
       ]
     },

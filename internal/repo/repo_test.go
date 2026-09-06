@@ -58,7 +58,10 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if cfg.Release.Branch != "main" || len(cfg.Guard.Branches) != 1 || cfg.Guard.Branches[0] != "main" {
 		t.Fatalf("defaults wrong: %+v", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(dir, PlansDir, ".gitkeep")); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, PlansDir)); !os.IsNotExist(err) {
+		t.Fatal("init must not create docs/plans; preserve creates it on first use")
+	}
+	if _, err := os.Stat(filepath.Join(dir, config.FileName)); err != nil {
 		t.Fatalf("plans dir: %v", err)
 	}
 	if got := git.LatestTag(dir); got != "v0.0.0" {
@@ -156,6 +159,9 @@ func TestStatusNotARepo(t *testing.T) {
 func TestStatusJSON(t *testing.T) {
 	dir := scratch(t, true)
 	run(t, "init", "--project-dir", dir)
+	if err := os.MkdirAll(filepath.Join(dir, PlansDir), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, PlansDir, "2026-01-01-1-x.md"), []byte("# x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

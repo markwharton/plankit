@@ -6,10 +6,8 @@ argument-hint: <topic>
 
 # pk help
 
-Renders plankit's documentation in the terminal. The same pages ship as
-skills in the plankit plugin, compiled from one source, so the
-typeahead entry, `pk help <topic>`, and the file in the repository
-never disagree.
+Renders plankit's documentation in a terminal. The same pages ship as
+skills in the plugin, compiled from one source.
 
 ## Usage
 
@@ -18,7 +16,6 @@ pk help
 pk help <topic>
 ```
 
-Without a topic, prints the index. Output adapts to the reader: a
-terminal gets styled, wrapped text; a pipe gets the raw authored
-bytes, so tools and Claude read exactly the source document. `--plain`
-forces undecorated output, and `NO_COLOR` is respected.
+Without a topic, prints the index. A terminal gets styled, wrapped
+text. A pipe gets the raw authored bytes. `--plain` forces undecorated
+output. `NO_COLOR` is respected.

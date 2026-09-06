@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Preserve captures an approved Claude Code plan, byte for byte, into "
+          "text": "Preserve copies an approved Claude Code plan, byte for byte, into "
         },
         {
           "type": "code",
@@ -29,7 +29,7 @@
         },
         {
           "type": "text",
-          "text": " under a dated, sequenced, slugged filename, and commits it with a "
+          "text": " under a dated, sequenced, slugged filename and commits it with a "
         },
         {
           "type": "code",
@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "text": " message. The plan lands exactly as approved; nothing rewrites it."
+          "text": " message."
         }
       ]
     },
@@ -57,7 +57,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The automatic hook fires when a plan is approved (ExitPlanMode) and honors "
+          "text": "The hook fires when a plan is approved (ExitPlanMode) and follows "
         },
         {
           "type": "code",
@@ -90,7 +90,7 @@
               },
               {
                 "type": "text",
-                "text": ": preserve and commit immediately"
+                "text": ": preserve and commit at once"
               }
             ]
           }
@@ -159,7 +159,7 @@
         },
         {
           "type": "text",
-          "text": " in the repository. The explicit invocation consumes the pending pointer and always commits, whatever the mode; running it is the consent. "
+          "text": " in the repository. The explicit invocation consumes the pending pointer and commits, whatever the mode. "
         },
         {
           "type": "code",
@@ -167,7 +167,7 @@
         },
         {
           "type": "text",
-          "text": " also pushes the commit; "
+          "text": " also pushes the commit. "
         },
         {
           "type": "code",
@@ -184,7 +184,23 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Identical plan bytes are never preserved twice: a duplicate reports the existing file instead. Short drafts under 50 bytes are ignored."
+          "text": "Limit: identical plan bytes are never preserved twice; a duplicate reports the existing file. Limit: a plan shorter than "
+        },
+        {
+          "type": "code",
+          "text": "minPlanSize"
+        },
+        {
+          "type": "text",
+          "text": " bytes is ignored ("
+        },
+        {
+          "type": "code",
+          "text": "grep minPlanSize internal/preserve/preserve.go"
+        },
+        {
+          "type": "text",
+          "text": ")."
         }
       ]
     }

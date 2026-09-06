@@ -107,3 +107,29 @@ func TestHighlightRuns(t *testing.T) {
 		t.Fatalf("want 3 lines, got %d in %q", lines, got)
 	}
 }
+
+// TestInlineCodeKeepsItsNeighbors pins that a code span glues to the
+// punctuation and letters around it exactly as the source has them,
+// and gets a space only where the source had one.
+func TestInlineCodeKeepsItsNeighbors(t *testing.T) {
+	d := &Doc{Blocks: []Block{{Type: "para", Inlines: []Span{
+		{Type: "text", Text: "A breaking change ("},
+		{Type: "code", Text: "type!:"},
+		{Type: "text", Text: " or a "},
+		{Type: "code", Text: "BREAKING"},
+		{Type: "text", Text: " footer) is "},
+		{Type: "code", Text: "pk release"},
+		{Type: "text", Text: "'s moment."},
+	}}}}
+	want := "A breaking change (type!: or a BREAKING footer) is pk release's moment.\n"
+	if got := Render(d, cli.StyleNone, 0); got != want {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+	// Two code spans separated only by whitespace still get the space.
+	d = &Doc{Blocks: []Block{{Type: "para", Inlines: []Span{
+		{Type: "code", Text: "a"}, {Type: "text", Text: " "}, {Type: "code", Text: "b"},
+	}}}}
+	if got := Render(d, cli.StyleNone, 0); got != "a b\n" {
+		t.Fatalf("got %q, want %q", got, "a b\n")
+	}
+}

@@ -1,36 +1,37 @@
 # How plankit works
 
-plankit is the plugin; pk is the command it installs. Install the
-plugin once per machine, run `pk init` once per repository, and three
-things start happening: approved plans are kept as records, protected
-branches refuse careless commits, and releases derive themselves from
-your commit messages. This page explains the shape behind that; the
-method behind the shape is in
-[docs/design.md](https://github.com/markwharton/plankit/blob/main/docs/design.md).
+plankit is a Claude Code plugin. pk is the command it installs. Install
+the plugin once per machine and run `pk init` once per repository.
+From then on, three things happen in that repository: approved plans
+are kept as a record, protected branches refuse commits from the
+agent, and releases are computed from commit messages.
 
-## The shape
+## The pieces
 
-pk is a kernel in a specific sense: a deterministic core with a fixed
-contract surface, no runtime dependencies, and every behavior derived
-from state it re-reads on each invocation. Around it sit two thin
-shells, the Claude Code plugin and the bare command line, which add
-wiring and documentation but no logic. The asymmetry is the test:
-remove the shells and pk still does everything from a terminal;
-remove pk and the shells are empty.
+The plugin has three parts: hooks that tell Claude Code when to run
+pk, pages that document each command, and a shim that finds the pk
+binary for the platform. pk holds every decision. The plugin adds
+wiring and words, not logic. Remove the plugin and pk still does
+everything from a terminal; remove pk and the plugin does nothing.
+
+A repository that uses plankit carries one file of its own: the
+policy file, `.pk.json`, committed with the code. The record,
+`docs/plans/`, appears when the first plan is preserved. Nothing else
+is copied in.
 
 ```mermaid
 flowchart TB
   subgraph plugin["Plugin shell (Claude Code)"]
     hooks["hooks<br/>when pk runs"]
-    skills["skills<br/>pages and typeahead"]
+    skills["pages<br/>typeahead and pk help"]
     shim["bin/pk shim"]
   end
   subgraph cli["CLI shell (any terminal)"]
     term["pk on PATH<br/>go install or release binary"]
   end
-  kernel["pk kernel<br/>deterministic core, fixed contracts, no runtime deps"]
-  cfg[".pk.json<br/>policy"]
-  git["git<br/>refs, history, Release-Tag trailer"]
+  kernel["pk<br/>every decision"]
+  cfg[".pk.json<br/>the policy file"]
+  git["git<br/>branches, tags, the trailer"]
   hooks --> shim --> kernel
   skills -. documents .-> kernel
   term --> kernel
@@ -38,98 +39,96 @@ flowchart TB
   kernel --> git
 ```
 
-## What runs when
+## Plans
 
-The plugin wires four hooks into Claude Code, and each one is a call
-to pk with the event on standard input:
+Claude plans the work in Plan Mode. When the developer approves the
+plan, the preserve hook copies it, byte for byte, into `docs/plans/`
+under a dated, sequenced filename. In auto mode preserve commits it at
+once. In manual mode, the default, preserve records which plan was
+approved and tells the session; `/plankit:preserve` commits it later.
 
-- **brief** runs as a session starts, resumes, or compacts, and tells
-  it this repository's policy: the commit types, the breaking-marker
-  rule, the protected branches, how plans are kept. The text is
-  rendered from `.pk.json` each time, so it cannot disagree with what
-  the other hooks then enforce, and `pk brief` at a terminal shows you
-  exactly what sessions receive.
-- **guard** runs before every shell command. It reads the command,
-  finds git mutations, and denies or asks according to your policy:
-  commits and pushes on a protected branch, any push at all, and any
-  commit whose message carries a breaking-change marker (`!` or
-  `BREAKING CHANGE`). That last one is the rule that markers are the
-  developer's claim to make, not the agent's.
-- **protect** runs before every file edit and denies writes under
-  `docs/plans/`, so a preserved plan can never be quietly rewritten to
-  match what got built.
-- **preserve** runs when a plan is approved and captures it, byte for
-  byte, into `docs/plans/` under a dated, sequenced filename. In auto
-  mode it commits immediately; in manual mode it records a pointer and
-  waits for you to say `/plankit:preserve`.
+The protect hook denies every edit under `docs/plans/`. A plan is
+never changed after approval. When the approach changes, a new plan
+is approved and preserved, and the sequence of files is the history
+of decisions, reversals included.
 
-Two promises hold for all four. A hook never blocks work by
-accident: whatever goes wrong inside it, it exits cleanly and Claude
-Code continues. And a repository without `.pk.json` is a repository
-where nothing happens: the plugin is installed everywhere, but it is
-on only where you configured it.
+## Branches
 
-## What a repository carries
+The guard hook runs before every shell command the agent issues. It
+reads the policy file and answers with a decision. Three policies
+apply. On a protected branch, a git mutation (`commit`, `merge`,
+`push`, `rebase`, `reset`) is denied or questioned. A `git push` on
+any branch is denied or questioned. A commit whose message carries a
+breaking marker (`!` after the type, or a `BREAKING CHANGE:` footer)
+is questioned. When policies overlap, deny beats ask.
 
-Exactly two things: `.pk.json`, the committed policy, and
-`docs/plans/`, the record. `pk init` writes both, tags a `v0.0.0`
-baseline if the history has none, and prints the commit convention
-the release machinery will read. `pk status` reports the policy and
-the current state.
+The breaking marker drives the next major version. It is the
+developer's claim to make, so the agent is asked before it writes
+one. `--bump` on the release commands is the same claim and the same
+rule.
 
-The policy is small and stated in full. Guard has three dials, for
-protected-branch mutations, for pushes, and for breaking markers.
-Preserve has one: auto, manual, or off. The changelog carries the
-table of commit types and the sections they land in, the files whose
-version field gets stamped at release, and the branch releases merge
-to. Plans have no dial: immutability is what makes a plan a record.
+The brief hook runs as a session starts, resumes, or compacts. It
+tells the session the policy in words: the commit types, the
+breaking-marker rule, the protected branches, how plans are kept. The
+words are rendered from the policy file each time, so they cannot
+disagree with what guard, protect, and preserve then enforce.
+`pk brief` at a terminal prints the same text.
 
-## How a release happens
+## Releases
 
-Write commits in Conventional Commits form as you work: `feat:`,
-`fix:`, `docs:`, and the rest, with `!` for a breaking change only
-when you mean it. That is the whole input. When it is time:
+Commits follow Conventional Commits: `feat:`, `fix:`, `docs:`, and
+the rest of the table in the policy file. That is the whole input to
+a release.
 
-`pk changelog` reads the commits since the last tag, infers the next
-version (breaking is major, `feat` is minor, anything else patch),
-writes the section into CHANGELOG.md, stamps the version into any
-files you named, and commits with a `Release-Tag` trailer. Nothing is
-tagged yet; the commit is there to review, and `--undo` unwinds it.
+`pk changelog` reads the commits since the last tag and infers the
+version: a breaking marker is major, `feat` is minor, anything else
+is patch. It writes the section into CHANGELOG.md, stamps the version
+into the files the policy names, and commits with a `Release-Tag`
+trailer. No tag exists yet; the commit is there to review, and
+`pk changelog --undo` unwinds it while it is unpushed.
 
-`pk release` reads that trailer, checks the ground (clean tree, branch
-on origin, nothing diverged), fast-forwards the release branch, runs
-your pre-release hook, tags, runs your pre-push hook, and pushes the
-branch and the tag together. If anything fails after the tag exists,
-it rolls back: tag deleted, merge reset, back on your branch.
+`pk release` reads the trailer. It checks the tree is clean, the
+branch is on origin, and nothing has diverged. It fast-forwards the
+release branch, runs the pre-release hook, tags, runs the pre-push
+hook, and pushes the branch and the tag together. A failure after the
+tag exists rolls back: the tag is deleted, the merge is reset, and the
+working branch is checked out again.
 
-`pk ship` runs both. Its only state is that trailer, so a ship
-interrupted between the halves resumes at release when you run it
-again. Everything above has `--dry-run`, and a dry run of the
-changelog works even on a dirty tree, so previewing is free.
+`pk ship` runs changelog then release. Its only state is the trailer,
+so a ship interrupted between the halves resumes at release on rerun.
+Every release command accepts `--dry-run`.
 
-Pushing the tag is the hand-off to CI: the platform binaries are
-built, the plugin archive is assembled, and the GitHub release
-carries them together with the published marketplace file, whose
-archive source names the exact version and its digest. Installers
-update when the version inside the plugin changes, which is to say
-when you cut a release. Nothing is committed back to a source branch
-by the release; develop and main are equal when it finishes.
+The pushed tag hands off to CI. CI builds the platform binaries,
+assembles the plugin archive, and publishes a GitHub release carrying
+the archive, the binaries, and the marketplace file that names the
+archive's version and digest. Installers see a new version when the
+version inside the plugin changes. The release commits nothing back
+to a source branch, so the working branch and the release branch are
+equal when it finishes.
 
-## One source, three consumers
+## Pages
 
 Every command has one page, written once. Claude Code loads it as a
-`/plankit:` shortcut, `pk help` renders it in the terminal, and this
-site renders it as HTML. The same file, so the same words. The pages
-are compiled at build time, checked for drift, and rejected if they
-carry hidden or direction-changing characters, because they load into
-other people's model contexts. What you read here is what Claude
-reads.
+`/plankit:` shortcut, `pk help` prints it in a terminal, and
+plankit.com renders it as HTML. The pages are compiled at build time
+and checked for drift. A page carrying hidden or direction-changing
+characters fails the build, because pages load into other people's
+sessions.
+
+## Two promises
+
+A hook never blocks work by failing. Whatever goes wrong inside it, it
+reports on stderr, exits 0, and Claude Code continues.
+
+A repository without a policy file gets no action from any hook. The
+plugin is installed everywhere; it is on only where `pk init` ran.
 
 ## Outside Claude Code
 
-The hooks are the only Claude Code-specific piece. Guard, changelog,
-release, ship, and pin are plain git discipline and work in any
-terminal, so pk installs on its own too: `go install` with Go, or a
-release binary without it, on macOS, Linux, or Windows. A team member
-who never opens Claude Code still gets protected branches and derived
-releases from the same `.pk.json`.
+The hooks are the only Claude Code-specific part. Guard, changelog,
+release, ship, and pin work in any terminal. pk installs on its own
+with `go install`, or as a release binary without Go, on macOS, Linux,
+and Windows. A team member who never opens Claude Code gets the same
+protected branches and the same releases from the same policy file.
+The method behind this page is in
+[docs/design.md](https://github.com/markwharton/plankit/blob/main/docs/design.md).

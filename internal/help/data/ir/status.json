@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Reports what plankit sees in this repository: the resolved policy from "
+          "text": "Reports the resolved policy from "
         },
         {
           "type": "code",
@@ -54,7 +54,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Exit codes carry the answer for scripts: "
+          "text": "Exit code "
         },
         {
           "type": "code",
@@ -62,7 +62,7 @@
         },
         {
           "type": "text",
-          "text": " means configured, "
+          "text": " means configured; "
         },
         {
           "type": "code",
@@ -87,7 +87,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "An unconfigured repository is not an error, it is a state: plankit is off wherever "
+          "text": "An unconfigured repository is a state, not an error: plankit is off wherever "
         },
         {
           "type": "code",
@@ -95,7 +95,7 @@
         },
         {
           "type": "text",
-          "text": " is absent, and every hook exits immediately there."
+          "text": " is absent."
         }
       ]
     }

@@ -37,11 +37,18 @@ type sitePage struct {
 	Nav     []navItem
 	Topics  []navItem
 	Mermaid bool
+	Home    bool // the front page; the wordmark carries the current marker
 }
 
 // buildSite renders every page into out. root is the repository root
 // (for README.md, docs/, CHANGELOG.md, and site/ templates).
-func buildSite(root, skillsDir, out, pk string) error {
+// linkExt is appended to every internal page link. Deployed, it is
+// empty: Cloudflare Pages serves ship.html at /docs/ship and redirects
+// the .html form there. For a local preview under a plain static
+// server it is ".html".
+var linkExt = ""
+
+func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	layout, err := template.ParseFiles(filepath.Join(root, "site", "layout.html"))
 	if err != nil {
 		return fmt.Errorf("site layout: %w", err)
@@ -79,24 +86,33 @@ func buildSite(root, skillsDir, out, pk string) error {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 		topics = append(topics, topic{name, fm["description"], body, bytes.HasPrefix(bytes.TrimSpace(body), []byte("# pk "+name+"\n")) || bytes.Equal(bytes.TrimSpace(body), []byte("# pk "+name))})
-		topicNav = append(topicNav, navItem{Href: "/docs/" + name + ".html", Label: name, Desc: fm["description"]})
+		topicNav = append(topicNav, navItem{Href: "/docs/" + name + linkExt, Label: name, Desc: fm["description"]})
 	}
 
-	nav := []navItem{
-		{Href: "/", Label: "Home"},
-		{Href: "/architecture.html", Label: "How it works"},
-		{Href: "/changelog.html", Label: "Changelog"},
-		{Href: "https://github.com/markwharton/plankit/blob/main/docs/design.md", Label: "Design (GitHub)"},
+	notes, err := readNotes(root, notesAll)
+	if err != nil {
+		return err
 	}
+	nav := []navItem{
+		{Href: "/architecture" + linkExt, Label: "How it works"},
+	}
+	if len(notes) > 0 {
+		nav = append(nav, navItem{Href: "/notes" + linkExt, Label: "Notes"})
+	}
+	nav = append(nav,
+		navItem{Href: "/changelog" + linkExt, Label: "Changelog"},
+		navItem{Href: "https://github.com/markwharton/plankit/blob/main/docs/design.md", Label: "Design (GitHub)"},
+	)
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
-		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid}
+		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html"}
+		clean := "/" + strings.TrimSuffix(path, ".html") + linkExt
 		for _, n := range nav {
-			n.Current = n.Href == "/"+path || (n.Href == "/" && path == "index.html")
+			n.Current = n.Href == clean
 			p.Nav = append(p.Nav, n)
 		}
 		for _, n := range topicNav {
-			n.Current = n.Href == "/"+path
+			n.Current = n.Href == clean
 			p.Topics = append(p.Topics, n)
 		}
 		var buf bytes.Buffer
@@ -137,6 +153,16 @@ func buildSite(root, skillsDir, out, pk string) error {
 		if err := write(src.path, src.title, md); err != nil {
 			return err
 		}
+	}
+	if len(notes) > 0 {
+		if err := writeHTML("notes.html", "Release notes", notesHTML(notes, repoWebURL(root), gitTags(root)), false); err != nil {
+			return err
+		}
+	}
+	// Without a root 404.html, Cloudflare Pages answers every unknown
+	// path with the front page.
+	if err := writeHTML("404.html", "Not found", template.HTML(`<h1>Not found</h1><p>There is no page at this address. <a href="/">Home</a>.</p>`), false); err != nil {
+		return err
 	}
 	for _, static := range []string{"style.css", "_redirects"} {
 		b, err := os.ReadFile(filepath.Join(root, "site", static))
@@ -182,7 +208,9 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<section class="hero"><p class="tagline"><span class="name">plankit</span> is the plugin; <span class="name">pk</span> is the command it installs.</p>`)
+	// The hero is the README's own opening; the generator holds no
+	// sentence of its own.
+	b.WriteString(`<section class="hero">`)
 	b.WriteString(string(introHTML))
 	b.WriteString(`</section>`)
 	b.WriteString(`<section class="install"><h2>Install</h2>` + string(installHTML) + `</section>`)
@@ -192,7 +220,7 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 		if !t.command {
 			continue // documents have pages but no command card
 		}
-		b.WriteString(`<a class="card" href="/docs/` + t.name + `.html"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
+		b.WriteString(`<a class="card" href="/docs/` + t.name + linkExt + `"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
 	}
 	b.WriteString(`</div></section>`)
 	if tag := latestTag(root); tag != "" {

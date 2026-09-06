@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/cli"
@@ -75,17 +74,9 @@ func runInit(ctx *cli.Context) error {
 	if err := do(config.FileName, func() error { return config.Write(root, cfg) }); err != nil {
 		return err
 	}
-	plans := paths.Plans(root)
-	if _, err := os.Stat(plans); os.IsNotExist(err) {
-		if err := do(PlansDir+"/", func() error {
-			if err := os.MkdirAll(plans, 0o755); err != nil {
-				return err
-			}
-			return os.WriteFile(filepath.Join(plans, ".gitkeep"), nil, 0o644)
-		}); err != nil {
-			return err
-		}
-	}
+	// docs/plans/ is not created here: preserve creates it on first
+	// use, so a repository that never preserves a plan never gains the
+	// directory.
 	if baseline != "" {
 		if err := do("tag "+baseline, func() error { return git.CreateTag(root, baseline) }); err != nil {
 			return err
@@ -113,7 +104,7 @@ func runInit(ctx *cli.Context) error {
 		msg.Notef(ctx.Stdout, "commit convention: Conventional Commits with types %s (from %s changelog.types)", typeNames(cfg.Changelog.ResolvedTypes()), config.FileName)
 		msg.Notef(ctx.Stdout, "breaking markers (! or BREAKING CHANGE) are the developer's call: guard asks before one is committed")
 		msg.Notef(ctx.Stdout, "every Claude Code session in this repository is briefed on this policy at start (pk brief shows the text)")
-		msg.Hintf(ctx.Stdout, "commit %s and %s; run pk status to review the policy", config.FileName, PlansDir)
+		msg.Hintf(ctx.Stdout, "commit %s; run pk status to review the policy", config.FileName)
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-.PHONY: build test docs site vet fmt
+.PHONY: build test docs site site-preview vet fmt
 
 build: docs
 	go build -o pk ./cmd/pk
@@ -8,6 +8,11 @@ docs:
 
 site: build
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk
+
+# Local preview: links end in .html for a plain static server, and release
+# notes whose tag does not exist yet are rendered too.
+site-preview: build
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk -notes all -links html
 
 test:
 	go vet ./...

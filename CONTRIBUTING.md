@@ -16,21 +16,19 @@ CI runs `make test`, checks gofmt and docgen drift, and runs
 `claude plugin validate . --strict`. A change to any skill must be
 committed together with its recompiled `internal/help/data` output or
 the drift check fails. docgen also rejects hidden, control, and
-bidirectional characters in skills: they ship verbatim into other
-people's model contexts, so nothing a reader cannot see may compile.
+bidirectional characters in skills. Reason: skills ship verbatim into
+other people's model contexts.
 
 ## Workflow
 
 All changes go through `develop`; never commit directly to `main`.
 
-In Claude Code, `pk guard` enforces this automatically. In the
-terminal, GitHub branch protection rejects the push only at the
-server, after the commit exists locally, so check the branch yourself.
+In Claude Code, `pk guard` enforces this. In a terminal, GitHub branch
+protection rejects the push at the server, after the commit exists
+locally. Check the branch before committing.
 
-After merging PRs on GitHub, sync your local branch with
-`git pull --rebase`. It replays your unpushed local commits on top of
-the remote, keeping history linear, and is only safe when your local
-commits haven't been pushed yet, which is exactly when you need it.
+After merging PRs on GitHub, sync the local branch with
+`git pull --rebase`. Limit: only while the local commits are unpushed.
 
 ## Pull requests
 
@@ -59,14 +57,12 @@ pk release --dry-run     # rehearse the flow
 pk release               # merge to main, tag, push main + tag, push develop
 ```
 
-The pushed tag triggers `.github/workflows/release.yml`, which
-cross-compiles the platform binaries, assembles the plugin archive,
-and publishes the GitHub release with the archive (versioned and as
-`plankit.zip`), the binaries, and the published `marketplace.json`
-whose archive source carries the versioned URL and sha256. The pin is
-a derived value: it lives on the release as an asset and the site
-mirrors it. Nothing is ever committed back to a source branch, so
-develop and main stay equal after every release.
+The pushed tag triggers `.github/workflows/release.yml`. It
+cross-compiles the platform binaries and assembles the plugin archive.
+It publishes the GitHub release with the archive (versioned and as
+`plankit.zip`), the binaries, and the published `marketplace.json`.
+The release commits nothing to a source branch; see docs/design.md,
+The release as one derivation chain.
 
 Publishing prerequisites, once per repository:
 
@@ -89,11 +85,11 @@ Pre-release checklist:
   `claude --plugin-dir <this checkout>`: `/plankit:status` answers,
   and a `git commit` on a protected branch is blocked.
 - **Bashless Windows gate**: on a Windows machine or VM without Git
-  for Windows (so Claude Code falls back to PowerShell), install the
-  release candidate and verify the guard hook fires. The plugin bin/
-  PATH injection is a Bash-tool behavior; PowerShell sessions reach pk
-  through the hook wiring's explicit `${CLAUDE_PLUGIN_ROOT}` path, and
-  this gate is what proves that path end to end.
+  for Windows, so Claude Code falls back to PowerShell, install the
+  release candidate and verify the guard hook fires. Reason: plugin
+  `bin/` PATH injection is a Bash-tool behavior; PowerShell sessions
+  reach pk only through the hook wiring's explicit
+  `${CLAUDE_PLUGIN_ROOT}` path.
 
 ## Contributions & AI
 

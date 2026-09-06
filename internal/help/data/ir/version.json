@@ -21,7 +21,15 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Prints the version of the running pk binary. Release builds report the stamped semver; development builds report "
+          "text": "Prints the version of the running pk binary. Release builds report the stamped version. "
+        },
+        {
+          "type": "code",
+          "text": "go install"
+        },
+        {
+          "type": "text",
+          "text": " builds report the module version. Source builds report "
         },
         {
           "type": "code",
@@ -66,7 +74,7 @@
         },
         {
           "type": "text",
-          "text": " emits a single object with "
+          "text": " emits one object with "
         },
         {
           "type": "code",
@@ -98,7 +106,7 @@
         },
         {
           "type": "text",
-          "text": " keys, for scripting."
+          "text": " keys."
         }
       ]
     }

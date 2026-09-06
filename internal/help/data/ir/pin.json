@@ -29,7 +29,7 @@
         },
         {
           "type": "text",
-          "text": " so pinned copies (workflow files, install scripts, documentation) track the release automatically."
+          "text": "."
         }
       ]
     },
@@ -73,7 +73,7 @@
         },
         {
           "type": "text",
-          "text": ", the first assignment of a quoted string to that identifier is updated; "
+          "text": ", the first assignment of a quoted string to that identifier is updated. "
         },
         {
           "type": "code",
@@ -89,7 +89,7 @@
         },
         {
           "type": "text",
-          "text": ", and a bare YAML colon all match, and the "
+          "text": ", and a bare YAML colon match. The "
         },
         {
           "type": "code",
@@ -122,7 +122,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A missing file is a no-op and a file without a matching pin is a warning, never a failure, so a renamed target cannot abort a release from inside a hook."
+          "text": "Limit: a missing file is a no-op and a file without a matching pin is a warning, never a failure. Reason: a renamed target must not abort a release from inside a hook."
         }
       ]
     }

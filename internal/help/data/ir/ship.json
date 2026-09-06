@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "text": " as one invocation: the section is generated and committed with its Release-Tag trailer, the release is tagged and pushed, and CI takes over. Ship carries no state of its own; the trailer decides what remains, so a run interrupted between the halves resumes at release on rerun."
+          "text": " as one invocation. Ship carries no state of its own; the trailer decides what remains. A run interrupted between the halves resumes at release on rerun."
         }
       ]
     },
@@ -82,7 +82,7 @@
         },
         {
           "type": "text",
-          "text": " previews the section when nothing is pending, or rehearses the release when a Release-Tag commit already exists; the release half cannot be rehearsed before its changelog commit exists."
+          "text": " previews the section when nothing is pending, or rehearses the release when a Release-Tag commit exists. Limit: the release half cannot be rehearsed before its changelog commit exists."
         }
       ]
     },
@@ -91,7 +91,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "If the release half fails, the changelog commit stands: rerun "
+          "text": "If the release half fails, the changelog commit stands. Rerun "
         },
         {
           "type": "code",
@@ -127,7 +127,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Invoked from Claude Code, run "
+          "text": "From Claude Code, run "
         },
         {
           "type": "code",
@@ -143,7 +143,7 @@
         },
         {
           "type": "text",
-          "text": " and report the result: the release completes without further input. If the preview shows a major, stop: list the commits carrying "
+          "text": " and report the result. If the preview shows a major, stop: list the commits carrying "
         },
         {
           "type": "code",
@@ -167,7 +167,7 @@
         },
         {
           "type": "text",
-          "text": ". A major is never wrong by inference (the markers were ratified by guard when written), but shipping one is the developer's moment to double-check."
+          "text": ". Decision: a major ships only on the developer's go."
         }
       ]
     }

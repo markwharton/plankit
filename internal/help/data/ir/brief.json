@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The repository's policy, rendered as instructions for a session. The SessionStart hook runs it on every start, resume, and compaction and injects the text as context, so a session knows the commit convention, the breaking-marker rule, the protected branches, and how plans are kept before its first command. Nothing is copied into the repository: the text is derived from "
+          "text": "The repository's policy, rendered as instructions for a session. The SessionStart hook runs it on every start, resume, and compaction and injects the text as context. Nothing is copied into the repository: the text is derived from "
         },
         {
           "type": "code",
@@ -29,7 +29,7 @@
         },
         {
           "type": "text",
-          "text": " each time, so it cannot disagree with what guard, protect, and preserve then enforce."
+          "text": " on each run."
         }
       ]
     },
@@ -47,14 +47,22 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk brief\n"
+      "text": "pk brief\npk brief --format json\n"
     },
     {
       "type": "para",
       "inlines": [
         {
           "type": "text",
-          "text": "At a terminal it prints the same text a session receives, so you can read exactly what your sessions are told; "
+          "text": "At a terminal, "
+        },
+        {
+          "type": "code",
+          "text": "pk brief"
+        },
+        {
+          "type": "text",
+          "text": " prints the text a session receives. "
         },
         {
           "type": "code",
@@ -82,7 +90,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Two sentences are constant, the first and the last. Everything between follows the dials: "
+          "text": "The first and last sentences are constant. The rest follows the dials. "
         },
         {
           "type": "code",
@@ -90,7 +98,7 @@
         },
         {
           "type": "text",
-          "text": " lists the commit types (the default table when the file leaves it empty), "
+          "text": " lists the commit types, the default table when the file leaves it empty. "
         },
         {
           "type": "code",
@@ -98,7 +106,7 @@
         },
         {
           "type": "text",
-          "text": " decides whether the marker rule mentions the ask, "
+          "text": " decides whether the marker rule mentions the ask. "
         },
         {
           "type": "code",
@@ -114,7 +122,7 @@
         },
         {
           "type": "text",
-          "text": " describe the protected branches and pushing, "
+          "text": " describe the protected branches and pushing. "
         },
         {
           "type": "code",
@@ -122,7 +130,7 @@
         },
         {
           "type": "text",
-          "text": " names where releases merge, and "
+          "text": " names where releases merge. "
         },
         {
           "type": "code",
