@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.0.1] - 2026-09-06
+
+### Fixed
+
+- release binaries carry the tag's version; the tap gets checksums and its dispatch (6b2df44)
+
 ## [v1.0.0] - 2026-09-06
 
 ### Added
@@ -1159,3 +1165,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.29.3]: https://github.com/markwharton/plankit/compare/v0.29.2...v0.29.3
 [v0.30.0]: https://github.com/markwharton/plankit/compare/v0.29.3...v0.30.0
 [v1.0.0]: https://github.com/markwharton/plankit/compare/v0.30.0...v1.0.0
+[v1.0.1]: https://github.com/markwharton/plankit/compare/v1.0.0...v1.0.1
