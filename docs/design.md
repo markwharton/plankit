@@ -164,8 +164,10 @@ sections and the bump. The bump and the last tag give the version. The
 version is written into CHANGELOG.md and spliced into the files the
 policy names, and the commit carries the version as the trailer.
 `pk release` reads the trailer, tags, and pushes. The tag push builds
-the archive and its digest and publishes them with the marketplace
-file as release assets. The digest is computed, so it is never
+the binaries, stamped with the tag's version, and the archive, and
+publishes them with the marketplace file and `checksums.txt` as
+release assets; the Homebrew tap reads the checksums to bump its
+formula. The digest is computed, so it is never
 committed to a source branch. The one place judgment enters is the
 breaking marker, and guard asks there.
 

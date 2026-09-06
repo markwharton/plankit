@@ -1,7 +1,13 @@
+# VERSION stamps the binaries: set it from the tag at release (release.yml
+# passes the tag without its v), leave it empty for a development build,
+# which then reports dev+<commit>.
+VERSION ?=
+LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/version.stamped=$(VERSION))
+
 .PHONY: build test docs site site-preview vet fmt
 
 build: docs
-	go build -o pk ./cmd/pk
+	go build -ldflags "$(LDFLAGS)" -o pk ./cmd/pk
 
 docs:
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data
@@ -33,8 +39,8 @@ dist: docs
 		os=$${t%-*}; arch=$${t#*-}; ext=""; \
 		if [ "$$os" = windows ]; then ext=.exe; fi; \
 		echo "  bin/pk-$$t$$ext"; \
-		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o bin/pk-$$t$$ext ./cmd/pk; \
+		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/pk-$$t$$ext ./cmd/pk; \
 	done
 
 bin-local: docs
-	go build -o bin/pk-$$(go env GOOS)-$$(go env GOARCH) ./cmd/pk
+	go build -ldflags "$(LDFLAGS)" -o bin/pk-$$(go env GOOS)-$$(go env GOARCH) ./cmd/pk

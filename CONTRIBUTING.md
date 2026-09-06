@@ -63,7 +63,9 @@ pk release               # merge to main, tag, push main + tag, push develop
 The pushed tag triggers `.github/workflows/release.yml`. It
 cross-compiles the platform binaries and assembles the plugin archive.
 It publishes the GitHub release with the archive (versioned and as
-`plankit.zip`), the binaries, and the published `marketplace.json`.
+`plankit.zip`), the binaries stamped with the tag's version, the
+published `marketplace.json`, and `checksums.txt`, and refuses to
+publish a binary that does not report the tag's version.
 The release commits nothing to a source branch; see docs/design.md,
 The release as one derivation chain.
 
@@ -76,6 +78,11 @@ Publishing prerequisites, once per repository:
   Pages project named `plankit-com`; set the `CLOUDFLARE_API_TOKEN` and
   `CLOUDFLARE_ACCOUNT_ID` repository secrets. Without them the job
   builds the site and skips the deploy.
+- The Homebrew tap, `markwharton/homebrew-plankit`, updates its formula
+  from each release's `checksums.txt` on a daily schedule and on the
+  `bump-formula` dispatch the release workflow sends; set the
+  `TAP_DISPATCH_TOKEN` repository secret for the dispatch. Without it
+  the tap catches up on its schedule.
 - Until the first release exists there is no published marketplace;
   `.claude-plugin/marketplace.json` in the tree is the development
   manifest for `claude --plugin-dir` and validation only. Use that

@@ -58,7 +58,14 @@ discipline and work in any terminal. With Go installed:
 go install github.com/markwharton/plankit/cmd/pk@latest
 ```
 
-Without Go, download your platform's binary from the latest GitHub
+On macOS or Linux with Homebrew:
+
+```
+brew tap markwharton/plankit
+brew install plankit
+```
+
+Without Go or Homebrew, download your platform's binary from the latest GitHub
 release (six are attached: `pk-darwin-arm64`, `pk-darwin-amd64`,
 `pk-linux-amd64`, `pk-linux-arm64`, `pk-windows-amd64.exe`,
 `pk-windows-arm64.exe`). On macOS or Linux:

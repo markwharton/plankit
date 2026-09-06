@@ -17,14 +17,21 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      TAP_DISPATCH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
 
-      - name: Cross-compile platform binaries
-        run: make dist
+      - name: Cross-compile platform binaries, stamped with the tag's version
+        run: make dist VERSION="${GITHUB_REF_NAME#v}"
+
+      - name: Refuse an unstamped binary
+        run: |
+          got=$(./bin/pk-linux-amd64 --version)
+          test "$got" = "pk ${GITHUB_REF_NAME#v}" || { echo "binary reports '$got', expected 'pk ${GITHUB_REF_NAME#v}'"; exit 1; }
 
       - name: Assemble plugin archive and marketplace
         run: |
@@ -44,6 +51,9 @@ jobs:
             '.plugins[0].source = {source: "archive", url: $url, sha256: $sha}
              | .description = "plankit marketplace: install plan-driven development for Claude Code"' \
             .claude-plugin/marketplace.json > marketplace.json
+          # checksums.txt covers every asset; the Homebrew tap reads the
+          # four platform binaries' lines to bump its formula.
+          sha256sum bin/pk-* "plankit-$TAG.zip" plankit.zip marketplace.json | sed 's|bin/||' > checksums.txt
 
       - name: Create GitHub release with assets
         env:
@@ -51,7 +61,19 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           gh release create "$TAG" --title "plankit $TAG" --generate-notes \
-            "plankit-$TAG.zip" plankit.zip marketplace.json bin/pk-*
+            "plankit-$TAG.zip" plankit.zip marketplace.json checksums.txt bin/pk-*
+
+      # Fire-and-forget: the tap's daily schedule covers a failed ping.
+      - name: Notify the Homebrew tap
+        if: env.TAP_DISPATCH_TOKEN != ''
+        continue-on-error: true
+        run: |
+          curl -sf -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TAP_DISPATCH_TOKEN" \
+            https://api.github.com/repos/markwharton/homebrew-plankit/dispatches \
+            -d '{"event_type":"bump-formula"}'
+
 
   site:
     needs: release
