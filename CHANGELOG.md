@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.0.0] - 2026-09-06
+
+### Added
+
+- layer 0 — execution frame (332aed5)
+- layer 1 — help engine (IR, docgen, renderer, pk help) (223104d)
+- layer 2 — repo model (config, git, init, status) (2a28e10)
+- layer 3 — hook trio (hookio, guard, protect, preserve) (b86df26)
+- layer 4 — release machinery (changelog, release, pin) (8e11630)
+- layer 5 — plugin shell (005409c)
+- layer 6 — supply chain and migration (5cfda65)
+- guard asks before a breaking marker; pk ship; conventions taught at init; the built system documented (3fdb457)
+- plankit.com generated from the repository; the marketplace pin published with the release, never committed (32555e8)
+- craft; pk brief; the documents split by audience; the rules for changing pk (979157e)
+- flags and settings generated into every page; the policy file's JSON Schema (b8da46a)
+- the site carries the pk icon (5b0385b)
+
+### Fixed
+
+- protect resolves symlinks through the nearest existing ancestor (eb20f5a)
+- stray arguments refused frame-wide; go-install version; documentation pinned to the code it describes (3f72d8f)
+- hooks report a broken policy file; --format where honored; a flag after a positional; release notes checked before the release (7b21f25)
+
+### Documentation
+
+- every document says the fact; the front page runs pk (479ff3f)
+- release notes for v1.0.0 (1b91ab5)
+
+### Maintenance
+
+- **BREAKING:** clear the ground for the plugin-first rewrite (cf91c99)
+- cover config load and validation directly (085394a)
+
 ## [v0.30.0] - 2026-08-24
 
 ### Added
@@ -1125,3 +1158,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v0.29.2]: https://github.com/markwharton/plankit/compare/v0.29.1...v0.29.2
 [v0.29.3]: https://github.com/markwharton/plankit/compare/v0.29.2...v0.29.3
 [v0.30.0]: https://github.com/markwharton/plankit/compare/v0.29.3...v0.30.0
+[v1.0.0]: https://github.com/markwharton/plankit/compare/v0.30.0...v1.0.0
