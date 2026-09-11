@@ -44,6 +44,42 @@ func ReadReleaseTagTrailer(dir string) (version.Semver, string, error) {
 	return parsed, value, nil
 }
 
+// TagState says where a Release-Tag trailer's tag stands. A release is
+// pending only while its tag is absent: a release commit keeps its
+// trailer after it ships, so the trailer alone cannot tell a staged
+// release from a finished one.
+type TagState int
+
+const (
+	TagAbsent    TagState = iota // no such tag: the release is pending
+	TagOnHead                    // the tag is on HEAD: the release has been made
+	TagElsewhere                 // the tag is on another commit: the trailer conflicts with it
+)
+
+// ReleaseTagState reports where tag stands relative to HEAD. An error
+// means git could not answer; the state is meaningless then.
+func ReleaseTagState(dir, tag string) (TagState, error) {
+	existing, err := git.Exec(dir, "tag", "--list", tag)
+	if err != nil {
+		return TagAbsent, fmt.Errorf("git tag --list failed: %w", err)
+	}
+	if strings.TrimSpace(existing) == "" {
+		return TagAbsent, nil
+	}
+	tagged, err := git.Exec(dir, "rev-parse", "--verify", "--quiet", tag+"^{commit}")
+	if err != nil {
+		return TagAbsent, fmt.Errorf("git rev-parse %s failed: %w", tag, err)
+	}
+	head, err := git.Exec(dir, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil {
+		return TagAbsent, fmt.Errorf("git rev-parse HEAD failed: %w", err)
+	}
+	if strings.TrimSpace(tagged) == strings.TrimSpace(head) {
+		return TagOnHead, nil
+	}
+	return TagElsewhere, nil
+}
+
 // readFile and writeFile isolate the two filesystem touches for tests.
 func readFile(path string) ([]byte, error) { return os.ReadFile(path) }
 func writeFile(path string, data []byte) error {

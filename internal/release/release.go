@@ -81,10 +81,17 @@ func run(ctx *cli.Context) error {
 		return cli.Statef("%v", err)
 	}
 
-	if existing, err := git.Exec(root, "tag", "--list", tag); err != nil {
-		return fmt.Errorf("git tag --list failed: %v", err)
-	} else if strings.TrimSpace(existing) != "" {
-		return cli.Statef("tag %s already exists locally; nothing to release", tag)
+	// A release commit keeps its trailer after it ships, so the tag, not
+	// the trailer, says whether anything is left to do here.
+	switch state, err := changelog.ReleaseTagState(root, tag); {
+	case err != nil:
+		return err
+	case state == changelog.TagOnHead:
+		return cli.Statef("HEAD is already tagged %s; nothing to release", tag)
+	case state == changelog.TagElsewhere:
+		return cli.WithHint(
+			cli.Statef("tag %s already exists on another commit", tag),
+			"to restage under the next version: pk changelog --undo, then pk changelog")
 	}
 
 	msg.Banner(w, "Release "+tag)

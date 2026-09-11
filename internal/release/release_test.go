@@ -150,12 +150,20 @@ func TestRefusals(t *testing.T) {
 		t.Fatalf("no trailer: code=%d errw=%q", code, errw)
 	}
 
-	// Tag already exists.
+	// The tag is on HEAD: this release has already been made.
 	dir, _ = repo(t, nil)
 	pending(t, dir)
 	mustGit(t, dir, "tag", "v0.1.0")
-	if code, errw := runRel(t, dir); code != cli.ExitState || !strings.Contains(errw, "already exists locally") {
-		t.Fatalf("tag exists: code=%d errw=%q", code, errw)
+	if code, errw := runRel(t, dir); code != cli.ExitState || !strings.Contains(errw, "HEAD is already tagged") {
+		t.Fatalf("tag on HEAD: code=%d errw=%q", code, errw)
+	}
+
+	// The tag is on another commit: the trailer conflicts with it.
+	dir, _ = repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "tag", "v0.1.0", "HEAD~1")
+	if code, errw := runRel(t, dir); code != cli.ExitState || !strings.Contains(errw, "already exists on another commit") {
+		t.Fatalf("tag elsewhere: code=%d errw=%q", code, errw)
 	}
 
 	// On the release branch.

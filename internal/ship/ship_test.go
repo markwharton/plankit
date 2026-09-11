@@ -129,6 +129,50 @@ func TestShipResumesFromPendingTrailer(t *testing.T) {
 	}
 }
 
+// TestShipOnAReleasedHeadReportsNothingToDo pins what a second ship
+// says: a release commit keeps its trailer after it ships, and reading
+// the trailer alone called that finished release a pending one.
+func TestShipOnAReleasedHeadReportsNothingToDo(t *testing.T) {
+	dir, _ := repo(t)
+	work(t, dir, "feat: the work")
+	if code, _, errw := runShip(t, dir); code != cli.ExitOK {
+		t.Fatalf("first ship: exit %d:\n%s", code, errw)
+	}
+
+	code, _, errw := runShip(t, dir)
+	if code != cli.ExitOK {
+		t.Fatalf("second ship: exit %d:\n%s", code, errw)
+	}
+	if !strings.Contains(errw, "No new conventional commits found.") {
+		t.Fatalf("changelog narration missing:\n%s", errw)
+	}
+	for _, claim := range []string{"already pending", "remains pending", "nothing to release"} {
+		if strings.Contains(errw, claim) {
+			t.Fatalf("second ship claims %q:\n%s", claim, errw)
+		}
+	}
+}
+
+// TestShipWithNothingToReleaseStopsAfterChangelog: no commits since the
+// baseline tag means the changelog half stages nothing, so the release
+// half must not run and report a pending release.
+func TestShipWithNothingToReleaseStopsAfterChangelog(t *testing.T) {
+	dir, _ := repo(t)
+
+	code, _, errw := runShip(t, dir)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if !strings.Contains(errw, "No new conventional commits found.") {
+		t.Fatalf("changelog narration missing:\n%s", errw)
+	}
+	for _, claim := range []string{"no Release-Tag trailer on HEAD", "remains pending"} {
+		if strings.Contains(errw, claim) {
+			t.Fatalf("ship claims %q with nothing to release:\n%s", claim, errw)
+		}
+	}
+}
+
 func TestChangelogRefusalStopsShip(t *testing.T) {
 	dir, bare := repo(t)
 	work(t, dir, "feat: x")
