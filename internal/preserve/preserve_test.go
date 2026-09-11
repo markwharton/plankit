@@ -177,6 +177,28 @@ func TestManualModeWritesPointerThenExplicitRunCommits(t *testing.T) {
 	}
 }
 
+// TestTypedRunSaysWhyWhileTheHookStaysSilent: a person who typed the
+// command gets the reason on stderr, while the hook declines without a
+// word, because its stdout is the PostToolUse envelope.
+func TestTypedRunSaysWhyWhileTheHookStaysSilent(t *testing.T) {
+	dir, plan := scratch(t, "manual", planBody)
+
+	out, errw := runPreserve(t, dir, "")
+	if out != "" {
+		t.Fatalf("typed run wrote to stdout: %s", out)
+	}
+	if errw != "No pending plan to preserve.\n" {
+		t.Fatalf("typed run narration: %q", errw)
+	}
+
+	// A payload naming a plan that is gone: the hook has nothing to do.
+	os.Remove(plan)
+	out, errw = runPreserve(t, dir, plan)
+	if out != "" || errw != "" {
+		t.Fatalf("hook broke silence: out=%q errw=%q", out, errw)
+	}
+}
+
 func TestStalePointerIsRemoved(t *testing.T) {
 	dir, _ := scratch(t, "manual", planBody)
 	ptr := filepath.Join(dir, ".git", "pk-pending-plan")

@@ -67,7 +67,7 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
-	var planPath, reason, payloadCWD string
+	var planPath, payloadCWD string
 
 	input, err := hookio.ReadInput(ctx.Stdin)
 	if err == nil {
@@ -83,23 +83,28 @@ func run(ctx *cli.Context) error {
 
 	if hookInvocation {
 		planPath = extractPlanPath(input.ToolResponse, os.UserHomeDir)
-		if planPath == "" {
-			reason = "tool_response did not contain a .claude/plans/*.md path"
-		} else if _, err := os.Stat(planPath); err != nil {
-			reason = fmt.Sprintf("plan file not found: %s", planPath)
-			planPath = ""
+		if planPath != "" {
+			if _, err := os.Stat(planPath); err != nil {
+				planPath = "" // the payload named a plan that is gone
+			}
 		}
 	} else if rootOK {
 		if p, ok := readPointer(root); ok {
 			planPath = p
-		} else {
-			reason = "stdin had no hook payload and no pending-plan pointer was found"
 		}
 	}
 
 	if planPath == "" {
-		if ctx.Bool("dry-run") {
-			msg.Hookf(ctx.Stderr, "preserve --dry-run", "no plan found (%s)", reason)
+		// The hook says nothing when it takes no action: its stdout is
+		// the PostToolUse envelope, and silence is how it declines. A
+		// person who typed the command hears the outcome instead, the
+		// way the other commands narrate one.
+		if !hookInvocation {
+			if rootOK {
+				fmt.Fprintln(ctx.Stderr, "No pending plan to preserve.")
+			} else {
+				fmt.Fprintf(ctx.Stderr, "Not a git repository: %s\n", dir)
+			}
 		}
 		return nil
 	}

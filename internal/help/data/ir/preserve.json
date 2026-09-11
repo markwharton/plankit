@@ -204,7 +204,7 @@
         },
         {
           "type": "text",
-          "text": ")."
+          "text": "). A typed run with nothing pending says so; the hook declines in silence, because its stdout is the response envelope."
         }
       ]
     },
