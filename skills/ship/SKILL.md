@@ -6,8 +6,9 @@ description: Cut the pending work as one release - changelog then release in a s
 # pk ship
 
 Runs `pk changelog` then `pk release` as one invocation. `pk ship`
-carries no state of its own; the trailer decides what remains. A run
-interrupted between the halves resumes at release on rerun.
+carries no state of its own: what remains is the `Release-Tag` trailer
+on HEAD and whether its tag exists. A run interrupted between the
+halves resumes at release on rerun.
 
 ## Usage
 
@@ -25,14 +26,20 @@ rehearsed before its changelog commit exists.
 If the release half fails, the changelog commit stands. Rerun
 `pk ship` to retry, or `pk changelog --undo` to unwind.
 
-## Unattended releases
+## Releasing
 
-From Claude Code, run `pk ship --dry-run` first. If the inferred bump
-is patch or minor, run `pk ship` and report the result. If the preview
-shows a major, stop: list the commits carrying `!` or
-`BREAKING CHANGE`, show the section, and wait for the developer's
-confirmation before running `pk ship`. A major ships only on the
-developer's go.
+Releasing is the developer's call. Run `pk ship` when the developer
+asks for a release, not on your own reading of a preview. When the
+inferred bump is a major, show the commits carrying `!` or
+`BREAKING CHANGE` and the section, and wait for the developer's go.
+
+## Permissions
+
+`pk ship` and `pk release` publish: they tag and push. Where a session
+allowlists pk commands, allowlist the ones that only read or stage
+(`pk status`, `pk changelog`, `pk ship --dry-run`) and leave `pk ship`
+and `pk release` off, so a release still needs the developer's
+approval.
 
 ## Flags
 

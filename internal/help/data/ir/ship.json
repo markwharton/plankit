@@ -45,7 +45,15 @@
         },
         {
           "type": "text",
-          "text": " carries no state of its own; the trailer decides what remains. A run interrupted between the halves resumes at release on rerun."
+          "text": " carries no state of its own: what remains is the "
+        },
+        {
+          "type": "code",
+          "text": "Release-Tag"
+        },
+        {
+          "type": "text",
+          "text": " trailer on HEAD and whether its tag exists. A run interrupted between the halves resumes at release on rerun."
         }
       ]
     },
@@ -122,11 +130,11 @@
     {
       "type": "heading",
       "level": 2,
-      "id": "unattended-releases",
+      "id": "releasing",
       "inlines": [
         {
           "type": "text",
-          "text": "Unattended releases"
+          "text": "Releasing"
         }
       ]
     },
@@ -135,15 +143,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "From Claude Code, run "
-        },
-        {
-          "type": "code",
-          "text": "pk ship --dry-run"
-        },
-        {
-          "type": "text",
-          "text": " first. If the inferred bump is patch or minor, run "
+          "text": "Releasing is the developer's call. Run "
         },
         {
           "type": "code",
@@ -151,7 +151,7 @@
         },
         {
           "type": "text",
-          "text": " and report the result. If the preview shows a major, stop: list the commits carrying "
+          "text": " when the developer asks for a release, not on your own reading of a preview. When the inferred bump is a major, show the commits carrying "
         },
         {
           "type": "code",
@@ -167,7 +167,63 @@
         },
         {
           "type": "text",
-          "text": ", show the section, and wait for the developer's confirmation before running "
+          "text": " and the section, and wait for the developer's go."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "permissions",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Permissions"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "pk release"
+        },
+        {
+          "type": "text",
+          "text": " publish: they tag and push. Where a session allowlists pk commands, allowlist the ones that only read or stage ("
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "pk ship --dry-run"
+        },
+        {
+          "type": "text",
+          "text": ") and leave "
         },
         {
           "type": "code",
@@ -175,7 +231,15 @@
         },
         {
           "type": "text",
-          "text": ". A major ships only on the developer's go."
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "pk release"
+        },
+        {
+          "type": "text",
+          "text": " off, so a release still needs the developer's approval."
         }
       ]
     },
