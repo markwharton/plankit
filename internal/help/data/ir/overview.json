@@ -93,7 +93,23 @@
         },
         {
           "type": "text",
-          "text": ", the committed policy: modes, protected branches, changelog sections, release hooks. "
+          "text": ", the committed policy: modes, protected branches, changelog sections, release hooks. Those commands run through "
+        },
+        {
+          "type": "code",
+          "text": "sh -c"
+        },
+        {
+          "type": "text",
+          "text": ", or "
+        },
+        {
+          "type": "code",
+          "text": "cmd /c"
+        },
+        {
+          "type": "text",
+          "text": " on Windows. "
         },
         {
           "type": "code",

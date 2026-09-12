@@ -20,9 +20,10 @@ denies or questions git mutations on protected branches.
 ## Per-repo footprint
 
 A configured repository carries `.pk.json`, the committed policy:
-modes, protected branches, changelog sections, release hooks.
-`docs/plans/` appears when the first plan is preserved. Without
-`.pk.json`, every hook exits without acting.
+modes, protected branches, changelog sections, release hooks. Those
+commands run through `sh -c`, or `cmd /c` on Windows. `docs/plans/`
+appears when the first plan is preserved. Without `.pk.json`, every
+hook exits without acting.
 
 ## Commit conventions
 
