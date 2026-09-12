@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.1.0] - 2026-09-12
+
+### Added
+
+- the brief names the plugin's version (1d596e7)
+- pk help document, and man pages from the same source (d444cd9)
+
+### Fixed
+
+- a shipped release is not a pending one (4853df1)
+- a typed pk preserve with nothing pending says so (9ad12df)
+
+### Documentation
+
+- how to update the plugin (a6961bd)
+- the ship page says when a release starts (8ba5f07)
+- release notes for v1.1.0 (8067d3b)
+- how a release note is written (94d454d)
+- the v1.0.0 note takes the bold lead-ins (06cf367)
+- pk help document in the note and the help page (1db43d0)
+- the help page says what you get (d466c18)
+- which shell runs a release hook (17e6777)
+
 ## [v1.0.2] - 2026-09-06
 
 ### Maintenance
@@ -1174,3 +1197,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.0.0]: https://github.com/markwharton/plankit/compare/v0.30.0...v1.0.0
 [v1.0.1]: https://github.com/markwharton/plankit/compare/v1.0.0...v1.0.1
 [v1.0.2]: https://github.com/markwharton/plankit/compare/v1.0.1...v1.0.2
+[v1.1.0]: https://github.com/markwharton/plankit/compare/v1.0.2...v1.1.0
