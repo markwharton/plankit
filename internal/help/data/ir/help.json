@@ -39,14 +39,14 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk help\npk help \u003ctopic\u003e\n"
+      "text": "pk help\npk help \u003ctopic\u003e\npk help document\npk help document --format man \u003e pk.1\n"
     },
     {
       "type": "para",
       "inlines": [
         {
           "type": "text",
-          "text": "Without a topic, prints the index. A terminal gets styled, wrapped text. A pipe gets the raw authored bytes. "
+          "text": "Without a topic, prints the index. A terminal gets styled, wrapped text; a pipe gets the raw authored bytes, so what Claude reads is the skill file. "
         },
         {
           "type": "code",
@@ -63,6 +63,40 @@
         {
           "type": "text",
           "text": " is respected."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "document"
+        },
+        {
+          "type": "text",
+          "text": " is every page in index order, read as one document. It takes the same fork: rendered at a terminal, and through a pipe the pages as markdown with their frontmatter removed. That makes it a reader's document; a single topic is still the authored bytes."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--format man"
+        },
+        {
+          "type": "text",
+          "text": " writes roff for "
+        },
+        {
+          "type": "code",
+          "text": "man(1)"
+        },
+        {
+          "type": "text",
+          "text": ", a page for a topic or one for the whole document, and a flag outranks the terminal probe. Nothing is installed: redirect it where you want it."
         }
       ]
     },
@@ -89,6 +123,21 @@
     {
       "type": "codeblock",
       "text": "  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --plain\n        Undecorated output: no color, no wrapping\n  --quiet\n        Suppress notes and hints (errors still print)\n"
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "flags",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Flags"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "  --format \u003cvalue\u003e\n        Output format: text or man (default text)\n"
     }
   ]
 }

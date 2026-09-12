@@ -67,13 +67,14 @@ func (c *Context) Args() []string { return c.args }
 
 // resolve applies the resolution stack: flags, then environment, then
 // detection. It fills ProjectDir, Format, Style, Width, and IsTTY.
-func (c *Context) resolve(projectDir, format string, plain bool) error {
-	switch format {
-	case "text", "json":
-		c.Format = format
-	default:
-		return Usagef("invalid --format %q (must be text or json)", format)
+func (c *Context) resolve(projectDir, format string, formats []string, plain bool) error {
+	if len(formats) == 0 {
+		formats = defaultFormats
 	}
+	if !accepts(formats, format) {
+		return Usagef("invalid --format %q (must be %s)", format, formatList(formats))
+	}
+	c.Format = format
 
 	dir := projectDir
 	if dir == "" {
@@ -99,6 +100,38 @@ func (c *Context) resolve(projectDir, format string, plain bool) error {
 
 	c.Style, c.Width, c.IsTTY = presentation(c.Stdout, plain)
 	return nil
+}
+
+// defaultFormats are the values --format accepts when a command names
+// no set of its own: the data formats.
+var defaultFormats = []string{"text", "json"}
+
+func accepts(formats []string, format string) bool {
+	for _, f := range formats {
+		if f == format {
+			return true
+		}
+	}
+	return false
+}
+
+// formatList renders the accepted values for the usage error: "text or
+// json" for two, "text, json or man" for more.
+func formatList(formats []string) string {
+	switch len(formats) {
+	case 0:
+		return ""
+	case 1:
+		return formats[0]
+	}
+	out := ""
+	for i, f := range formats[:len(formats)-1] {
+		if i > 0 {
+			out += ", "
+		}
+		out += f
+	}
+	return out + " or " + formats[len(formats)-1]
 }
 
 // presentation decides style and width for a writer.

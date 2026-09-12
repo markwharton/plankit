@@ -144,6 +144,33 @@ func TestFormatValidation(t *testing.T) {
 	}
 }
 
+// A command whose artifact is a document names its own formats; the
+// data default stays text and json for everyone else.
+func TestCommandDeclaresItsOwnFormats(t *testing.T) {
+	var got string
+	cmd := &Command{
+		Name:    "doc",
+		Summary: "Test doc",
+		Flags:   []FlagSpec{FormatFlag},
+		Formats: []string{"text", "man"},
+		Run:     func(c *Context) error { got = c.Format; return nil },
+	}
+	if code, _, stderr := run(t, []string{"doc", "--format", "man"}, cmd); code != ExitOK || got != "man" {
+		t.Fatalf("code=%d format=%q stderr=%q", code, got, stderr)
+	}
+	code, _, stderr := run(t, []string{"doc", "--format", "json"}, cmd)
+	if code != ExitUsage || !strings.Contains(stderr, "must be text or man") {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+
+	// A command that names no set keeps the data formats.
+	data := testCmd("data", false, []FlagSpec{FormatFlag}, nil)
+	code, _, stderr = run(t, []string{"data", "--format", "man"}, data)
+	if code != ExitUsage || !strings.Contains(stderr, "must be text or json") {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+}
+
 func TestProjectDirResolution(t *testing.T) {
 	var got string
 	cmd := testCmd("demo", false, nil, func(c *Context) error { got = c.ProjectDir; return nil })

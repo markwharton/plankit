@@ -44,6 +44,10 @@ type Command struct {
 	Hook    bool       // hook-driven: invoked by Claude Code, not by people
 	Flags   []FlagSpec // each spec both registers its flag and documents it: --help derives from here
 	MaxArgs int        // positional arguments accepted; zero for most commands
+	// Formats are the values --format accepts, for a command that
+	// declares it. Empty means the data formats, text and json; a
+	// command whose artifact is a document names its own set instead.
+	Formats []string
 	Run     func(*Context) error
 }
 
@@ -196,7 +200,7 @@ func parse(cmd *Command, cmds []*Command, args []string, stdin io.Reader, stdout
 	if f, ok := strs["format"]; ok {
 		format = *f
 	}
-	if err := ctx.resolve(*strs["project-dir"], format, *bools["plain"]); err != nil {
+	if err := ctx.resolve(*strs["project-dir"], format, cmd.Formats, *bools["plain"]); err != nil {
 		return nil, err
 	}
 	return ctx, nil

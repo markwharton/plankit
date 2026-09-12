@@ -78,6 +78,98 @@ func TestUnknownTopicIsUsageErrorWithHint(t *testing.T) {
 	}
 }
 
+func TestDocumentIsEveryPageInOrder(t *testing.T) {
+	t.Setenv("CLICOLOR_FORCE", "")
+	code, out, _ := runHelp(t, Document)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	metas, err := Topics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := -1
+	// The first page opens the document, so there is no newline before
+	// its heading; search a copy that has one.
+	hay := "\n" + out
+	for _, m := range metas {
+		i := strings.Index(hay, "\n# "+heading(t, m.Name))
+		if i < 0 {
+			t.Fatalf("document is missing %s", m.Name)
+		}
+		if i < at {
+			t.Fatalf("%s is out of index order", m.Name)
+		}
+		at = i
+	}
+	if strings.Contains(out, "\nname: ") {
+		t.Fatal("frontmatter reached the document")
+	}
+	if got, want := strings.Count(out, "\n---\n"), len(metas)-1; got != want {
+		t.Fatalf("%d rules between %d pages, want %d", got, len(metas), want)
+	}
+}
+
+// heading is the page's own H1 text: "overview" for a document, "pk
+// ship" for a command page.
+func heading(t *testing.T, name string) string {
+	t.Helper()
+	d, _, ok := Topic(name)
+	if !ok || len(d.Blocks) == 0 {
+		t.Fatalf("topic %s has no blocks", name)
+	}
+	var sb strings.Builder
+	for _, s := range d.Blocks[0].Inlines {
+		sb.WriteString(s.Text)
+	}
+	return sb.String()
+}
+
+// The document takes the same fork as a topic: the terminal probe
+// decides rendered against source, and a flag would outrank both.
+func TestDocumentRendersForATerminal(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("CLICOLOR_FORCE", "1")
+	code, out, _ := runHelp(t, Document)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(out, "\x1b[1;4m") {
+		t.Fatalf("forced color should render the pages: %q", out[:60])
+	}
+	if strings.Contains(out, "\n# overview") {
+		t.Fatal("rendered output should not carry markdown syntax")
+	}
+}
+
+// The reserved name must shadow no page: TestCommandsAndSkillsAreOneToOne
+// pairs commands with skills and would not notice.
+func TestDocumentShadowsNoTopic(t *testing.T) {
+	if _, _, ok := Topic(Document); ok {
+		t.Fatalf("a topic named %q would be unreachable", Document)
+	}
+}
+
+func TestManFormatRendersRoff(t *testing.T) {
+	code, out, _ := runHelp(t, "ship", "--format", "man")
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.HasPrefix(out, ".TH PK-SHIP 1 ") {
+		t.Fatalf("not a man page: %q", out[:40])
+	}
+}
+
+func TestUnknownFormatNamesTheSet(t *testing.T) {
+	code, _, errw := runHelp(t, "ship", "--format", "yaml")
+	if code != cli.ExitUsage {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(errw, "invalid --format") || !strings.Contains(errw, "text or man") {
+		t.Fatalf("stderr = %q", errw)
+	}
+}
+
 func TestEveryEmbeddedTopicRenders(t *testing.T) {
 	metas, err := Topics()
 	if err != nil {
