@@ -39,22 +39,14 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk help\npk help \u003ctopic\u003e\npk help document\npk help document \u003e plankit.md\npk help document --format man \u003e pk.1\n"
+      "text": "pk help\npk help \u003ctopic\u003e\npk help document\npk help document \u003e plankit.md\npk help document --format man \u003e pk.1\nman ./pk.1\n"
     },
     {
       "type": "para",
       "inlines": [
         {
           "type": "text",
-          "text": "Without a topic, prints the index. A terminal gets styled, wrapped text; a pipe gets the raw authored bytes, so what Claude reads is the skill file. "
-        },
-        {
-          "type": "code",
-          "text": "--plain"
-        },
-        {
-          "type": "text",
-          "text": " forces undecorated output. "
+          "text": "Without a topic, prints the index. At a terminal you get styled, wrapped text; redirect or pipe it and you get the page's markdown. "
         },
         {
           "type": "code",
@@ -62,7 +54,23 @@
         },
         {
           "type": "text",
-          "text": " is respected."
+          "text": " is respected, and "
+        },
+        {
+          "type": "code",
+          "text": "CLICOLOR_FORCE"
+        },
+        {
+          "type": "text",
+          "text": " keeps the styled page through a pipe, for a pager like "
+        },
+        {
+          "type": "code",
+          "text": "less -R"
+        },
+        {
+          "type": "text",
+          "text": "."
         }
       ]
     },
@@ -75,7 +83,7 @@
         },
         {
           "type": "text",
-          "text": " is every page in index order, read as one document. It takes the same fork: rendered at a terminal, and through a pipe the pages as markdown with their frontmatter removed. That makes it a reader's document; a single topic is still the authored bytes."
+          "text": " prints every page in one go, in the order the index lists them: for reading straight through, or for keeping as a file."
         }
       ]
     },
@@ -88,15 +96,23 @@
         },
         {
           "type": "text",
-          "text": " writes roff for "
+          "text": " writes a man page instead, for one topic or for the whole set. Read it back with "
         },
         {
           "type": "code",
-          "text": "man(1)"
+          "text": "man ./pk.1"
         },
         {
           "type": "text",
-          "text": ", a page for a topic or one for the whole document, and a flag outranks the terminal probe. Nothing is installed: redirect it where you want it."
+          "text": ". The "
+        },
+        {
+          "type": "code",
+          "text": "./"
+        },
+        {
+          "type": "text",
+          "text": " matters, or man searches its manpath for a page of that name and finds none."
         }
       ]
     },

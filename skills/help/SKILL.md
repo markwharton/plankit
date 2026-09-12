@@ -17,21 +17,20 @@ pk help <topic>
 pk help document
 pk help document > plankit.md
 pk help document --format man > pk.1
+man ./pk.1
 ```
 
-Without a topic, prints the index. A terminal gets styled, wrapped
-text; a pipe gets the raw authored bytes, so what Claude reads is the
-skill file. `--plain` forces undecorated output. `NO_COLOR` is
-respected.
+Without a topic, prints the index. At a terminal you get styled,
+wrapped text; redirect or pipe it and you get the page's markdown.
+`NO_COLOR` is respected, and `CLICOLOR_FORCE` keeps the styled page
+through a pipe, for a pager like `less -R`.
 
-`document` is every page in index order, read as one document. It
-takes the same fork: rendered at a terminal, and through a pipe the
-pages as markdown with their frontmatter removed. That makes it a
-reader's document; a single topic is still the authored bytes.
+`document` prints every page in one go, in the order the index lists
+them: for reading straight through, or for keeping as a file.
 
-`--format man` writes roff for `man(1)`, a page for a topic or one for
-the whole document, and a flag outranks the terminal probe. Nothing is
-installed: redirect it where you want it.
+`--format man` writes a man page instead, for one topic or for the
+whole set. Read it back with `man ./pk.1`. The `./` matters, or man
+searches its manpath for a page of that name and finds none.
 
 ## Universal flags
 
