@@ -39,7 +39,7 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk help\npk help \u003ctopic\u003e\npk help document\npk help document --format man \u003e pk.1\n"
+      "text": "pk help\npk help \u003ctopic\u003e\npk help document\npk help document \u003e plankit.md\npk help document --format man \u003e pk.1\n"
     },
     {
       "type": "para",

@@ -1,6 +1,8 @@
 # Build output
 dist/
 /pk
+/pk.1
+/plankit.md
 bin/pk-*
 
 # Sketches

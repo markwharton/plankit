@@ -15,6 +15,7 @@ skills in the plugin, compiled from one source.
 pk help
 pk help <topic>
 pk help document
+pk help document > plankit.md
 pk help document --format man > pk.1
 ```
 
