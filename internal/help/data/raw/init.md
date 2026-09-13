@@ -37,6 +37,10 @@ previews without writing. `--format json` emits one object: `root`,
 `pk status` reads it back and reports the first problem. Commit the
 created files.
 
+In a repository still carrying the files a v0.x `pk setup` copied in,
+the refusal says so and points at `pk help overview`: those files wire
+the hooks the plugin already ships, so each one fires twice.
+
 ## Flags
 
 <!-- generated: flags -->

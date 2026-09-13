@@ -216,6 +216,31 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "In a repository still carrying the files a v0.x "
+        },
+        {
+          "type": "code",
+          "text": "pk setup"
+        },
+        {
+          "type": "text",
+          "text": " copied in, the refusal says so and points at "
+        },
+        {
+          "type": "code",
+          "text": "pk help overview"
+        },
+        {
+          "type": "text",
+          "text": ": those files wire the hooks the plugin already ships, so each one fires twice."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "flags",

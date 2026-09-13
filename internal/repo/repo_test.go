@@ -44,6 +44,34 @@ func run(t *testing.T, args ...string) (int, string, string) {
 	return code, out.String(), errw.String()
 }
 
+// A v0.x repository is already configured, so re-running setup out of
+// habit lands on the refusal. Sending that reader to "edit .pk.json"
+// answers the wrong question: their hooks are firing twice.
+func TestInitRefusalNamesLegacyWiring(t *testing.T) {
+	dir := scratch(t, true)
+	if code, out, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("first init exit %d: %s%s", code, out, errw)
+	}
+
+	// Configured, nothing left over: the ordinary refusal.
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, "pk status") {
+		t.Fatalf("ordinary refusal: code=%d errw=%q", code, errw)
+	}
+
+	// Configured, carrying a path only a v0.x pk setup created.
+	if err := os.MkdirAll(filepath.Join(dir, ".claude", "rules", "plankit"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errw = run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, "pk help overview") {
+		t.Fatalf("legacy refusal: code=%d errw=%q", code, errw)
+	}
+	if strings.Contains(errw, "pk status") {
+		t.Fatalf("the legacy hint replaces the ordinary one: %q", errw)
+	}
+}
+
 func TestInitThenStatusRoundTrips(t *testing.T) {
 	dir := scratch(t, true)
 	code, out, errw := run(t, "init", "--project-dir", dir)

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/cli"
@@ -40,9 +41,14 @@ func runInit(ctx *cli.Context) error {
 			"run git init first; plankit configures existing repositories")
 	}
 	if _, err := os.Stat(config.Path(root)); err == nil {
-		return cli.WithHint(
-			cli.Statef("already configured: %s exists", config.FileName),
-			"edit %s directly, or run pk status to see the current policy", config.FileName)
+		// A v0.x repository is configured too, so it lands here when
+		// someone re-runs setup out of habit. It has a worse problem
+		// than a second .pk.json, so the hint names that one instead.
+		hint := fmt.Sprintf("edit %s directly, or run pk status to see the current policy", config.FileName)
+		if legacyWiring(root) {
+			hint = "v0.x files are still here; pk help overview says what to remove"
+		}
+		return cli.WithHint(cli.Statef("already configured: %s exists", config.FileName), "%s", hint)
 	}
 
 	release := ctx.String("release")
@@ -124,6 +130,23 @@ func typeNames(types []config.TypeConfig) string {
 }
 
 // StatusCmd reports configuration and repository state.
+// legacyWiring reports the files a v0.x pk setup copied into a
+// repository, which the plugin now ships itself. Each path is pk's own
+// and cannot be mistaken for a project's: while they are present, the
+// copied hooks and the plugin's both fire.
+func legacyWiring(root string) bool {
+	for _, p := range []string{
+		".claude/install-pk.sh",
+		".claude/rules/plankit",
+		".claude/skills/pk-configure",
+	} {
+		if _, err := os.Stat(filepath.Join(root, p)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 var StatusCmd = &cli.Command{
 	Name:    "status",
 	Summary: "Report plankit configuration and repository state",
