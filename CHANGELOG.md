@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.2.0] - 2026-09-20
+
+### Added
+
+- pk init carries the bootstrap through: commit, tag, branch, brief (8b56356)
+
+### Fixed
+
+- pk init names v0.x wiring when it refuses (d0f1d2e)
+
+### Documentation
+
+- release notes for v1.2.0 (e8c5485)
+
 ## [v1.1.0] - 2026-09-12
 
 ### Added
@@ -1198,3 +1212,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.0.1]: https://github.com/markwharton/plankit/compare/v1.0.0...v1.0.1
 [v1.0.2]: https://github.com/markwharton/plankit/compare/v1.0.1...v1.0.2
 [v1.1.0]: https://github.com/markwharton/plankit/compare/v1.0.2...v1.1.0
+[v1.2.0]: https://github.com/markwharton/plankit/compare/v1.1.0...v1.2.0
