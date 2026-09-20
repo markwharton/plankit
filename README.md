@@ -40,9 +40,24 @@ Then, in a repository you want plankit to manage:
 pk init
 ```
 
-A configured repository carries `.pk.json`, the committed policy.
-`docs/plans/` appears when the first plan is preserved. No `.pk.json`
-means off: every hook exits immediately.
+One run writes `.pk.json`, the policy, commits it, tags the `v0.0.0`
+baseline, and starts a `develop` branch when the release branch was
+the only one. `docs/plans/` appears when the first plan is preserved.
+No `.pk.json` means off: every hook exits immediately.
+
+In Claude Code, the skills are the normal way in: `/plankit:ship`
+cuts a release. Allowing pk in the repository's `.claude/settings.json`
+is an option, not a requirement; it pre-approves every pk command:
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(pk:*)"]
+  }
+}
+```
+
+To allow one command instead, name it: `Bash(pk status:*)`.
 
 ## The loop
 

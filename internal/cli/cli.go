@@ -54,8 +54,8 @@ type Command struct {
 // universalFlags are layered onto every command by the frame. Commands
 // receive their resolved values through Context and never redeclare them.
 var universalFlags = []FlagSpec{
-	{Name: "project-dir", Type: StringFlag, Usage: "Project directory (default: PK_PROJECT_DIR, else the current directory)"},
 	{Name: "plain", Type: BoolFlag, Usage: "Undecorated output: no color, no wrapping"},
+	{Name: "project-dir", Type: StringFlag, Usage: "Project directory (default: PK_PROJECT_DIR, else the current directory)"},
 	{Name: "quiet", Type: BoolFlag, Usage: "Suppress notes and hints (errors still print)"},
 }
 

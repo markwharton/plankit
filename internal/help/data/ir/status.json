@@ -100,6 +100,23 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A configured repository that has commits but no tag, or whose release branch is its only branch, gets a note naming the command that finishes the bootstrap. "
+        },
+        {
+          "type": "code",
+          "text": "--quiet"
+        },
+        {
+          "type": "text",
+          "text": " drops the notes."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "flags",
@@ -113,6 +130,47 @@
     {
       "type": "codeblock",
       "text": "  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command also accepts "
+        },
+        {
+          "type": "code",
+          "text": "--plain"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "--project-dir \u003cvalue\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "--quiet"
+        },
+        {
+          "type": "text",
+          "text": "; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help help"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
     }
   ]
 }

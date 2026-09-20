@@ -40,4 +40,6 @@ set to off drops its paragraph.
   --format <value>
         Output format: text or json (default text)
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->

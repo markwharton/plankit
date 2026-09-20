@@ -19,8 +19,10 @@ import (
 //	<!-- /generated: flags -->
 //
 // The Flags section of a command page lists the command's own flags
-// as --help prints them; the overview lists the flags every command
-// accepts. Both are cli.FlagBlock renderings of the same FlagSpec
+// as --help prints them, then one line naming the flags every command
+// accepts and pointing at the help page, which lists those in full. A
+// session reads one page, so the pointer is what makes --project-dir
+// findable from any of them. Every rendering is of the same FlagSpec
 // values the parser registers, so a page and --help cannot disagree.
 // make docs rewrites the regions before compiling, and CI's drift
 // check fails a page whose region is stale.
@@ -43,6 +45,12 @@ func updateRegions(skillsDir string) ([]string, error) {
 		var body string
 		if len(cmd.Flags) > 0 {
 			body = "```\n" + cli.FlagBlock(cmd.Flags) + "```\n"
+		}
+		if cmd.Name != "help" { // the help page carries the full block below
+			if body != "" {
+				body += "\n"
+			}
+			body += universalPointer() + "\n"
 		}
 		out, err := setRegion(string(raw), "flags", "## Flags", body)
 		if err != nil {
@@ -95,6 +103,30 @@ func updateRegions(skillsDir string) ([]string, error) {
 		changed = append(changed, "help")
 	}
 	return changed, nil
+}
+
+// universalPointer is the one-line form of the universal flags for a
+// command page: the names, and where the full block lives.
+func universalPointer() string {
+	specs := cli.UniversalFlags()
+	names := make([]string, len(specs))
+	for i, s := range specs {
+		name := "--" + s.Name
+		if s.Type == cli.StringFlag {
+			name += " <value>"
+		}
+		names[i] = "`" + name + "`"
+	}
+	var list string
+	switch len(names) {
+	case 1:
+		list = names[0]
+	case 2:
+		list = names[0] + " and " + names[1]
+	default:
+		list = strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+	}
+	return "Every command also accepts " + list + "; see `pk help help`."
 }
 
 // setRegion replaces the named region's content, appends the section

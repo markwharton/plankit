@@ -35,4 +35,6 @@ from inside a hook.
   --name <value>
         Identifier of a named pin; default is the SOMETHING_VERSION="v..." shell form
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->

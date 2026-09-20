@@ -174,78 +174,6 @@
     {
       "type": "heading",
       "level": 2,
-      "id": "permissions",
-      "inlines": [
-        {
-          "type": "text",
-          "text": "Permissions"
-        }
-      ]
-    },
-    {
-      "type": "para",
-      "inlines": [
-        {
-          "type": "code",
-          "text": "pk ship"
-        },
-        {
-          "type": "text",
-          "text": " and "
-        },
-        {
-          "type": "code",
-          "text": "pk release"
-        },
-        {
-          "type": "text",
-          "text": " publish: they tag and push. Where a session allowlists pk commands, allowlist the ones that only read or stage ("
-        },
-        {
-          "type": "code",
-          "text": "pk status"
-        },
-        {
-          "type": "text",
-          "text": ", "
-        },
-        {
-          "type": "code",
-          "text": "pk changelog"
-        },
-        {
-          "type": "text",
-          "text": ", "
-        },
-        {
-          "type": "code",
-          "text": "pk ship --dry-run"
-        },
-        {
-          "type": "text",
-          "text": ") and leave "
-        },
-        {
-          "type": "code",
-          "text": "pk ship"
-        },
-        {
-          "type": "text",
-          "text": " and "
-        },
-        {
-          "type": "code",
-          "text": "pk release"
-        },
-        {
-          "type": "text",
-          "text": " off, so a release still needs the developer's approval."
-        }
-      ]
-    },
-    {
-      "type": "heading",
-      "level": 2,
       "id": "flags",
       "inlines": [
         {
@@ -257,6 +185,47 @@
     {
       "type": "codeblock",
       "text": "  --bump \u003cvalue\u003e\n        Override the version bump: major, minor, or patch (passed to changelog)\n  --dry-run\n        Rehearse: preview the section, or the release when one is already pending\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (passed to changelog)\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command also accepts "
+        },
+        {
+          "type": "code",
+          "text": "--plain"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "--project-dir \u003cvalue\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "--quiet"
+        },
+        {
+          "type": "text",
+          "text": "; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help help"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
     }
   ]
 }

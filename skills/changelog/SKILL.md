@@ -72,6 +72,8 @@ Run it from the working branch. A protected branch is refused.
   --undo
         Unwind the last pk changelog commit (must be unpushed)
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->
 
 ## Settings

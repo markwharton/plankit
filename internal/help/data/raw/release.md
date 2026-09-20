@@ -46,6 +46,8 @@ pk release
   --dry-run
         Validate without merging, tagging, or pushing
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->
 
 ## Settings

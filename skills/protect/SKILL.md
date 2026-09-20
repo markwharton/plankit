@@ -19,3 +19,9 @@ and approve a new plan. The sequence in `docs/plans/` is the history
 of decisions, reversals included.
 
 `pk protect` is a no-op in an unconfigured repository (no `.pk.json`).
+
+## Flags
+
+<!-- generated: flags -->
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
+<!-- /generated: flags -->

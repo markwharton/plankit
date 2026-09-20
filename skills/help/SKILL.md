@@ -38,10 +38,10 @@ searches its manpath for a page of that name and finds none.
 Every command accepts these:
 
 ```
-  --project-dir <value>
-        Project directory (default: PK_PROJECT_DIR, else the current directory)
   --plain
         Undecorated output: no color, no wrapping
+  --project-dir <value>
+        Project directory (default: PK_PROJECT_DIR, else the current directory)
   --quiet
         Suppress notes and hints (errors still print)
 ```

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/brief"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
@@ -23,15 +24,21 @@ const PlansDir = paths.PlansRel
 // InitCmd configures a repository for plankit.
 var InitCmd = &cli.Command{
 	Name:    "init",
-	Summary: "Configure this repository: write .pk.json and baseline a tag",
+	Summary: "Configure a repository for plankit",
 	Flags: []cli.FlagSpec{
-		{Name: "release", Type: cli.StringFlag, Usage: "Release branch to guard (default: the branch currently checked out)"},
-		{Name: "no-baseline", Type: cli.BoolFlag, Usage: "Skip creating the v0.0.0 baseline tag"},
+		{Name: "branch", Type: cli.StringFlag, Default: "develop", Usage: "Working branch to create when the release branch is the only one"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without making any changes"},
 		cli.FormatFlag,
+		{Name: "no-baseline", Type: cli.BoolFlag, Usage: "Skip creating the v0.0.0 baseline tag"},
+		{Name: "no-commit", Type: cli.BoolFlag, Usage: "Leave .pk.json uncommitted"},
+		{Name: "push", Type: cli.BoolFlag, Usage: "Push the release branch, the tag, and the working branch to origin"},
+		{Name: "release", Type: cli.StringFlag, Usage: "Release branch to guard (default: the branch currently checked out)"},
 	},
 	Run: runInit,
 }
+
+// configureSubject is the message of the commit init makes.
+const configureSubject = "chore: configure plankit"
 
 func runInit(ctx *cli.Context) error {
 	root, ok := git.FindRoot(ctx.ProjectDir)
@@ -51,20 +58,38 @@ func runInit(ctx *cli.Context) error {
 		return cli.WithHint(cli.Statef("already configured: %s exists", config.FileName), "%s", hint)
 	}
 
+	current, err := git.CurrentBranch(root)
+	if err != nil {
+		return cli.Statef("cannot determine the current branch: %v", err)
+	}
 	release := ctx.String("release")
 	if release == "" {
-		branch, err := git.CurrentBranch(root)
-		if err != nil {
-			return cli.Statef("cannot determine the current branch: %v", err)
-		}
-		release = branch
+		release = current
+	}
+	working := ctx.String("branch")
+	noCommit := ctx.Bool("no-commit")
+	push := ctx.Bool("push")
+	if working == release {
+		return cli.Usagef("--branch %q is the release branch; the working branch must be another", working)
+	}
+	if push && noCommit {
+		return cli.Usagef("--push needs the commit that --no-commit skips")
+	}
+	if push && !git.HasRemote(root, "origin") {
+		return cli.WithHint(cli.Statef("no origin remote to push to"), "add one with git remote add origin <url>, or run without --push")
 	}
 
-	// Baseline: release machinery diffs from the last tag, so a repo
-	// without one gets v0.0.0 at HEAD. Needs a commit to point at.
+	// Each step's condition is judged as if the steps before it ran, so
+	// a dry run on an empty repository previews the whole bootstrap.
+	hadCommits := git.HasCommits(root)
+	willHaveCommit := hadCommits || !noCommit
 	baseline := ""
-	if !ctx.Bool("no-baseline") && git.LatestTag(root) == "" && git.HasCommits(root) {
+	if !ctx.Bool("no-baseline") && git.LatestTag(root) == "" && willHaveCommit {
 		baseline = "v0.0.0"
+	}
+	branch := ""
+	if current == release && willHaveCommit && !git.HasOtherLocalBranch(root, release) {
+		branch = working
 	}
 
 	dryRun := ctx.Bool("dry-run")
@@ -84,49 +109,69 @@ func runInit(ctx *cli.Context) error {
 	// docs/plans/ is not created here: preserve creates it on first
 	// use, so a repository that never preserves a plan never gains the
 	// directory.
+	if !noCommit {
+		if err := do("commit", func() error { return git.CommitPaths(root, configureSubject, config.FileName) }); err != nil {
+			return err
+		}
+	}
 	if baseline != "" {
 		if err := do("tag "+baseline, func() error { return git.CreateTag(root, baseline) }); err != nil {
+			return err
+		}
+	}
+	if branch != "" {
+		if err := do("branch "+branch, func() error { return git.CreateBranch(root, branch) }); err != nil {
+			return err
+		}
+	}
+	pushed := []string{}
+	if push {
+		pushed = append(pushed, release)
+		if baseline != "" {
+			pushed = append(pushed, baseline)
+		}
+		if branch != "" {
+			pushed = append(pushed, branch)
+		}
+		if err := do("push origin "+strings.Join(pushed, " "), func() error { return git.PushRefs(root, pushed...) }); err != nil {
 			return err
 		}
 	}
 
 	if ctx.Format == "json" {
 		return json.NewEncoder(ctx.Stdout).Encode(map[string]any{
-			"root":     root,
-			"release":  release,
-			"created":  created,
-			"baseline": baseline,
-			"dryRun":   dryRun,
+			"root":      root,
+			"release":   release,
+			"created":   created,
+			"committed": !noCommit,
+			"baseline":  baseline,
+			"branch":    branch,
+			"pushed":    pushed,
+			"dryRun":    dryRun,
 		})
 	}
 	verb := "created"
 	if dryRun {
 		verb = "would create"
 	}
-	fmt.Fprintf(ctx.Stdout, "plankit configured in %s (%s: %s)\n", root, verb, strings.Join(created, ", "))
-	if baseline == "" && git.LatestTag(root) == "" && !ctx.Quiet {
-		msg.Notef(ctx.Stdout, "no baseline tag: the repository has no commits yet")
+	fmt.Fprintf(ctx.Stderr, "plankit configured in %s (%s: %s)\n", root, verb, strings.Join(created, ", "))
+	if ctx.Quiet {
+		return nil
 	}
-	if !ctx.Quiet {
-		msg.Notef(ctx.Stdout, "commit convention: Conventional Commits with types %s (from %s changelog.types)", typeNames(cfg.Changelog.ResolvedTypes()), config.FileName)
-		msg.Notef(ctx.Stdout, "breaking markers (! or BREAKING CHANGE) are the developer's call: guard asks before one is committed")
-		msg.Notef(ctx.Stdout, "every Claude Code session in this repository is briefed on this policy at start (pk brief shows the text)")
-		msg.Hintf(ctx.Stdout, "commit %s; run pk status to review the policy", config.FileName)
+	if baseline == "" && git.LatestTag(root) == "" && !willHaveCommit {
+		msg.Notef(ctx.Stderr, "no baseline tag: the repository has no commits yet")
 	}
-	return nil
-}
-
-// typeNames renders the non-hidden commit types for the conventions
-// note; hidden types (like plan) are pk machinery, not the convention
-// a session writes.
-func typeNames(types []config.TypeConfig) string {
-	var names []string
-	for _, tc := range types {
-		if !tc.Hidden {
-			names = append(names, tc.Type)
+	if noCommit {
+		hint := fmt.Sprintf("commit %s yourself: guard blocks a session from doing it on %s", config.FileName, release)
+		if !hadCommits {
+			hint += fmt.Sprintf(", then git tag v0.0.0 && git switch -c %s", working)
 		}
+		msg.Hintf(ctx.Stderr, "%s", hint)
 	}
-	return strings.Join(names, ", ")
+	// The session that configured the repository was not briefed at its
+	// start, so init hands it the brief here.
+	fmt.Fprintf(ctx.Stderr, "\n%s", brief.Text(cfg))
+	return nil
 }
 
 // StatusCmd reports configuration and repository state.
@@ -230,6 +275,17 @@ func runStatus(ctx *cli.Context) error {
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))
 	if s.LatestTag != "" {
 		line("tag", s.LatestTag)
+	}
+	if ctx.Quiet {
+		return nil
+	}
+	// Readiness: a repository that stopped partway through the bootstrap
+	// names its own next step.
+	if s.LatestTag == "" && git.HasCommits(root) {
+		msg.Notef(ctx.Stderr, "no baseline tag: git tag v0.0.0 gives the release machinery a starting point")
+	}
+	if s.Release != "" && !git.HasOtherLocalBranch(root, s.Release) {
+		msg.Notef(ctx.Stderr, "no working branch besides %s: to start one, git switch -c develop", s.Release)
 	}
 	return nil
 }

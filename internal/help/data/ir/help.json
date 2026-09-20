@@ -138,7 +138,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --plain\n        Undecorated output: no color, no wrapping\n  --quiet\n        Suppress notes and hints (errors still print)\n"
+      "text": "  --plain\n        Undecorated output: no color, no wrapping\n  --project-dir \u003cvalue\u003e\n        Project directory (default: PK_PROJECT_DIR, else the current directory)\n  --quiet\n        Suppress notes and hints (errors still print)\n"
     },
     {
       "type": "heading",

@@ -36,13 +36,17 @@ func runDemo(pk string) ([]demoStep, error) {
 	work := filepath.Join(root, "acme-app")
 	bare := filepath.Join(root, "origin.git")
 
+	// One identity and one instant for every commit, whether git or pk
+	// makes it, so the recorded demo is the same on every machine.
+	gitEnv := []string{
+		"GIT_AUTHOR_NAME=dev", "GIT_AUTHOR_EMAIL=dev@example.com",
+		"GIT_COMMITTER_NAME=dev", "GIT_COMMITTER_EMAIL=dev@example.com",
+		"GIT_AUTHOR_DATE=2026-09-01T09:00:00+10:00", "GIT_COMMITTER_DATE=2026-09-01T09:00:00+10:00",
+	}
 	git := func(args ...string) error {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = work
-		cmd.Env = append(os.Environ(),
-			"GIT_AUTHOR_NAME=dev", "GIT_AUTHOR_EMAIL=dev@example.com",
-			"GIT_COMMITTER_NAME=dev", "GIT_COMMITTER_EMAIL=dev@example.com",
-			"GIT_AUTHOR_DATE=2026-09-01T09:00:00+10:00", "GIT_COMMITTER_DATE=2026-09-01T09:00:00+10:00")
+		cmd.Env = append(os.Environ(), gitEnv...)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git %v: %v\n%s", args, err, out)
 		}
@@ -60,7 +64,7 @@ func runDemo(pk string) ([]demoStep, error) {
 	run := func(title, shown string, stdin string, args ...string) (demoStep, error) {
 		cmd := exec.Command(pk, append([]string{}, args...)...)
 		cmd.Dir = work
-		cmd.Env = append(os.Environ(), "NO_COLOR=1", "CLAUDE_PROJECT_DIR=")
+		cmd.Env = append(append(os.Environ(), gitEnv...), "NO_COLOR=1", "CLAUDE_PROJECT_DIR=")
 		if stdin != "" {
 			cmd.Stdin = strings.NewReader(stdin)
 		}
@@ -88,18 +92,11 @@ func runDemo(pk string) ([]demoStep, error) {
 	}
 
 	var steps []demoStep
+	// init commits the policy, tags the baseline, and leaves the tree on
+	// develop; the demo publishes main and the tag as a developer would.
 	s, _ := run("Configure a repository", "pk init", "", "init")
 	steps = append(steps, s)
-	if err := git("add", "."); err != nil {
-		return nil, err
-	}
-	if err := git("commit", "-q", "-m", "chore: adopt plankit"); err != nil {
-		return nil, err
-	}
 	if err := git("push", "-q", "-u", "origin", "main", "--tags"); err != nil {
-		return nil, err
-	}
-	if err := git("switch", "-q", "-c", "develop"); err != nil {
 		return nil, err
 	}
 	for _, c := range []struct{ f, m string }{

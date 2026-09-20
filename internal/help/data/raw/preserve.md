@@ -40,6 +40,8 @@ silence, because its stdout is the response envelope.
   --dry-run
         Preview without writing or committing
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->
 
 ## Settings

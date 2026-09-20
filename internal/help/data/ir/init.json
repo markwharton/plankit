@@ -2,7 +2,7 @@
   "schema": 1,
   "meta": {
     "name": "init",
-    "description": "Configure a repository for plankit - write .pk.json and baseline a tag"
+    "description": "Configure a repository for plankit"
   },
   "blocks": [
     {
@@ -21,7 +21,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Configures the current repository. One run creates:"
+          "text": "Configures a repository in one run:"
         }
       ]
     },
@@ -65,7 +65,26 @@
             "inlines": [
               {
                 "type": "text",
-                "text": "a "
+                "text": "the commit "
+              },
+              {
+                "type": "code",
+                "text": "chore: configure plankit"
+              },
+              {
+                "type": "text",
+                "text": ", on the branch checked out"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "the "
               },
               {
                 "type": "code",
@@ -73,7 +92,37 @@
               },
               {
                 "type": "text",
-                "text": " baseline tag when the repository has commits but no tag"
+                "text": " baseline tag, when the repository has no tag"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "a "
+              },
+              {
+                "type": "code",
+                "text": "develop"
+              },
+              {
+                "type": "text",
+                "text": " branch, created and checked out when the release branch was the only one; a repository with another branch keeps its own"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "the brief, printed in full"
               }
             ]
           }
@@ -84,12 +133,60 @@
       "type": "para",
       "inlines": [
         {
+          "type": "text",
+          "text": "Nothing is pushed. "
+        },
+        {
           "type": "code",
           "text": "docs/plans/"
         },
         {
           "type": "text",
           "text": " is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "procedure",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Procedure"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Run "
+        },
+        {
+          "type": "code",
+          "text": "pk init"
+        },
+        {
+          "type": "text",
+          "text": " in the repository, or "
+        },
+        {
+          "type": "code",
+          "text": "pk init --project-dir \u003cdir\u003e"
+        },
+        {
+          "type": "text",
+          "text": " from anywhere else, and relay its output. There is nothing left to commit. "
+        },
+        {
+          "type": "code",
+          "text": "pk init --push"
+        },
+        {
+          "type": "text",
+          "text": " also pushes the branches and the tag, when the developer asks for that."
         }
       ]
     },
@@ -107,7 +204,7 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk init\npk init --release trunk\npk init --dry-run\npk init --format json\n"
+      "text": "pk init\npk init --release main\npk init --branch dev\npk init --push\npk init --dry-run\npk init --format json\n"
     },
     {
       "type": "para",
@@ -118,7 +215,39 @@
         },
         {
           "type": "text",
-          "text": " names the branch to guard and release from; the default is the branch checked out. "
+          "text": " names the branch to guard and release into; the default is the branch checked out. "
+        },
+        {
+          "type": "code",
+          "text": "--branch"
+        },
+        {
+          "type": "text",
+          "text": " names the branch to create; the default is "
+        },
+        {
+          "type": "code",
+          "text": "develop"
+        },
+        {
+          "type": "text",
+          "text": ". "
+        },
+        {
+          "type": "code",
+          "text": "--no-commit"
+        },
+        {
+          "type": "text",
+          "text": " writes "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " and stops, to read the file first; guard blocks a session from committing it on the release branch, so the developer commits, tags, and branches by hand. "
         },
         {
           "type": "code",
@@ -130,11 +259,27 @@
         },
         {
           "type": "code",
+          "text": "--push"
+        },
+        {
+          "type": "text",
+          "text": " pushes the release branch, the tag, and the new branch to "
+        },
+        {
+          "type": "code",
+          "text": "origin"
+        },
+        {
+          "type": "text",
+          "text": ", and refuses to start without one. "
+        },
+        {
+          "type": "code",
           "text": "--dry-run"
         },
         {
           "type": "text",
-          "text": " previews without writing. "
+          "text": " previews every step without writing. "
         },
         {
           "type": "code",
@@ -170,7 +315,31 @@
         },
         {
           "type": "code",
+          "text": "committed"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
           "text": "baseline"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "branch"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "pushed"
         },
         {
           "type": "text",
@@ -203,7 +372,7 @@
         },
         {
           "type": "text",
-          "text": " once it exists, and "
+          "text": " once it exists. "
         },
         {
           "type": "code",
@@ -211,7 +380,7 @@
         },
         {
           "type": "text",
-          "text": " reads it back and reports the first problem. Commit the created files."
+          "text": " reads it back and reports the first problem, and notes a missing tag or branch."
         }
       ]
     },
@@ -253,7 +422,48 @@
     },
     {
       "type": "codeblock",
-      "text": "  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n"
+      "text": "  --branch \u003cvalue\u003e\n        Working branch to create when the release branch is the only one (default develop)\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --no-commit\n        Leave .pk.json uncommitted\n  --push\n        Push the release branch, the tag, and the working branch to origin\n  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command also accepts "
+        },
+        {
+          "type": "code",
+          "text": "--plain"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "--project-dir \u003cvalue\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "--quiet"
+        },
+        {
+          "type": "text",
+          "text": "; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help help"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
     }
   ]
 }

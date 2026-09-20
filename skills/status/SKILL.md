@@ -22,6 +22,10 @@ the text report.
 An unconfigured repository is a state, not an error: plankit is off
 wherever `.pk.json` is absent.
 
+A configured repository that has commits but no tag, or whose release
+branch is its only branch, gets a note naming the command that
+finishes the bootstrap. `--quiet` drops the notes.
+
 ## Flags
 
 <!-- generated: flags -->
@@ -29,4 +33,6 @@ wherever `.pk.json` is absent.
   --format <value>
         Output format: text or json (default text)
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->

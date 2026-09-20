@@ -155,3 +155,41 @@ func ParseRepoURL(remoteURL string) string {
 	}
 	return strings.TrimSuffix(u, ".git")
 }
+
+// CommitPaths stages the named paths and commits only them, so other
+// changes in the tree stay as they were. On an unborn branch the commit
+// becomes the root commit.
+func CommitPaths(dir, message string, paths ...string) error {
+	if _, err := Exec(dir, append([]string{"add", "--"}, paths...)...); err != nil {
+		return err
+	}
+	args := append([]string{"commit", "-q", "--only", "-m", message, "--"}, paths...)
+	_, err := Exec(dir, args...)
+	return err
+}
+
+// CreateBranch creates name at HEAD and switches to it.
+func CreateBranch(dir, name string) error {
+	_, err := Exec(dir, "switch", "-q", "-c", name)
+	return err
+}
+
+// BranchExists reports whether a local branch of that name exists.
+func BranchExists(dir, name string) bool {
+	_, err := Exec(dir, "rev-parse", "--verify", "-q", "refs/heads/"+name)
+	return err == nil
+}
+
+// HasRemote reports whether a remote of that name is configured.
+func HasRemote(dir, name string) bool {
+	_, err := Exec(dir, "remote", "get-url", name)
+	return err == nil
+}
+
+// PushRefs pushes the refs to origin in one atomic push and sets each
+// branch's upstream, so the next plain push and pull know where to go.
+func PushRefs(dir string, refs ...string) error {
+	args := append([]string{"push", "-q", "--atomic", "--set-upstream", "origin"}, refs...)
+	_, err := Exec(dir, args...)
+	return err
+}

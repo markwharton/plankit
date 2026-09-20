@@ -33,14 +33,6 @@ asks for a release, not on your own reading of a preview. When the
 inferred bump is a major, show the commits carrying `!` or
 `BREAKING CHANGE` and the section, and wait for the developer's go.
 
-## Permissions
-
-`pk ship` and `pk release` publish: they tag and push. Where a session
-allowlists pk commands, allowlist the ones that only read or stage
-(`pk status`, `pk changelog`, `pk ship --dry-run`) and leave `pk ship`
-and `pk release` off, so a release still needs the developer's
-approval.
-
 ## Flags
 
 <!-- generated: flags -->
@@ -52,4 +44,6 @@ approval.
   --exclude <value>
         Comma-separated commit SHAs to drop from the section (passed to changelog)
 ```
+
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
 <!-- /generated: flags -->

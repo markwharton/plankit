@@ -76,3 +76,9 @@ The `guard` section of `.pk.json`:
 
 An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: `pk` commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. `pk status` reads the file back and reports the first problem.
 <!-- /generated: settings -->
+
+## Flags
+
+<!-- generated: flags -->
+Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.
+<!-- /generated: flags -->

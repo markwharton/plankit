@@ -156,6 +156,47 @@
     {
       "type": "codeblock",
       "text": "  --file \u003cvalue\u003e\n        File containing the pin (relative to the project directory)\n  --name \u003cvalue\u003e\n        Identifier of a named pin; default is the SOMETHING_VERSION=\"v...\" shell form\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every command also accepts "
+        },
+        {
+          "type": "code",
+          "text": "--plain"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "--project-dir \u003cvalue\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "--quiet"
+        },
+        {
+          "type": "text",
+          "text": "; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help help"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
     }
   ]
 }
