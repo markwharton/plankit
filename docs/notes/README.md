@@ -35,6 +35,11 @@ note.
   now and what they can do. Not what was broken, not what a commit
   landed.
 - Practical, honest, concrete. No launch-speak, no "we are excited".
+- The previous notes are the model; read two before writing one. Each
+  paragraph says what is true now, why it matters to the reader, how
+  they steer it, and which page has the rest. Neither a list of facts
+  nor the page's flag walkthrough, and every clause checkable against
+  the code, a command's output, or a page.
 - Themed paragraphs, not one per commit. A minor is two to four short
   paragraphs; a major earns more.
 - Open each paragraph with its claim in bold, one per paragraph:
