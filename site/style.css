@@ -7,6 +7,7 @@
           --code-bg: #1c1c1c; --accent: #79b8ff; }
 }
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; color: var(--fg); background: var(--bg);
   font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
 a { color: var(--accent); text-decoration: none; }
@@ -18,12 +19,28 @@ header nav { display: flex; gap: 1rem; flex-wrap: wrap; }
 header nav a[aria-current], .topics a[aria-current] { color: var(--fg); font-weight: 600; }
 .wrap { display: grid; grid-template-columns: 12rem minmax(0, 54rem); gap: 2rem;
   padding: 1.5rem 1.25rem; max-width: 72rem; }
-@media (max-width: 48rem) { .wrap { grid-template-columns: 1fr; } }
+aside { position: sticky; top: 1.5rem; align-self: start; overflow-y: auto;
+  max-height: calc(100vh - 3rem); max-height: calc(100dvh - 3rem); }
+@media (max-width: 48rem) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  aside { position: static; max-height: none; overflow-y: visible; }
+}
 aside .label { margin: 0 0 .5rem; color: var(--muted); font: 600 .75rem/1 monospace;
   text-transform: uppercase; letter-spacing: .06em; }
 .topics { display: flex; flex-direction: column; gap: .25rem; }
 .topics hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: .5rem 0; }
 .topics a { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9rem; }
+@media (pointer: coarse) {
+  .topics { gap: 0; }
+  .topics a { padding: .55rem 0; }
+}
+@media (max-width: 48rem) {
+  .topics { flex-direction: row; flex-wrap: wrap; gap: .5rem; }
+  .topics hr { margin: 0; }
+  .topics a { padding: .5rem .8rem; border: 1px solid var(--line); border-radius: 999px; line-height: 1.5; }
+  .topics a[aria-current] { border-color: var(--fg); }
+}
+main { overflow-wrap: anywhere; }
 main h1 { font-size: 1.7rem; margin-top: 0; }
 main h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em;
