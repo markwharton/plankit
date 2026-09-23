@@ -180,6 +180,19 @@ func BranchExists(dir, name string) bool {
 	return err == nil
 }
 
+// RemoteBranchExists reports whether origin has a branch of that name.
+// The full ref keeps ls-remote's tail matching from counting a branch
+// like feature/main as main. err is non-nil only when origin cannot be
+// queried, so a caller never mistakes an unreachable origin for an
+// absent branch.
+func RemoteBranchExists(dir, name string) (bool, error) {
+	out, err := Exec(dir, "ls-remote", "--heads", "origin", "refs/heads/"+name)
+	if err != nil {
+		return false, err
+	}
+	return out != "", nil
+}
+
 // HasRemote reports whether a remote of that name is configured.
 func HasRemote(dir, name string) bool {
 	_, err := Exec(dir, "remote", "get-url", name)

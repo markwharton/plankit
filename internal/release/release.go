@@ -121,7 +121,11 @@ func run(ctx *cli.Context) error {
 
 	// Source must exist on origin: a clear error beats the cryptic fetch
 	// failure a local-only branch would produce later.
-	if _, err := git.Exec(root, "ls-remote", "--exit-code", "--heads", "origin", sourceBranch); err != nil {
+	sourceOnOrigin, err := git.RemoteBranchExists(root, sourceBranch)
+	if err != nil {
+		return fmt.Errorf("git ls-remote failed: %v", err)
+	}
+	if !sourceOnOrigin {
 		return cli.WithHint(cli.Statef("%s does not exist on origin", sourceBranch),
 			"to push it: git push -u origin %s", sourceBranch)
 	}
@@ -144,29 +148,34 @@ func run(ctx *cli.Context) error {
 	}
 	msg.Itemf(w, "Not behind origin/%s", sourceBranch)
 
-	// Merge flow: the release branch must resolve locally or on origin
+	// Merge flow: the release branch must exist locally or on origin
 	// before the flow switches to it, and origin's copy must be an
 	// ancestor of HEAD or the atomic push would be rejected. Catch both
-	// here, before tagging.
+	// here, before tagging. A branch only local (pk init without --push)
+	// is a first release: the release push creates it on origin.
 	if needsMerge {
-		if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
-			msg.Warnf(w, "failed to fetch %s from origin: %v (continuing with local state)", releaseBranch, err)
+		onOrigin, err := git.RemoteBranchExists(root, releaseBranch)
+		if err != nil {
+			return fmt.Errorf("git ls-remote failed: %v", err)
 		}
-		_, localErr := git.Exec(root, "rev-parse", "--verify", "--quiet", "refs/heads/"+releaseBranch)
-		_, remoteErr := git.Exec(root, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+releaseBranch)
-		if localErr != nil && remoteErr != nil {
-			return cli.WithHint(
-				cli.Statef("release branch %s does not exist locally or on origin", releaseBranch),
-				"to create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
-		}
-		if remoteErr == nil {
+		switch {
+		case onOrigin:
+			if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
+				return fmt.Errorf("git fetch failed: %v", err)
+			}
 			if _, err := git.Exec(root, "merge-base", "--is-ancestor", "origin/"+releaseBranch, "HEAD"); err != nil {
 				return cli.WithHint(
 					cli.Statef("origin/%s has diverged from %s; the release push would be rejected", releaseBranch, sourceBranch),
 					"to reconcile, on %s: git merge origin/%s", sourceBranch, releaseBranch)
 			}
+			msg.Itemf(w, "%s exists on origin", releaseBranch)
+		case git.BranchExists(root, releaseBranch):
+			msg.Itemf(w, "%s exists locally; the release push creates it on origin", releaseBranch)
+		default:
+			return cli.WithHint(
+				cli.Statef("release branch %s does not exist locally or on origin", releaseBranch),
+				"to create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
 		}
-		msg.Itemf(w, "%s exists", releaseBranch)
 	}
 	msg.Itemf(w, "Release-Tag trailer: %s", tag)
 

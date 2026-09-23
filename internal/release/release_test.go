@@ -121,6 +121,26 @@ func TestMergeFlowReleases(t *testing.T) {
 	}
 }
 
+// pk init without --push leaves main only local; the first release
+// creates it on origin rather than warning about a failed fetch.
+func TestMergeFlowCreatesReleaseBranchOnOrigin(t *testing.T) {
+	dir, bare := repo(t, nil)
+	mustGit(t, bare, "update-ref", "-d", "refs/heads/main")
+	pending(t, dir)
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+
+	code, errw := runRel(t, dir)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if strings.Contains(errw, "Warning") || !strings.Contains(errw, "main exists locally; the release push creates it on origin") {
+		t.Fatalf("narration:\n%s", errw)
+	}
+	if got := bareRef(t, bare, "refs/heads/main"); got != head {
+		t.Fatalf("origin main at %q, want %q", got, head)
+	}
+}
+
 func TestDryRunTouchesNothing(t *testing.T) {
 	dir, bare := repo(t, nil)
 	pending(t, dir)

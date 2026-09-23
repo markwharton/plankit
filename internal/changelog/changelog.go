@@ -124,7 +124,11 @@ func run(ctx *cli.Context) error {
 	// The branch must exist on origin, or pk changelog succeeds and pk
 	// release fails, stranding a Release-Tag commit behind a manual push.
 	if branch != "" {
-		if _, err := git.Exec(root, "ls-remote", "--exit-code", "--heads", "origin", branch); err != nil {
+		onOrigin, err := git.RemoteBranchExists(root, branch)
+		if err != nil {
+			return fmt.Errorf("git ls-remote failed: %v", err)
+		}
+		if !onOrigin {
 			return cli.WithHint(
 				cli.Statef("%s does not exist on origin", branch),
 				"to push it: git push -u origin %s", branch)

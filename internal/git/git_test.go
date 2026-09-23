@@ -83,3 +83,21 @@ func TestEmptyRepoReportsUnbornBranch(t *testing.T) {
 		t.Fatalf("branch=%q err=%v", b, err)
 	}
 }
+
+func TestRemoteBranchExists(t *testing.T) {
+	dir := scratch(t)
+	if _, err := RemoteBranchExists(dir, "main"); err == nil {
+		t.Fatal("no origin should be an error, not an absent branch")
+	}
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	mustGit(t, dir, "init", "-q", "--bare", bare)
+	mustGit(t, dir, "remote", "add", "origin", bare)
+	mustGit(t, dir, "push", "-q", "origin", "main:feature/main")
+	if ok, err := RemoteBranchExists(dir, "main"); err != nil || ok {
+		t.Fatalf("feature/main must not count as main: ok=%v err=%v", ok, err)
+	}
+	mustGit(t, dir, "push", "-q", "origin", "main")
+	if ok, err := RemoteBranchExists(dir, "main"); err != nil || !ok {
+		t.Fatalf("ok=%v err=%v", ok, err)
+	}
+}
