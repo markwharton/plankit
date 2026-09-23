@@ -7,6 +7,7 @@ make build      # docgen + go build -> ./pk
 make test       # go vet + go test ./... (repo and tools/docgen)
 make docs       # compile skills/ into internal/help/data (committed)
 make site       # render the website into site/dist (not committed)
+make site-serve # preview the site at http://localhost:8000
 make fmt        # gofmt the tree
 make bin-local  # build bin/pk-<os>-<arch> behind the bin/pk shim
 make dist       # cross-compile every shim target into bin/
@@ -21,6 +22,23 @@ with the rewritten pages and the recompiled `internal/help/data`, or
 the drift check fails. docgen also rejects hidden, control, and
 bidirectional characters in skills, because skills ship verbatim into
 other people's model contexts.
+
+## Previewing the site
+
+`make site-serve` renders the preview into `site/dist` and serves it
+with Python's built-in server at http://localhost:8000. Rerun it after
+a change to `site/` or a page.
+
+To test on a phone on the same Wi-Fi, serve on every interface and
+browse to the Mac's LAN address:
+
+```bash
+make site-serve SITE_HOST=0.0.0.0
+ipconfig getifaddr en0
+```
+
+On the phone, open `http://<that address>:8000`. macOS may ask whether
+to allow incoming connections for Python; allow it.
 
 ## Workflow
 

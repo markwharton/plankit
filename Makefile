@@ -4,7 +4,7 @@
 VERSION ?=
 LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/version.stamped=$(VERSION))
 
-.PHONY: build test docs site site-preview vet fmt
+.PHONY: build test docs site site-preview site-serve vet fmt
 
 build: docs
 	go build -ldflags "$(LDFLAGS)" -o pk ./cmd/pk
@@ -19,6 +19,13 @@ site: build
 # notes whose tag does not exist yet are rendered too.
 site-preview: build
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk -notes all -links html
+
+# Serve the preview on this machine. SITE_HOST=0.0.0.0 serves on every
+# interface, so a phone on the same network can open it.
+SITE_HOST ?= 127.0.0.1
+SITE_PORT ?= 8000
+site-serve: site-preview
+	python3 -m http.server $(SITE_PORT) -d site/dist --bind $(SITE_HOST)
 
 test:
 	go vet ./...
