@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.2.1] - 2026-09-23
+
+### Fixed
+
+- pk release treats a local-only release branch as a first release (7b5af99)
+- site fits small screens and keeps the topic list in view (490618f)
+
+### Maintenance
+
+- make site-serve previews the site, on a phone too (f457973)
+
 ## [v1.2.0] - 2026-09-20
 
 ### Added
@@ -1213,3 +1224,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.0.2]: https://github.com/markwharton/plankit/compare/v1.0.1...v1.0.2
 [v1.1.0]: https://github.com/markwharton/plankit/compare/v1.0.2...v1.1.0
 [v1.2.0]: https://github.com/markwharton/plankit/compare/v1.1.0...v1.2.0
+[v1.2.1]: https://github.com/markwharton/plankit/compare/v1.2.0...v1.2.1
