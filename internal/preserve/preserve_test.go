@@ -396,6 +396,18 @@ func TestExtractPlanPathHandlesWindowsEscapes(t *testing.T) {
 	}
 }
 
+// TestPageNamesThePointerFile: the page tells the reader where the
+// pending-plan pointer lives, and that name is a constant here.
+func TestPageNamesThePointerFile(t *testing.T) {
+	page, err := os.ReadFile(filepath.Join("..", "..", "skills", "preserve", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(page), "`.git/"+pointerFilename+"`") {
+		t.Fatalf("skills/preserve/SKILL.md does not name .git/%s", pointerFilename)
+	}
+}
+
 func TestSlugify(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"Ship The Widget", "ship-the-widget"},

@@ -211,6 +211,74 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "preserving-a-plan-revised-after-approval",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Preserving a plan revised after approval"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The approval hook reads the plan's path from "
+        },
+        {
+          "type": "code",
+          "text": "tool_response.filePath"
+        },
+        {
+          "type": "text",
+          "text": " on stdin and records it in "
+        },
+        {
+          "type": "code",
+          "text": ".git/pk-pending-plan"
+        },
+        {
+          "type": "text",
+          "text": ". A typed "
+        },
+        {
+          "type": "code",
+          "text": "pk preserve"
+        },
+        {
+          "type": "text",
+          "text": " consumes the pointer. A plan revised after it was preserved has no pointer: preserve it again with "
+        },
+        {
+          "type": "code",
+          "text": "--plan \u003cpath\u003e"
+        },
+        {
+          "type": "text",
+          "text": ", and it becomes the next sequence number for the day. The same rules apply: the path is a Claude Code plan under "
+        },
+        {
+          "type": "code",
+          "text": "~/.claude/plans/"
+        },
+        {
+          "type": "text",
+          "text": ", and identical bytes report the existing file. While the pointer names a different plan, "
+        },
+        {
+          "type": "code",
+          "text": "--plan"
+        },
+        {
+          "type": "text",
+          "text": " refuses and names both files; preserve the pending plan first."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "flags",
       "inlines": [
         {

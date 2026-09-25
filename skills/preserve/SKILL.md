@@ -31,6 +31,18 @@ the existing file. A plan shorter than `minPlanSize` bytes is ignored (`grep min
 A typed run with nothing pending says so; the hook declines in
 silence, because its stdout is the response envelope.
 
+## Preserving a plan revised after approval
+
+The approval hook reads the plan's path from `tool_response.filePath`
+on stdin and records it in `.git/pk-pending-plan`. A typed
+`pk preserve` consumes the pointer. A plan revised after it was
+preserved has no pointer: preserve it again with `--plan <path>`, and
+it becomes the next sequence number for the day. The same rules
+apply: the path is a Claude Code plan under `~/.claude/plans/`, and
+identical bytes report the existing file. While the pointer names a
+different plan, `--plan` refuses and names both files; preserve the
+pending plan first.
+
 ## Flags
 
 <!-- generated: flags -->
