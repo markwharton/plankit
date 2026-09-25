@@ -35,10 +35,12 @@ silence, because its stdout is the response envelope.
 
 <!-- generated: flags -->
 ```
-  --push
-        Push to origin after committing
   --dry-run
         Preview without writing or committing
+  --plan <value>
+        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)
+  --push
+        Push to origin after committing
 ```
 
 Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.

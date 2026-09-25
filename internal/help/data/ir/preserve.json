@@ -221,7 +221,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --push\n        Push to origin after committing\n  --dry-run\n        Preview without writing or committing\n"
+      "text": "  --dry-run\n        Preview without writing or committing\n  --plan \u003cvalue\u003e\n        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)\n  --push\n        Push to origin after committing\n"
     },
     {
       "type": "para",

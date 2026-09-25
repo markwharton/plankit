@@ -57,7 +57,10 @@ func scratch(t *testing.T, mode, content string) (string, string) {
 	return dir, planPath
 }
 
-func runPreserve(t *testing.T, dir, planPath string, args ...string) (string, string) {
+// runPreserveIO runs the command: with a plan path, as the hook with
+// that plan in the payload; without one, as a typed run with no stdin.
+// Returns stdout, stderr, and the exit code.
+func runPreserveIO(t *testing.T, dir, planPath string, args ...string) (string, string, int) {
 	t.Helper()
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	var stdin io.Reader
@@ -71,10 +74,17 @@ func runPreserve(t *testing.T, dir, planPath string, args ...string) (string, st
 	var out, errw bytes.Buffer
 	argv := append([]string{"pk", "preserve", "--project-dir", dir}, args...)
 	code := cli.RunIO(argv, []*cli.Command{Cmd}, stdin, &out, &errw)
+	return out.String(), errw.String(), code
+}
+
+// runPreserve is runPreserveIO for the runs that must succeed.
+func runPreserve(t *testing.T, dir, planPath string, args ...string) (string, string) {
+	t.Helper()
+	out, errw, code := runPreserveIO(t, dir, planPath, args...)
 	if code != 0 {
-		t.Fatalf("hook exit %d (stderr: %s)", code, errw.String())
+		t.Fatalf("hook exit %d (stderr: %s)", code, errw)
 	}
-	return out.String(), errw.String()
+	return out, errw
 }
 
 func commitCount(t *testing.T, dir string) int {
@@ -259,6 +269,115 @@ func TestDryRunPreviewsOnly(t *testing.T) {
 	}
 	if commitCount(t, dir) != before {
 		t.Fatal("dry-run committed")
+	}
+	if _, err := os.Stat(paths.Plans(dir)); !os.IsNotExist(err) {
+		t.Fatal("dry-run wrote the plans dir")
+	}
+}
+
+// TestPlanFlagPreservesARevisedPlanWithoutAPointer is the case --plan
+// exists for: the approved plan was preserved, the file was revised
+// after, and no pointer names it any more.
+func TestPlanFlagPreservesARevisedPlanWithoutAPointer(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "manual", planBody)
+	runPreserve(t, dir, plan) // hook: pointer written
+	runPreserve(t, dir, "")   // typed: 001 committed, pointer consumed
+	before := commitCount(t, dir)
+
+	revised := planBody + "\n## Added after discussion\n\nOne more section.\n"
+	os.WriteFile(plan, []byte(revised), 0o644)
+	out, _ := runPreserve(t, dir, "", "--plan", plan)
+
+	dest := filepath.Join(paths.Plans(dir), "2026-09-05-002-ship-the-widget.md")
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("revised plan: %v", err)
+	}
+	if !bytes.Equal(got, []byte(revised)) {
+		t.Fatal("preserved bytes differ from the revised plan")
+	}
+	if commitCount(t, dir) != before+1 {
+		t.Fatal("expected one new commit")
+	}
+	if !strings.Contains(out, "Approved plan committed: docs/plans/2026-09-05-002-ship-the-widget.md") {
+		t.Fatalf("out = %s", out)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git", "pk-pending-plan")); !os.IsNotExist(err) {
+		t.Fatal("no pointer should exist")
+	}
+}
+
+func TestPlanFlagIdenticalBytesReportTheExistingFile(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	runPreserve(t, dir, plan)
+	before := commitCount(t, dir)
+
+	out, _ := runPreserve(t, dir, "", "--plan", plan)
+	if commitCount(t, dir) != before {
+		t.Fatal("identical plan created a commit")
+	}
+	if !strings.Contains(out, "already preserved as docs/plans/2026-09-05-001-ship-the-widget.md") {
+		t.Fatalf("out = %s", out)
+	}
+	entries, _ := os.ReadDir(paths.Plans(dir))
+	if len(entries) != 1 {
+		t.Fatalf("plans dir has %d entries", len(entries))
+	}
+}
+
+func TestPlanFlagRefusesAPathOutsideClaudePlans(t *testing.T) {
+	dir, _ := scratch(t, "manual", planBody)
+	before := commitCount(t, dir)
+	elsewhere := filepath.Join(t.TempDir(), "notes.md")
+	os.WriteFile(elsewhere, []byte(planBody), 0o644)
+
+	out, errw, code := runPreserveIO(t, dir, "", "--plan", elsewhere)
+	if code != cli.ExitUsage {
+		t.Fatalf("exit %d, want %d (stderr: %s)", code, cli.ExitUsage, errw)
+	}
+	if !strings.Contains(errw, elsewhere) || !strings.Contains(errw, ".claude/plans/") {
+		t.Fatalf("stderr: %s", errw)
+	}
+	if out != "" || commitCount(t, dir) != before {
+		t.Fatalf("refusal acted: out=%q", out)
+	}
+}
+
+func TestPlanFlagRefusesWhenThePointerNamesAnotherPlan(t *testing.T) {
+	dir, planA := scratch(t, "manual", planBody)
+	runPreserve(t, dir, planA) // pointer names A
+	before := commitCount(t, dir)
+	planB := filepath.Join(filepath.Dir(planA), "other.md")
+	os.WriteFile(planB, []byte(strings.Replace(planBody, "Ship The Widget", "Other Plan", 1)), 0o644)
+
+	out, errw, code := runPreserveIO(t, dir, "", "--plan", planB)
+	if code != cli.ExitState {
+		t.Fatalf("exit %d, want %d (stderr: %s)", code, cli.ExitState, errw)
+	}
+	if !strings.Contains(errw, planA) || !strings.Contains(errw, planB) {
+		t.Fatalf("stderr must name both files: %s", errw)
+	}
+	if out != "" || commitCount(t, dir) != before {
+		t.Fatalf("refusal acted: out=%q", out)
+	}
+	ptr, err := os.ReadFile(filepath.Join(dir, ".git", "pk-pending-plan"))
+	if err != nil || strings.TrimSpace(string(ptr)) != planA {
+		t.Fatalf("pointer disturbed: %q err=%v", ptr, err)
+	}
+}
+
+func TestPlanFlagDryRunPreviewsOnly(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "manual", planBody)
+	before := commitCount(t, dir)
+	out, errw := runPreserve(t, dir, "", "--plan", plan, "--dry-run")
+	if !strings.Contains(errw, "2026-09-05-001-ship-the-widget.md") {
+		t.Fatalf("preview: %s", errw)
+	}
+	if out != "" || commitCount(t, dir) != before {
+		t.Fatalf("dry-run acted: out=%q", out)
 	}
 	if _, err := os.Stat(paths.Plans(dir)); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote the plans dir")

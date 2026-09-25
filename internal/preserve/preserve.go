@@ -2,13 +2,15 @@
 // Claude Code plans, byte for byte, as dated and sequenced files in
 // docs/plans/, and commits them.
 //
-// Two invocation shapes share this command. The automatic PostToolUse
+// Three invocation shapes share this command. The automatic PostToolUse
 // hook on ExitPlanMode arrives with a payload on stdin and honors
 // .pk.json preserve.mode: auto commits immediately, manual records a
 // pending-plan pointer and tells the person to run /plankit:preserve,
 // off does nothing. An explicit invocation (the /plankit:preserve skill,
 // or a person at a terminal) arrives with no payload, consumes the
-// pointer, and always commits.
+// pointer, and always commits. A --plan invocation names the plan
+// itself, for a plan revised after its pointer was consumed, and
+// commits it under the same rules.
 //
 // Ported from v1. The v2 changes: an unconfigured repository is a fast
 // no-op for the automatic hook (v1's absent-config default was manual,
@@ -60,13 +62,18 @@ var Cmd = &cli.Command{
 	Summary: "Hook: preserve the approved plan into docs/plans and commit it",
 	Hook:    true,
 	Flags: []cli.FlagSpec{
-		{Name: "push", Type: cli.BoolFlag, Usage: "Push to origin after committing"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without writing or committing"},
+		{Name: "plan", Type: cli.StringFlag, Usage: "Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)"},
+		{Name: "push", Type: cli.BoolFlag, Usage: "Push to origin after committing"},
 	},
 	Run: run,
 }
 
 func run(ctx *cli.Context) error {
+	if typed := ctx.String("plan"); typed != "" {
+		return runNamed(ctx, typed)
+	}
+
 	var planPath, payloadCWD string
 
 	input, err := hookio.ReadInput(ctx.Stdin)
@@ -151,6 +158,46 @@ func run(ctx *cli.Context) error {
 	}
 
 	// auto, or explicit invocation: commit.
+	preserve(ctx, root, content, title)
+	return nil
+}
+
+// runNamed is the --plan path: a person names the plan, so stdin is not
+// read, the pointer is not consulted except to refuse a conflict, and
+// every reason not to act is an error naming it. A pointer naming the
+// same file is consumed as an explicit run consumes it.
+func runNamed(ctx *cli.Context, typed string) error {
+	planPath := matchPlanPath(typed, os.UserHomeDir)
+	if planPath == "" {
+		return cli.Usagef("--plan %s is not a Claude Code plan: the path must be a .md file under ~/.claude/plans/", typed)
+	}
+	content, err := os.ReadFile(planPath)
+	if err != nil {
+		return cli.Statef("failed to read plan %s: %v", planPath, err)
+	}
+	if len(content) < minPlanSize {
+		return cli.Statef("plan %s is %d bytes, below the minimum of %d", planPath, len(content), minPlanSize)
+	}
+	dir := hookio.ResolveDir(os.Getenv, "", ctx.ProjectDir, ctx.ProjectDirExplicit)
+	root, ok := git.FindRoot(dir)
+	if !ok {
+		return cli.Statef("not a git repository: %s", dir)
+	}
+	if pending, ok := readPointer(root); ok && pending != planPath {
+		return cli.WithHint(
+			cli.Statef("a pending plan is waiting: %s; --plan names %s", pending, planPath),
+			"run pk preserve to commit the pending plan first, then preserve the other with --plan")
+	}
+	preserve(ctx, root, content, extractTitle(string(content)))
+	return nil
+}
+
+// preserve writes the plan into docs/plans under the next filename for
+// the day and commits it, reporting through the response envelope.
+// Identical bytes already preserved report the existing file instead.
+// Failures are reported the hook's way, never as an exit code, because
+// the automatic hook shares this path.
+func preserve(ctx *cli.Context, root string, content []byte, title string) {
 	datePrefix := now().Format("2006-01-02")
 	slug := slugify(title, 60)
 	if slug == "" {
@@ -162,7 +209,7 @@ func run(ctx *cli.Context) error {
 	if dupName != "" {
 		removePointer(root)
 		writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", paths.PlanRel(dupName)), "")
-		return nil
+		return
 	}
 	filename := fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
 	relPath := paths.PlanRel(filename)
@@ -175,30 +222,30 @@ func run(ctx *cli.Context) error {
 		if ctx.Bool("push") {
 			fmt.Fprintf(ctx.Stderr, "  Push:   git push origin HEAD\n")
 		}
-		return nil
+		return
 	}
 
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "failed to create directory: %v", err)
-		return nil
+		return
 	}
 	if err := os.WriteFile(filepath.Join(destDir, filename), content, 0o644); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "failed to write plan: %v", err)
-		return nil
+		return
 	}
 	if _, err := git.Exec(root, "add", relPath); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "git add failed: %v", err)
-		return nil
+		return
 	}
 	// Nothing staged means the identical bytes were already committed.
 	if _, err := git.Exec(root, "diff", "--cached", "--quiet"); err == nil {
 		removePointer(root)
 		writeResponse(ctx, "Plan unchanged, no commit needed.", "")
-		return nil
+		return
 	}
 	if _, err := git.Exec(root, "commit", "-m", fmt.Sprintf("%s: %s [skip ci]", config.PlanType, title)); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "git commit failed: %v", err)
-		return nil
+		return
 	}
 	removePointer(root)
 
@@ -211,7 +258,6 @@ func run(ctx *cli.Context) error {
 	} else {
 		writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s", relPath), "")
 	}
-	return nil
 }
 
 func writeResponse(ctx *cli.Context, message, context string) {
