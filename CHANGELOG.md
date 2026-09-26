@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.3.0] - 2026-09-26
+
+### Added
+
+- --plan names the plan to preserve, for a plan revised after approval (f3e7d53)
+- preserve.dir names the plans directory, docs/plans by default (2dba495)
+
+### Documentation
+
+- how the pointer is set and where it lives (3e23d70)
+- pages say the plans directory (6433bd0)
+- release notes for v1.3.0 (4b83d19)
+
 ## [v1.2.1] - 2026-09-23
 
 ### Fixed
@@ -1225,3 +1238,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.1.0]: https://github.com/markwharton/plankit/compare/v1.0.2...v1.1.0
 [v1.2.0]: https://github.com/markwharton/plankit/compare/v1.1.0...v1.2.0
 [v1.2.1]: https://github.com/markwharton/plankit/compare/v1.2.0...v1.2.1
+[v1.3.0]: https://github.com/markwharton/plankit/compare/v1.2.1...v1.3.0
