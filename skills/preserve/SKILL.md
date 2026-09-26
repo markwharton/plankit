@@ -1,13 +1,13 @@
 ---
 name: preserve
-description: Keep each approved plan as a record in docs/plans, on approval or on request
+description: Keep each approved plan as a record in the plans directory, on approval or on request
 ---
 
 # pk preserve
 
 `pk preserve` copies an approved Claude Code plan, byte for byte, into
-`docs/plans/` under a dated, sequenced, slugged filename and commits
-it with a `plan:` message.
+the plans directory, `preserve.dir` in `.pk.json`, under a dated,
+sequenced, slugged filename and commits it with a `plan:` message.
 
 ## Modes
 

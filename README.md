@@ -42,8 +42,9 @@ pk init
 
 One run writes `.pk.json`, the policy, commits it, tags the `v0.0.0`
 baseline, and starts a `develop` branch when the release branch was
-the only one. `docs/plans/` appears when the first plan is preserved.
-No `.pk.json` means off: every hook exits immediately.
+the only one. The plans directory, named in the policy, appears when
+the first plan is preserved; `pk help preserve` has the key and its
+default. No `.pk.json` means off: every hook exits immediately.
 
 In Claude Code, the skills are the normal way in: `/plankit:ship`
 cuts a release. Allowing pk in the repository's `.claude/settings.json`
@@ -62,7 +63,8 @@ To allow one command instead, name it: `Bash(pk status:*)`.
 ## The loop
 
 Plan in Claude Code; on plan approval the preserve hook commits the
-plan into `docs/plans/`, where the protect hook keeps it immutable.
+plan into the plans directory, where the protect hook keeps it
+immutable.
 The guard hook blocks git mutations on protected branches, so work
 lands on your development branch. When it is time to release:
 

@@ -13,17 +13,17 @@ renders the same pages in a terminal.
 ## Model
 
 Claude plans the work. On approval, the preserve hook copies the plan,
-byte for byte, into `docs/plans/` under a dated, sequenced filename.
-The protect hook denies edits under `docs/plans/`. The guard hook
-denies or questions git mutations on protected branches.
+byte for byte, into the plans directory under a dated, sequenced
+filename. The protect hook denies edits there. The guard hook denies
+or questions git mutations on protected branches.
 
 ## Per-repo footprint
 
 A configured repository carries `.pk.json`, the committed policy:
 modes, protected branches, changelog sections, release hooks. Those
-commands run through `sh -c`, or `cmd /c` on Windows. `docs/plans/`
-appears when the first plan is preserved. Without `.pk.json`, every
-hook exits without acting.
+commands run through `sh -c`, or `cmd /c` on Windows. The plans
+directory appears when the first plan is preserved. Without
+`.pk.json`, every hook exits without acting.
 
 ## Commit conventions
 
@@ -56,7 +56,7 @@ a repository configured by a v0.x release:
    plugin wires the same hooks, and leftover entries fire twice.
 2. Delete `.claude/install-pk.sh`, the copied `.claude/skills/`, and
    `.claude/rules/plankit/`.
-3. Keep `.pk.json` and `docs/plans/`. The config schema is unchanged.
+3. Keep `.pk.json` and the plans directory. The config schema is unchanged.
 
 ## Windows without Git Bash
 

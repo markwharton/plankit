@@ -134,15 +134,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Nothing is pushed. "
-        },
-        {
-          "type": "code",
-          "text": "docs/plans/"
-        },
-        {
-          "type": "text",
-          "text": " is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+          "text": "Nothing is pushed. The plans directory is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
         }
       ]
     },

@@ -15,9 +15,9 @@ wiring and words, not logic. Remove the plugin and pk still does
 everything from a terminal; remove pk and the plugin does nothing.
 
 A repository that uses plankit carries one file of its own: the
-policy file, `.pk.json`, committed with the code. The record,
-`docs/plans/`, appears when the first plan is preserved. Nothing else
-is copied in.
+policy file, `.pk.json`, committed with the code. The record, the
+plans directory the policy names as `preserve.dir`, appears when the
+first plan is preserved. Nothing else is copied in.
 
 ```mermaid
 flowchart TB
@@ -42,13 +42,14 @@ flowchart TB
 ## Plans
 
 Claude plans the work in Plan Mode. When the developer approves the
-plan, the preserve hook copies it, byte for byte, into `docs/plans/`
-under a dated, sequenced filename. In auto mode preserve commits it at
-once. In manual mode, the default, preserve records which plan was
-approved and tells the session; `/plankit:preserve` commits it later.
+plan, the preserve hook copies it, byte for byte, into the plans
+directory under a dated, sequenced filename. In auto mode preserve
+commits it at once. In manual mode, the default, preserve records
+which plan was approved and tells the session; `/plankit:preserve`
+commits it later.
 
-The protect hook denies every edit under `docs/plans/`. A plan is
-never changed after approval. When the approach changes, a new plan
+The protect hook denies every edit under the plans directory. A plan
+is never changed after approval. When the approach changes, a new plan
 is approved and preserved, and the sequence of files is the history
 of decisions, reversals included.
 

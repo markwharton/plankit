@@ -2,7 +2,7 @@
   "schema": 1,
   "meta": {
     "name": "preserve",
-    "description": "Keep each approved plan as a record in docs/plans, on approval or on request"
+    "description": "Keep each approved plan as a record in the plans directory, on approval or on request"
   },
   "blocks": [
     {
@@ -25,15 +25,23 @@
         },
         {
           "type": "text",
-          "text": " copies an approved Claude Code plan, byte for byte, into "
+          "text": " copies an approved Claude Code plan, byte for byte, into the plans directory, "
         },
         {
           "type": "code",
-          "text": "docs/plans/"
+          "text": "preserve.dir"
         },
         {
           "type": "text",
-          "text": " under a dated, sequenced, slugged filename and commits it with a "
+          "text": " in "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": ", under a dated, sequenced, slugged filename and commits it with a "
         },
         {
           "type": "code",

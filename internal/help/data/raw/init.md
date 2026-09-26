@@ -19,9 +19,9 @@ Configures a repository in one run:
   was the only one; a repository with another branch keeps its own
 - the brief, printed in full
 
-Nothing is pushed. `docs/plans/` is not created here. The preserve hook
-creates it when the first plan is preserved, so a repository that never
-preserves a plan never gains the directory.
+Nothing is pushed. The plans directory is not created here. The
+preserve hook creates it when the first plan is preserved, so a
+repository that never preserves a plan never gains the directory.
 
 ## Procedure
 

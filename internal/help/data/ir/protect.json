@@ -2,7 +2,7 @@
   "schema": 1,
   "meta": {
     "name": "protect",
-    "description": "Why docs/plans is immutable and how pk protect enforces it"
+    "description": "Why preserved plans are immutable and how pk protect enforces it"
   },
   "blocks": [
     {
@@ -25,11 +25,19 @@
         },
         {
           "type": "text",
-          "text": " is a PreToolUse hook on Edit and Write. It denies any write under "
+          "text": " is a PreToolUse hook on Edit and Write. It denies any write under the plans directory, "
         },
         {
           "type": "code",
-          "text": "docs/plans/"
+          "text": "preserve.dir"
+        },
+        {
+          "type": "text",
+          "text": " in "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
         },
         {
           "type": "text",
@@ -62,15 +70,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Plans are superseded, never edited. When the approach changes, write and approve a new plan. The sequence in "
-        },
-        {
-          "type": "code",
-          "text": "docs/plans/"
-        },
-        {
-          "type": "text",
-          "text": " is the history of decisions, reversals included."
+          "text": "Plans are superseded, never edited. When the approach changes, write and approve a new plan. The sequence in the plans directory is the history of decisions, reversals included."
         }
       ]
     },

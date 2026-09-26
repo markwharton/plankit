@@ -49,23 +49,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Claude plans the work. On approval, the preserve hook copies the plan, byte for byte, into "
-        },
-        {
-          "type": "code",
-          "text": "docs/plans/"
-        },
-        {
-          "type": "text",
-          "text": " under a dated, sequenced filename. The protect hook denies edits under "
-        },
-        {
-          "type": "code",
-          "text": "docs/plans/"
-        },
-        {
-          "type": "text",
-          "text": ". The guard hook denies or questions git mutations on protected branches."
+          "text": "Claude plans the work. On approval, the preserve hook copies the plan, byte for byte, into the plans directory under a dated, sequenced filename. The protect hook denies edits there. The guard hook denies or questions git mutations on protected branches."
         }
       ]
     },
@@ -109,15 +93,7 @@
         },
         {
           "type": "text",
-          "text": " on Windows. "
-        },
-        {
-          "type": "code",
-          "text": "docs/plans/"
-        },
-        {
-          "type": "text",
-          "text": " appears when the first plan is preserved. Without "
+          "text": " on Windows. The plans directory appears when the first plan is preserved. Without "
         },
         {
           "type": "code",
@@ -393,15 +369,7 @@
               },
               {
                 "type": "text",
-                "text": " and "
-              },
-              {
-                "type": "code",
-                "text": "docs/plans/"
-              },
-              {
-                "type": "text",
-                "text": ". The config schema is unchanged."
+                "text": " and the plans directory. The config schema is unchanged."
               }
             ]
           }
