@@ -13,7 +13,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 )
 
 // FileName is the policy file, at the repository root.
@@ -44,10 +46,11 @@ var ErrNotConfigured = errors.New("not configured (no " + FileName + ")")
 const PlanType = "plan"
 
 const (
-	DefaultGuardMode     = "block"  // guard.mode
-	DefaultGuardPush     = "block"  // guard.push
-	DefaultGuardBreaking = "ask"    // guard.breaking
-	DefaultPreserveMode  = "manual" // preserve.mode
+	DefaultGuardMode     = "block"      // guard.mode
+	DefaultGuardPush     = "block"      // guard.push
+	DefaultGuardBreaking = "ask"        // guard.breaking
+	DefaultPreserveDir   = "docs/plans" // preserve.dir
+	DefaultPreserveMode  = "manual"     // preserve.mode
 )
 
 // GuardConfig holds the guard section.
@@ -87,7 +90,22 @@ func (g GuardConfig) ResolvedBreaking() string {
 
 // PreserveConfig holds the preserve section.
 type PreserveConfig struct {
+	Dir  string `json:"dir,omitempty"`  // the plans directory, relative to the root, forward slashes
 	Mode string `json:"mode,omitempty"` // auto | manual | off
+}
+
+// ResolvedDir returns preserve.dir with the default applied: the plans
+// directory relative to the repository root, forward slashes.
+func (p PreserveConfig) ResolvedDir() string {
+	if p.Dir == "" {
+		return DefaultPreserveDir
+	}
+	return p.Dir
+}
+
+// DirPath returns the plans directory as a filesystem path under root.
+func (p PreserveConfig) DirPath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(p.ResolvedDir()))
 }
 
 // ResolvedMode returns preserve.mode with the default applied.
@@ -207,7 +225,27 @@ func (c *PkConfig) Validate() error {
 			return fmt.Errorf("changelog.types[%d] (%s): section is required unless hidden", i, t.Type)
 		}
 	}
+	if d := c.Preserve.Dir; d != "" && !isRepoRelativeDir(d) {
+		return fmt.Errorf("preserve.dir: %q must be a clean relative path with forward slashes inside the repository", d)
+	}
 	return nil
+}
+
+// isRepoRelativeDir reports whether d names a directory inside the
+// repository: relative on every platform, forward slashes only, already
+// clean (no trailing slash, no ./, no doubled slash), and not the root
+// or anything above it.
+func isRepoRelativeDir(d string) bool {
+	if strings.Contains(d, `\`) || strings.HasPrefix(d, "/") || filepath.IsAbs(d) {
+		return false
+	}
+	if len(d) >= 2 && d[1] == ':' {
+		return false // a Windows drive, on any platform
+	}
+	if d != path.Clean(d) || d == "." || d == ".." || strings.HasPrefix(d, "../") {
+		return false
+	}
+	return true
 }
 
 func oneOf(key, value string, allowed ...string) error {
@@ -252,7 +290,7 @@ func Default(releaseBranch string) *PkConfig {
 			Breaking: DefaultGuardBreaking,
 			Push:     DefaultGuardPush,
 		},
-		Preserve: PreserveConfig{Mode: DefaultPreserveMode},
+		Preserve: PreserveConfig{Dir: DefaultPreserveDir, Mode: DefaultPreserveMode},
 		Release:  ReleaseSection{Branch: releaseBranch},
 	}
 }

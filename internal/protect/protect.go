@@ -1,6 +1,6 @@
 // Package protect implements the protect PreToolUse hook: it denies
-// Edit/Write operations targeting files under docs/plans/, which are
-// immutable historical records. Ported from v1; the v2 addition is the
+// Edit/Write operations targeting files under the plans directory,
+// which holds immutable historical records. Ported from v1; the v2 addition is the
 // not-configured short-circuit, since the plugin's hooks fire in every
 // repository (v1 protected unconditionally).
 package protect
@@ -17,13 +17,12 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
 	"github.com/markwharton/plankit/internal/msg"
-	"github.com/markwharton/plankit/internal/paths"
 )
 
 // Cmd is the protect hook command.
 var Cmd = &cli.Command{
 	Name:    "protect",
-	Summary: "Hook: keep preserved plans in docs/plans immutable",
+	Summary: "Hook: keep preserved plans immutable",
 	Hook:    true,
 	Run:     run,
 }
@@ -43,7 +42,8 @@ func run(ctx *cli.Context) error {
 	if !ok {
 		return nil
 	}
-	if _, err := config.Load(root); err != nil {
+	cfg, err := config.Load(root)
+	if err != nil {
 		if errors.Is(err, config.ErrNotConfigured) {
 			return nil // off here; the hook fires everywhere
 		}
@@ -51,9 +51,9 @@ func run(ctx *cli.Context) error {
 		return cli.Silent(hookio.ExitReport) // shown, not blocking; protect takes no action
 	}
 
-	if isUnderPlansDir(input.ToolInput.FilePath, root) {
+	if isUnderPlansDir(input.ToolInput.FilePath, root, cfg.Preserve.DirPath(root)) {
 		err := hookio.WritePermissionDecision(ctx.Stdout, hookio.PermissionDeny,
-			"docs/plans/ files are immutable historical records. They must not be edited or overwritten after creation.")
+			cfg.Preserve.ResolvedDir()+"/ files are immutable historical records. They must not be edited or overwritten after creation.")
 		if err != nil {
 			msg.Hookf(ctx.Stderr, "protect", "write error: %v", err)
 		}
@@ -61,9 +61,9 @@ func run(ctx *cli.Context) error {
 	return nil
 }
 
-// isUnderPlansDir checks whether filePath is under root/docs/plans/,
-// resolving symlinks to prevent bypass via links, and comparing
-// case-insensitively on Windows.
+// isUnderPlansDir checks whether filePath is under plansDir, the
+// configured plans directory under root, resolving symlinks to prevent
+// bypass via links, and comparing case-insensitively on Windows.
 //
 // Both sides resolve through resolveExisting, never EvalSymlinks
 // directly: the write target usually does not exist yet, and resolving
@@ -72,8 +72,7 @@ func run(ctx *cli.Context) error {
 // edge: /var is a symlink to /private/var, so a payload cwd under
 // /var/folders (every TMPDIR) resolves to /private on the existing
 // side and stays /var on the missing side. v1 had this asymmetry too.
-func isUnderPlansDir(filePath, root string) bool {
-	plansDir := paths.Plans(root)
+func isUnderPlansDir(filePath, root, plansDir string) bool {
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(root, filePath)
 	}

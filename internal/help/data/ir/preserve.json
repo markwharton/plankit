@@ -370,11 +370,34 @@
     },
     {
       "type": "codeblock",
-      "text": "\"preserve\": {\n  \"mode\": \"auto\" | \"manual\" | \"off\"\n}\n"
+      "text": "\"preserve\": {\n  \"dir\": \"\u003cdir\u003e\",\n  \"mode\": \"auto\" | \"manual\" | \"off\"\n}\n"
     },
     {
       "type": "list",
       "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "preserve.dir"
+              },
+              {
+                "type": "text",
+                "text": ": a directory, relative to the repository root; default "
+              },
+              {
+                "type": "code",
+                "text": "docs/plans"
+              },
+              {
+                "type": "text",
+                "text": ". Where preserved plans are written and kept immutable; forward slashes, inside the repository."
+              }
+            ]
+          }
+        ],
         [
           {
             "type": "para",

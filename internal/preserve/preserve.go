@@ -1,6 +1,6 @@
 // Package preserve implements the preserve hook: it captures approved
 // Claude Code plans, byte for byte, as dated and sequenced files in
-// docs/plans/, and commits them.
+// the plans directory (.pk.json preserve.dir), and commits them.
 //
 // Three invocation shapes share this command. The automatic PostToolUse
 // hook on ExitPlanMode arrives with a payload on stdin and honors
@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -37,7 +38,6 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
 	"github.com/markwharton/plankit/internal/msg"
-	"github.com/markwharton/plankit/internal/paths"
 )
 
 // minPlanSize is the minimum byte length for a plan to be preserved.
@@ -59,7 +59,7 @@ var now = time.Now
 // Cmd is the preserve command: hook-driven and explicitly invocable.
 var Cmd = &cli.Command{
 	Name:    "preserve",
-	Summary: "Hook: preserve the approved plan into docs/plans and commit it",
+	Summary: "Hook: preserve the approved plan as a record and commit it",
 	Hook:    true,
 	Flags: []cli.FlagSpec{
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without writing or committing"},
@@ -87,6 +87,23 @@ func run(ctx *cli.Context) error {
 
 	dir := hookio.ResolveDir(os.Getenv, payloadCWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, rootOK := git.FindRoot(dir)
+
+	// Both shapes read the policy file, for the mode and the plans
+	// directory. The hook declines without one; the person is told.
+	var cfg *config.PkConfig
+	if rootOK {
+		var err error
+		if cfg, err = config.Load(root); err != nil {
+			if !hookInvocation {
+				return notConfigured(err)
+			}
+			if errors.Is(err, config.ErrNotConfigured) {
+				return nil // plankit is off here; the hook fires everywhere
+			}
+			msg.Hookf(ctx.Stderr, "preserve", "%v", err)
+			return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
+		}
+	}
 
 	if hookInvocation {
 		planPath = extractPlanPath(input.ToolResponse, os.UserHomeDir)
@@ -134,14 +151,6 @@ func run(ctx *cli.Context) error {
 	// person acting, which is consent enough.
 	mode := "auto"
 	if hookInvocation {
-		cfg, err := config.Load(root)
-		switch {
-		case errors.Is(err, config.ErrNotConfigured):
-			return nil // plankit is off here; the hook fires everywhere
-		case err != nil:
-			msg.Hookf(ctx.Stderr, "preserve", "%v", err)
-			return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
-		}
 		mode = cfg.Preserve.ResolvedMode()
 	}
 
@@ -153,13 +162,23 @@ func run(ctx *cli.Context) error {
 		writePointer(ctx, root, planPath)
 		writeResponse(ctx,
 			fmt.Sprintf("Plan '%s' ready. Type /plankit:preserve to save it.", title),
-			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /plankit:preserve to save it to docs/plans/.", title))
+			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /plankit:preserve to save it to %s/.", title, cfg.Preserve.ResolvedDir()))
 		return nil
 	}
 
 	// auto, or explicit invocation: commit.
-	preserve(ctx, root, content, title)
+	preserve(ctx, root, cfg.Preserve, content, title)
 	return nil
+}
+
+// notConfigured turns a policy-file load error into the exit a typed
+// run reports: the missing file names its fix, a bad file names its
+// problem.
+func notConfigured(err error) error {
+	if errors.Is(err, config.ErrNotConfigured) {
+		return cli.WithHint(cli.Statef("%v", err), "run pk init to write %s", config.FileName)
+	}
+	return cli.Statef("%v", err)
 }
 
 // runNamed is the --plan path: a person names the plan, so stdin is not
@@ -183,36 +202,41 @@ func runNamed(ctx *cli.Context, typed string) error {
 	if !ok {
 		return cli.Statef("not a git repository: %s", dir)
 	}
+	cfg, err := config.Load(root)
+	if err != nil {
+		return notConfigured(err)
+	}
 	if pending, ok := readPointer(root); ok && pending != planPath {
 		return cli.WithHint(
 			cli.Statef("a pending plan is waiting: %s; --plan names %s", pending, planPath),
 			"run pk preserve to commit the pending plan first, then preserve the other with --plan")
 	}
-	preserve(ctx, root, content, extractTitle(string(content)))
+	preserve(ctx, root, cfg.Preserve, content, extractTitle(string(content)))
 	return nil
 }
 
-// preserve writes the plan into docs/plans under the next filename for
-// the day and commits it, reporting through the response envelope.
+// preserve writes the plan into the plans directory under the next
+// filename for the day and commits it, reporting through the response
+// envelope.
 // Identical bytes already preserved report the existing file instead.
 // Failures are reported the hook's way, never as an exit code, because
 // the automatic hook shares this path.
-func preserve(ctx *cli.Context, root string, content []byte, title string) {
+func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, content []byte, title string) {
 	datePrefix := now().Format("2006-01-02")
 	slug := slugify(title, 60)
 	if slug == "" {
 		slug = "untitled"
 	}
-	destDir := paths.Plans(root)
+	destDir := policy.DirPath(root)
 
 	dupName, seq := scanDestDir(destDir, datePrefix, content)
 	if dupName != "" {
 		removePointer(root)
-		writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", paths.PlanRel(dupName)), "")
+		writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", path.Join(policy.ResolvedDir(), dupName)), "")
 		return
 	}
 	filename := fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
-	relPath := paths.PlanRel(filename)
+	relPath := path.Join(policy.ResolvedDir(), filename)
 
 	if ctx.Bool("dry-run") {
 		fmt.Fprintf(ctx.Stderr, "pk preserve --dry-run:\n")

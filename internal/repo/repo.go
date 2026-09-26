@@ -15,11 +15,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
-	"github.com/markwharton/plankit/internal/paths"
 )
-
-// PlansDir is where preserved plans live, relative to the repo root.
-const PlansDir = paths.PlansRel
 
 // InitCmd configures a repository for plankit.
 var InitCmd = &cli.Command{
@@ -106,9 +102,9 @@ func runInit(ctx *cli.Context) error {
 	if err := do(config.FileName, func() error { return config.Write(root, cfg) }); err != nil {
 		return err
 	}
-	// docs/plans/ is not created here: preserve creates it on first
-	// use, so a repository that never preserves a plan never gains the
-	// directory.
+	// The plans directory is not created here: preserve creates it on
+	// first use, so a repository that never preserves a plan never gains
+	// the directory.
 	if !noCommit {
 		if err := do("commit", func() error { return git.CommitPaths(root, configureSubject, config.FileName) }); err != nil {
 			return err
@@ -206,6 +202,7 @@ type state struct {
 	Branch     string   `json:"branch,omitempty"`
 	Clean      bool     `json:"clean"`
 	Preserve   string   `json:"preserve,omitempty"`
+	PlansDir   string   `json:"plansDir,omitempty"`
 	GuardMode  string   `json:"guardMode,omitempty"`
 	GuardPush  string   `json:"guardPush,omitempty"`
 	GuardBreak string   `json:"guardBreaking,omitempty"`
@@ -227,6 +224,8 @@ func runStatus(ctx *cli.Context) error {
 	case err == nil:
 		s.Configured = true
 		s.Preserve = cfg.Preserve.ResolvedMode()
+		s.PlansDir = cfg.Preserve.ResolvedDir()
+		s.Plans = countPlans(cfg.Preserve.DirPath(root))
 		s.GuardMode = cfg.Guard.ResolvedMode()
 		s.GuardPush = cfg.Guard.ResolvedPush()
 		s.GuardBreak = cfg.Guard.ResolvedBreaking()
@@ -243,7 +242,6 @@ func runStatus(ctx *cli.Context) error {
 	}
 	s.Clean, _ = git.Clean(root)
 	s.LatestTag = git.LatestTag(root)
-	s.Plans = countPlans(root)
 
 	if ctx.Format == "json" {
 		if err := json.NewEncoder(ctx.Stdout).Encode(s); err != nil {
@@ -270,7 +268,7 @@ func runStatus(ctx *cli.Context) error {
 	line("branch", fmt.Sprintf("%s (%s)", s.Branch, tree))
 	line("preserve", s.Preserve)
 	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, strings.Join(s.Guarded, ", ")))
-	line("protect", PlansDir+"/ immutable")
+	line("protect", s.PlansDir+"/ immutable")
 	line("release", s.Release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))
 	if s.LatestTag != "" {
@@ -294,8 +292,8 @@ func runStatus(ctx *cli.Context) error {
 // report, the code is the machine-readable part.
 func silentState() error { return cli.Silent(cli.ExitState) }
 
-func countPlans(root string) int {
-	entries, err := os.ReadDir(paths.Plans(root))
+func countPlans(plansDir string) int {
+	entries, err := os.ReadDir(plansDir)
 	if err != nil {
 		return 0
 	}

@@ -98,6 +98,28 @@ func TestAbsentModesResolveToDefaults(t *testing.T) {
 	if cfg.Guard.ResolvedMode() != DefaultGuardMode || cfg.Guard.ResolvedPush() != DefaultGuardPush || cfg.Preserve.ResolvedMode() != DefaultPreserveMode {
 		t.Fatalf("defaults: %+v", cfg)
 	}
+	if cfg.Preserve.ResolvedDir() != "docs/plans" || cfg.Preserve.DirPath(dir) != filepath.Join(dir, "docs", "plans") {
+		t.Fatalf("plans dir: %q %q", cfg.Preserve.ResolvedDir(), cfg.Preserve.DirPath(dir))
+	}
+}
+
+func TestPreserveDirIsValidated(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, `{"preserve": {"dir": "documentation/plans"}}`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Preserve.ResolvedDir() != "documentation/plans" || cfg.Preserve.DirPath(dir) != filepath.Join(dir, "documentation", "plans") {
+		t.Fatalf("configured dir: %q %q", cfg.Preserve.ResolvedDir(), cfg.Preserve.DirPath(dir))
+	}
+	for _, bad := range []string{"/abs", "C:/abs", "../out", "docs/../x", "docs/plans/", "./docs", ".", "..", "docs\\plans", "docs//plans"} {
+		write(t, dir, `{"preserve": {"dir": "`+strings.ReplaceAll(bad, `\`, `\\`)+`"}}`)
+		_, err := Load(dir)
+		if err == nil || !strings.Contains(err.Error(), "preserve.dir") {
+			t.Errorf("%q: err = %v, want preserve.dir named", bad, err)
+		}
+	}
 }
 
 // TestWrittenConfigIsSorted holds the file pk init writes to sorted

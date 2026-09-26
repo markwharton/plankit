@@ -42,6 +42,8 @@ func Settings() []Setting {
 		{Key: "guard.push", Values: []string{"block", "ask", "off"}, Default: DefaultGuardPush,
 			Doc:   "Any `git push`, on any branch, is denied, questioned, or ignored.",
 			value: func(c *PkConfig) string { return c.Guard.Push }},
+		{Key: "preserve.dir", Kind: "a directory, relative to the repository root", Shape: `"<dir>"`, Default: "`" + DefaultPreserveDir + "`",
+			Doc: "Where preserved plans are written and kept immutable; forward slashes, inside the repository."},
 		{Key: "preserve.mode", Values: []string{"auto", "manual", "off"}, Default: DefaultPreserveMode,
 			Doc:   "An approved plan is committed at once, recorded for `/plankit:preserve` to commit, or ignored.",
 			value: func(c *PkConfig) string { return c.Preserve.Mode }},

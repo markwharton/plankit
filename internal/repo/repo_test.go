@@ -89,8 +89,8 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if cfg.Release.Branch != "main" || len(cfg.Guard.Branches) != 1 || cfg.Guard.Branches[0] != "main" {
 		t.Fatalf("defaults wrong: %+v", cfg)
 	}
-	if _, err := os.Stat(filepath.Join(dir, PlansDir)); !os.IsNotExist(err) {
-		t.Fatal("init must not create docs/plans; preserve creates it on first use")
+	if _, err := os.Stat(cfg.Preserve.DirPath(dir)); !os.IsNotExist(err) {
+		t.Fatal("init must not create the plans directory; preserve creates it on first use")
 	}
 	if got := git.LatestTag(dir); got != "v0.0.0" {
 		t.Fatalf("baseline tag = %q", got)
@@ -378,10 +378,18 @@ func TestStatusNotARepo(t *testing.T) {
 func TestStatusJSON(t *testing.T) {
 	dir := scratch(t, true)
 	run(t, "init", "--project-dir", dir)
-	if err := os.MkdirAll(filepath.Join(dir, PlansDir), 0o755); err != nil {
+	cfg, err := config.Load(dir)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, PlansDir, "2026-01-01-1-x.md"), []byte("# x\n"), 0o644); err != nil {
+	cfg.Preserve.Dir = "documentation/plans"
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(cfg.Preserve.DirPath(dir), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.Preserve.DirPath(dir), "2026-01-01-1-x.md"), []byte("# x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	code, out, _ := run(t, "status", "--project-dir", dir, "--format", "json")
@@ -392,8 +400,12 @@ func TestStatusJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &s); err != nil {
 		t.Fatalf("json: %v in %q", err, out)
 	}
-	if s["configured"] != true || s["plans"] != float64(1) || s["releaseBranch"] != "main" {
+	if s["configured"] != true || s["plans"] != float64(1) || s["plansDir"] != "documentation/plans" || s["releaseBranch"] != "main" {
 		t.Fatalf("state: %v", s)
+	}
+	_, text, _ := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(text, "documentation/plans/ immutable") || !strings.Contains(text, "1 preserved") {
+		t.Fatalf("text report: %s", text)
 	}
 
 	// Unconfigured json still emits the report; exit code carries state.

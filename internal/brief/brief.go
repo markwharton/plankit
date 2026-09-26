@@ -130,13 +130,14 @@ func Text(cfg *config.PkConfig) string {
 		}
 	}
 
+	plans := cfg.Preserve.ResolvedDir() + "/"
 	switch cfg.Preserve.ResolvedMode() {
 	case "auto":
-		b.WriteString("docs/plans/ is immutable. Approved plans are preserved and committed there automatically.\n\n")
+		b.WriteString(plans + " is immutable. Approved plans are preserved and committed there automatically.\n\n")
 	case "manual":
-		b.WriteString("docs/plans/ is immutable. Approved plans are preserved there; preserve mode is manual, so run /plankit:preserve to commit a pending plan.\n\n")
+		b.WriteString(plans + " is immutable. Approved plans are preserved there; preserve mode is manual, so run /plankit:preserve to commit a pending plan.\n\n")
 	default:
-		b.WriteString("docs/plans/ is immutable.\n\n")
+		b.WriteString(plans + " is immutable.\n\n")
 	}
 
 	b.WriteString("pk help lists every command.\n")

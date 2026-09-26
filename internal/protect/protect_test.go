@@ -11,7 +11,6 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
-	"github.com/markwharton/plankit/internal/paths"
 )
 
 func scratch(t *testing.T, configured bool) string {
@@ -20,9 +19,10 @@ func scratch(t *testing.T, configured bool) string {
 	if _, err := git.Exec(dir, "init", "-q", "-b", "main"); err != nil {
 		t.Fatal(err)
 	}
-	os.MkdirAll(paths.Plans(dir), 0o755)
+	cfg := config.Default("main")
+	os.MkdirAll(cfg.Preserve.DirPath(dir), 0o755)
 	if configured {
-		if err := config.Write(dir, config.Default("main")); err != nil {
+		if err := config.Write(dir, cfg); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -72,6 +72,22 @@ func TestAllowsEverythingElse(t *testing.T) {
 	}
 }
 
+func TestDeniesWritesUnderConfiguredDir(t *testing.T) {
+	dir := scratch(t, true)
+	cfg := config.Default("main")
+	cfg.Preserve.Dir = "documentation/plans"
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	out := runProtect(t, dir, "documentation/plans/2026-01-01-001-x.md")
+	if !strings.Contains(out, `"permissionDecision":"deny"`) || !strings.Contains(out, "documentation/plans/ files are immutable") {
+		t.Fatalf("configured dir not guarded: %q", out)
+	}
+	if out := runProtect(t, dir, "docs/plans/2026-01-01-001-x.md"); out != "" {
+		t.Fatalf("the default directory is not the configured one, got %q", out)
+	}
+}
+
 func TestUnconfiguredRepoIsSilent(t *testing.T) {
 	dir := scratch(t, false)
 	out := runProtect(t, dir, "docs/plans/x.md")
@@ -92,7 +108,7 @@ func TestNoFilePathIsSilent(t *testing.T) {
 
 func TestSymlinkIntoPlansIsDenied(t *testing.T) {
 	dir := scratch(t, true)
-	target := filepath.Join(paths.Plans(dir), "real.md")
+	target := filepath.Join(config.Default("main").Preserve.DirPath(dir), "real.md")
 	os.WriteFile(target, []byte("# x\n"), 0o644)
 	link := filepath.Join(dir, "alias.md")
 	if err := os.Symlink(target, link); err != nil {

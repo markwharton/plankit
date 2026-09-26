@@ -46,6 +46,8 @@ func TestTextFollowsTheDials(t *testing.T) {
 			[]string{"committed there automatically"}, []string{"/plankit:preserve"}},
 		{"preserve off", func(c *config.PkConfig) { c.Preserve.Mode = "off" },
 			[]string{"docs/plans/ is immutable.\n"}, []string{"Approved plans"}},
+		{"preserve dir", func(c *config.PkConfig) { c.Preserve.Dir = "documentation/plans" },
+			[]string{"documentation/plans/ is immutable. Approved plans"}, []string{"docs/plans"}},
 	}
 	for _, tc := range cases {
 		cfg := base()

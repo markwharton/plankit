@@ -65,10 +65,12 @@ The `preserve` section of `.pk.json`:
 
 ```
 "preserve": {
+  "dir": "<dir>",
   "mode": "auto" | "manual" | "off"
 }
 ```
 
+- `preserve.dir`: a directory, relative to the repository root; default `docs/plans`. Where preserved plans are written and kept immutable; forward slashes, inside the repository.
 - `preserve.mode`: `auto`, `manual`, or `off`; default `manual`. An approved plan is committed at once, recorded for `/plankit:preserve` to commit, or ignored.
 
 An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: `pk` commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. `pk status` reads the file back and reports the first problem.

@@ -14,7 +14,6 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
-	"github.com/markwharton/plankit/internal/paths"
 )
 
 const planBody = "# Ship The Widget\n\nContext: enough substance to clear the minimum plan size threshold.\n"
@@ -87,6 +86,9 @@ func runPreserve(t *testing.T, dir, planPath string, args ...string) (string, st
 	return out, errw
 }
 
+// plansDir is the default plans directory of a scratch repo.
+func plansDir(dir string) string { return config.Default("main").Preserve.DirPath(dir) }
+
 func commitCount(t *testing.T, dir string) int {
 	out, err := git.Exec(dir, "rev-list", "--count", "HEAD")
 	if err != nil {
@@ -104,7 +106,7 @@ func TestAutoModePreservesAndCommits(t *testing.T) {
 
 	out, _ := runPreserve(t, dir, plan)
 
-	dest := filepath.Join(paths.Plans(dir), "2026-09-05-001-ship-the-widget.md")
+	dest := filepath.Join(plansDir(dir), "2026-09-05-001-ship-the-widget.md")
 	got, err := os.ReadFile(dest)
 	if err != nil {
 		t.Fatalf("preserved file: %v", err)
@@ -137,7 +139,7 @@ func TestDuplicateContentIsNotRecommitted(t *testing.T) {
 	if !strings.Contains(out, "already preserved") {
 		t.Fatalf("out = %s", out)
 	}
-	entries, _ := os.ReadDir(paths.Plans(dir))
+	entries, _ := os.ReadDir(plansDir(dir))
 	if len(entries) != 1 {
 		t.Fatalf("plans dir has %d entries", len(entries))
 	}
@@ -152,7 +154,7 @@ func TestSequenceIncrementsWithinADay(t *testing.T) {
 	os.WriteFile(plan, []byte(second), 0o644)
 	runPreserve(t, dir, plan)
 
-	if _, err := os.Stat(filepath.Join(paths.Plans(dir), "2026-09-05-002-refine-the-widget.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(plansDir(dir), "2026-09-05-002-refine-the-widget.md")); err != nil {
 		t.Fatalf("second plan: %v", err)
 	}
 }
@@ -250,7 +252,7 @@ func TestCRLFPlanKeepsCleanTitle(t *testing.T) {
 	crlf := "# Windows Plan\r\n\r\nEnough body content to clear the minimum size threshold easily.\r\n"
 	dir, plan := scratch(t, "auto", crlf)
 	runPreserve(t, dir, plan)
-	if _, err := os.Stat(filepath.Join(paths.Plans(dir), "2026-09-05-001-windows-plan.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(plansDir(dir), "2026-09-05-001-windows-plan.md")); err != nil {
 		t.Fatalf("CRLF slug: %v", err)
 	}
 	subject, _ := git.Exec(dir, "log", "-1", "--format=%s")
@@ -270,7 +272,7 @@ func TestDryRunPreviewsOnly(t *testing.T) {
 	if commitCount(t, dir) != before {
 		t.Fatal("dry-run committed")
 	}
-	if _, err := os.Stat(paths.Plans(dir)); !os.IsNotExist(err) {
+	if _, err := os.Stat(plansDir(dir)); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote the plans dir")
 	}
 }
@@ -289,7 +291,7 @@ func TestPlanFlagPreservesARevisedPlanWithoutAPointer(t *testing.T) {
 	os.WriteFile(plan, []byte(revised), 0o644)
 	out, _ := runPreserve(t, dir, "", "--plan", plan)
 
-	dest := filepath.Join(paths.Plans(dir), "2026-09-05-002-ship-the-widget.md")
+	dest := filepath.Join(plansDir(dir), "2026-09-05-002-ship-the-widget.md")
 	got, err := os.ReadFile(dest)
 	if err != nil {
 		t.Fatalf("revised plan: %v", err)
@@ -321,7 +323,7 @@ func TestPlanFlagIdenticalBytesReportTheExistingFile(t *testing.T) {
 	if !strings.Contains(out, "already preserved as docs/plans/2026-09-05-001-ship-the-widget.md") {
 		t.Fatalf("out = %s", out)
 	}
-	entries, _ := os.ReadDir(paths.Plans(dir))
+	entries, _ := os.ReadDir(plansDir(dir))
 	if len(entries) != 1 {
 		t.Fatalf("plans dir has %d entries", len(entries))
 	}
@@ -379,7 +381,7 @@ func TestPlanFlagDryRunPreviewsOnly(t *testing.T) {
 	if out != "" || commitCount(t, dir) != before {
 		t.Fatalf("dry-run acted: out=%q", out)
 	}
-	if _, err := os.Stat(paths.Plans(dir)); !os.IsNotExist(err) {
+	if _, err := os.Stat(plansDir(dir)); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote the plans dir")
 	}
 }
@@ -398,6 +400,53 @@ func TestExtractPlanPathHandlesWindowsEscapes(t *testing.T) {
 
 // TestPageNamesThePointerFile: the page tells the reader where the
 // pending-plan pointer lives, and that name is a constant here.
+func TestConfiguredDirIsUsed(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	cfg, _ := config.Load(dir)
+	cfg.Preserve.Dir = "documentation/plans"
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	git.Exec(dir, "commit", "-qam", "dir")
+
+	out, _ := runPreserve(t, dir, plan)
+	dest := filepath.Join(dir, "documentation", "plans", "2026-09-05-001-ship-the-widget.md")
+	if _, err := os.Stat(dest); err != nil {
+		t.Fatalf("configured dir: %v", err)
+	}
+	if !strings.Contains(out, "Approved plan committed: documentation/plans/2026-09-05-001-ship-the-widget.md") {
+		t.Fatalf("out = %s", out)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "docs")); !os.IsNotExist(err) {
+		t.Fatal("the default directory was created")
+	}
+	files, _ := git.Exec(dir, "show", "--name-only", "--format=", "HEAD")
+	if strings.TrimSpace(files) != "documentation/plans/2026-09-05-001-ship-the-widget.md" {
+		t.Fatalf("committed: %q", files)
+	}
+}
+
+// TestTypedRunRefusesAnUnconfiguredRepository: the hook declines in
+// silence without a policy file; a person who typed the command is told
+// the file is missing and how to write it.
+func TestTypedRunRefusesAnUnconfiguredRepository(t *testing.T) {
+	dir, plan := scratch(t, "auto", planBody)
+	os.Remove(config.Path(dir))
+	for _, args := range [][]string{{}, {"--plan", plan}} {
+		out, errw, code := runPreserveIO(t, dir, "", args...)
+		if code != cli.ExitState {
+			t.Fatalf("%v: exit %d, want %d (stderr: %s)", args, code, cli.ExitState, errw)
+		}
+		if !strings.Contains(errw, config.FileName) || !strings.Contains(errw, "pk init") {
+			t.Fatalf("%v: stderr: %s", args, errw)
+		}
+		if out != "" {
+			t.Fatalf("%v: wrote to stdout: %s", args, out)
+		}
+	}
+}
+
 func TestPageNamesThePointerFile(t *testing.T) {
 	page, err := os.ReadFile(filepath.Join("..", "..", "skills", "preserve", "SKILL.md"))
 	if err != nil {
