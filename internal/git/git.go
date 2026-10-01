@@ -130,6 +130,15 @@ func DefaultBranch(dir string) (string, bool, error) {
 	return "", false, nil
 }
 
+// OriginHead returns origin's default branch as the clone recorded it in
+// refs/remotes/origin/HEAD, without touching the network. A remote added
+// by hand has no such ref, and then the second value is false.
+func OriginHead(dir string) (string, bool) {
+	out, err := Exec(dir, "symbolic-ref", "-q", "refs/remotes/origin/HEAD")
+	name, found := strings.CutPrefix(out, "refs/remotes/origin/")
+	return name, err == nil && found && name != ""
+}
+
 // HasOtherLocalBranch reports whether any local branch besides the given
 // one exists; hints use it to suggest creating a working branch only
 // when there is none.

@@ -560,3 +560,38 @@ func TestStatusPluginEntriesNote(t *testing.T) {
 		}
 	}
 }
+
+// From a working branch, the checked-out branch is probably not the
+// release branch. When origin says which one is, init refuses to guess.
+func TestInitRefusesToGuardAWorkingBranch(t *testing.T) {
+	dir := scratch(t, true)
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	if _, err := git.Exec(t.TempDir(), "init", "-q", "--bare", "-b", "main", bare); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(t, dir, "remote", "add", "origin", bare)
+	mustGit(t, dir, "push", "-q", "origin", "main")
+	mustGit(t, dir, "remote", "set-head", "origin", "main")
+	mustGit(t, dir, "switch", "-q", "-c", "dev")
+
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, "on dev, but origin's default branch is main") || !strings.Contains(errw, "name the branch to guard and release into: pk init --release main, or pk init --release dev") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet .pk.json was written")
+	}
+
+	// Named, the release branch is taken as given, and the commit lands
+	// on the branch checked out.
+	if code, _, errw := run(t, "init", "--project-dir", dir, "--release", "main"); code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	cfg, err := config.Load(dir)
+	if err != nil || cfg.Release.Branch != "main" {
+		t.Fatalf("policy: %+v %v", cfg, err)
+	}
+	if b, _ := git.CurrentBranch(dir); b != "dev" {
+		t.Fatalf("on %q, want dev", b)
+	}
+}

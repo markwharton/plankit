@@ -50,7 +50,8 @@ pk init --format json
 ```
 
 `--release` names the branch to guard and release into; the default
-is the branch checked out. `--branch` names the branch to create; the
+is the branch checked out. When origin's default branch is another,
+init refuses rather than guard a working branch, and names both. `--branch` names the branch to create; the
 default is `develop`. `--no-commit` writes the files and stops, to
 read them first; guard blocks a session from committing them on the
 release branch, so the developer commits, tags, and branches by hand.

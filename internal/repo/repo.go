@@ -60,7 +60,14 @@ func runInit(ctx *cli.Context) error {
 	}
 	release := ctx.String("release")
 	if release == "" {
+		// The default is the branch checked out. When the clone recorded
+		// another branch as origin's default, that is more likely the
+		// release branch, so init refuses to guess and names both.
 		release = current
+		if def, ok := git.OriginHead(root); ok && def != current {
+			return cli.WithHint(cli.Statef("on %s, but origin's default branch is %s", current, def),
+				"name the branch to guard and release into: pk init --release %s, or pk init --release %s", def, current)
+		}
 	}
 	working := ctx.String("branch")
 	noCommit := ctx.Bool("no-commit")

@@ -258,7 +258,7 @@
         },
         {
           "type": "text",
-          "text": " names the branch to guard and release into; the default is the branch checked out. "
+          "text": " names the branch to guard and release into; the default is the branch checked out. When origin's default branch is another, init refuses rather than guard a working branch, and names both. "
         },
         {
           "type": "code",
