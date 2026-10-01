@@ -136,7 +136,7 @@ func TestInitBootstrapsEmptyRepo(t *testing.T) {
 	if n, _ := git.Exec(dir, "rev-list", "--count", "HEAD"); n != "1" {
 		t.Fatalf("commit count = %s", n)
 	}
-	if tracked, _ := git.Exec(dir, "ls-tree", "--name-only", "HEAD"); tracked != config.FileName {
+	if tracked, _ := git.Exec(dir, "ls-tree", "-r", "--name-only", "HEAD"); tracked != settingsFile+"\n"+config.FileName {
 		t.Fatalf("root commit tracks %q", tracked)
 	}
 	if git.LatestTag(dir) != "v0.0.0" {
@@ -161,7 +161,7 @@ func TestInitCommitsOnlyThePolicy(t *testing.T) {
 	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
 		t.Fatalf("exit %d: %s", code, errw)
 	}
-	if changed, _ := git.Exec(dir, "diff", "--name-only", "HEAD~1", "HEAD"); changed != config.FileName {
+	if changed, _ := git.Exec(dir, "diff", "--name-only", "HEAD~1", "HEAD"); changed != settingsFile+"\n"+config.FileName {
 		t.Fatalf("commit touched %q", changed)
 	}
 	if clean, _ := git.Clean(dir); clean {
@@ -212,13 +212,13 @@ func TestInitNoCommitLeavesTheRestToTheDeveloper(t *testing.T) {
 	if git.HasCommits(dir) {
 		t.Fatal("--no-commit committed")
 	}
-	if untracked, _ := git.Exec(dir, "ls-files", "--others"); untracked != config.FileName {
+	if untracked, _ := git.Exec(dir, "ls-files", "--others"); untracked != settingsFile+"\n"+config.FileName {
 		t.Fatalf("untracked = %q", untracked)
 	}
 	if git.LatestTag(dir) != "" || git.BranchExists(dir, "develop") {
 		t.Fatal("tagged or branched without a commit")
 	}
-	for _, want := range []string{"no baseline tag", "guard blocks", "git tag v0.0.0 && git switch -c develop"} {
+	for _, want := range []string{"no baseline tag", "commit .pk.json and .claude/settings.json yourself", "guard blocks", "git tag v0.0.0 && git switch -c develop"} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q:\n%s", want, errw)
 		}
@@ -248,11 +248,14 @@ func TestInitDryRunTouchesNothing(t *testing.T) {
 	if code != cli.ExitOK || out != "" {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
-	if !strings.Contains(errw, "would create: .pk.json, commit, tag v0.0.0, branch develop") {
+	if !strings.Contains(errw, "would create: .pk.json, .claude/settings.json, commit, tag v0.0.0, branch develop") {
 		t.Fatalf("dry run previews the whole bootstrap:\n%s", errw)
 	}
 	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote .pk.json")
+	}
+	if _, err := os.Stat(filepath.Join(dir, settingsFile)); !os.IsNotExist(err) {
+		t.Fatal("dry-run wrote the settings file")
 	}
 	if git.HasCommits(dir) || git.LatestTag(dir) != "" || git.BranchExists(dir, "develop") {
 		t.Fatal("dry-run changed the repository")
@@ -272,7 +275,7 @@ func TestInitJSON(t *testing.T) {
 	if got["release"] != "main" || got["committed"] != true || got["baseline"] != "v0.0.0" || got["branch"] != "develop" || got["dryRun"] != false {
 		t.Fatalf("state: %v", got)
 	}
-	if created, _ := got["created"].([]any); len(created) != 4 {
+	if created, _ := got["created"].([]any); len(created) != 5 || created[1] != settingsFile {
 		t.Fatalf("created = %v", got["created"])
 	}
 }
@@ -347,7 +350,7 @@ func TestStatusReadinessNotes(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"no baseline tag", "git tag v0.0.0", "no working branch besides main", "git switch -c develop"} {
+	for _, want := range []string{"no baseline tag", "git tag v0.0.0", "no working branch besides main", "git switch -c develop", settingsFile + " lacks the entries", `"plankit@plankit": true`} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q:\n%s", want, errw)
 		}
@@ -432,5 +435,128 @@ func TestDefaultProjectDirWalksToRoot(t *testing.T) {
 	code, out, _ := run(t, "status")
 	if code != cli.ExitOK || !strings.Contains(out, dir) {
 		t.Fatalf("from subdir: code=%d out=%q", code, out)
+	}
+}
+
+// The developer's settings file, with spacing no encoder would produce,
+// hooks, and permissions. Init adds the two entries and nothing else
+// changes, not a byte.
+const developerSettings = "{\n    \"permissions\": {\n        \"allow\": [\"Bash(pk:*)\"]\n    },\n    \"hooks\":  {\"Stop\": [{\"matcher\": \"\", \"hooks\": [{\"type\": \"command\", \"command\": \"say done && true\"}]}]},\n    \"enabledPlugins\": { \"other@other\": true }\n}\n"
+
+func writeSettings(t *testing.T, dir, content string, commit bool) {
+	t.Helper()
+	path := filepath.Join(dir, settingsFile)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if commit {
+		mustGit(t, dir, "add", settingsFile)
+		mustGit(t, dir, "commit", "-q", "-m", "chore: settings")
+	}
+}
+
+func TestInitSplicesTheDeveloperSettings(t *testing.T) {
+	dir := scratch(t, true)
+	writeSettings(t, dir, developerSettings, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, settingsFile))
+	want := strings.Replace(developerSettings,
+		"\"enabledPlugins\": { \"other@other\": true }\n",
+		"\"enabledPlugins\": { \"other@other\": true, \"plankit@plankit\": true },\n    \"extraKnownMarketplaces\": {\n        \"plankit\": {\n            \"source\": {\n                \"source\": \"url\",\n                \"url\": \"https://plankit.com/marketplace.json\"\n            }\n        }\n    }\n", 1)
+	if string(got) != want {
+		t.Fatalf("settings after init:\n%s\nwant\n%s", got, want)
+	}
+	if changed, _ := git.Exec(dir, "diff", "--name-only", "HEAD~1", "HEAD"); changed != settingsFile+"\n"+config.FileName {
+		t.Fatalf("commit touched %q", changed)
+	}
+}
+
+func TestInitLeavesPresentEntriesAlone(t *testing.T) {
+	// Both entries present, the marketplace pointing elsewhere: that is
+	// the developer's choice. Nothing is written, the commit carries
+	// only the policy, and the difference is reported.
+	dir := scratch(t, true)
+	content := "{\"enabledPlugins\":{\"plankit@plankit\":true},\"extraKnownMarketplaces\":{\"plankit\":{\"source\":{\"source\":\"github\",\"repo\":\"me/plankit\"}}}}\n"
+	writeSettings(t, dir, content, true)
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, settingsFile)); string(got) != content {
+		t.Fatalf("settings rewritten:\n%s", got)
+	}
+	if changed, _ := git.Exec(dir, "diff", "--name-only", "HEAD~1", "HEAD"); changed != config.FileName {
+		t.Fatalf("commit touched %q", changed)
+	}
+	if !strings.Contains(errw, "extraKnownMarketplaces.plankit is present with another value; left as it is") {
+		t.Fatalf("difference not reported:\n%s", errw)
+	}
+	if strings.Contains(errw, "created: .pk.json, .claude") {
+		t.Fatalf("settings listed as created:\n%s", errw)
+	}
+}
+
+func TestInitRefusesDirtySettings(t *testing.T) {
+	dir := scratch(t, true)
+	writeSettings(t, dir, "{\"model\": \"opus\"}\n", true)
+	writeSettings(t, dir, "{\"model\": \"sonnet\"}\n", false)
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, settingsFile+" has uncommitted changes") || !strings.Contains(errw, "commit or stash") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet .pk.json was written")
+	}
+}
+
+func TestInitRefusesMalformedSettings(t *testing.T) {
+	dir := scratch(t, true)
+	writeSettings(t, dir, "{\n", true)
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, settingsFile+":") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet .pk.json was written")
+	}
+	if clean, _ := git.Clean(dir); !clean {
+		t.Fatal("refusal left the tree dirty")
+	}
+}
+
+func TestStatusPluginEntriesNote(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init exit %d: %s", code, errw)
+	}
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "Note:") {
+		t.Fatalf("init wrote the entries, so no note:\n%s", errw)
+	}
+	// One entry gone: the note shows only that one, as the exact JSON to
+	// merge, and --quiet drops it.
+	writeSettings(t, dir, "{\n  \"enabledPlugins\": {\n    \"plankit@plankit\": true\n  }\n}\n", true)
+	_, _, errw := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(errw, "Note: "+settingsFile+" lacks the entries") || !strings.Contains(errw, `"url": "https://plankit.com/marketplace.json"`) {
+		t.Fatalf("note missing:\n%s", errw)
+	}
+	if strings.Contains(errw, "enabledPlugins") {
+		t.Fatalf("present entry shown as missing:\n%s", errw)
+	}
+	if _, _, quiet := run(t, "status", "--project-dir", dir, "--quiet"); strings.Contains(quiet, "Note:") {
+		t.Fatalf("--quiet still notes:\n%s", quiet)
+	}
+	// A file that does not parse is a problem, not a note: every mode
+	// says so and exits 2.
+	writeSettings(t, dir, "{\n", true)
+	for _, args := range [][]string{{"status"}, {"status", "--quiet"}, {"status", "--format", "json"}} {
+		code, _, errw := run(t, append(args, "--project-dir", dir)...)
+		if code != cli.ExitState || !strings.Contains(errw, settingsFile+":") {
+			t.Fatalf("%v: code=%d errw=%q", args, code, errw)
+		}
 	}
 }

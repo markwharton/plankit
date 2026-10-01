@@ -13,6 +13,14 @@ Configures a repository in one run:
   file's JSON Schema, `https://plankit.com/pk.schema.json`, generated
   from the same table as each page's Settings section, so an editor
   validates the file as it is typed.
+- the plugin entries in `.claude/settings.json`: the plankit
+  marketplace under `extraKnownMarketplaces` and `plankit@plankit`
+  under `enabledPlugins`, so a teammate who trusts the folder has the
+  marketplace and is one `/plugin install` from the plugin. The file
+  is the developer's: existing content keeps every byte, an entry
+  already present under its key is left as it is, and a file with
+  uncommitted changes or one that does not parse stops the run before
+  anything is written.
 - the commit `chore: configure plankit`, on the branch checked out
 - the `v0.0.0` baseline tag, when the repository has no tag
 - a `develop` branch, created and checked out when the release branch
@@ -43,8 +51,8 @@ pk init --format json
 
 `--release` names the branch to guard and release into; the default
 is the branch checked out. `--branch` names the branch to create; the
-default is `develop`. `--no-commit` writes `.pk.json` and stops, to
-read the file first; guard blocks a session from committing it on the
+default is `develop`. `--no-commit` writes the files and stops, to
+read them first; guard blocks a session from committing them on the
 release branch, so the developer commits, tags, and branches by hand.
 `--no-baseline` skips the tag. `--push` pushes the release branch, the
 tag, and the new branch to `origin`, and refuses to start without one.
@@ -54,7 +62,7 @@ emits one object: `root`, `release`, `created`, `committed`,
 
 `pk init` refuses to run twice; edit `.pk.json` once it exists.
 `pk status` reads it back and reports the first problem, and notes a
-missing tag or branch.
+missing tag, branch, or plugin entry.
 
 In a repository still carrying the files a v0.x `pk setup` copied in,
 the refusal says so and points at `pk help overview`: those files wire
@@ -73,7 +81,7 @@ the hooks the plugin already ships, so each one fires twice.
   --no-baseline
         Skip creating the v0.0.0 baseline tag
   --no-commit
-        Leave .pk.json uncommitted
+        Leave .pk.json and .claude/settings.json uncommitted
   --push
         Push the release branch, the tag, and the working branch to origin
   --release <value>

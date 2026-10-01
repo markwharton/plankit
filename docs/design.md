@@ -190,10 +190,16 @@ breaking marker, and guard asks there.
   section.
 - `internal/git`: the git wrapper: `FindRoot`, `CurrentBranch`,
   `DefaultBranch`, `LatestTag`, `CheckCleanTree`.
+- `internal/jsonsplice`: the splice for files the developer owns.
+  `Get`, `Replace`, and `Insert` edit one key of a JSON object and keep
+  every other byte; the version stamp and the settings entries go
+  through it.
 - `internal/hookio`: the hook protocol: payload parsing, project
   directory resolution, and the response writers.
 - `internal/brief`, `internal/guard`, `internal/protect`,
   `internal/preserve`: the four hooks.
+- `internal/repo`: `init` and `status`; `settings.go` holds the plugin
+  entries both commands read.
 - `internal/changelog`, `internal/release`, `internal/ship`: the
   release commands; `pin.go` in release for version pins.
 - `internal/version`: version resolution.

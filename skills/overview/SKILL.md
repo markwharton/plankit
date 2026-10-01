@@ -21,9 +21,13 @@ or questions git mutations on protected branches.
 
 A configured repository carries `.pk.json`, the committed policy:
 modes, protected branches, changelog sections, release hooks. Those
-commands run through `sh -c`, or `cmd /c` on Windows. The plans
-directory appears when the first plan is preserved. Without
-`.pk.json`, every hook exits without acting.
+commands run through `sh -c`, or `cmd /c` on Windows. Its
+`.claude/settings.json` carries the plankit marketplace under
+`extraKnownMarketplaces` and `plankit@plankit` under `enabledPlugins`,
+so a teammate who trusts the folder has the marketplace and is one
+`/plugin install` from the plugin; `pk status` spells out any entry
+that is missing. The plans directory appears when the first plan is
+preserved. Without `.pk.json`, every hook exits without acting.
 
 ## Commit conventions
 

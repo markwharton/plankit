@@ -26,7 +26,7 @@ var InitCmd = &cli.Command{
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without making any changes"},
 		cli.FormatFlag,
 		{Name: "no-baseline", Type: cli.BoolFlag, Usage: "Skip creating the v0.0.0 baseline tag"},
-		{Name: "no-commit", Type: cli.BoolFlag, Usage: "Leave .pk.json uncommitted"},
+		{Name: "no-commit", Type: cli.BoolFlag, Usage: "Leave .pk.json and .claude/settings.json uncommitted"},
 		{Name: "push", Type: cli.BoolFlag, Usage: "Push the release branch, the tag, and the working branch to origin"},
 		{Name: "release", Type: cli.StringFlag, Usage: "Release branch to guard (default: the branch currently checked out)"},
 	},
@@ -75,6 +75,37 @@ func runInit(ctx *cli.Context) error {
 		return cli.WithHint(cli.Statef("no origin remote to push to"), "add one with git remote add origin <url>, or run without --push")
 	}
 
+	// The settings file is the developer's: read it before anything is
+	// written, so a file that does not parse refuses the whole run, and
+	// refuse to commit one that carries changes init did not make.
+	settingsPath := filepath.Join(root, settingsFile)
+	_, statErr := os.Stat(settingsPath)
+	settingsExists := statErr == nil
+	settings, err := readSettings(root)
+	if err != nil {
+		return cli.Statef("read %s: %v", settingsFile, err)
+	}
+	missing, differing, err := pluginEntryState(settings)
+	if err != nil {
+		return cli.WithHint(cli.Statef("%s: %v", settingsFile, err), "fix the file, then run pk init again")
+	}
+	if settingsExists && len(missing) > 0 {
+		clean, err := git.Clean(root, settingsFile)
+		if err != nil {
+			return cli.Statef("cannot read the state of %s: %v", settingsFile, err)
+		}
+		if !clean {
+			return cli.WithHint(cli.Statef("%s has uncommitted changes", settingsFile), "commit or stash them first: init commits the file with the plugin entries added")
+		}
+	}
+	updatedSettings, err := addPluginEntries(settings, missing)
+	if err != nil {
+		return cli.Statef("%s: %v", settingsFile, err)
+	}
+	if !settingsExists {
+		updatedSettings = append(updatedSettings, '\n')
+	}
+
 	// Each step's condition is judged as if the steps before it ran, so
 	// a dry run on an empty repository previews the whole bootstrap.
 	hadCommits := git.HasCommits(root)
@@ -102,11 +133,23 @@ func runInit(ctx *cli.Context) error {
 	if err := do(config.FileName, func() error { return config.Write(root, cfg) }); err != nil {
 		return err
 	}
+	files := []string{config.FileName}
+	if len(missing) > 0 {
+		if err := do(settingsFile, func() error {
+			if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+				return err
+			}
+			return os.WriteFile(settingsPath, updatedSettings, 0o644)
+		}); err != nil {
+			return err
+		}
+		files = append(files, settingsFile)
+	}
 	// The plans directory is not created here: preserve creates it on
 	// first use, so a repository that never preserves a plan never gains
 	// the directory.
 	if !noCommit {
-		if err := do("commit", func() error { return git.CommitPaths(root, configureSubject, config.FileName) }); err != nil {
+		if err := do("commit", func() error { return git.CommitPaths(root, configureSubject, files...) }); err != nil {
 			return err
 		}
 	}
@@ -157,8 +200,11 @@ func runInit(ctx *cli.Context) error {
 	if baseline == "" && git.LatestTag(root) == "" && !willHaveCommit {
 		msg.Notef(ctx.Stderr, "no baseline tag: the repository has no commits yet")
 	}
+	for _, e := range differing {
+		msg.Notef(ctx.Stderr, "%s: %s is present with another value; left as it is", settingsFile, e)
+	}
 	if noCommit {
-		hint := fmt.Sprintf("commit %s yourself: guard blocks a session from doing it on %s", config.FileName, release)
+		hint := fmt.Sprintf("commit %s yourself: guard blocks a session from doing it on %s", strings.Join(files, " and "), release)
 		if !hadCommits {
 			hint += fmt.Sprintf(", then git tag v0.0.0 && git switch -c %s", working)
 		}
@@ -220,6 +266,7 @@ func runStatus(ctx *cli.Context) error {
 
 	s := state{Root: root}
 	cfg, err := config.Load(root)
+	var missingEntries []pluginEntry
 	switch {
 	case err == nil:
 		s.Configured = true
@@ -231,6 +278,15 @@ func runStatus(ctx *cli.Context) error {
 		s.GuardBreak = cfg.Guard.ResolvedBreaking()
 		s.Guarded = cfg.Guard.Branches
 		s.Release = cfg.Release.Branch
+		// The settings file is checked with the policy: a file that does
+		// not parse is a problem in every mode, before any report.
+		settings, err := readSettings(root)
+		if err != nil {
+			return cli.Statef("read %s: %v", settingsFile, err)
+		}
+		if missingEntries, _, err = pluginEntryState(settings); err != nil {
+			return cli.Statef("%s: %v", settingsFile, err)
+		}
 	case err == config.ErrNotConfigured:
 		// reported below; carries exit 2 so scripts can probe
 	default:
@@ -284,6 +340,15 @@ func runStatus(ctx *cli.Context) error {
 	}
 	if s.Release != "" && !git.HasOtherLocalBranch(root, s.Release) {
 		msg.Notef(ctx.Stderr, "no working branch besides %s: to start one, git switch -c develop", s.Release)
+	}
+	if len(missingEntries) > 0 {
+		// The entries are rendered by the same code init writes, so the
+		// note is the one place a developer sees them spelled out.
+		block, err := addPluginEntries([]byte("{}"), missingEntries)
+		if err != nil {
+			return cli.Statef("%s: %v", settingsFile, err)
+		}
+		msg.Notef(ctx.Stderr, "%s lacks the entries that load the plugin for a teammate who trusts the folder; merge in:\n%s", settingsFile, block)
 	}
 	return nil
 }

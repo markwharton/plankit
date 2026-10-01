@@ -93,7 +93,55 @@
         },
         {
           "type": "text",
-          "text": " on Windows. The plans directory appears when the first plan is preserved. Without "
+          "text": " on Windows. Its "
+        },
+        {
+          "type": "code",
+          "text": ".claude/settings.json"
+        },
+        {
+          "type": "text",
+          "text": " carries the plankit marketplace under "
+        },
+        {
+          "type": "code",
+          "text": "extraKnownMarketplaces"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "plankit@plankit"
+        },
+        {
+          "type": "text",
+          "text": " under "
+        },
+        {
+          "type": "code",
+          "text": "enabledPlugins"
+        },
+        {
+          "type": "text",
+          "text": ", so a teammate who trusts the folder has the marketplace and is one "
+        },
+        {
+          "type": "code",
+          "text": "/plugin install"
+        },
+        {
+          "type": "text",
+          "text": " from the plugin; "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " spells out any entry that is missing. The plans directory appears when the first plan is preserved. Without "
         },
         {
           "type": "code",

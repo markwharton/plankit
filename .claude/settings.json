@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "plankit": {
+      "source": {
+        "source": "url",
+        "url": "https://plankit.com/marketplace.json"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "plankit@plankit": true
+  }
+}

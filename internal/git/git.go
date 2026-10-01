@@ -60,9 +60,10 @@ func CurrentBranch(dir string) (string, error) {
 	return Exec(dir, "rev-parse", "--abbrev-ref", "HEAD")
 }
 
-// Clean reports whether the working tree has no uncommitted changes.
-func Clean(dir string) (bool, error) {
-	out, err := Exec(dir, "status", "--porcelain")
+// Clean reports whether the working tree has no uncommitted changes,
+// or with paths, whether those paths have none.
+func Clean(dir string, paths ...string) (bool, error) {
+	out, err := Exec(dir, append([]string{"status", "--porcelain", "--"}, paths...)...)
 	if err != nil {
 		return false, err
 	}

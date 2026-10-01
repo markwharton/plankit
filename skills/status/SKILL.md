@@ -24,7 +24,9 @@ wherever `.pk.json` is absent.
 
 A configured repository that has commits but no tag, or whose release
 branch is its only branch, gets a note naming the command that
-finishes the bootstrap. `--quiet` drops the notes.
+finishes the bootstrap. One whose `.claude/settings.json` lacks a
+plugin entry gets a note with the JSON to merge in. `--quiet` drops
+the notes.
 
 ## Flags
 

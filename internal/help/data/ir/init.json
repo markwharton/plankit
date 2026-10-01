@@ -65,6 +65,57 @@
             "inlines": [
               {
                 "type": "text",
+                "text": "the plugin entries in "
+              },
+              {
+                "type": "code",
+                "text": ".claude/settings.json"
+              },
+              {
+                "type": "text",
+                "text": ": the plankit marketplace under "
+              },
+              {
+                "type": "code",
+                "text": "extraKnownMarketplaces"
+              },
+              {
+                "type": "text",
+                "text": " and "
+              },
+              {
+                "type": "code",
+                "text": "plankit@plankit"
+              },
+              {
+                "type": "text",
+                "text": " under "
+              },
+              {
+                "type": "code",
+                "text": "enabledPlugins"
+              },
+              {
+                "type": "text",
+                "text": ", so a teammate who trusts the folder has the marketplace and is one "
+              },
+              {
+                "type": "code",
+                "text": "/plugin install"
+              },
+              {
+                "type": "text",
+                "text": " from the plugin. The file is the developer's: existing content keeps every byte, an entry already present under its key is left as it is, and a file with uncommitted changes or one that does not parse stops the run before anything is written."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
                 "text": "the commit "
               },
               {
@@ -231,15 +282,7 @@
         },
         {
           "type": "text",
-          "text": " writes "
-        },
-        {
-          "type": "code",
-          "text": ".pk.json"
-        },
-        {
-          "type": "text",
-          "text": " and stops, to read the file first; guard blocks a session from committing it on the release branch, so the developer commits, tags, and branches by hand. "
+          "text": " writes the files and stops, to read them first; guard blocks a session from committing them on the release branch, so the developer commits, tags, and branches by hand. "
         },
         {
           "type": "code",
@@ -372,7 +415,7 @@
         },
         {
           "type": "text",
-          "text": " reads it back and reports the first problem, and notes a missing tag or branch."
+          "text": " reads it back and reports the first problem, and notes a missing tag, branch, or plugin entry."
         }
       ]
     },
@@ -414,7 +457,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --branch \u003cvalue\u003e\n        Working branch to create when the release branch is the only one (default develop)\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --no-commit\n        Leave .pk.json uncommitted\n  --push\n        Push the release branch, the tag, and the working branch to origin\n  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n"
+      "text": "  --branch \u003cvalue\u003e\n        Working branch to create when the release branch is the only one (default develop)\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --no-commit\n        Leave .pk.json and .claude/settings.json uncommitted\n  --push\n        Push the release branch, the tag, and the working branch to origin\n  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n"
     },
     {
       "type": "para",
