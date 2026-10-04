@@ -7,6 +7,8 @@
     "url": "https://github.com/markwharton"
   },
   "homepage": "https://plankit.com",
+  "documentationUrl": "https://plankit.com",
+  "supportUrl": "https://github.com/markwharton/plankit/issues",
   "repository": "https://github.com/markwharton/plankit",
   "license": "MIT",
   "keywords": ["planning", "git", "workflow", "release", "changelog"]
