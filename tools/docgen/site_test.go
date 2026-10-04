@@ -35,12 +35,13 @@ func TestBuildSite(t *testing.T) {
 	must(os.MkdirAll(filepath.Join(root, "docs"), 0o755))
 	must(os.WriteFile(filepath.Join(root, "README.md"), []byte("# plankit\n\nFront page intro.\n\n## Install\n\n```\n/plugin install plankit\n```\n\n## Other\n\nNot on the front page.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "docs", "architecture.md"), []byte("# How it works\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"), 0o644))
+	must(os.WriteFile(filepath.Join(root, "docs", "privacy.md"), []byte("# Privacy\n\nNothing leaves.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("# Changelog\n"), 0o644))
 
 	out := filepath.Join(root, "dist")
 	must(buildSite(root, skills, out, "", false))
 
-	for _, p := range []string{"index.html", "architecture.html", "changelog.html", "favicon.svg", "favicon.ico", "apple-touch-icon.png",
+	for _, p := range []string{"index.html", "architecture.html", "privacy.html", "changelog.html", "favicon.svg", "favicon.ico", "apple-touch-icon.png",
 		"help/overview.html", "help/alpha.html", "help/zeta.html", "style.css", "_redirects"} {
 		if _, err := os.Stat(filepath.Join(out, p)); err != nil {
 			t.Errorf("missing %s", p)
@@ -138,6 +139,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 	must(os.MkdirAll(filepath.Join(root, "docs", "notes"), 0o755))
 	must(os.WriteFile(filepath.Join(root, "README.md"), []byte("# plankit\n\nIntro.\n\n## Install\n\nx\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "docs", "architecture.md"), []byte("# How it works\n\nMap.\n"), 0o644))
+	must(os.WriteFile(filepath.Join(root, "docs", "privacy.md"), []byte("# Privacy\n\nNothing leaves.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("# Changelog\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "docs", "notes", "v0.1.0.md"), []byte("---\nversion: v0.1.0\ndate: 2026-01-01\ntitle: First released\n---\n\nShipped.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "docs", "notes", "v0.2.0.md"), []byte("---\nversion: v0.2.0\ndate: 2026-02-01\ntitle: Not yet\n---\n\nPending.\n"), 0o644))
@@ -203,6 +205,7 @@ func TestFrontPageRequiresTheReadmeSections(t *testing.T) {
 	must(os.WriteFile(filepath.Join(skills, "overview", "SKILL.md"), []byte("---\nname: overview\ndescription: d\n---\n\n# overview\n\nBody.\n"), 0o644))
 	must(os.MkdirAll(filepath.Join(root, "docs"), 0o755))
 	must(os.WriteFile(filepath.Join(root, "docs", "architecture.md"), []byte("# How it works\n\nMap.\n"), 0o644))
+	must(os.WriteFile(filepath.Join(root, "docs", "privacy.md"), []byte("# Privacy\n\nNothing leaves.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("# Changelog\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "README.md"), []byte("# plankit\n\nIntro.\n\n## Installing\n\nrenamed\n"), 0o644))
 	err := buildSite(root, skills, filepath.Join(root, "dist"), "", false)

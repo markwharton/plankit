@@ -35,15 +35,16 @@ type navItem struct {
 }
 
 type sitePage struct {
-	Path       string // output path relative to the site root
-	Title      string
-	Body       template.HTML
-	Nav        []navItem
-	Topics     []navItem
-	Mermaid    bool
-	Home       bool   // the front page; the wordmark carries the current marker
-	SchemaFile string // the policy file's schema, linked in the footer
-	StyleHref  string // the stylesheet with its content hash, so a cache can only hold the right one
+	Path        string // output path relative to the site root
+	Title       string
+	Body        template.HTML
+	Nav         []navItem
+	Topics      []navItem
+	Mermaid     bool
+	Home        bool   // the front page; the wordmark carries the current marker
+	SchemaFile  string // the policy file's schema, linked in the footer
+	PrivacyHref string // the privacy page, linked in the footer
+	StyleHref   string // the stylesheet with its content hash, so a cache can only hold the right one
 }
 
 // buildSite renders every page into out. root is the repository root
@@ -128,7 +129,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	)
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
-		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile, StyleHref: styleHref}
+		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile, StyleHref: styleHref, PrivacyHref: "/privacy" + linkExt}
 		clean := "/" + strings.TrimSuffix(path, ".html") + linkExt
 		for _, n := range nav {
 			n.Current = n.Href == clean
@@ -167,6 +168,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	}
 	for _, src := range []struct{ file, path, title string }{
 		{filepath.Join("docs", "architecture.md"), "architecture.html", "How it works"},
+		{filepath.Join("docs", "privacy.md"), "privacy.html", "Privacy"},
 		{"CHANGELOG.md", "changelog.html", "Changelog"},
 	} {
 		md, err := os.ReadFile(filepath.Join(root, src.file))
