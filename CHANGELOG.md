@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.5.1] - 2026-10-04
+
+### Documentation
+
+- the release push is the one thing that leaves the machine (8452812)
+- privacy page on the site, linked from the manifest (9d72469)
+
+### Maintenance
+
+- documentation and support URLs in the manifest (3fdb135)
+
 ## [v1.5.0] - 2026-10-04
 
 ### Added
@@ -1275,3 +1286,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.3.0]: https://github.com/markwharton/plankit/compare/v1.2.1...v1.3.0
 [v1.4.0]: https://github.com/markwharton/plankit/compare/v1.3.0...v1.4.0
 [v1.5.0]: https://github.com/markwharton/plankit/compare/v1.4.0...v1.5.0
+[v1.5.1]: https://github.com/markwharton/plankit/compare/v1.5.0...v1.5.1
