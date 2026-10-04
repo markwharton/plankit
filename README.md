@@ -36,6 +36,12 @@ Claude Code runs the first two at startup and prompts for the third.
 The brief at the start of every session names the plugin's version, so
 a plugin behind the latest release is visible without asking.
 
+What the plugin runs: five hooks, each a `pk` command on your machine,
+at session start, before a shell, edit, or write, and after a plan is
+approved. pk runs git in the repository and nothing else. Nothing is
+fetched or sent anywhere; updates come through Claude Code's
+marketplace commands above.
+
 Then, in a repository you want plankit to manage:
 
 ```
