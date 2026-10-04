@@ -6,7 +6,10 @@ name: release
 # platform binaries, and the published marketplace.json whose archive
 # source carries the versioned URL and sha256. The pin is a derived
 # value, so it lives on the release as an asset and is mirrored by the
-# site; it is never committed to a source branch.
+# site; it is never committed to a source branch. Last, the plugin's
+# files alone, shims but no binaries, are committed to the plugin
+# branch, which the Claude plugin directory tracks; that branch is a
+# distribution, not a source, and nothing is developed there.
 on:
   push:
     tags: ["v*"]
@@ -38,10 +41,11 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           STAGE=$(mktemp -d)
           mkdir -p "$STAGE/.claude-plugin"
-          cp .claude-plugin/plugin.json "$STAGE/.claude-plugin/"
+          cp .claude-plugin/plugin.json .claude-plugin/icon.png "$STAGE/.claude-plugin/"
           cp -R skills hooks bin "$STAGE/"
           cp LICENSE CHANGELOG.md README.md "$STAGE/"
           (cd "$STAGE" && zip -qr "$GITHUB_WORKSPACE/plankit-$TAG.zip" .)
+          echo "STAGE=$STAGE" >> "$GITHUB_ENV"
           cp "plankit-$TAG.zip" plankit.zip
           SHA=$(sha256sum "plankit-$TAG.zip" | cut -d' ' -f1)
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/plankit-$TAG.zip"
@@ -75,6 +79,29 @@ jobs:
             -d '{"event_type":"bump-formula"}')
           echo "tap dispatch: HTTP $status (204 is accepted)"
           test "$status" = 204
+
+      # The same staged tree without the binaries, committed on top of
+      # the plugin branch's last release: a fast-forward, never a force.
+      # The shim finds pk on the PATH there, so the plugin works from
+      # this branch for anyone who has installed pk.
+      - name: Commit the plugin tree to the plugin branch
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          LIST=$(mktemp -d)
+          cp -R "$STAGE"/. "$LIST"/
+          rm -f "$LIST"/bin/pk-*
+          PARENT=""
+          if git fetch -q origin plugin; then PARENT=$(git rev-parse FETCH_HEAD); fi
+          export GIT_INDEX_FILE=$(mktemp -u)
+          git --work-tree="$LIST" add -A
+          TREE=$(git write-tree)
+          COMMIT=$(git commit-tree "$TREE" ${PARENT:+-p "$PARENT"} -m "plankit $TAG")
+          git push -q origin "${COMMIT}:refs/heads/plugin"
 
 
   site:

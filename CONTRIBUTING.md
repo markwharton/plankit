@@ -83,15 +83,19 @@ cross-compiles the platform binaries and assembles the plugin archive.
 It publishes the GitHub release with the archive (versioned and as
 `plankit.zip`), the binaries stamped with the tag's version, the
 published `marketplace.json`, and `checksums.txt`, and refuses to
-publish a binary that does not report the tag's version.
-The release commits nothing to a source branch; see docs/design.md,
-The release as one derivation chain.
+publish a binary that does not report the tag's version. Last, it
+commits the plugin's files, shims but no binaries, on top of the
+`plugin` branch, which the Claude plugin directory tracks: a
+distribution branch, never developed on, where the shim finds pk on
+the PATH. The release commits nothing to a source branch; see
+docs/design.md, The release as one derivation chain.
 
 Publishing prerequisites, once per repository:
 
 - Branch protection on `main` must admit the maintainer's
   fast-forward push from `pk release`. No bot ever pushes to a source
-  branch.
+  branch; the release workflow's push to `plugin` is the one bot push,
+  and that branch is not source.
 - plankit.com deploys from `.github/workflows/site.yml` to a Cloudflare
   Pages project named `plankit-com`, as the last job of every release
   and on demand from the Actions tab; set the `CLOUDFLARE_API_TOKEN`

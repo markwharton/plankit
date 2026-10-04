@@ -226,8 +226,9 @@ breaking marker, and guard asks there.
   renders the notes whose tag exists.
 - `site/`: the layout, stylesheet, and redirects for plankit.com.
 - `.github/workflows/`: `ci.yml` (tests, drift checks, strict
-  validation, site build), `release.yml` (tag to release assets),
-  `site.yml` (build and deploy).
+  validation, site build), `release.yml` (tag to release assets and
+  the `plugin` branch the plugin directory tracks), `site.yml` (build
+  and deploy).
 
 ## How a change is proved
 
