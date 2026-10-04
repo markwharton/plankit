@@ -47,6 +47,7 @@ func TestFromBuildInfo(t *testing.T) {
 		{"go install tagged build", bi("v1.0.0", nil), "1.0.0"},
 		{"source checkout clean", bi("(devel)", map[string]string{"vcs.revision": "abcdef1234567890"}), "dev+abcdef123"},
 		{"source checkout dirty", bi("(devel)", map[string]string{"vcs.revision": "abcdef1234567890", "vcs.modified": "true"}), "dev+abcdef123.dirty"},
+		{"source checkout on Go 1.24, pseudo-version beside the VCS settings", bi("v1.5.0-0.20260930220111-f79562029de1+dirty", map[string]string{"vcs.revision": "f79562029de1abcd", "vcs.modified": "true"}), "dev+f79562029.dirty"},
 		{"no metadata at all", bi("", nil), "dev"},
 	}
 	for _, tc := range cases {

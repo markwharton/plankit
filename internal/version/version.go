@@ -30,14 +30,12 @@ func Version() string {
 	return "dev"
 }
 
-// fromBuildInfo resolves a version from build metadata. A module build
-// (go install module@version) carries the tag as Main.Version; a
-// source-checkout build reports "(devel)" there and carries vcs.*
-// settings instead.
+// fromBuildInfo resolves a version from build metadata. A build from a
+// source checkout carries vcs.* settings, and since Go 1.24 also a
+// pseudo-version in Main.Version, so the VCS settings decide first. A
+// module build (go install module@version) has no VCS settings and
+// carries the tag as Main.Version.
 func fromBuildInfo(info *debug.BuildInfo) string {
-	if v := info.Main.Version; v != "" && v != "(devel)" {
-		return strings.TrimPrefix(v, "v")
-	}
 	rev, dirty := "", false
 	for _, s := range info.Settings {
 		switch s.Key {
@@ -53,6 +51,9 @@ func fromBuildInfo(info *debug.BuildInfo) string {
 			v += ".dirty"
 		}
 		return v
+	}
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return strings.TrimPrefix(v, "v")
 	}
 	return "dev"
 }
