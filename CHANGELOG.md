@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.5.0] - 2026-10-04
+
+### Added
+
+- the shim falls back to pk on PATH and the brief says when it is behind (a0b31ae)
+
+### Fixed
+
+- source builds report dev plus the commit on Go 1.24 (96922e3)
+
+### Documentation
+
+- say what the plugin runs (43add67)
+
+### Maintenance
+
+- move CLAUDE.md under .claude, outside the plugin root (82ea840)
+- listing icon and homepage, with room under the mark (f52e88f)
+- commit the plugin tree to the plugin branch (3da2010)
+
 ## [v1.4.0] - 2026-10-03
 
 ### Added
@@ -1254,3 +1274,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.2.1]: https://github.com/markwharton/plankit/compare/v1.2.0...v1.2.1
 [v1.3.0]: https://github.com/markwharton/plankit/compare/v1.2.1...v1.3.0
 [v1.4.0]: https://github.com/markwharton/plankit/compare/v1.3.0...v1.4.0
+[v1.5.0]: https://github.com/markwharton/plankit/compare/v1.4.0...v1.5.0
