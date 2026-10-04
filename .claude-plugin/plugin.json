@@ -6,6 +6,7 @@
     "name": "Mark Wharton",
     "url": "https://github.com/markwharton"
   },
+  "homepage": "https://plankit.com",
   "repository": "https://github.com/markwharton/plankit",
   "license": "MIT",
   "keywords": ["planning", "git", "workflow", "release", "changelog"]
