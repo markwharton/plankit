@@ -216,6 +216,8 @@ breaking marker, and guard asks there.
   hooks/hooks.json` prints the wire count.
 - `bin/`: the two shims, committed; the platform binaries, built by
   `make dist` for every triple in the Makefile's `TRIPLES`, ignored.
+  A shim with no binary beside it runs the pk on the PATH and names
+  the plugin root in `PK_PLUGIN_ROOT`, which only the brief reads.
 - `.claude-plugin/`: `plugin.json` (version stamped by changelog) and
   the development `marketplace.json` the published one is derived
   from.

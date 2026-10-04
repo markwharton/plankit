@@ -21,7 +21,6 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
 	"github.com/markwharton/plankit/internal/msg"
-	"github.com/markwharton/plankit/internal/version"
 )
 
 // Cmd is the brief command: hook-driven and explicitly invocable.
@@ -47,7 +46,7 @@ func run(ctx *cli.Context) error {
 		if !ok {
 			return nil
 		}
-		cfg, err := config.Load(root)
+		text, err := load(root)
 		if errors.Is(err, config.ErrNotConfigured) {
 			return nil // off here; the hook fires everywhere
 		}
@@ -55,7 +54,7 @@ func run(ctx *cli.Context) error {
 			msg.Hookf(ctx.Stderr, "brief", "%v", err)
 			return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
 		}
-		if err := hookio.WriteSessionStart(ctx.Stdout, Text(cfg)); err != nil {
+		if err := hookio.WriteSessionStart(ctx.Stdout, text); err != nil {
 			msg.Hookf(ctx.Stderr, "brief", "%v", err)
 		}
 		return nil
@@ -65,30 +64,46 @@ func run(ctx *cli.Context) error {
 	if !ok {
 		return cli.Statef("not a git repository: %s", dir)
 	}
-	cfg, err := config.Load(root)
+	text, err := load(root)
 	if errors.Is(err, config.ErrNotConfigured) {
 		return cli.WithHint(cli.Statef("plankit is not configured in %s", root), "run pk init to configure it")
 	}
 	if err != nil {
-		return err
+		return cli.Statef("%v", err)
 	}
 	if ctx.Format == "json" {
 		// The exact envelope the SessionStart hook emits.
-		return hookio.WriteSessionStart(ctx.Stdout, Text(cfg))
+		return hookio.WriteSessionStart(ctx.Stdout, text)
 	}
-	fmt.Fprint(ctx.Stdout, Text(cfg))
+	fmt.Fprint(ctx.Stdout, text)
 	return nil
+}
+
+// load renders the brief for root: the policy file, and the plugin the
+// shim named, if any. Both shapes of the command call it once, so a
+// problem with either file is reported the same way in each.
+func load(root string) (string, error) {
+	cfg, err := config.Load(root)
+	if err != nil {
+		return "", err
+	}
+	plugin, err := PluginVersion(os.Getenv)
+	if err != nil {
+		return "", err
+	}
+	return Text(cfg, plugin), nil
 }
 
 // Text renders the policy as prose for a session. Two sentences are
 // constant, the first and the last; everything between is the resolved
 // config in words, and paragraphs come and go with the dials. The first
-// names the version: the brief runs the plugin's own binary, so its
-// version is the plugin's, and a session shows it beside whatever pk
-// sits on the PATH.
-func Text(cfg *config.PkConfig) string {
+// names the plugin's version: the brief runs the plugin's own binary,
+// or, when the shim found none beside it, the pk on PATH, and then
+// pluginVersion is the manifest's and the sentence says which side is
+// behind.
+func Text(cfg *config.PkConfig, pluginVersion string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "plankit %s is configured in this repository.\n\n", version.Version())
+	fmt.Fprintf(&b, "%s\n\n", opening(binaryVersion(), pluginVersion))
 
 	var types []string
 	for _, tc := range cfg.Changelog.ResolvedTypes() {

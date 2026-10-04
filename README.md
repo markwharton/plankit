@@ -19,7 +19,9 @@ plugin and pk still does everything from a terminal.
 
 The same marketplace file is attached to every GitHub release, so
 `https://github.com/markwharton/plankit/releases/latest/download/marketplace.json`
-works as the source too.
+works as the source too. The plugin runs the pk bundled with it; with
+pk already on the PATH from `go install` or Homebrew, it runs from any
+source, the GitHub repository included.
 
 To update to a new release:
 

@@ -48,7 +48,9 @@ Breaking markers.
 
 `/plugin marketplace update plankit`, then `/plugin update
 plankit@plankit`, then `/reload-plugins`. A new release changes the
-plugin only; no repository changes.
+plugin only; no repository changes. A pk installed with `go install` or
+Homebrew is updated separately, and the brief says when it is behind
+the plugin.
 
 ## Migrating from pre-plugin plankit (v0.x)
 

@@ -50,8 +50,8 @@ go test -run TestName ./internal/<pkg>   # single test
   plugin ships the same files verbatim. Skills mirror commands 1:1 and
   `cmd/pk/main_test.go` enforces it.
 - `.claude-plugin/` holds plugin.json and marketplace.json (the repo is
-  its own marketplace). `hooks/hooks.json` wires guard, protect, and
-  preserve through `"${CLAUDE_PLUGIN_ROOT}"/bin/pk`. `bin/` holds the
+  its own marketplace). `hooks/hooks.json` wires brief, guard, protect,
+  and preserve through `"${CLAUDE_PLUGIN_ROOT}"/bin/pk`. `bin/` holds the
   committed shims; the per-platform binaries next to them are release
   assets, gitignored.
 - `claude plugin validate . --strict` must pass (marketplace run).

@@ -81,6 +81,10 @@ func runInit(ctx *cli.Context) error {
 	if push && !git.HasRemote(root, "origin") {
 		return cli.WithHint(cli.Statef("no origin remote to push to"), "add one with git remote add origin <url>, or run without --push")
 	}
+	pluginVersion, err := brief.PluginVersion(os.Getenv)
+	if err != nil {
+		return cli.Statef("%v", err)
+	}
 
 	// The settings file is the developer's: read it before anything is
 	// written, so a file that does not parse refuses the whole run, and
@@ -219,7 +223,7 @@ func runInit(ctx *cli.Context) error {
 	}
 	// The session that configured the repository was not briefed at its
 	// start, so init hands it the brief here.
-	fmt.Fprintf(ctx.Stderr, "\n%s", brief.Text(cfg))
+	fmt.Fprintf(ctx.Stderr, "\n%s", brief.Text(cfg, pluginVersion))
 	return nil
 }
 

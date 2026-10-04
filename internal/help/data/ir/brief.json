@@ -90,7 +90,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The first sentence names the plugin's version, which is the version of the binary the brief runs, so a session shows it beside whatever "
+          "text": "The first sentence names the plugin's version. The plugin's shim runs the binary beside it; when none is there, it runs the "
         },
         {
           "type": "code",
@@ -98,7 +98,23 @@
         },
         {
           "type": "text",
-          "text": " sits on the PATH. The last sentence is constant. The rest follows the dials. "
+          "text": " on the PATH and tells it where the plugin is, and the sentence then also names that pk's version, says which side is behind, and gives the command that levels them: "
+        },
+        {
+          "type": "code",
+          "text": "go install"
+        },
+        {
+          "type": "text",
+          "text": " for pk, "
+        },
+        {
+          "type": "code",
+          "text": "/plugin update"
+        },
+        {
+          "type": "text",
+          "text": " for the plugin. A dev build of pk is not compared. The last sentence is constant. The rest follows the dials. "
         },
         {
           "type": "code",

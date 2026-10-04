@@ -31,3 +31,41 @@ func TestBump(t *testing.T) {
 		}
 	}
 }
+
+// TestCompare walks the spec's own precedence example, then the strings
+// this repository meets: a release against a source build's
+// pseudo-version, and build metadata that must not count.
+func TestCompare(t *testing.T) {
+	ascending := []string{
+		"1.0.0-alpha", "1.0.0-alpha.1", "1.0.0-alpha.beta", "1.0.0-beta", "1.0.0-beta.2",
+		"1.0.0-beta.11", "1.0.0-rc.1", "1.0.0", "1.0.1", "1.1.0", "2.0.0",
+		"1.4.0", // out of order on purpose: checked against its neighbours below
+	}
+	parse := func(s string) Semver {
+		v, ok := ParseSemver(s)
+		if !ok {
+			t.Fatalf("ParseSemver(%q) failed", s)
+		}
+		return v
+	}
+	for i := 1; i < len(ascending)-1; i++ {
+		lo, hi := parse(ascending[i-1]), parse(ascending[i])
+		if lo.Compare(hi) != -1 || hi.Compare(lo) != 1 || lo.Compare(lo) != 0 {
+			t.Errorf("%s < %s not ordered", ascending[i-1], ascending[i])
+		}
+	}
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"1.4.0", "v1.5.0-0.20260930220111-f79562029de1+dirty", -1},
+		{"1.5.0", "v1.5.0-0.20260930220111-f79562029de1+dirty", 1},
+		{"1.4.0+build.1", "1.4.0+build.2", 0},
+		{"v1.4.0", "1.4.0", 0},
+	}
+	for _, tc := range cases {
+		if got := parse(tc.a).Compare(parse(tc.b)); got != tc.want {
+			t.Errorf("Compare(%s, %s) = %d, want %d", tc.a, tc.b, got, tc.want)
+		}
+	}
+}

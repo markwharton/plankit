@@ -595,3 +595,30 @@ func TestInitRefusesToGuardAWorkingBranch(t *testing.T) {
 		t.Fatalf("on %q, want dev", b)
 	}
 }
+
+// Init prints the brief, which reads the plugin the shim named; a
+// named plugin that is not there stops init before it writes. The
+// comparison sentence itself is the brief's test.
+func TestInitReadsThePluginTheShimNamed(t *testing.T) {
+	plugin := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(plugin, ".claude-plugin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(plugin, ".claude-plugin", "plugin.json"), []byte(`{"version": "999.0.0"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PK_PLUGIN_ROOT", plugin)
+	dir := scratch(t, true)
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitOK || !strings.Contains(errw, "is configured in this repository.") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	t.Setenv("PK_PLUGIN_ROOT", t.TempDir())
+	dir = scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitState || !strings.Contains(errw, "plugin.json") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet .pk.json was written")
+	}
+}

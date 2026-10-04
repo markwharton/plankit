@@ -10,7 +10,7 @@ agent, and releases are computed from commit messages.
 
 The plugin has three parts: hooks that tell Claude Code when to run
 pk, pages that document each command, and a shim that finds the pk
-binary for the platform. pk holds every decision. The plugin adds
+binary for the platform, or the pk on the PATH when none was bundled. pk holds every decision. The plugin adds
 wiring and words, not logic. Remove the plugin and pk still does
 everything from a terminal; remove pk and the plugin does nothing.
 

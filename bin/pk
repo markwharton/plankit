@@ -1,7 +1,8 @@
 #!/bin/sh
 # Dispatch to the platform binary sitting next to this shim. The binaries
 # are release assets (pk-<os>-<arch>), not committed files; `make bin-local`
-# builds the current platform's one for development.
+# builds the current platform's one for development. Without one, the pk
+# on PATH runs instead, told where this plugin is through PK_PLUGIN_ROOT.
 set -e
 dir=$(dirname "$0")
 os=$(uname -s)
@@ -19,8 +20,23 @@ case "$arch" in
 esac
 bin="$dir/pk-$os-$arch"
 if [ "$os" = windows ]; then bin="$bin.exe"; fi
-if [ ! -x "$bin" ]; then
-  echo "pk: $bin not found; run 'make bin-local' in the plankit repo, or reinstall the plugin" >&2
-  exit 3
+if [ -x "$bin" ]; then
+  exec "$bin" "$@"
 fi
-exec "$bin" "$@"
+# No binary beside the shim: the plugin arrived without its release
+# assets. Walk PATH for another pk, skipping this shim's own directory,
+# which Claude Code puts on the PATH while the plugin is enabled.
+here=$(cd "$dir" && pwd -P)
+root=$(cd "$dir/.." && pwd -P)
+oldifs=$IFS
+IFS=:
+for p in $PATH; do
+  [ -n "$p" ] || p=.
+  [ -f "$p/pk" ] && [ -x "$p/pk" ] || continue
+  [ "$(cd "$p" 2>/dev/null && pwd -P)" = "$here" ] && continue
+  IFS=$oldifs
+  PK_PLUGIN_ROOT="$root" exec "$p/pk" "$@"
+done
+IFS=$oldifs
+echo "pk: $bin not found; run 'make bin-local' in the plankit repo, reinstall the plugin, or install pk (go install github.com/markwharton/plankit/cmd/pk@latest)" >&2
+exit 3

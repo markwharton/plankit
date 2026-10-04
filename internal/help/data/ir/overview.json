@@ -313,7 +313,15 @@
         },
         {
           "type": "text",
-          "text": ". A new release changes the plugin only; no repository changes."
+          "text": ". A new release changes the plugin only; no repository changes. A pk installed with "
+        },
+        {
+          "type": "code",
+          "text": "go install"
+        },
+        {
+          "type": "text",
+          "text": " or Homebrew is updated separately, and the brief says when it is behind the plugin."
         }
       ]
     },

@@ -52,7 +52,7 @@ func TestTextFollowsTheDials(t *testing.T) {
 	for _, tc := range cases {
 		cfg := base()
 		tc.mutate(cfg)
-		got := Text(cfg)
+		got := Text(cfg, "")
 		for _, w := range tc.want {
 			if !strings.Contains(got, w) {
 				t.Errorf("%s: missing %q in:\n%s", tc.name, w, got)
@@ -169,5 +169,96 @@ func TestBrokenPolicyFileIsReportedAtSessionStart(t *testing.T) {
 	code := cli.RunIO([]string{"pk", "brief"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
 	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), `guard.breaking: "skip"`) {
 		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+}
+
+// writePlugin lays out a plugin root with the one file the brief reads.
+func writePlugin(t *testing.T, manifest string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude-plugin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if manifest != "" {
+		if err := os.WriteFile(filepath.Join(root, ".claude-plugin", "plugin.json"), []byte(manifest), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+func TestOpeningNamesTheSideThatIsBehind(t *testing.T) {
+	cases := []struct {
+		name, binary, plugin string
+		want                 string
+		notWant              string
+	}{
+		{"no plugin known", "1.4.0", "", "plankit 1.4.0 is configured in this repository.", "PATH"},
+		{"same release", "1.4.0", "1.4.0", "plankit 1.4.0 is configured in this repository.", "PATH"},
+		{"pk behind", "1.4.0", "1.5.0", "plankit 1.5.0 is configured in this repository. This session's pk is 1.4.0, from the PATH and behind the plugin: update it with go install github.com/markwharton/plankit/cmd/pk@latest.", ""},
+		{"pk ahead", "1.5.0", "1.4.0", "plankit 1.4.0 is configured in this repository. This session's pk is 1.5.0, from the PATH and ahead of the plugin: /plugin update plankit@plankit brings the skills level.", ""},
+		{"dev build is not compared", "dev+abc123456", "1.4.0", "plankit dev+abc123456 is configured in this repository.", "PATH"},
+	}
+	for _, tc := range cases {
+		got := opening(tc.binary, tc.plugin)
+		if got != tc.want && !strings.HasPrefix(got, tc.want) {
+			t.Errorf("%s: got %q", tc.name, got)
+		}
+		if tc.notWant != "" && strings.Contains(got, tc.notWant) {
+			t.Errorf("%s: unexpected %q in %q", tc.name, tc.notWant, got)
+		}
+	}
+}
+
+func TestPluginVersionReadsTheManifestTheShimNamed(t *testing.T) {
+	if v, err := PluginVersion(func(string) string { return "" }); v != "" || err != nil {
+		t.Fatalf("unset: %q %v", v, err)
+	}
+	root := writePlugin(t, "{\n  \"name\": \"plankit\",\n  \"version\": \"9.9.9\"\n}\n")
+	env := func(k string) string {
+		if k == pluginRootEnv {
+			return root
+		}
+		return ""
+	}
+	if v, err := PluginVersion(env); v != "9.9.9" || err != nil {
+		t.Fatalf("got %q %v", v, err)
+	}
+	for name, manifest := range map[string]string{"absent": "", "no version": "{}", "not a string": "{\"version\": 1}"} {
+		root = writePlugin(t, manifest)
+		if _, err := PluginVersion(env); err == nil || !strings.Contains(err.Error(), "plugin.json") {
+			t.Errorf("%s: err=%v", name, err)
+		}
+	}
+}
+
+// The hook shape: the shim fell back to this pk and named a plugin that
+// is ahead, so the session is told; a plugin the shim named but that is
+// not there is reported at session start like a broken policy file.
+func TestHookComparesWithThePluginTheShimNamed(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	dir := scratch(t, true)
+	payload, _ := json.Marshal(map[string]any{"cwd": dir, "hook_event_name": "SessionStart"})
+	run := func() (int, string, string) {
+		var out, errw bytes.Buffer
+		code := cli.RunIO([]string{"pk", "brief"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
+		return code, out.String(), errw.String()
+	}
+	binaryVersion = func() string { return "1.0.0" }
+	t.Cleanup(func() { binaryVersion = version.Version })
+	t.Setenv(pluginRootEnv, writePlugin(t, "{\"version\": \"999.0.0\"}"))
+	code, out, errw := run()
+	if code != 0 || !strings.Contains(out, "plankit 999.0.0 is configured in this repository. This session's pk is 1.0.0, from the PATH and behind") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
+	}
+	t.Setenv(pluginRootEnv, writePlugin(t, ""))
+	code, out, errw = run()
+	if code != hookio.ExitReport || out != "" || !strings.Contains(errw, "plugin.json") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
+	}
+	// Typed, the same problem is a state error.
+	var tout, terr bytes.Buffer
+	if code := cli.RunIO([]string{"pk", "brief", "--project-dir", dir}, []*cli.Command{Cmd}, nil, &tout, &terr); code != cli.ExitState || !strings.Contains(terr.String(), "plugin.json") {
+		t.Fatalf("typed: code=%d errw=%q", code, terr.String())
 	}
 }

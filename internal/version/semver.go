@@ -71,6 +71,58 @@ func (v Semver) Bump(level int) Semver {
 	}
 }
 
+// Compare orders v against o by SemVer 2.0 precedence and returns -1,
+// 0, or 1: major, minor, patch; then a pre-release ranks below its
+// release, and pre-release identifiers compare numerically when both
+// are numeric, numeric below alphanumeric, else as strings, a shorter
+// list ranking lower. Build metadata is ignored.
+func (v Semver) Compare(o Semver) int {
+	for _, d := range []int{v.Major - o.Major, v.Minor - o.Minor, v.Patch - o.Patch} {
+		if d != 0 {
+			return sign(d)
+		}
+	}
+	switch {
+	case v.PreRelease == "" && o.PreRelease == "":
+		return 0
+	case v.PreRelease == "":
+		return 1
+	case o.PreRelease == "":
+		return -1
+	}
+	a, b := strings.Split(v.PreRelease, "."), strings.Split(o.PreRelease, ".")
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if c := compareIdentifier(a[i], b[i]); c != 0 {
+			return c
+		}
+	}
+	return sign(len(a) - len(b))
+}
+
+func compareIdentifier(a, b string) int {
+	an, aok := parseNumericID(a)
+	bn, bok := parseNumericID(b)
+	switch {
+	case aok && bok:
+		return sign(an - bn)
+	case aok:
+		return -1
+	case bok:
+		return 1
+	}
+	return strings.Compare(a, b)
+}
+
+func sign(d int) int {
+	switch {
+	case d < 0:
+		return -1
+	case d > 0:
+		return 1
+	}
+	return 0
+}
+
 // String renders with the "v" prefix: vX.Y.Z[-pre][+build].
 func (v Semver) String() string {
 	s := fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
