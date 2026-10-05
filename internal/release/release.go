@@ -281,7 +281,7 @@ func run(ctx *cli.Context) error {
 
 	// Tag HEAD: source HEAD in trunk flow, release-branch HEAD after the
 	// fast-forward in merge flow; the same commit either way.
-	if _, err := git.Exec(root, "tag", tag); err != nil {
+	if err := git.CreateTag(root, tag); err != nil {
 		return fmt.Errorf("git tag failed: %v", err)
 	}
 	tagCreated = true

@@ -137,8 +137,11 @@ func notesHTML(notes []note, repoURL string, tags map[string]bool) template.HTML
 	for _, n := range notes {
 		body, _ := renderHTML(n.Body)
 		version := template.HTMLEscapeString(n.Version)
+		// A compare needs two ends; the first release links its commits.
 		if prev := previousTag(n, tags); prev != "" && repoURL != "" {
 			version = fmt.Sprintf(`<a href="%s/compare/%s...%s">%s</a>`, repoURL, prev, n.Version, version)
+		} else if repoURL != "" {
+			version = fmt.Sprintf(`<a href="%s/commits/%s">%s</a>`, repoURL, n.Version, version)
 		}
 		fmt.Fprintf(&b, `<article class="note" id="%s"><h2>%s</h2><p class="muted">%s · %s</p>%s</article>`+"\n",
 			template.HTMLEscapeString(n.Version), template.HTMLEscapeString(n.Title), version, template.HTMLEscapeString(n.Date), body)

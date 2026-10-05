@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -84,6 +85,16 @@ func LatestTag(dir string) string {
 		return ""
 	}
 	return strings.SplitN(out, "\n", 2)[0]
+}
+
+// CountCommits returns the number of commits in revRange, a revision
+// or a range such as "v1.0.0..main".
+func CountCommits(dir, revRange string) (int, error) {
+	out, err := Exec(dir, "rev-list", "--count", revRange)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(out)
 }
 
 // CreateTag creates a lightweight tag at HEAD.

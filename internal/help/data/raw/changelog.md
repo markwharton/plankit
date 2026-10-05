@@ -59,6 +59,16 @@ is spliced in place, formatting preserved. `postVersion` and
 
 Run it from the working branch. A protected branch is refused.
 
+## The first release
+
+No version tag means nothing has been released. The first release
+covers the whole history from an implied `v0.0.0`, and its entry links
+to the tag's commits rather than a compare. The run says so first:
+`no release yet: the first release covers all N commits`. To keep
+earlier history out of it, tag `v0.0.0` at the last commit that is
+history before running `pk changelog`; everything after that tag is
+the first release.
+
 ## Flags
 
 <!-- generated: flags -->

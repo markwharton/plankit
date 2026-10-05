@@ -432,3 +432,47 @@ func TestTrunkFlowRefusesNonDefaultBranch(t *testing.T) {
 		t.Fatalf("trunk flow on default branch: exit %d: %s", code, errw)
 	}
 }
+
+// With no version tag anywhere, nothing has been released: the first
+// release covers the whole history, root included, from an implied
+// v0.0.0, and its entry links to the tag's commits.
+func TestFirstReleaseCoversAllHistory(t *testing.T) {
+	fixedNow(t)
+	dir := repo(t, nil)
+	mustGit(t, dir, "tag", "-d", "v0.0.0")
+	mustGit(t, dir, "push", "-q", "--delete", "origin", "v0.0.0")
+	commit(t, dir, "feat: first feature")
+
+	code, out, errw := runCL(t, dir, "--dry-run")
+	if code != cli.ExitOK {
+		t.Fatalf("dry run exit %d: %s", code, errw)
+	}
+	if !strings.HasPrefix(errw, "no release yet: the first release covers all 2 commits\n") {
+		t.Fatalf("stderr must open with the count:\n%s", errw)
+	}
+	if !strings.Contains(errw, "Generating v0.1.0") || !strings.Contains(out, "first feature") || !strings.Contains(out, "scaffold") {
+		t.Fatalf("first release must be v0.1.0 over both commits:\n%s\n%s", errw, out)
+	}
+
+	if code, _, errw := runCL(t, dir); code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	cl, _ := os.ReadFile(filepath.Join(dir, "CHANGELOG.md"))
+	if !strings.Contains(string(cl), "/commits/v0.1.0") || strings.Contains(string(cl), "/compare/") {
+		t.Fatalf("a first release links its commits, not a compare:\n%s", cl)
+	}
+	if _, tag, _ := ReadReleaseTagTrailer(dir); tag != "v0.1.0" {
+		t.Fatalf("trailer = %q", tag)
+	}
+}
+
+// Origin has tags that the clone never fetched: that is not a first
+// release, and the hint is to fetch.
+func TestNoLocalTagsButOriginHasThem(t *testing.T) {
+	dir := repo(t, nil)
+	mustGit(t, dir, "tag", "-d", "v0.0.0")
+	commit(t, dir, "feat: x")
+	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitState || !strings.Contains(errw, "git fetch --tags") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+}

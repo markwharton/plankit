@@ -135,7 +135,9 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
-	// Latest semver tag anchors the commit range and the next version.
+	// The latest semver tag anchors the commit range and the next
+	// version. No tag anywhere means nothing has been released: the
+	// first release covers the whole history from an implied v0.0.0.
 	tagOutput, err := git.Exec(root, "tag", "--list", "v*", "--sort=-v:refname")
 	if err != nil {
 		return fmt.Errorf("failed to list tags: %v", err)
@@ -143,16 +145,24 @@ func run(ctx *cli.Context) error {
 	latestTag, baseVersion, found := latestSemverTag(tagOutput)
 	if !found {
 		// Origin has tags, local doesn't: common in shallow clones that
-		// fetched only the working branch. Point at fetch, not baseline.
+		// fetched only the working branch. That is not a first release.
 		if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
 			return cli.WithHint(cli.Statef("no version tags found locally"),
 				"origin has tags; fetch them: git fetch --tags")
 		}
-		return cli.WithHint(cli.Statef("no version tags found"),
-			"to anchor at v0.0.0: git tag v0.0.0 && git push origin v0.0.0")
+		latestTag, baseVersion = "", version.Semver{}
+		total, err := git.CountCommits(root, "HEAD")
+		if err != nil {
+			return fmt.Errorf("failed to count commits: %v", err)
+		}
+		fmt.Fprintf(ctx.Stderr, "no release yet: the first release covers all %d commits\n", total)
+	}
+	logRange := "HEAD"
+	if latestTag != "" {
+		logRange = latestTag + "..HEAD"
 	}
 
-	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", latestTag+"..HEAD", "--reverse")
+	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", logRange, "--reverse")
 	if err != nil {
 		return fmt.Errorf("failed to read git log: %v", err)
 	}
@@ -239,7 +249,12 @@ func run(ctx *cli.Context) error {
 	existing, _ := readFile(changelogPath)
 	updated := insertSection(string(existing), section)
 	if repoURL != "" {
-		updated = appendRefLink(updated, fmt.Sprintf("[%s]: %s/compare/%s...%s", nextTag, repoURL, latestTag, nextTag))
+		// A compare needs two ends; the first release links its commits.
+		link := fmt.Sprintf("[%s]: %s/compare/%s...%s", nextTag, repoURL, latestTag, nextTag)
+		if latestTag == "" {
+			link = fmt.Sprintf("[%s]: %s/commits/%s", nextTag, repoURL, nextTag)
+		}
+		updated = appendRefLink(updated, link)
 	}
 	if err := writeFile(changelogPath, []byte(updated)); err != nil {
 		return fmt.Errorf("failed to write CHANGELOG.md: %v", err)

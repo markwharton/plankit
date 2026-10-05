@@ -155,6 +155,15 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 		!strings.Contains(string(page), `href="https://github.com/acme/widgets/compare/v0.0.0...v0.1.0"`) {
 		t.Fatalf("entry must be anchored at its version and link the compare view:\n%s", page)
 	}
+	// Without a lower tag, the first release links its commits.
+	del := exec.Command("git", "tag", "-d", "v0.0.0")
+	del.Dir = root
+	must(del.Run())
+	must(buildSite(root, skills, out, "", false))
+	page, _ = os.ReadFile(filepath.Join(out, "notes.html"))
+	if !strings.Contains(string(page), `href="https://github.com/acme/widgets/commits/v0.1.0"`) {
+		t.Fatalf("a first release must link its commits:\n%s", page)
+	}
 	index, _ := os.ReadFile(filepath.Join(out, "index.html"))
 	if !strings.Contains(string(index), `href="/notes"`) {
 		t.Fatal("navigation must gain Notes when a released note exists")

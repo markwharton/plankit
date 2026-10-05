@@ -160,7 +160,9 @@ The code blocks above are checked against their source files by
 ## How a release is computed
 
 Commit messages are parsed into `Commit` values. The values decide the
-sections and the bump. The bump and the last tag give the version. The
+sections and the bump. The bump and the last tag give the version; no
+tag means nothing has been released, and the first release covers the
+whole history from an implied `v0.0.0`. The
 version is written into CHANGELOG.md and spliced into the files the
 policy names, and the commit carries the version as the trailer.
 `pk release` reads the trailer, tags, and pushes. The tag push builds

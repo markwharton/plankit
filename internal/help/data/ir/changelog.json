@@ -256,6 +256,58 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "the-first-release",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The first release"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "No version tag means nothing has been released. The first release covers the whole history from an implied "
+        },
+        {
+          "type": "code",
+          "text": "v0.0.0"
+        },
+        {
+          "type": "text",
+          "text": ", and its entry links to the tag's commits rather than a compare. The run says so first: "
+        },
+        {
+          "type": "code",
+          "text": "no release yet: the first release covers all N commits"
+        },
+        {
+          "type": "text",
+          "text": ". To keep earlier history out of it, tag "
+        },
+        {
+          "type": "code",
+          "text": "v0.0.0"
+        },
+        {
+          "type": "text",
+          "text": " at the last commit that is history before running "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": "; everything after that tag is the first release."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "flags",
       "inlines": [
         {
