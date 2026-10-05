@@ -371,6 +371,24 @@ func runStatus(ctx *cli.Context) error {
 	if s.Release != "" && !git.HasOtherLocalBranch(root, s.Release) {
 		msg.Notef(ctx.Stderr, "no working branch besides %s: to start one, git switch -c develop", s.Release)
 	}
+	// The release branch, as git shows it: absent, or in merge flow
+	// moved past the last release. The command names the root commit,
+	// so it is exact and safe whenever it is run.
+	if s.Release != "" && !git.BranchExists(root, s.Release) {
+		first, err := git.RootCommit(root)
+		if err != nil {
+			return cli.Statef("cannot find the root commit: %v", err)
+		}
+		msg.Notef(ctx.Stderr, "release branch %s does not exist: git branch %s %s creates it at the root, carrying no unreleased work", s.Release, s.Release, first[:min(7, len(first))])
+	} else if s.Release != "" && s.LatestTag != "" {
+		n, err := git.CountCommits(root, s.LatestTag+".."+s.Release)
+		if err != nil {
+			return cli.Statef("cannot count commits on %s: %v", s.Release, err)
+		}
+		if n > 0 {
+			msg.Notef(ctx.Stderr, "%s has %d commits not in a release", s.Release, n)
+		}
+	}
 	if len(missingEntries) > 0 {
 		// The entries are rendered by the same code init writes, so the
 		// note is the one place a developer sees them spelled out.

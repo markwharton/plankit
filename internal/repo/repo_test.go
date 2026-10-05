@@ -676,3 +676,58 @@ func TestInitReadsThePluginTheShimNamed(t *testing.T) {
 		t.Fatal("refused, yet .pk.json was written")
 	}
 }
+
+// The release branch as git shows it: a hand-configured repository
+// without one gets the exact command that creates it at the root, and
+// in merge flow a release branch that moved past its last tag is
+// counted. Trunk flow and a repository with no release yet get nothing.
+func TestStatusNotesTheReleaseBranchState(t *testing.T) {
+	dir := scratch(t, true)
+	mustGit(t, dir, "switch", "-q", "-c", "develop")
+	mustGit(t, dir, "branch", "-D", "main")
+	if err := config.Write(dir, config.Default("main")); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(t, dir, "add", ".")
+	mustGit(t, dir, "commit", "-q", "-m", "chore: configure plankit")
+	first, _ := git.RootCommit(dir)
+	_, _, errw := run(t, "status", "--project-dir", dir)
+	want := "release branch main does not exist: git branch main " + first[:7]
+	if !strings.Contains(errw, want) {
+		t.Fatalf("missing %q:\n%s", want, errw)
+	}
+	// The command, run as written, ends the note.
+	mustGit(t, dir, "branch", "main", first[:7])
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "does not exist") {
+		t.Fatalf("note after the branch exists:\n%s", errw)
+	}
+
+	// Merge flow, released once, then main moves: counted.
+	dir = scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	mustGit(t, dir, "tag", "v0.1.0")
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "not in a release") {
+		t.Fatalf("level with its tag, yet noted:\n%s", errw)
+	}
+	mustGit(t, dir, "switch", "-q", "main")
+	if err := os.WriteFile(filepath.Join(dir, "x.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustGit(t, dir, "add", ".")
+	mustGit(t, dir, "commit", "-q", "-m", "fix: on main by hand")
+	mustGit(t, dir, "switch", "-q", "develop")
+	if _, _, errw := run(t, "status", "--project-dir", dir); !strings.Contains(errw, "main has 1 commits not in a release") {
+		t.Fatalf("moved release branch not noted:\n%s", errw)
+	}
+	// Trunk flow: the branch moving is the normal state.
+	cfg, _ := config.Load(dir)
+	cfg.Release.Branch = ""
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "not in a release") {
+		t.Fatalf("trunk flow noted:\n%s", errw)
+	}
+}
