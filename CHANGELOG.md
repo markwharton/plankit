@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.0] - 2026-10-05
+
+### Added
+
+- no tag means nothing has been released (69c5d11)
+- no baseline tag, and the release branch is created at the root when named (802ad45)
+- note a missing release branch and one ahead of its tag (6354c81)
+
+### Fixed
+
+- name the tag the range starts at and how many commits follow it (ee6af28)
+
 ## [v1.5.1] - 2026-10-04
 
 ### Documentation
@@ -1287,3 +1299,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.4.0]: https://github.com/markwharton/plankit/compare/v1.3.0...v1.4.0
 [v1.5.0]: https://github.com/markwharton/plankit/compare/v1.4.0...v1.5.0
 [v1.5.1]: https://github.com/markwharton/plankit/compare/v1.5.0...v1.5.1
+[v1.6.0]: https://github.com/markwharton/plankit/compare/v1.5.1...v1.6.0

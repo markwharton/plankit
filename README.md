@@ -51,9 +51,8 @@ pk init
 
 One run writes `.pk.json`, the policy, adds the plankit marketplace
 and plugin to `.claude/settings.json` so a teammate who trusts the
-folder is one `/plugin install` away, commits both, tags the `v0.0.0`
-baseline, and starts a `develop` branch when the release branch was
-the only one. The plans directory, named in the policy, appears when
+folder is one `/plugin install` away, commits both, and starts a
+`develop` branch when the release branch was the only one. The plans directory, named in the policy, appears when
 the first plan is preserved; `pk help preserve` has the key and its
 default. No `.pk.json` means off: every hook exits immediately.
 
