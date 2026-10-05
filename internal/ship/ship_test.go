@@ -143,7 +143,7 @@ func TestShipOnAReleasedHeadReportsNothingToDo(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("second ship: exit %d:\n%s", code, errw)
 	}
-	if !strings.Contains(errw, "No new conventional commits found.") {
+	if !strings.Contains(errw, "no commits since v0.1.0") {
 		t.Fatalf("changelog narration missing:\n%s", errw)
 	}
 	for _, claim := range []string{"already pending", "remains pending", "nothing to release"} {
@@ -163,7 +163,7 @@ func TestShipWithNothingToReleaseStopsAfterChangelog(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d:\n%s", code, errw)
 	}
-	if !strings.Contains(errw, "No new conventional commits found.") {
+	if !strings.Contains(errw, "no commits since v0.0.0") {
 		t.Fatalf("changelog narration missing:\n%s", errw)
 	}
 	for _, claim := range []string{"no Release-Tag trailer on HEAD", "remains pending"} {

@@ -476,3 +476,17 @@ func TestNoLocalTagsButOriginHasThem(t *testing.T) {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 }
+
+// When there is nothing to list, the message says what was measured:
+// the tag the range starts at and how many commits follow it.
+func TestNothingToListSaysWhatWasMeasured(t *testing.T) {
+	dir := repo(t, nil)
+	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.Contains(errw, "no commits since v0.0.0\n") {
+		t.Fatalf("tag on HEAD: code=%d errw=%q", code, errw)
+	}
+	commit(t, dir, "update stuff")
+	commit(t, dir, "more stuff")
+	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.Contains(errw, "2 commits since v0.0.0, none conventional\n") {
+		t.Fatalf("untyped messages: code=%d errw=%q", code, errw)
+	}
+}

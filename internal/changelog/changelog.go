@@ -168,7 +168,23 @@ func run(ctx *cli.Context) error {
 	}
 	commits := parseLog(logOutput)
 	if len(commits) == 0 {
-		fmt.Fprintln(ctx.Stderr, "No new conventional commits found.")
+		// Say what was measured: the tag the range starts at and how
+		// many commits follow it, so "nothing to release", "messages
+		// are not conventional", and "the tag is on HEAD" each read as
+		// themselves.
+		total, err := git.CountCommits(root, logRange)
+		if err != nil {
+			return fmt.Errorf("failed to count commits: %v", err)
+		}
+		since := ""
+		if latestTag != "" {
+			since = " since " + latestTag
+		}
+		if total == 0 {
+			fmt.Fprintf(ctx.Stderr, "no commits%s\n", since)
+		} else {
+			fmt.Fprintf(ctx.Stderr, "%d commits%s, none conventional\n", total, since)
+		}
 		return nil
 	}
 	if x := ctx.String("exclude"); x != "" {
