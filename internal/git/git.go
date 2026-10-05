@@ -189,6 +189,17 @@ func CommitPaths(dir, message string, paths ...string) error {
 	return err
 }
 
+// RootCommit returns the hash of the repository's first commit.
+func RootCommit(dir string) (string, error) {
+	return Exec(dir, "rev-list", "--max-parents=0", "HEAD")
+}
+
+// CreateBranchAt creates name at rev without switching to it.
+func CreateBranchAt(dir, name, rev string) error {
+	_, err := Exec(dir, "branch", name, rev)
+	return err
+}
+
 // CreateBranch creates name at HEAD and switches to it.
 func CreateBranch(dir, name string) error {
 	_, err := Exec(dir, "switch", "-q", "-c", name)

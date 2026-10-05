@@ -92,8 +92,8 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if _, err := os.Stat(cfg.Preserve.DirPath(dir)); !os.IsNotExist(err) {
 		t.Fatal("init must not create the plans directory; preserve creates it on first use")
 	}
-	if got := git.LatestTag(dir); got != "v0.0.0" {
-		t.Fatalf("baseline tag = %q", got)
+	if got := git.LatestTag(dir); got != "" {
+		t.Fatalf("init must not tag; got %q", got)
 	}
 	// The brief is printed in full: the session that ran init was not
 	// briefed at its start. The hidden plan type stays out of it.
@@ -110,7 +110,7 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("status exit %d", code)
 	}
-	for _, want := range []string{"develop (clean)", "preserve", "manual", "block", "v0.0.0", "0 preserved"} {
+	for _, want := range []string{"develop (clean)", "preserve", "manual", "block", "none yet", "0 preserved"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("status missing %q:\n%s", want, out)
 		}
@@ -139,8 +139,8 @@ func TestInitBootstrapsEmptyRepo(t *testing.T) {
 	if tracked, _ := git.Exec(dir, "ls-tree", "-r", "--name-only", "HEAD"); tracked != settingsFile+"\n"+config.FileName {
 		t.Fatalf("root commit tracks %q", tracked)
 	}
-	if git.LatestTag(dir) != "v0.0.0" {
-		t.Fatal("no baseline tag")
+	if git.LatestTag(dir) != "" {
+		t.Fatal("init must not tag")
 	}
 	if b, _ := git.CurrentBranch(dir); b != "develop" {
 		t.Fatalf("on %q, want develop", b)
@@ -148,8 +148,8 @@ func TestInitBootstrapsEmptyRepo(t *testing.T) {
 	if !git.BranchExists(dir, "main") {
 		t.Fatal("main is gone")
 	}
-	if strings.Contains(errw, "no baseline tag") || strings.Contains(errw, "Hint:") {
-		t.Fatalf("nothing was skipped, so no note or hint:\n%s", errw)
+	if strings.Contains(errw, "Note:") || strings.Contains(errw, "Hint:") {
+		t.Fatalf("nothing was skipped and nothing preceded, so no note or hint:\n%s", errw)
 	}
 }
 
@@ -218,27 +218,78 @@ func TestInitNoCommitLeavesTheRestToTheDeveloper(t *testing.T) {
 	if git.LatestTag(dir) != "" || git.BranchExists(dir, "develop") {
 		t.Fatal("tagged or branched without a commit")
 	}
-	for _, want := range []string{"no baseline tag", "commit .pk.json and .claude/settings.json yourself", "guard blocks", "git tag v0.0.0 && git switch -c develop"} {
+	for _, want := range []string{"commit .pk.json and .claude/settings.json yourself", "guard blocks", "then git switch -c develop"} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q:\n%s", want, errw)
 		}
 	}
 }
 
-func TestInitNoBaselineOnRepoWithCommits(t *testing.T) {
+// Work committed before init is in the first release with everything
+// after it. Init says how much and names the exact command that keeps
+// it as history instead; it places no tag itself.
+func TestInitWorkBeforeInitJoinsTheFirstRelease(t *testing.T) {
 	dir := scratch(t, true)
-	code, _, errw := run(t, "init", "--project-dir", dir, "--no-baseline")
+	sha, _ := git.Exec(dir, "rev-parse", "--short", "HEAD")
+	code, _, errw := run(t, "init", "--project-dir", dir)
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
 	if git.LatestTag(dir) != "" {
-		t.Fatal("--no-baseline still tagged")
+		t.Fatal("init tagged")
 	}
 	if subject, _ := git.Exec(dir, "log", "-1", "--format=%s"); subject != configureSubject {
 		t.Fatalf("not committed: HEAD is %q", subject)
 	}
-	if strings.Contains(errw, "no commits yet") {
-		t.Fatalf("the repository has commits; the note lies:\n%s", errw)
+	if !strings.Contains(errw, "Note: 1 commits precede plankit's and will be in the first release; to keep them as history, tag the last of them: git tag v0.0.0 "+sha) {
+		t.Fatalf("note missing or wrong:\n%s", errw)
+	}
+	if _, _, quiet := run(t, "init", "--project-dir", scratch(t, true), "--quiet"); strings.Contains(quiet, "Note:") {
+		t.Fatalf("--quiet still notes:\n%s", quiet)
+	}
+}
+
+// Started on the working branch: the release branch is named, does not
+// exist, and is created at the root so it carries no unreleased work.
+// The policy lands on the branch checked out.
+func TestInitFromWorkingBranchCreatesReleaseAtRoot(t *testing.T) {
+	dir := scratch(t, false)
+	mustGit(t, dir, "switch", "-q", "-c", "develop")
+	for _, m := range []string{"feat: one", "fix: two"} {
+		if err := os.WriteFile(filepath.Join(dir, "w.txt"), []byte(m+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		mustGit(t, dir, "add", ".")
+		mustGit(t, dir, "commit", "-q", "-m", m)
+	}
+	root, _ := git.RootCommit(dir)
+	code, _, errw := run(t, "init", "--project-dir", dir, "--release", "main")
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	if b, _ := git.CurrentBranch(dir); b != "develop" {
+		t.Fatalf("on %q, want develop", b)
+	}
+	if at, _ := git.Exec(dir, "rev-parse", "main"); at != root {
+		t.Fatalf("main at %s, want the root %s", at, root)
+	}
+	if subject, _ := git.Exec(dir, "log", "-1", "--format=%s"); subject != configureSubject {
+		t.Fatalf("policy not on develop: HEAD is %q", subject)
+	}
+	if !strings.Contains(errw, "created: .pk.json, .claude/settings.json, commit, branch main") || !strings.Contains(errw, "2 commits precede") {
+		t.Fatalf("summary or note wrong:\n%s", errw)
+	}
+
+	// Without --release, the checked-out develop would be the release
+	// branch and the working branch at once: refused, naming the fix.
+	dir = scratch(t, false)
+	mustGit(t, dir, "switch", "-q", "-c", "develop")
+	code, _, errw = run(t, "init", "--project-dir", dir)
+	if code != cli.ExitUsage || !strings.Contains(errw, "pk init --release main") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet .pk.json was written")
 	}
 }
 
@@ -248,7 +299,7 @@ func TestInitDryRunTouchesNothing(t *testing.T) {
 	if code != cli.ExitOK || out != "" {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
-	if !strings.Contains(errw, "would create: .pk.json, .claude/settings.json, commit, tag v0.0.0, branch develop") {
+	if !strings.Contains(errw, "would create: .pk.json, .claude/settings.json, commit, branch develop") {
 		t.Fatalf("dry run previews the whole bootstrap:\n%s", errw)
 	}
 	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
@@ -272,17 +323,20 @@ func TestInitJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("json: %v in %q", err, out)
 	}
-	if got["release"] != "main" || got["committed"] != true || got["baseline"] != "v0.0.0" || got["branch"] != "develop" || got["dryRun"] != false {
+	if got["release"] != "main" || got["committed"] != true || got["branch"] != "develop" || got["dryRun"] != false {
 		t.Fatalf("state: %v", got)
 	}
-	if created, _ := got["created"].([]any); len(created) != 5 || created[1] != settingsFile {
+	if _, has := got["baseline"]; has {
+		t.Fatalf("baseline key must be gone: %v", got)
+	}
+	if created, _ := got["created"].([]any); len(created) != 4 || created[1] != settingsFile {
 		t.Fatalf("created = %v", got["created"])
 	}
 }
 
 func TestInitFlags(t *testing.T) {
 	dir := scratch(t, true)
-	code, _, _ := run(t, "init", "--project-dir", dir, "--release", "trunk", "--no-baseline")
+	code, _, _ := run(t, "init", "--project-dir", dir, "--release", "trunk")
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
@@ -291,9 +345,9 @@ func TestInitFlags(t *testing.T) {
 		t.Fatalf("release flag not honored: %+v", cfg)
 	}
 	// The checked-out branch is not the release branch, so it is already
-	// a working branch: nothing to create.
-	if b, _ := git.CurrentBranch(dir); b != "main" || git.BranchExists(dir, "develop") {
-		t.Fatalf("branch = %q, develop exists = %v", b, git.BranchExists(dir, "develop"))
+	// a working branch: no develop; the named release branch is created.
+	if b, _ := git.CurrentBranch(dir); b != "main" || git.BranchExists(dir, "develop") || !git.BranchExists(dir, "trunk") {
+		t.Fatalf("branch = %q, develop exists = %v, trunk exists = %v", b, git.BranchExists(dir, "develop"), git.BranchExists(dir, "trunk"))
 	}
 }
 
@@ -308,7 +362,7 @@ func TestInitPush(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d: %s", code, errw)
 	}
-	for _, ref := range []string{"refs/heads/main", "refs/heads/develop", "refs/tags/v0.0.0"} {
+	for _, ref := range []string{"refs/heads/main", "refs/heads/develop"} {
 		if _, err := git.Exec(bare, "rev-parse", "--verify", "-q", ref); err != nil {
 			t.Errorf("origin lacks %s", ref)
 		}
@@ -316,7 +370,7 @@ func TestInitPush(t *testing.T) {
 	if up, _ := git.Exec(dir, "rev-parse", "--abbrev-ref", "develop@{upstream}"); up != "origin/develop" {
 		t.Fatalf("develop upstream = %q", up)
 	}
-	if !strings.Contains(errw, "push origin main v0.0.0 develop") {
+	if !strings.Contains(errw, "push origin main develop") {
 		t.Fatalf("push not reported:\n%s", errw)
 	}
 }
@@ -350,7 +404,7 @@ func TestStatusReadinessNotes(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"no baseline tag", "git tag v0.0.0", "no working branch besides main", "git switch -c develop", settingsFile + " lacks the entries", `"plankit@plankit": true`} {
+	for _, want := range []string{"no working branch besides main", "git switch -c develop", settingsFile + " lacks the entries", `"plankit@plankit": true`} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q:\n%s", want, errw)
 		}

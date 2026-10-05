@@ -104,7 +104,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A configured repository that has commits but no tag, or whose release branch is its only branch, gets a note naming the command that finishes the bootstrap. One whose "
+          "text": "A configured repository whose release branch is its only branch gets a note naming the command that starts a working branch. One whose "
         },
         {
           "type": "code",

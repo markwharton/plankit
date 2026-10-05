@@ -92,8 +92,8 @@ func runDemo(pk string) ([]demoStep, error) {
 	}
 
 	var steps []demoStep
-	// init commits the policy, tags the baseline, and leaves the tree on
-	// develop; the demo publishes main and the tag as a developer would.
+	// init commits the policy and leaves the tree on develop; the demo
+	// publishes main as a developer would.
 	s, _ := run("Configure a repository", "pk init", "", "init")
 	steps = append(steps, s)
 	if err := git("push", "-q", "-u", "origin", "main", "--tags"); err != nil {

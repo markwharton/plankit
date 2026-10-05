@@ -135,15 +135,15 @@
             "inlines": [
               {
                 "type": "text",
-                "text": "the "
+                "text": "a "
               },
               {
                 "type": "code",
-                "text": "v0.0.0"
+                "text": "develop"
               },
               {
                 "type": "text",
-                "text": " baseline tag, when the repository has no tag"
+                "text": " branch, created and checked out when the release branch was the only one; a repository with another branch keeps its own"
               }
             ]
           }
@@ -154,15 +154,15 @@
             "inlines": [
               {
                 "type": "text",
-                "text": "a "
+                "text": "the release branch, created at the root commit when "
               },
               {
                 "type": "code",
-                "text": "develop"
+                "text": "--release"
               },
               {
                 "type": "text",
-                "text": " branch, created and checked out when the release branch was the only one; a repository with another branch keeps its own"
+                "text": " names one that does not exist, so it carries no unreleased work"
               }
             ]
           }
@@ -185,7 +185,100 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Nothing is pushed. The plans directory is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+          "text": "No tag is placed: no version tag means nothing has been released, and the first release covers the whole history. Work committed before init is in it like everything after. Init says how many commits precede its own and names the command that keeps them as history instead, "
+        },
+        {
+          "type": "code",
+          "text": "git tag v0.0.0 \u003csha\u003e"
+        },
+        {
+          "type": "text",
+          "text": " at the last of them. Nothing is pushed. The plans directory is not created here. The preserve hook creates it when the first plan is preserved, so a repository that never preserves a plan never gains the directory."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "starting-a-repository",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Starting a repository"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "git init -b main\npk init\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "pk init --push"
+        },
+        {
+          "type": "text",
+          "text": " publishes "
+        },
+        {
+          "type": "code",
+          "text": "main"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "develop"
+        },
+        {
+          "type": "text",
+          "text": " once "
+        },
+        {
+          "type": "code",
+          "text": "origin"
+        },
+        {
+          "type": "text",
+          "text": " exists. Set the remote's default branch to "
+        },
+        {
+          "type": "code",
+          "text": "develop"
+        },
+        {
+          "type": "text",
+          "text": " so clones start on the working branch. A repository started on "
+        },
+        {
+          "type": "code",
+          "text": "develop"
+        },
+        {
+          "type": "text",
+          "text": " instead runs "
+        },
+        {
+          "type": "code",
+          "text": "pk init --release main"
+        },
+        {
+          "type": "text",
+          "text": ", and "
+        },
+        {
+          "type": "code",
+          "text": "main"
+        },
+        {
+          "type": "text",
+          "text": " is created at the root."
         }
       ]
     },
@@ -229,7 +322,7 @@
         },
         {
           "type": "text",
-          "text": " also pushes the branches and the tag, when the developer asks for that."
+          "text": " also pushes both branches, when the developer asks for that."
         }
       ]
     },
@@ -258,7 +351,7 @@
         },
         {
           "type": "text",
-          "text": " names the branch to guard and release into; the default is the branch checked out. When origin's default branch is another, init refuses rather than guard a working branch, and names both. "
+          "text": " names the branch to guard and release into; the default is the branch checked out. When origin's default branch is another, init refuses rather than guard a working branch, and names both. A named branch that does not exist is created at the root commit. "
         },
         {
           "type": "code",
@@ -266,7 +359,7 @@
         },
         {
           "type": "text",
-          "text": " names the branch to create; the default is "
+          "text": " names the working branch to create; the default is "
         },
         {
           "type": "code",
@@ -282,15 +375,7 @@
         },
         {
           "type": "text",
-          "text": " writes the files and stops, to read them first; guard blocks a session from committing them on the release branch, so the developer commits, tags, and branches by hand. "
-        },
-        {
-          "type": "code",
-          "text": "--no-baseline"
-        },
-        {
-          "type": "text",
-          "text": " skips the tag. "
+          "text": " writes the files and stops, to read them first; guard blocks a session from committing them on the release branch, so the developer commits and branches by hand. "
         },
         {
           "type": "code",
@@ -298,7 +383,7 @@
         },
         {
           "type": "text",
-          "text": " pushes the release branch, the tag, and the new branch to "
+          "text": " pushes the release branch and the working branch to "
         },
         {
           "type": "code",
@@ -358,14 +443,6 @@
         },
         {
           "type": "code",
-          "text": "baseline"
-        },
-        {
-          "type": "text",
-          "text": ", "
-        },
-        {
-          "type": "code",
           "text": "branch"
         },
         {
@@ -415,7 +492,7 @@
         },
         {
           "type": "text",
-          "text": " reads it back and reports the first problem, and notes a missing tag, branch, or plugin entry."
+          "text": " reads it back and reports the first problem, and notes a missing branch or plugin entry."
         }
       ]
     },
@@ -457,7 +534,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --branch \u003cvalue\u003e\n        Working branch to create when the release branch is the only one (default develop)\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --no-baseline\n        Skip creating the v0.0.0 baseline tag\n  --no-commit\n        Leave .pk.json and .claude/settings.json uncommitted\n  --push\n        Push the release branch, the tag, and the working branch to origin\n  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n"
+      "text": "  --branch \u003cvalue\u003e\n        Working branch to create when the release branch is the only one (default develop)\n  --dry-run\n        Preview without making any changes\n  --format \u003cvalue\u003e\n        Output format: text or json (default text)\n  --no-commit\n        Leave .pk.json and .claude/settings.json uncommitted\n  --push\n        Push the release branch, the tag, and the working branch to origin\n  --release \u003cvalue\u003e\n        Release branch to guard (default: the branch currently checked out)\n"
     },
     {
       "type": "para",

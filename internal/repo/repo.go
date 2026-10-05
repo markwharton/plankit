@@ -25,7 +25,6 @@ var InitCmd = &cli.Command{
 		{Name: "branch", Type: cli.StringFlag, Default: "develop", Usage: "Working branch to create when the release branch is the only one"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without making any changes"},
 		cli.FormatFlag,
-		{Name: "no-baseline", Type: cli.BoolFlag, Usage: "Skip creating the v0.0.0 baseline tag"},
 		{Name: "no-commit", Type: cli.BoolFlag, Usage: "Leave .pk.json and .claude/settings.json uncommitted"},
 		{Name: "push", Type: cli.BoolFlag, Usage: "Push the release branch, the tag, and the working branch to origin"},
 		{Name: "release", Type: cli.StringFlag, Usage: "Release branch to guard (default: the branch currently checked out)"},
@@ -73,7 +72,8 @@ func runInit(ctx *cli.Context) error {
 	noCommit := ctx.Bool("no-commit")
 	push := ctx.Bool("push")
 	if working == release {
-		return cli.Usagef("--branch %q is the release branch; the working branch must be another", working)
+		return cli.WithHint(cli.Usagef("--branch %q is the release branch; the working branch must be another", working),
+			"name the release branch: pk init --release main")
 	}
 	if push && noCommit {
 		return cli.Usagef("--push needs the commit that --no-commit skips")
@@ -121,14 +121,29 @@ func runInit(ctx *cli.Context) error {
 	// a dry run on an empty repository previews the whole bootstrap.
 	hadCommits := git.HasCommits(root)
 	willHaveCommit := hadCommits || !noCommit
-	baseline := ""
-	if !ctx.Bool("no-baseline") && git.LatestTag(root) == "" && willHaveCommit {
-		baseline = "v0.0.0"
+	// Work committed before init is in the first release with everything
+	// after it; init says how much there is and how to keep it as history
+	// instead, naming the commit so the command stays exact.
+	preceding, last := 0, ""
+	if hadCommits && git.LatestTag(root) == "" {
+		n, err := git.CountCommits(root, "HEAD")
+		if err != nil {
+			return cli.Statef("cannot count commits: %v", err)
+		}
+		sha, err := git.Exec(root, "rev-parse", "--short", "HEAD")
+		if err != nil {
+			return cli.Statef("cannot read HEAD: %v", err)
+		}
+		preceding, last = n, sha
 	}
+	// The working branch is created when the release branch is the only
+	// one; the release branch is created, at the root so it carries no
+	// unreleased work, when it is named and does not exist.
 	branch := ""
 	if current == release && willHaveCommit && !git.HasOtherLocalBranch(root, release) {
 		branch = working
 	}
+	createRelease := current != release && willHaveCommit && !git.BranchExists(root, release)
 
 	dryRun := ctx.Bool("dry-run")
 	created := []string{}
@@ -164,24 +179,30 @@ func runInit(ctx *cli.Context) error {
 			return err
 		}
 	}
-	if baseline != "" {
-		if err := do("tag "+baseline, func() error { return git.CreateTag(root, baseline) }); err != nil {
+	if branch != "" {
+		if err := do("branch "+branch, func() error { return git.CreateBranch(root, branch) }); err != nil {
 			return err
 		}
 	}
-	if branch != "" {
-		if err := do("branch "+branch, func() error { return git.CreateBranch(root, branch) }); err != nil {
+	if createRelease {
+		if err := do("branch "+release, func() error {
+			first, err := git.RootCommit(root)
+			if err != nil {
+				return err
+			}
+			return git.CreateBranchAt(root, release, first)
+		}); err != nil {
 			return err
 		}
 	}
 	pushed := []string{}
 	if push {
 		pushed = append(pushed, release)
-		if baseline != "" {
-			pushed = append(pushed, baseline)
-		}
-		if branch != "" {
+		switch {
+		case branch != "":
 			pushed = append(pushed, branch)
+		case current != release:
+			pushed = append(pushed, current)
 		}
 		if err := do("push origin "+strings.Join(pushed, " "), func() error { return git.PushRefs(root, pushed...) }); err != nil {
 			return err
@@ -194,7 +215,6 @@ func runInit(ctx *cli.Context) error {
 			"release":   release,
 			"created":   created,
 			"committed": !noCommit,
-			"baseline":  baseline,
 			"branch":    branch,
 			"pushed":    pushed,
 			"dryRun":    dryRun,
@@ -208,8 +228,8 @@ func runInit(ctx *cli.Context) error {
 	if ctx.Quiet {
 		return nil
 	}
-	if baseline == "" && git.LatestTag(root) == "" && !willHaveCommit {
-		msg.Notef(ctx.Stderr, "no baseline tag: the repository has no commits yet")
+	if preceding > 0 {
+		msg.Notef(ctx.Stderr, "%d commits precede plankit's and will be in the first release; to keep them as history, tag the last of them: git tag v0.0.0 %s", preceding, last)
 	}
 	for _, e := range differing {
 		msg.Notef(ctx.Stderr, "%s: %s is present with another value; left as it is", settingsFile, e)
@@ -217,7 +237,7 @@ func runInit(ctx *cli.Context) error {
 	if noCommit {
 		hint := fmt.Sprintf("commit %s yourself: guard blocks a session from doing it on %s", strings.Join(files, " and "), release)
 		if !hadCommits {
-			hint += fmt.Sprintf(", then git tag v0.0.0 && git switch -c %s", working)
+			hint += fmt.Sprintf(", then git switch -c %s", working)
 		}
 		msg.Hintf(ctx.Stderr, "%s", hint)
 	}
@@ -338,17 +358,16 @@ func runStatus(ctx *cli.Context) error {
 	line("protect", s.PlansDir+"/ immutable")
 	line("release", s.Release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))
-	if s.LatestTag != "" {
-		line("tag", s.LatestTag)
+	tag := s.LatestTag
+	if tag == "" {
+		tag = "none yet"
 	}
+	line("tag", tag)
 	if ctx.Quiet {
 		return nil
 	}
 	// Readiness: a repository that stopped partway through the bootstrap
 	// names its own next step.
-	if s.LatestTag == "" && git.HasCommits(root) {
-		msg.Notef(ctx.Stderr, "no baseline tag: git tag v0.0.0 gives the release machinery a starting point")
-	}
 	if s.Release != "" && !git.HasOtherLocalBranch(root, s.Release) {
 		msg.Notef(ctx.Stderr, "no working branch besides %s: to start one, git switch -c develop", s.Release)
 	}
