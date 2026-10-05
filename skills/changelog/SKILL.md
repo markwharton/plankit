@@ -57,7 +57,12 @@ and version files.
 is spliced in place, formatting preserved. `postVersion` and
 `preCommit` hooks run with `$VERSION` (no v prefix).
 
-Run it from the working branch. A protected branch is refused.
+Run it from the working branch. A protected branch is refused. The
+last version tag must be in the branch's history: a branch rewritten
+after a release is refused, naming the tag, because the entry measured
+from it would list that release's work again. Move the tag to the
+matching commit in the new history, or delete it if it was never
+meant, and update origin's copy.
 
 ## The first release
 
