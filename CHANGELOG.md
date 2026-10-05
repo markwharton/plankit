@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.1] - 2026-10-05
+
+### Fixed
+
+- the last version tag must be in the branch's history (26e350c)
+
 ## [v1.6.0] - 2026-10-05
 
 ### Added
@@ -1300,3 +1306,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.5.0]: https://github.com/markwharton/plankit/compare/v1.4.0...v1.5.0
 [v1.5.1]: https://github.com/markwharton/plankit/compare/v1.5.0...v1.5.1
 [v1.6.0]: https://github.com/markwharton/plankit/compare/v1.5.1...v1.6.0
+[v1.6.1]: https://github.com/markwharton/plankit/compare/v1.6.0...v1.6.1
