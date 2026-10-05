@@ -490,3 +490,35 @@ func TestNothingToListSaysWhatWasMeasured(t *testing.T) {
 		t.Fatalf("untyped messages: code=%d errw=%q", code, errw)
 	}
 }
+
+// sideTag leaves a newer version tag on a branch develop does not
+// contain, the shape a rewritten history leaves behind.
+func sideTag(t *testing.T, dir string) {
+	t.Helper()
+	mustGit(t, dir, "switch", "-q", "-c", "side", "v0.0.0")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "fix: old line")
+	mustGit(t, dir, "tag", "v0.0.1")
+	mustGit(t, dir, "switch", "-q", "develop")
+}
+
+// The last tag must be in the branch's history; otherwise the entry
+// would list that release's work again. Refused before anything is
+// written, in dry run and real run alike.
+func TestTagOutsideHistoryIsRefused(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: new work")
+	sideTag(t, dir)
+	for _, args := range [][]string{{"--dry-run"}, {}} {
+		code, _, errw := runCL(t, dir, args...)
+		if code != cli.ExitState || !strings.Contains(errw, "the last tag, v0.0.1, is not in develop's history") {
+			t.Fatalf("%v: code=%d errw=%q", args, code, errw)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "CHANGELOG.md")); !os.IsNotExist(err) {
+		t.Fatal("refused, yet CHANGELOG.md was written")
+	}
+	mustGit(t, dir, "tag", "-d", "v0.0.1")
+	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.Contains(errw, "Generating v0.1.0") {
+		t.Fatalf("with the stray tag gone: code=%d errw=%q", code, errw)
+	}
+}

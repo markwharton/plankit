@@ -46,10 +46,27 @@ func Exec(dir string, args ...string) (string, error) {
 		if detail == "" {
 			detail = err.Error()
 		}
-		return "", fmt.Errorf("git %s: %s", args[0], detail)
+		e := &Error{Command: args[0], Detail: detail, ExitCode: -1}
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			e.ExitCode = exitErr.ExitCode()
+		}
+		return "", e
 	}
 	return strings.TrimSpace(out.String()), nil
 }
+
+// Error is a failed git command: its message is git's own stderr, and
+// ExitCode lets a caller tell a "no" from a failure where git answers
+// with its exit status, as merge-base --is-ancestor does. -1 means git
+// did not run to an exit status.
+type Error struct {
+	Command  string
+	Detail   string
+	ExitCode int
+}
+
+func (e *Error) Error() string { return fmt.Sprintf("git %s: %s", e.Command, e.Detail) }
 
 // CurrentBranch returns the checked-out branch name. An empty repository
 // (no commits) still reports its unborn branch via symbolic-ref.
@@ -95,6 +112,20 @@ func CountCommits(dir, revRange string) (int, error) {
 		return 0, err
 	}
 	return strconv.Atoi(out)
+}
+
+// IsAncestor reports whether ancestor is reachable from rev. Exit 1
+// from git is false; any other failure is the error.
+func IsAncestor(dir, ancestor, rev string) (bool, error) {
+	_, err := Exec(dir, "merge-base", "--is-ancestor", ancestor, rev)
+	if err == nil {
+		return true, nil
+	}
+	var gitErr *Error
+	if errors.As(err, &gitErr) && gitErr.ExitCode == 1 {
+		return false, nil
+	}
+	return false, err
 }
 
 // CreateTag creates a lightweight tag at HEAD.

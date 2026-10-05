@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/markwharton/plankit/internal/brief"
+	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
@@ -387,6 +388,15 @@ func runStatus(ctx *cli.Context) error {
 		}
 		if n > 0 {
 			msg.Notef(ctx.Stderr, "%s has %d commits not in a release", s.Release, n)
+		}
+	}
+	if s.Branch != "" {
+		outside, err := changelog.TagOutsideHistory(root, s.Branch)
+		if err != nil {
+			return cli.Statef("%v", err)
+		}
+		if outside != "" {
+			msg.Notef(ctx.Stderr, "%s", outside)
 		}
 	}
 	if len(missingEntries) > 0 {

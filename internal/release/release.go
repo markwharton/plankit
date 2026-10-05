@@ -135,15 +135,11 @@ func run(ctx *cli.Context) error {
 	if _, err := git.Exec(root, "fetch", "origin", sourceBranch, "--quiet"); err != nil {
 		return fmt.Errorf("git fetch failed: %v", err)
 	}
-	mergeBase, err := git.Exec(root, "merge-base", "HEAD", "origin/"+sourceBranch)
+	upToDate, err := git.IsAncestor(root, "origin/"+sourceBranch, "HEAD")
 	if err != nil {
 		return fmt.Errorf("git merge-base failed: %v", err)
 	}
-	remote, err := git.Exec(root, "rev-parse", "origin/"+sourceBranch)
-	if err != nil {
-		return fmt.Errorf("git rev-parse failed: %v", err)
-	}
-	if mergeBase != remote {
+	if !upToDate {
 		return cli.Statef("local %s is behind origin/%s; pull first", sourceBranch, sourceBranch)
 	}
 	msg.Itemf(w, "Not behind origin/%s", sourceBranch)
@@ -163,7 +159,11 @@ func run(ctx *cli.Context) error {
 			if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
 				return fmt.Errorf("git fetch failed: %v", err)
 			}
-			if _, err := git.Exec(root, "merge-base", "--is-ancestor", "origin/"+releaseBranch, "HEAD"); err != nil {
+			contained, err := git.IsAncestor(root, "origin/"+releaseBranch, "HEAD")
+			if err != nil {
+				return fmt.Errorf("git merge-base failed: %v", err)
+			}
+			if !contained {
 				return cli.WithHint(
 					cli.Statef("origin/%s has diverged from %s; the release push would be rejected", releaseBranch, sourceBranch),
 					"to reconcile, on %s: git merge origin/%s", sourceBranch, releaseBranch)
@@ -176,6 +176,16 @@ func run(ctx *cli.Context) error {
 				cli.Statef("release branch %s does not exist locally or on origin", releaseBranch),
 				"to create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
 		}
+	}
+	outside, err := changelog.TagOutsideHistory(root, sourceBranch)
+	if err != nil {
+		return err
+	}
+	if outside != "" {
+		return cli.Statef("%s", outside)
+	}
+	if last := git.LatestTag(root); last != "" {
+		msg.Itemf(w, "Last tag %s is in %s's history", last, sourceBranch)
 	}
 	msg.Itemf(w, "Release-Tag trailer: %s", tag)
 
@@ -211,7 +221,11 @@ func run(ctx *cli.Context) error {
 
 	if needsMerge {
 		if dryRun {
-			if _, err := git.Exec(root, "merge-base", "--is-ancestor", releaseBranch, sourceBranch); err != nil {
+			ff, err := git.IsAncestor(root, releaseBranch, sourceBranch)
+			if err != nil {
+				return fmt.Errorf("git merge-base failed: %v", err)
+			}
+			if !ff {
 				return cli.Statef("merge would not be fast-forward; %s has diverged from %s. Resolve on %s manually, then try again.", releaseBranch, sourceBranch, releaseBranch)
 			}
 			msg.Itemf(w, "Would merge %s into %s (fast-forward)", sourceBranch, releaseBranch)

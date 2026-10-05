@@ -731,3 +731,27 @@ func TestStatusNotesTheReleaseBranchState(t *testing.T) {
 		t.Fatalf("trunk flow noted:\n%s", errw)
 	}
 }
+
+// A last tag the checked-out branch does not contain is noted, under
+// the quiet gate, and gone once the tag is.
+func TestStatusNotesATagOutsideHistory(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	mustGit(t, dir, "switch", "-q", "-c", "side", "main")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "fix: old line")
+	mustGit(t, dir, "tag", "v0.0.1")
+	mustGit(t, dir, "switch", "-q", "develop")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "feat: new line")
+	if _, _, errw := run(t, "status", "--project-dir", dir); !strings.Contains(errw, "the last tag, v0.0.1, is not in develop's history") {
+		t.Fatalf("note missing:\n%s", errw)
+	}
+	if _, _, quiet := run(t, "status", "--project-dir", dir, "--quiet"); strings.Contains(quiet, "Note:") {
+		t.Fatalf("--quiet still notes:\n%s", quiet)
+	}
+	mustGit(t, dir, "tag", "-d", "v0.0.1")
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "not in develop's history") {
+		t.Fatalf("note after the tag is gone:\n%s", errw)
+	}
+}

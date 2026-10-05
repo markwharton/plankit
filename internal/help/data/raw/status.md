@@ -27,7 +27,9 @@ a note naming the command that starts a working branch. One whose
 release branch does not exist gets the command that creates it at the
 root commit, carrying no unreleased work. In merge flow, a release
 branch that has moved past its last tag is noted with the number of
-commits not in a release. One whose `.claude/settings.json` lacks a
+commits not in a release. A last tag the checked-out branch does not
+contain, the mark of a history rewritten after a release, is noted
+with the way out. One whose `.claude/settings.json` lacks a
 plugin entry gets a note with the JSON to merge in. `--quiet` drops
 the notes.
 

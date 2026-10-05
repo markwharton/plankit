@@ -157,6 +157,15 @@ func run(ctx *cli.Context) error {
 		}
 		fmt.Fprintf(ctx.Stderr, "no release yet: the first release covers all %d commits\n", total)
 	}
+	if found {
+		outside, err := TagOutsideHistory(root, branch)
+		if err != nil {
+			return err
+		}
+		if outside != "" {
+			return cli.Statef("%s", outside)
+		}
+	}
 	logRange := "HEAD"
 	if latestTag != "" {
 		logRange = latestTag + "..HEAD"
@@ -588,4 +597,24 @@ func latestSemverTag(tagOutput string) (string, version.Semver, bool) {
 		}
 	}
 	return "", version.Semver{}, false
+}
+
+// TagOutsideHistory returns the message for a latest version tag that
+// the branch does not contain, or "" when the tag is in the branch's
+// history or there is no tag. A branch rewritten after a release leaves
+// the tag on the old commits, and an entry measured from it would list
+// that release's work again; the way out is the developer's.
+func TagOutsideHistory(root, branch string) (string, error) {
+	tag := git.LatestTag(root)
+	if tag == "" {
+		return "", nil
+	}
+	in, err := git.IsAncestor(root, tag, "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("git merge-base failed: %v", err)
+	}
+	if in {
+		return "", nil
+	}
+	return fmt.Sprintf("the last tag, %s, is not in %s's history: the branch was rewritten after that release, and the next entry would list work %s already released. Move the tag to the commit in the new history that matches the release, or delete it if it was never meant, and update origin's copy of it", tag, branch, tag), nil
 }

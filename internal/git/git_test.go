@@ -101,3 +101,22 @@ func TestRemoteBranchExists(t *testing.T) {
 		t.Fatalf("ok=%v err=%v", ok, err)
 	}
 }
+
+func TestIsAncestor(t *testing.T) {
+	dir := scratch(t)
+	first, _ := Exec(dir, "rev-parse", "HEAD")
+	mustGit(t, dir, "switch", "-q", "-c", "side")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "side")
+	side, _ := Exec(dir, "rev-parse", "HEAD")
+	mustGit(t, dir, "switch", "-q", "main")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "second")
+	if ok, err := IsAncestor(dir, first, "HEAD"); !ok || err != nil {
+		t.Fatalf("root must be an ancestor: %v %v", ok, err)
+	}
+	if ok, err := IsAncestor(dir, side, "HEAD"); ok || err != nil {
+		t.Fatalf("a side commit is not: %v %v", ok, err)
+	}
+	if _, err := IsAncestor(dir, "no-such-rev", "HEAD"); err == nil {
+		t.Fatal("an unknown revision must be an error, not false")
+	}
+}

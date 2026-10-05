@@ -338,3 +338,32 @@ func TestTrunkFlowReleasesFromDefaultBranch(t *testing.T) {
 		t.Fatalf("origin tag at %q, want %q", got, head)
 	}
 }
+
+// A tag the working branch does not contain stops the release in
+// pre-flight: no tag, no merge, the working branch still checked out.
+func TestTagOutsideHistoryStopsRelease(t *testing.T) {
+	dir, bare := repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "switch", "-q", "-c", "side", "v0.0.0")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "fix: old line")
+	mustGit(t, dir, "tag", "v0.0.1")
+	mustGit(t, dir, "switch", "-q", "develop")
+	code, errw := runRel(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "the last tag, v0.0.1, is not in develop's history") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if strings.Contains(errw, "Created local tag") || bareRef(t, bare, "refs/tags/v0.1.0") != "" {
+		t.Fatalf("a refused release tagged:\n%s", errw)
+	}
+	if _, err := git.Exec(dir, "rev-parse", "--verify", "-q", "refs/tags/v0.1.0"); err == nil {
+		t.Fatal("local tag created")
+	}
+	if b, _ := git.CurrentBranch(dir); b != "develop" {
+		t.Fatalf("on %q, want develop", b)
+	}
+	mainTip, _ := git.Exec(dir, "rev-parse", "main")
+	root, _ := git.RootCommit(dir)
+	if mainTip != root {
+		t.Fatal("main moved: the merge ran")
+	}
+}
