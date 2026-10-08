@@ -126,6 +126,78 @@ func TestAutoModePreservesAndCommits(t *testing.T) {
 	}
 }
 
+// TestOtherChangesStayOutOfThePlanCommit: a plan commit holds the plan
+// file alone. A staged addition, a staged deletion, and an unstaged edit
+// are all left exactly as they were.
+func TestOtherChangesStayOutOfThePlanCommit(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("b\n"), 0o644)
+	git.Exec(dir, "add", "b.txt")
+	git.Exec(dir, "commit", "-q", "-m", "b")
+	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("c\n"), 0o644)
+	git.Exec(dir, "add", "c.txt")
+	git.Exec(dir, "rm", "-q", "b.txt")
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("edited\n"), 0o644)
+	statusBefore, _ := git.Exec(dir, "status", "--porcelain")
+	before := commitCount(t, dir)
+
+	runPreserve(t, dir, plan)
+
+	if commitCount(t, dir) != before+1 {
+		t.Fatal("expected one new commit")
+	}
+	files, _ := git.Exec(dir, "show", "--name-status", "--format=", "HEAD")
+	if strings.TrimSpace(files) != "A\tdocs/plans/2026-09-05-001-ship-the-widget.md" {
+		t.Fatalf("committed: %q", files)
+	}
+	if statusAfter, _ := git.Exec(dir, "status", "--porcelain"); statusAfter != statusBefore {
+		t.Fatalf("status changed:\nbefore %q\nafter  %q", statusBefore, statusAfter)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "a.txt")); string(got) != "edited\n" {
+		t.Fatalf("unstaged edit disturbed: %q", got)
+	}
+}
+
+// TestPushCarriesOnlyThePlanCommit: --push publishes the plan commit,
+// and the staged work it left out stays local and staged.
+func TestPushCarriesOnlyThePlanCommit(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	origin := t.TempDir()
+	for _, step := range []struct {
+		dir  string
+		args []string
+	}{
+		{origin, []string{"init", "-q", "--bare"}},
+		{dir, []string{"remote", "add", "origin", origin}},
+		{dir, []string{"push", "-q", "origin", "main"}},
+	} {
+		if _, err := git.Exec(step.dir, step.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("c\n"), 0o644)
+	git.Exec(dir, "add", "c.txt")
+
+	out, _ := runPreserve(t, dir, plan, "--push")
+
+	if !strings.Contains(out, "committed and pushed") {
+		t.Fatalf("out = %s", out)
+	}
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+	if remote, _ := git.Exec(origin, "rev-parse", "main"); remote != head {
+		t.Fatalf("origin main %s, local HEAD %s", remote, head)
+	}
+	files, _ := git.Exec(origin, "show", "--name-only", "--format=", "main")
+	if strings.TrimSpace(files) != "docs/plans/2026-09-05-001-ship-the-widget.md" {
+		t.Fatalf("pushed: %q", files)
+	}
+	if staged, _ := git.Exec(dir, "diff", "--cached", "--name-only"); staged != "c.txt" {
+		t.Fatalf("staged after push: %q", staged)
+	}
+}
+
 func TestDuplicateContentIsNotRecommitted(t *testing.T) {
 	fixedNow(t)
 	dir, plan := scratch(t, "auto", planBody)

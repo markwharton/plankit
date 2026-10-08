@@ -257,17 +257,19 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		msg.Hookf(ctx.Stderr, "preserve", "failed to write plan: %v", err)
 		return
 	}
-	if _, err := git.Exec(root, "add", relPath); err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "git add failed: %v", err)
+	// A clean plan path means the identical bytes were already committed.
+	clean, err := git.Clean(root, relPath)
+	if err != nil {
+		msg.Hookf(ctx.Stderr, "preserve", "git status failed: %v", err)
 		return
 	}
-	// Nothing staged means the identical bytes were already committed.
-	if _, err := git.Exec(root, "diff", "--cached", "--quiet"); err == nil {
+	if clean {
 		removePointer(root)
 		writeResponse(ctx, "Plan unchanged, no commit needed.", "")
 		return
 	}
-	if _, err := git.Exec(root, "commit", "-m", fmt.Sprintf("%s: %s [skip ci]", config.PlanType, title)); err != nil {
+	// The commit holds the plan alone; other staged work stays staged.
+	if err := git.CommitPaths(root, fmt.Sprintf("%s: %s [skip ci]", config.PlanType, title), relPath); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "git commit failed: %v", err)
 		return
 	}

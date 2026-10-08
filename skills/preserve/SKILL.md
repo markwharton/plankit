@@ -8,6 +8,8 @@ description: Keep each approved plan as a record in the plans directory, on appr
 `pk preserve` copies an approved Claude Code plan, byte for byte, into
 the plans directory, `preserve.dir` in `.pk.json`, under a dated,
 sequenced, slugged filename and commits it with a `plan:` message.
+The commit holds the plan file alone; anything else staged stays
+staged.
 
 ## Modes
 
