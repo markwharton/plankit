@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.3] - 2026-10-08
+
+### Fixed
+
+- pk preserve commits only the plan file (049fc4d)
+
 ## [v1.6.2] - 2026-10-06
 
 ### Maintenance
@@ -1314,3 +1320,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.6.0]: https://github.com/markwharton/plankit/compare/v1.5.1...v1.6.0
 [v1.6.1]: https://github.com/markwharton/plankit/compare/v1.6.0...v1.6.1
 [v1.6.2]: https://github.com/markwharton/plankit/compare/v1.6.1...v1.6.2
+[v1.6.3]: https://github.com/markwharton/plankit/compare/v1.6.2...v1.6.3
