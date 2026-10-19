@@ -37,7 +37,9 @@ change. The type table is `changelog.types` in `.pk.json`; `pk init`
 writes the default table, listed under `pk help changelog`.
 `pk changelog --dry-run` previews how the current commits will land.
 Never add a breaking marker on your own judgment; see `pk help guard`,
-Breaking markers.
+Breaking markers. The commits decide the version; `--bump` on the
+release commands is the developer's, see `pk help ship`, Deciding the
+version.
 
 ## Commands
 

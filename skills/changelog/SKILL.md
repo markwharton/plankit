@@ -14,10 +14,29 @@ and push.
 ## Version inference
 
 A breaking change (`type!:` or a `BREAKING CHANGE:` footer) bumps
-major, `feat` bumps minor, anything else bumps patch.
-`--bump major|minor|patch` overrides. Types map to sections via
-`changelog.types` in `.pk.json`; hidden types are tracked but never
-listed. The default table `pk init` writes:
+major, `feat` bumps minor, anything else bumps patch. The commits
+decide the version; `--dry-run` shows the one they infer, and a version
+named before the commits existed is a guess, never a target. When the
+inferred version is not the one expected, stop and say so. A commit
+with the wrong type is fixed by amending its type, while it is
+unpushed, not by overriding the bump.
+
+`--bump major|minor|patch` overrides the inference, and the run names
+the override next to the version it generates:
+
+```
+Generating v0.8.1 (--bump patch; the commits infer minor)
+```
+
+`--bump` and `--exclude` are the developer's: `--bump` for the case
+the commits cannot show, `--exclude` to leave commits out of the
+section. Use either only when the developer asks, with the exact value
+given. guard asks before a `--bump` lower than the commits infer; see
+`pk help guard`, Version bumps.
+
+Types map to sections via `changelog.types` in `.pk.json`; hidden
+types are tracked but never listed. The default table `pk init`
+writes:
 
 ```
 feat       Added
@@ -79,11 +98,11 @@ the first release.
 <!-- generated: flags -->
 ```
   --bump <value>
-        Override the version bump: major, minor, or patch
+        Override the inferred bump: major, minor, or patch (the developer's call)
   --dry-run
         Print the section to stdout without writing or committing
   --exclude <value>
-        Comma-separated commit SHAs to drop from the section
+        Comma-separated commit SHAs to drop from the section (the developer's call)
   --undo
         Unwind the last pk changelog commit (must be unpushed)
 ```
