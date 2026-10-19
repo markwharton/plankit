@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.7.0] - 2026-10-19
+
+### Added
+
+- ask before a --bump lower than the commits infer (645bb09)
+- --discard removes the pending plan pointer (a7b5c35)
+- report the pending plan (eaa9797)
+
+### Documentation
+
+- the commits decide the version (ec50f94)
+- release notes for v1.7.0 (a1f44a5)
+
 ## [v1.6.3] - 2026-10-08
 
 ### Fixed
@@ -1321,3 +1334,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.6.1]: https://github.com/markwharton/plankit/compare/v1.6.0...v1.6.1
 [v1.6.2]: https://github.com/markwharton/plankit/compare/v1.6.1...v1.6.2
 [v1.6.3]: https://github.com/markwharton/plankit/compare/v1.6.2...v1.6.3
+[v1.7.0]: https://github.com/markwharton/plankit/compare/v1.6.3...v1.7.0
