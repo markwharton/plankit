@@ -25,9 +25,9 @@ var Cmd = &cli.Command{
 	Name:    "ship",
 	Summary: "Run changelog then release: cut the pending work as one release",
 	Flags: []cli.FlagSpec{
-		{Name: "bump", Type: cli.StringFlag, Usage: "Override the version bump: major, minor, or patch (passed to changelog)"},
+		{Name: "bump", Type: cli.StringFlag, Usage: "Override the inferred bump: major, minor, or patch (the developer's call; passed to changelog)"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Rehearse: preview the section, or the release when one is already pending"},
-		{Name: "exclude", Type: cli.StringFlag, Usage: "Comma-separated commit SHAs to drop from the section (passed to changelog)"},
+		{Name: "exclude", Type: cli.StringFlag, Usage: "Comma-separated commit SHAs to drop from the section (the developer's call; passed to changelog)"},
 	},
 	Run: run,
 }

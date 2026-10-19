@@ -71,27 +71,11 @@
     {
       "type": "codeblock",
       "lang": "bash",
-      "text": "pk ship --dry-run\npk ship\npk ship --bump patch\n"
+      "text": "pk ship --dry-run\npk ship\n"
     },
     {
       "type": "para",
       "inlines": [
-        {
-          "type": "code",
-          "text": "--bump"
-        },
-        {
-          "type": "text",
-          "text": " and "
-        },
-        {
-          "type": "code",
-          "text": "--exclude"
-        },
-        {
-          "type": "text",
-          "text": " pass through to changelog. "
-        },
         {
           "type": "code",
           "text": "--dry-run"
@@ -124,6 +108,133 @@
         {
           "type": "text",
           "text": " to unwind."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "id": "deciding-the-version",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Deciding the version"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The commits decide the version. "
+        },
+        {
+          "type": "code",
+          "text": "pk ship --dry-run"
+        },
+        {
+          "type": "text",
+          "text": " shows the bump they infer, and that bump is the release. A version named earlier, in a plan or in the conversation, was a guess made before the commits existed; it is never a target to make the release match. When the inferred version is not the one that was expected, stop and say so, with the commits that set it. A commit whose type is wrong, a "
+        },
+        {
+          "type": "code",
+          "text": "feat"
+        },
+        {
+          "type": "text",
+          "text": " that is really a "
+        },
+        {
+          "type": "code",
+          "text": "fix"
+        },
+        {
+          "type": "text",
+          "text": " or a "
+        },
+        {
+          "type": "code",
+          "text": "chore"
+        },
+        {
+          "type": "text",
+          "text": ", is fixed by amending that commit's type before shipping, while it is unpushed; the bump then follows."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " are the developer's, and pass through to changelog. "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " is for the case the commits cannot show, when the developer knows the inferred bump is wrong for a reason outside the messages. "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " leaves commits out of the section, which is the developer's call in the same way. Use either only when the developer asks for it, with the exact value given."
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "lang": "bash",
+      "text": "pk ship --bump patch       # only when the developer asked for patch\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "guard asks before a "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " lower than the commits infer, patch over a "
+        },
+        {
+          "type": "code",
+          "text": "feat"
+        },
+        {
+          "type": "text",
+          "text": " or minor over a breaking change, and lists the commits that call for the higher bump; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help guard"
+        },
+        {
+          "type": "text",
+          "text": ", Version bumps. The changelog half names an override next to the version it generates."
         }
       ]
     },
@@ -184,7 +295,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --bump \u003cvalue\u003e\n        Override the version bump: major, minor, or patch (passed to changelog)\n  --dry-run\n        Rehearse: preview the section, or the release when one is already pending\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (passed to changelog)\n"
+      "text": "  --bump \u003cvalue\u003e\n        Override the inferred bump: major, minor, or patch (the developer's call; passed to changelog)\n  --dry-run\n        Rehearse: preview the section, or the release when one is already pending\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (the developer's call; passed to changelog)\n"
     },
     {
       "type": "para",

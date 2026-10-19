@@ -89,15 +89,94 @@
         },
         {
           "type": "text",
-          "text": " bumps minor, anything else bumps patch. "
+          "text": " bumps minor, anything else bumps patch. The commits decide the version; "
         },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " shows the one they infer, and a version named before the commits existed is a guess, never a target. When the inferred version is not the one expected, stop and say so. A commit with the wrong type is fixed by amending its type, while it is unpushed, not by overriding the bump."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
         {
           "type": "code",
           "text": "--bump major|minor|patch"
         },
         {
           "type": "text",
-          "text": " overrides. Types map to sections via "
+          "text": " overrides the inference, and the run names the override next to the version it generates:"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "Generating v0.8.1 (--bump patch; the commits infer minor)\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " are the developer's: "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " for the case the commits cannot show, "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " to leave commits out of the section. Use either only when the developer asks, with the exact value given. guard asks before a "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " lower than the commits infer; see "
+        },
+        {
+          "type": "code",
+          "text": "pk help guard"
+        },
+        {
+          "type": "text",
+          "text": ", Version bumps."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Types map to sections via "
         },
         {
           "type": "code",

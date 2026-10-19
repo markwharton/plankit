@@ -241,7 +241,23 @@
         },
         {
           "type": "text",
-          "text": ", Breaking markers."
+          "text": ", Breaking markers. The commits decide the version; "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " on the release commands is the developer's, see "
+        },
+        {
+          "type": "code",
+          "text": "pk help ship"
+        },
+        {
+          "type": "text",
+          "text": ", Deciding the version."
         }
       ]
     },
