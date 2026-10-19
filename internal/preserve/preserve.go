@@ -62,6 +62,7 @@ var Cmd = &cli.Command{
 	Summary: "Hook: preserve the approved plan as a record and commit it",
 	Hook:    true,
 	Flags: []cli.FlagSpec{
+		{Name: "discard", Type: cli.BoolFlag, Usage: "Remove the pending plan pointer without preserving the plan it names"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without writing or committing"},
 		{Name: "plan", Type: cli.StringFlag, Usage: "Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)"},
 		{Name: "push", Type: cli.BoolFlag, Usage: "Push to origin after committing"},
@@ -70,6 +71,9 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
+	if ctx.Bool("discard") {
+		return runDiscard(ctx)
+	}
 	if typed := ctx.String("plan"); typed != "" {
 		return runNamed(ctx, typed)
 	}
@@ -215,6 +219,42 @@ func runNamed(ctx *cli.Context, typed string) error {
 	return nil
 }
 
+// runDiscard is the --discard path: the pointer is removed without
+// preserving the plan it names, for the case the plan belongs to
+// another repository and was preserved there. A person typed it, so
+// stdin is not read; the command commits nothing and narrates on
+// stderr. A stale pointer is discarded like a live one, and said to be.
+func runDiscard(ctx *cli.Context) error {
+	if ctx.String("plan") != "" || ctx.Bool("push") {
+		return cli.Usagef("--discard removes the pending plan pointer and takes no --plan or --push")
+	}
+	dir := hookio.ResolveDir(os.Getenv, "", ctx.ProjectDir, ctx.ProjectDirExplicit)
+	root, ok := git.FindRoot(dir)
+	if !ok {
+		return cli.Statef("not a git repository: %s", dir)
+	}
+	planPath, present, stale := peekPointer(root)
+	if !present {
+		removePointer(root) // an empty pointer file is nothing pending too
+		fmt.Fprintln(ctx.Stderr, "No pending plan to discard.")
+		return nil
+	}
+	missing := ""
+	if stale {
+		missing = " (the plan file no longer exists)"
+	}
+	if ctx.Bool("dry-run") {
+		fmt.Fprintf(ctx.Stderr, "pk preserve --dry-run:\n")
+		fmt.Fprintf(ctx.Stderr, "  Discard: %s%s\n", planPath, missing)
+		return nil
+	}
+	if err := os.Remove(pointerPath(root)); err != nil {
+		return cli.Statef("failed to remove the pending plan pointer: %v", err)
+	}
+	fmt.Fprintf(ctx.Stderr, "Discarded the pending plan: %s%s\n", planPath, missing)
+	return nil
+}
+
 // preserve writes the plan into the plans directory under the next
 // filename for the day and commits it, reporting through the response
 // envelope.
@@ -297,25 +337,41 @@ func pointerPath(root string) string {
 	return filepath.Join(root, ".git", pointerFilename)
 }
 
-// readPointer reads the pending-plan pointer. Returns the plan path and
-// true when the pointer exists and its target still does. A stale
-// pointer is deleted and reported absent.
-func readPointer(root string) (string, bool) {
-	path := pointerPath(root)
-	data, err := os.ReadFile(path)
+// peekPointer reads the pending-plan pointer and leaves it as it is:
+// present when the file names a plan, stale when that plan no longer
+// exists. readPointer consumes a stale one; pk status and --discard
+// report it instead.
+func peekPointer(root string) (planPath string, present, stale bool) {
+	data, err := os.ReadFile(pointerPath(root))
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
-	planPath := strings.TrimSpace(string(data))
+	planPath = strings.TrimSpace(string(data))
 	if planPath == "" {
-		os.Remove(path)
-		return "", false
+		return "", false, false
 	}
-	if _, err := os.Stat(planPath); err != nil {
-		os.Remove(path)
+	_, err = os.Stat(planPath)
+	return planPath, true, err != nil
+}
+
+// readPointer reads the pending-plan pointer. Returns the plan path and
+// true when the pointer exists and its target still does. A stale or
+// empty pointer is deleted and reported absent.
+func readPointer(root string) (string, bool) {
+	planPath, present, stale := peekPointer(root)
+	if !present || stale {
+		removePointer(root)
 		return "", false
 	}
 	return planPath, true
+}
+
+// PendingPlan reports the plan the pending pointer names, for pk status:
+// ok when a pointer is present, stale when its plan file is gone. The
+// pointer is left in place either way.
+func PendingPlan(root string) (path string, stale, ok bool) {
+	path, ok, stale = peekPointer(root)
+	return path, stale, ok
 }
 
 // writePointer records the pending-plan pointer. Best-effort: a failure

@@ -293,6 +293,91 @@ func TestStalePointerIsRemoved(t *testing.T) {
 	}
 }
 
+func TestDiscardRemovesThePointerAndNamesThePlan(t *testing.T) {
+	dir, plan := scratch(t, "manual", planBody)
+	runPreserve(t, dir, plan) // the hook records the pointer
+	ptr := filepath.Join(dir, ".git", "pk-pending-plan")
+	if _, err := os.Stat(ptr); err != nil {
+		t.Fatal("the hook should have written the pointer")
+	}
+	before := commitCount(t, dir)
+	out, errw := runPreserve(t, dir, "", "--discard")
+	if out != "" || errw != "Discarded the pending plan: "+plan+"\n" {
+		t.Fatalf("out=%q errw=%q", out, errw)
+	}
+	if _, err := os.Stat(ptr); !os.IsNotExist(err) {
+		t.Fatal("the pointer should be gone")
+	}
+	if commitCount(t, dir) != before {
+		t.Fatal("discard must not commit")
+	}
+	if _, errw := runPreserve(t, dir, ""); errw != "No pending plan to preserve.\n" {
+		t.Fatalf("a typed run after discard: %q", errw)
+	}
+}
+
+func TestDiscardWithNothingPending(t *testing.T) {
+	dir, _ := scratch(t, "manual", planBody)
+	out, errw := runPreserve(t, dir, "", "--discard")
+	if out != "" || errw != "No pending plan to discard.\n" {
+		t.Fatalf("out=%q errw=%q", out, errw)
+	}
+}
+
+func TestDiscardReportsAStalePointer(t *testing.T) {
+	dir, _ := scratch(t, "manual", planBody)
+	ptr := filepath.Join(dir, ".git", "pk-pending-plan")
+	os.WriteFile(ptr, []byte("/nowhere/gone.md\n"), 0o644)
+	_, errw := runPreserve(t, dir, "", "--discard")
+	if errw != "Discarded the pending plan: /nowhere/gone.md (the plan file no longer exists)\n" {
+		t.Fatalf("errw=%q", errw)
+	}
+	if _, err := os.Stat(ptr); !os.IsNotExist(err) {
+		t.Fatal("the stale pointer should be gone")
+	}
+}
+
+func TestDiscardDryRunKeepsThePointer(t *testing.T) {
+	dir, plan := scratch(t, "manual", planBody)
+	runPreserve(t, dir, plan)
+	_, errw := runPreserve(t, dir, "", "--discard", "--dry-run")
+	if !strings.Contains(errw, "pk preserve --dry-run:\n  Discard: "+plan+"\n") {
+		t.Fatalf("errw=%q", errw)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git", "pk-pending-plan")); err != nil {
+		t.Fatal("a dry run must keep the pointer")
+	}
+}
+
+func TestDiscardRefusesPlanAndPush(t *testing.T) {
+	dir, plan := scratch(t, "manual", planBody)
+	for _, args := range [][]string{{"--discard", "--plan", plan}, {"--discard", "--push"}} {
+		_, errw, code := runPreserveIO(t, dir, "", args...)
+		if code != cli.ExitUsage || !strings.Contains(errw, "--discard removes the pending plan pointer") {
+			t.Fatalf("%v: code=%d errw=%q", args, code, errw)
+		}
+	}
+}
+
+func TestPendingPlanIsReadWithoutRemovingIt(t *testing.T) {
+	dir, plan := scratch(t, "manual", planBody)
+	if _, _, ok := PendingPlan(dir); ok {
+		t.Fatal("nothing pending yet")
+	}
+	runPreserve(t, dir, plan)
+	if path, stale, ok := PendingPlan(dir); !ok || stale || path != plan {
+		t.Fatalf("live pointer: path=%q stale=%v ok=%v", path, stale, ok)
+	}
+	ptr := filepath.Join(dir, ".git", "pk-pending-plan")
+	os.WriteFile(ptr, []byte("/nowhere/gone.md\n"), 0o644)
+	if path, stale, ok := PendingPlan(dir); !ok || !stale || path != "/nowhere/gone.md" {
+		t.Fatalf("stale pointer: path=%q stale=%v ok=%v", path, stale, ok)
+	}
+	if _, err := os.Stat(ptr); err != nil {
+		t.Fatal("PendingPlan must leave a stale pointer in place")
+	}
+}
+
 func TestOffModeDoesNothing(t *testing.T) {
 	dir, plan := scratch(t, "off", planBody)
 	before := commitCount(t, dir)

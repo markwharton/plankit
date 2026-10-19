@@ -45,10 +45,26 @@ identical bytes report the existing file. While the pointer names a
 different plan, `--plan` refuses and names both files; preserve the
 pending plan first.
 
+## Discarding a pending plan
+
+The hook records the pointer in the repository the session runs in.
+When the approved plan belongs to another repository and was preserved
+there with `--plan`, the pointer here still names it, and a later
+`pk preserve` would commit that plan into the wrong repository.
+`pk preserve --discard` removes the pointer without preserving anything
+and names the plan it pointed at; with nothing pending it says so.
+`--dry-run` shows what would be discarded. A pointer whose plan file no
+longer exists is discarded the same way and reported as such.
+`pk status` shows the pending plan, so a stale pointer is easy to see.
+Discarding is the developer's call: a session never discards a plan on
+its own.
+
 ## Flags
 
 <!-- generated: flags -->
 ```
+  --discard
+        Remove the pending plan pointer without preserving the plan it names
   --dry-run
         Preview without writing or committing
   --plan <value>

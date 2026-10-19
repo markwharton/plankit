@@ -287,6 +287,66 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "discarding-a-pending-plan",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Discarding a pending plan"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The hook records the pointer in the repository the session runs in. When the approved plan belongs to another repository and was preserved there with "
+        },
+        {
+          "type": "code",
+          "text": "--plan"
+        },
+        {
+          "type": "text",
+          "text": ", the pointer here still names it, and a later "
+        },
+        {
+          "type": "code",
+          "text": "pk preserve"
+        },
+        {
+          "type": "text",
+          "text": " would commit that plan into the wrong repository. "
+        },
+        {
+          "type": "code",
+          "text": "pk preserve --discard"
+        },
+        {
+          "type": "text",
+          "text": " removes the pointer without preserving anything and names the plan it pointed at; with nothing pending it says so. "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " shows what would be discarded. A pointer whose plan file no longer exists is discarded the same way and reported as such. "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": " shows the pending plan, so a stale pointer is easy to see. Discarding is the developer's call: a session never discards a plan on its own."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "flags",
       "inlines": [
         {
@@ -297,7 +357,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --dry-run\n        Preview without writing or committing\n  --plan \u003cvalue\u003e\n        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)\n  --push\n        Push to origin after committing\n"
+      "text": "  --discard\n        Remove the pending plan pointer without preserving the plan it names\n  --dry-run\n        Preview without writing or committing\n  --plan \u003cvalue\u003e\n        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)\n  --push\n        Push to origin after committing\n"
     },
     {
       "type": "para",
