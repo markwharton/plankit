@@ -79,11 +79,11 @@ the first release.
 <!-- generated: flags -->
 ```
   --bump <value>
-        Override the version bump: major, minor, or patch
+        Override the inferred bump: major, minor, or patch (the developer's call)
   --dry-run
         Print the section to stdout without writing or committing
   --exclude <value>
-        Comma-separated commit SHAs to drop from the section
+        Comma-separated commit SHAs to drop from the section (the developer's call)
   --undo
         Unwind the last pk changelog commit (must be unpushed)
 ```

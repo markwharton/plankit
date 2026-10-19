@@ -318,7 +318,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --bump \u003cvalue\u003e\n        Override the version bump: major, minor, or patch\n  --dry-run\n        Print the section to stdout without writing or committing\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section\n  --undo\n        Unwind the last pk changelog commit (must be unpushed)\n"
+      "text": "  --bump \u003cvalue\u003e\n        Override the inferred bump: major, minor, or patch (the developer's call)\n  --dry-run\n        Print the section to stdout without writing or committing\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (the developer's call)\n  --undo\n        Unwind the last pk changelog commit (must be unpushed)\n"
     },
     {
       "type": "para",

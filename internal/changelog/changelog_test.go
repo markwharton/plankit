@@ -2,6 +2,7 @@ package changelog
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 func fixedNow(t *testing.T) {
@@ -171,17 +173,27 @@ func TestBumpInference(t *testing.T) {
 func TestBumpOverrideAndValidation(t *testing.T) {
 	dir := repo(t, nil)
 	commit(t, dir, "feat: would be minor")
-	code, _, _ := runCL(t, dir, "--bump", "major")
+	code, _, errw := runCL(t, dir, "--bump", "major")
 	if code != cli.ExitOK {
 		t.Fatal("override failed")
 	}
 	if _, tag, _ := ReadReleaseTagTrailer(dir); tag != "v1.0.0" {
 		t.Fatalf("tag = %q", tag)
 	}
+	// The run names the override next to the bump it replaced.
+	if !strings.Contains(errw, "Generating v1.0.0 (--bump major; the commits infer minor)") {
+		t.Fatalf("override not named: %q", errw)
+	}
+	// An override equal to the inference is not an override.
+	dir3 := repo(t, nil)
+	commit(t, dir3, "feat: minor either way")
+	if _, _, errw := runCL(t, dir3, "--dry-run", "--bump", "minor"); !strings.Contains(errw, "Generating v0.1.0\n") || strings.Contains(errw, "infer") {
+		t.Fatalf("same-level bump should print plainly: %q", errw)
+	}
 
 	dir2 := repo(t, nil)
 	commit(t, dir2, "fix: x")
-	code, _, errw := runCL(t, dir2, "--bump", "huge")
+	code, _, errw = runCL(t, dir2, "--bump", "huge")
 	if code != cli.ExitUsage || !strings.Contains(errw, "invalid --bump") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
@@ -276,6 +288,45 @@ func TestExcludeAffectsBump(t *testing.T) {
 	runCL(t, dir, "--exclude", feat)
 	if _, tag, _ := ReadReleaseTagTrailer(dir); tag != "v0.0.1" {
 		t.Fatalf("bump should fall to patch after excluding the feat, got %q", tag)
+	}
+}
+
+// TestInferBumpNamesTheDrivers pins what guard reads: the bump the
+// commits call for and the commits that call for it, after --exclude.
+func TestInferBumpNamesTheDrivers(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "fix: small")
+	commit(t, dir, "feat(api): big")
+	feat, _ := git.Exec(dir, "log", "-1", "--format=%h")
+
+	got, err := InferBump(dir, nil)
+	if err != nil || got.Bump != version.BumpMinor || len(got.Drivers) != 1 || got.Drivers[0].Subject() != "feat(api): big" || got.Drivers[0].Hash != feat {
+		t.Fatalf("minor with the feat as driver, got %+v, %v", got, err)
+	}
+	got, err = InferBump(dir, []string{feat})
+	if err != nil || got.Bump != version.BumpPatch || len(got.Drivers) != 0 {
+		t.Fatalf("excluding the feat falls to patch with no drivers, got %+v, %v", got, err)
+	}
+
+	commit(t, dir, "refactor!: drop the v1 keys")
+	got, err = InferBump(dir, nil)
+	if err != nil || got.Bump != version.BumpMajor || len(got.Drivers) != 1 || got.Drivers[0].Subject() != "refactor!: drop the v1 keys" {
+		t.Fatalf("major with the breaking commit as driver, got %+v, %v", got, err)
+	}
+
+	// Nothing conventional since the tag: nothing to infer from.
+	empty := repo(t, nil)
+	mustGit(t, empty, "commit", "-q", "--allow-empty", "-m", "not conventional")
+	if _, err := InferBump(empty, nil); !errors.Is(err, ErrNoCommits) {
+		t.Fatalf("want ErrNoCommits, got %v", err)
+	}
+
+	// No tag at all: the first release covers everything, so the
+	// scaffold commit infers a patch.
+	untagged := repo(t, nil)
+	mustGit(t, untagged, "tag", "-d", "v0.0.0")
+	if got, err := InferBump(untagged, nil); err != nil || got.Bump != version.BumpPatch {
+		t.Fatalf("first release infers from the whole history, got %+v, %v", got, err)
 	}
 }
 

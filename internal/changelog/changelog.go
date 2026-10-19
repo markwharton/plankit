@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,9 +37,9 @@ var Cmd = &cli.Command{
 	Name:    "changelog",
 	Summary: "Generate CHANGELOG.md from conventional commits and commit it with a Release-Tag trailer",
 	Flags: []cli.FlagSpec{
-		{Name: "bump", Type: cli.StringFlag, Usage: "Override the version bump: major, minor, or patch"},
+		{Name: "bump", Type: cli.StringFlag, Usage: "Override the inferred bump: major, minor, or patch (the developer's call)"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Print the section to stdout without writing or committing"},
-		{Name: "exclude", Type: cli.StringFlag, Usage: "Comma-separated commit SHAs to drop from the section"},
+		{Name: "exclude", Type: cli.StringFlag, Usage: "Comma-separated commit SHAs to drop from the section (the developer's call)"},
 		{Name: "undo", Type: cli.BoolFlag, Usage: "Unwind the last pk changelog commit (must be unpushed)"},
 	},
 	Run: run,
@@ -138,44 +139,24 @@ func run(ctx *cli.Context) error {
 	// The latest semver tag anchors the commit range and the next
 	// version. No tag anywhere means nothing has been released: the
 	// first release covers the whole history from an implied v0.0.0.
-	tagOutput, err := git.Exec(root, "tag", "--list", "v*", "--sort=-v:refname")
+	since, err := commitsSinceLastTag(root, branch)
 	if err != nil {
-		return fmt.Errorf("failed to list tags: %v", err)
+		return err
 	}
-	latestTag, baseVersion, found := latestSemverTag(tagOutput)
-	if !found {
+	latestTag, baseVersion, logRange, commits := since.LatestTag, since.Base, since.Range, since.Commits
+	if latestTag == "" {
 		// Origin has tags, local doesn't: common in shallow clones that
 		// fetched only the working branch. That is not a first release.
 		if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
 			return cli.WithHint(cli.Statef("no version tags found locally"),
 				"origin has tags; fetch them: git fetch --tags")
 		}
-		latestTag, baseVersion = "", version.Semver{}
 		total, err := git.CountCommits(root, "HEAD")
 		if err != nil {
 			return fmt.Errorf("failed to count commits: %v", err)
 		}
 		fmt.Fprintf(ctx.Stderr, "no release yet: the first release covers all %d commits\n", total)
 	}
-	if found {
-		outside, err := TagOutsideHistory(root, branch)
-		if err != nil {
-			return err
-		}
-		if outside != "" {
-			return cli.Statef("%s", outside)
-		}
-	}
-	logRange := "HEAD"
-	if latestTag != "" {
-		logRange = latestTag + "..HEAD"
-	}
-
-	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", logRange, "--reverse")
-	if err != nil {
-		return fmt.Errorf("failed to read git log: %v", err)
-	}
-	commits := parseLog(logOutput)
 	if len(commits) == 0 {
 		// Say what was measured: the tag the range starts at and how
 		// many commits follow it, so "nothing to release", "messages
@@ -211,7 +192,13 @@ func run(ctx *cli.Context) error {
 	}
 	next := baseVersion.Bump(bump)
 	nextTag := next.String()
-	fmt.Fprintf(ctx.Stderr, "Generating %s\n", nextTag)
+	// An override is named next to the bump it replaces: the commits
+	// decide the version, and a reader of the run sees when they did not.
+	if inferred := detectBump(commits); ctx.String("bump") != "" && bump != inferred {
+		fmt.Fprintf(ctx.Stderr, "Generating %s (--bump %s; the commits infer %s)\n", nextTag, version.BumpName(bump), version.BumpName(inferred))
+	} else {
+		fmt.Fprintf(ctx.Stderr, "Generating %s\n", nextTag)
+	}
 
 	// Refuse when HEAD already carries a Release-Tag trailer: one pending
 	// release at a time.
@@ -409,11 +396,106 @@ func parseLog(output string) []Commit {
 	return commits
 }
 
-// applyExclude drops commits whose short hash matches an exclude entry
-// (exact match, as the hash appears in CHANGELOG.md parentheses).
-// Unmatched entries warn but do not fail; the filter runs before bump
-// detection so the bump reflects the commits that will actually appear.
-func applyExclude(ctx *cli.Context, commits []Commit, excludes []string) []Commit {
+// sinceTag is what the history says about the next release: the latest
+// semver tag (empty before the first release) and its version, the log
+// range the release measures, and the conventional commits in it.
+type sinceTag struct {
+	LatestTag string
+	Base      version.Semver
+	Range     string
+	Commits   []Commit
+}
+
+// commitsSinceLastTag reads the range a release measures. A tag outside
+// the branch's history is refused here, so every reader measures the
+// same thing. Local only: no call reaches origin, because the guard hook
+// reads this under its timeout.
+func commitsSinceLastTag(root, branch string) (sinceTag, error) {
+	tagOutput, err := git.Exec(root, "tag", "--list", "v*", "--sort=-v:refname")
+	if err != nil {
+		return sinceTag{}, fmt.Errorf("failed to list tags: %v", err)
+	}
+	latestTag, base, found := latestSemverTag(tagOutput)
+	if found {
+		outside, err := TagOutsideHistory(root, branch)
+		if err != nil {
+			return sinceTag{}, err
+		}
+		if outside != "" {
+			return sinceTag{}, cli.Statef("%s", outside)
+		}
+	} else {
+		latestTag, base = "", version.Semver{}
+	}
+	logRange := "HEAD"
+	if latestTag != "" {
+		logRange = latestTag + "..HEAD"
+	}
+	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", logRange, "--reverse")
+	if err != nil {
+		return sinceTag{}, fmt.Errorf("failed to read git log: %v", err)
+	}
+	return sinceTag{LatestTag: latestTag, Base: base, Range: logRange, Commits: parseLog(logOutput)}, nil
+}
+
+// ErrNoCommits reports a range with no conventional commits: nothing to
+// infer a bump from.
+var ErrNoCommits = errors.New("no conventional commits since the last tag")
+
+// Inference is the bump the commits call for and the commits that call
+// for it: every breaking commit for a major, every feat for a minor,
+// none for a patch.
+type Inference struct {
+	Bump    int
+	Drivers []Commit
+}
+
+// InferBump measures the next release the way pk changelog does: the
+// conventional commits since the last tag on the current branch, less
+// the excluded hashes. guard reads it to judge a --bump.
+func InferBump(root string, excludes []string) (Inference, error) {
+	branch, _ := git.Exec(root, "branch", "--show-current")
+	since, err := commitsSinceLastTag(root, branch)
+	if err != nil {
+		return Inference{}, err
+	}
+	commits, _ := excludeCommits(since.Commits, excludes)
+	if len(commits) == 0 {
+		return Inference{}, ErrNoCommits
+	}
+	return infer(commits), nil
+}
+
+func infer(commits []Commit) Inference {
+	bump := detectBump(commits)
+	var drivers []Commit
+	for _, c := range commits {
+		if bump == version.BumpMajor && c.Breaking || bump == version.BumpMinor && c.Type == "feat" {
+			drivers = append(drivers, c)
+		}
+	}
+	return Inference{Bump: bump, Drivers: drivers}
+}
+
+// Subject renders the commit as its conventional subject,
+// type(scope)!: message, for a reader of the log.
+func (c Commit) Subject() string {
+	var b strings.Builder
+	b.WriteString(c.Type)
+	if c.Scope != "" {
+		b.WriteString("(" + c.Scope + ")")
+	}
+	if c.Breaking {
+		b.WriteString("!")
+	}
+	b.WriteString(": " + c.Message)
+	return b.String()
+}
+
+// excludeCommits drops commits whose short hash matches an entry (exact
+// match, as the hash appears in CHANGELOG.md parentheses) and returns
+// the entries that matched nothing, sorted.
+func excludeCommits(commits []Commit, excludes []string) (kept []Commit, unmatched []string) {
 	wanted := make(map[string]bool, len(excludes))
 	for _, e := range excludes {
 		if e = strings.TrimSpace(e); e != "" {
@@ -421,9 +503,9 @@ func applyExclude(ctx *cli.Context, commits []Commit, excludes []string) []Commi
 		}
 	}
 	if len(wanted) == 0 {
-		return commits
+		return commits, nil
 	}
-	kept := commits[:0]
+	kept = make([]Commit, 0, len(commits))
 	for _, c := range commits {
 		if _, ok := wanted[c.Hash]; ok {
 			wanted[c.Hash] = true
@@ -433,8 +515,20 @@ func applyExclude(ctx *cli.Context, commits []Commit, excludes []string) []Commi
 	}
 	for sha, matched := range wanted {
 		if !matched {
-			msg.Warnf(ctx.Stderr, "--exclude %s did not match any commit", sha)
+			unmatched = append(unmatched, sha)
 		}
+	}
+	sort.Strings(unmatched)
+	return kept, unmatched
+}
+
+// applyExclude is excludeCommits with the unmatched entries warned
+// about; they do not fail the run. The filter runs before bump
+// detection so the bump reflects the commits that will actually appear.
+func applyExclude(ctx *cli.Context, commits []Commit, excludes []string) []Commit {
+	kept, unmatched := excludeCommits(commits, excludes)
+	for _, sha := range unmatched {
+		msg.Warnf(ctx.Stderr, "--exclude %s did not match any commit", sha)
 	}
 	return kept
 }
@@ -453,18 +547,14 @@ func detectBump(commits []Commit) int {
 }
 
 func resolveBump(flag string, commits []Commit) (int, error) {
-	switch flag {
-	case "":
+	if flag == "" {
 		return detectBump(commits), nil
-	case "major":
-		return version.BumpMajor, nil
-	case "minor":
-		return version.BumpMinor, nil
-	case "patch":
-		return version.BumpPatch, nil
-	default:
+	}
+	level, ok := version.ParseBump(flag)
+	if !ok {
 		return 0, cli.Usagef("invalid --bump value %q (must be major, minor, or patch)", flag)
 	}
+	return level, nil
 }
 
 // groupCommits groups by section, hidden types excluded, section order

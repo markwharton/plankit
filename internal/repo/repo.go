@@ -284,6 +284,7 @@ type state struct {
 	GuardMode  string   `json:"guardMode,omitempty"`
 	GuardPush  string   `json:"guardPush,omitempty"`
 	GuardBreak string   `json:"guardBreaking,omitempty"`
+	GuardBump  string   `json:"guardBump,omitempty"`
 	Guarded    []string `json:"guardedBranches,omitempty"`
 	Release    string   `json:"releaseBranch,omitempty"`
 	Plans      int      `json:"plans"`
@@ -308,6 +309,7 @@ func runStatus(ctx *cli.Context) error {
 		s.GuardMode = cfg.Guard.ResolvedMode()
 		s.GuardPush = cfg.Guard.ResolvedPush()
 		s.GuardBreak = cfg.Guard.ResolvedBreaking()
+		s.GuardBump = cfg.Guard.ResolvedBump()
 		s.Guarded = cfg.Guard.Branches
 		s.Release = cfg.Release.Branch
 		// The settings file is checked with the policy: a file that does
@@ -355,7 +357,7 @@ func runStatus(ctx *cli.Context) error {
 	line("project", s.Root)
 	line("branch", fmt.Sprintf("%s (%s)", s.Branch, tree))
 	line("preserve", s.Preserve)
-	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, strings.Join(s.Guarded, ", ")))
+	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s, bump: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, s.GuardBump, strings.Join(s.Guarded, ", ")))
 	line("protect", s.PlansDir+"/ immutable")
 	line("release", s.Release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))

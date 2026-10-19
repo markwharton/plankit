@@ -267,6 +267,85 @@ func TestBreakingMarkerPrecedenceAndDial(t *testing.T) {
 	}
 }
 
+// commit makes a conventional commit touching a throwaway file.
+func commit(t *testing.T, dir, message string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "work.txt"), []byte(message+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "."}, {"commit", "-q", "-m", message}} {
+		if _, err := git.Exec(dir, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestBumpOverrideAsks(t *testing.T) {
+	// The scratch repo has no tag, so the first release covers the whole
+	// history: the scaffold commit "first" is not conventional, and the
+	// feat below makes the inference minor.
+	dir := scratchOn(t, "develop", nil)
+	commit(t, dir, "feat(api): add the widget")
+	feat, _ := git.Exec(dir, "log", "-1", "--format=%h")
+
+	cases := []struct {
+		name    string
+		command string
+		wantAsk bool
+	}{
+		{"ship patch over feat", `pk ship --bump patch`, true},
+		{"changelog equals form", `pk changelog --bump=patch`, true},
+		{"shim path form", `"/plugins/plankit/bin/pk" ship --bump patch`, true},
+		{"chained after safe command", `go test ./... && pk ship --bump patch`, true},
+		{"ship minor equals inference", `pk ship --bump minor`, false},
+		{"ship major is higher", `pk ship --bump major`, false},
+		{"dry run rehearses", `pk ship --dry-run --bump patch`, false},
+		{"exclude the feat", `pk ship --exclude ` + feat + ` --bump patch`, false},
+		{"unknown value is changelog's error", `pk ship --bump huge`, false},
+		{"no bump", `pk ship`, false},
+		{"other command", `pk status --bump patch`, false},
+	}
+	for _, tc := range cases {
+		out, _ := runGuard(t, dir, tc.command)
+		if tc.wantAsk {
+			if !strings.Contains(out, `"ask"`) || !strings.Contains(out, "lower than the minor the commits infer") || !strings.Contains(out, feat+" feat(api): add the widget") {
+				t.Errorf("%s: want ask naming the feat, got %q", tc.name, out)
+			}
+		} else if out != "" {
+			t.Errorf("%s: want silent allow, got %q", tc.name, out)
+		}
+	}
+
+	// A breaking commit makes it major; minor is then lower too.
+	commit(t, dir, "refactor!: drop the v1 keys")
+	out, _ := runGuard(t, dir, `pk changelog --bump minor`)
+	if !strings.Contains(out, `"ask"`) || !strings.Contains(out, "lower than the major the commits infer") || !strings.Contains(out, "refactor!: drop the v1 keys") {
+		t.Fatalf("want ask naming the breaking commit, got %q", out)
+	}
+}
+
+func TestBumpOverrideDialAndBranch(t *testing.T) {
+	// bump: off restores silence.
+	dir := scratchOn(t, "develop", func(c *config.PkConfig) { c.Guard.Bump = "off" })
+	commit(t, dir, "feat: x")
+	if out, _ := runGuard(t, dir, `pk ship --bump patch`); out != "" {
+		t.Fatalf("bump off: want silence, got %q", out)
+	}
+
+	// pk ship is not a git mutation: on a protected branch the branch
+	// policy says nothing, and changelog refuses the branch itself. The
+	// bump policy still asks.
+	dir = scratchOn(t, "main", nil)
+	commit(t, dir, "feat: x")
+	out, _ := runGuard(t, dir, `pk ship --bump patch`)
+	if strings.Contains(out, `"deny"`) || !strings.Contains(out, `"ask"`) {
+		t.Fatalf("protected branch: want the bump ask alone, got %q", out)
+	}
+	if out, _ := runGuard(t, dir, `pk ship --bump minor`); out != "" {
+		t.Fatalf("protected branch, no override: want silence, got %q", out)
+	}
+}
+
 func TestShellWords(t *testing.T) {
 	cases := []struct {
 		in   string

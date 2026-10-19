@@ -14,12 +14,40 @@ type Semver struct {
 	Build               string
 }
 
-// Bump levels for Semver.Bump.
+// Bump levels for Semver.Bump. A higher level is a bigger bump, so the
+// levels compare as the release commands compare a --bump to the bump
+// the commits infer.
 const (
 	BumpPatch = iota + 1
 	BumpMinor
 	BumpMajor
 )
+
+// ParseBump maps a --bump word to its level; ok is false for any other
+// word.
+func ParseBump(name string) (level int, ok bool) {
+	switch name {
+	case "major":
+		return BumpMajor, true
+	case "minor":
+		return BumpMinor, true
+	case "patch":
+		return BumpPatch, true
+	}
+	return 0, false
+}
+
+// BumpName is the --bump word for a level.
+func BumpName(level int) string {
+	switch level {
+	case BumpMajor:
+		return "major"
+	case BumpMinor:
+		return "minor"
+	default:
+		return "patch"
+	}
+}
 
 // ParseSemver parses a semantic version, accepting an optional "v"
 // prefix (as git tags carry). ok is false for anything the spec rejects.

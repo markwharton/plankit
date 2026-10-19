@@ -106,9 +106,9 @@ authored sentence; review and the tests below are the guard for that.
   never exits 2, which would block the tool call: a hook that blocks
   work by failing is worse than one that lets a command through.
 - When guard's policies overlap, deny beats ask.
-- A push and a breaking marker are the developer's. Everything that
-  mutates can be rehearsed with `--dry-run`, and the release commit
-  can be unwound with `--undo`.
+- A push, a breaking marker, and a `--bump` below what the commits
+  infer are the developer's. Everything that mutates can be rehearsed
+  with `--dry-run`, and the release commit can be unwound with `--undo`.
 - An explicit `--project-dir` or `PK_PROJECT_DIR` beats the payload's
   `cwd`, which beats `CLAUDE_PROJECT_DIR`, which beats the process
   directory. A stated directory wins; where the session is beats
@@ -129,8 +129,12 @@ type GuardConfig struct {
 	// marker (! or a BREAKING CHANGE footer). Markers are user-approved
 	// claims, not agent judgment, so guard asks before one is written.
 	Breaking string `json:"breaking,omitempty"` // ask | off
-	Mode     string `json:"mode,omitempty"`     // block | ask | off
-	Push     string `json:"push,omitempty"`     // block | ask | off
+	// Bump governs a --bump on pk ship or pk changelog that is lower than
+	// the bump the commits infer. The commits decide the version; the
+	// override is the developer's, so guard asks before an agent uses one.
+	Bump string `json:"bump,omitempty"` // ask | off
+	Mode string `json:"mode,omitempty"` // block | ask | off
+	Push string `json:"push,omitempty"` // block | ask | off
 }
 ```
 
@@ -170,8 +174,9 @@ the binaries, stamped with the tag's version, and the archive, and
 publishes them with the marketplace file and `checksums.txt` as
 release assets; the Homebrew tap reads the checksums to bump its
 formula. The digest is computed, so it is never
-committed to a source branch. The one place judgment enters is the
-breaking marker, and guard asks there.
+committed to a source branch. Judgment enters in two places, the
+breaking marker and a `--bump` below what the commits infer, and guard
+asks at both.
 
 ## Where the code is
 
@@ -262,6 +267,9 @@ in the payload is how the hook finds the repository.
 # guard: PreToolUse on Bash. A breaking marker gets ask; on a
 # protected branch, deny; a plain feat: gets silence.
 echo '{"cwd":"'"$PWD"'","tool_input":{"command":"git commit -m \"feat!: drop the session cookie\""}}' | pk guard | jq
+# guard: a pk ship --bump below what the commits infer gets ask, with
+# the commits that call for the higher bump in the reason.
+echo '{"cwd":"'"$PWD"'","tool_input":{"command":"pk ship --bump patch"}}' | pk guard | jq
 
 # protect: PreToolUse on Edit/Write. A path under docs/plans/ gets deny.
 echo '{"cwd":"'"$PWD"'","tool_input":{"file_path":"'"$PWD"'/docs/plans/example.md"}}' | pk protect | jq

@@ -31,7 +31,8 @@ levels them: `go install` for pk, `/plugin update` for the plugin. A
 dev build of pk is not compared. The last sentence is constant. The rest follows the
 dials. `changelog.types` lists the commit types, the default table
 when the file leaves it empty. `guard.breaking` decides whether the
-marker rule mentions the ask. `guard.mode` and `guard.push` describe
+marker rule mentions the ask. `guard.bump` decides whether the version
+rule mentions the ask. `guard.mode` and `guard.push` describe
 the protected branches and pushing. `release.branch` names where
 releases merge. `preserve.mode` describes how plans are kept. A dial
 set to off drops its paragraph.

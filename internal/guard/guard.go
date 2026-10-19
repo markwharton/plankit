@@ -1,6 +1,7 @@
 // Package guard implements the guard PreToolUse hook: it blocks or
-// questions git mutations on protected branches, and pushes generally,
-// according to .pk.json policy. The command-recognition logic is ported
+// questions git mutations on protected branches, pushes generally, and
+// the release claims that are the developer's (a breaking marker, a
+// --bump below what the commits infer), according to .pk.json policy. The command-recognition logic is ported
 // from v1 unchanged; the v2 addition is the not-configured short-circuit,
 // because the plugin's hooks fire in every repository.
 package guard
@@ -12,25 +13,29 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
 	"github.com/markwharton/plankit/internal/msg"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // Cmd is the guard hook command.
 var Cmd = &cli.Command{
 	Name:    "guard",
-	Summary: "Hook: block or question git mutations on protected branches, pushes, and breaking-change markers",
+	Summary: "Hook: block or question git mutations on protected branches, pushes, breaking-change markers, and lowered version bumps",
 	Hook:    true,
 	Run:     run,
 }
 
-// run enforces two policies on git mutations: a branch policy (mutations
-// on protected branches) and a push policy (any git push, regardless of
-// branch). The strongest applicable decision wins (deny > ask), so a
-// push to a protected branch is never downgraded.
+// run enforces four policies: a branch policy (git mutations on
+// protected branches), a push policy (any git push, regardless of
+// branch), a breaking policy (a commit message carrying a breaking
+// marker), and a bump policy (a release command whose --bump is lower
+// than the commits infer). The strongest applicable decision wins
+// (deny > ask), so a push to a protected branch is never downgraded.
 //
 // Internal errors (unreadable input, malformed .pk.json, git failures)
 // fail open: guard logs to stderr and emits no decision, always exit 0.
@@ -47,7 +52,9 @@ func run(ctx *cli.Context) error {
 		return nil
 	}
 	command := input.ToolInput.Command
-	if !isGitMutation(command) {
+	mutation := isGitMutation(command)
+	level, excludes, override := bumpOverride(command)
+	if !mutation && !override {
 		return nil
 	}
 
@@ -68,7 +75,7 @@ func run(ctx *cli.Context) error {
 	// Branch policy: a mutation while a protected branch is checked out.
 	branchDeny, branchAsk := false, false
 	var protectedBranch string
-	if mode := cfg.Guard.ResolvedMode(); mode != "off" && len(cfg.Guard.Branches) > 0 {
+	if mode := cfg.Guard.ResolvedMode(); mutation && mode != "off" && len(cfg.Guard.Branches) > 0 {
 		branch, err := git.CurrentBranch(root)
 		if err != nil {
 			return nil
@@ -105,6 +112,25 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
+	// Bump policy: pk ship or pk changelog with a --bump lower than the
+	// commits infer, measured the way changelog will measure it. The
+	// commits decide the version; an override is the developer's call.
+	// A rehearsal (--dry-run) writes nothing and passes; a value changelog
+	// will reject passes to changelog's own usage error.
+	bumpAsk, bumpReason := false, ""
+	if override && cfg.Guard.ResolvedBump() == "ask" {
+		if requested, ok := version.ParseBump(level); ok {
+			inferred, err := changelog.InferBump(root, excludes)
+			switch {
+			case errors.Is(err, changelog.ErrNoCommits):
+			case err != nil:
+				msg.Hookf(ctx.Stderr, "guard", "cannot infer the bump: %v", err)
+			case requested < inferred.Bump:
+				bumpAsk, bumpReason = true, bumpAskReason(level, inferred)
+			}
+		}
+	}
+
 	const pushDenyReason = "pk guard: push blocked. Pushing is the developer's explicit action; the commit is local. Push it yourself, or use pk preserve / pk release, when ready."
 	const pushAskReason = "pk guard: the agent is about to git push. Pushing is the developer's call. Allow this push?"
 	switch {
@@ -118,8 +144,23 @@ func run(ctx *cli.Context) error {
 		writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
 	case breakingAsk:
 		writeDecision(ctx, hookio.PermissionAsk, "pk guard: the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
+	case bumpAsk:
+		writeDecision(ctx, hookio.PermissionAsk, bumpReason)
 	}
 	return nil
+}
+
+// bumpAskReason names the gap and the commits that call for the higher
+// bump, so the person deciding sees what the override would hide.
+func bumpAskReason(requested string, inferred changelog.Inference) string {
+	var b strings.Builder
+	name := version.BumpName(inferred.Bump)
+	fmt.Fprintf(&b, "pk guard: --bump %s is lower than the %s the commits infer. The commits decide the version; --bump is the developer's override, never a way to match a number named earlier. Commits that call for %s:\n", requested, name, name)
+	for _, c := range inferred.Drivers {
+		fmt.Fprintf(&b, "  %s %s\n", c.Hash, c.Subject())
+	}
+	b.WriteString("Confirm the override, or drop --bump. A commit with the wrong type is fixed by amending its type, not by overriding the bump.")
+	return b.String()
 }
 
 func writeDecision(ctx *cli.Context, decision, reason string) {
@@ -138,6 +179,54 @@ func isGitMutation(command string) bool {
 		}
 	}
 	return false
+}
+
+// bumpOverride finds a pk ship or pk changelog invocation carrying
+// --bump in a (possibly compound) command and returns the level asked
+// for with the --exclude hashes beside it, which change what the commits
+// infer. A --dry-run invocation is not reported: a rehearsal writes
+// nothing. pk is matched by path basename, so the plugin's shim form
+// is recognized too.
+func bumpOverride(command string) (level string, excludes []string, ok bool) {
+	for _, cmd := range splitShellCommands(command) {
+		words := shellWords(cmd)
+		i := 0
+		for i < len(words) && (isEnvAssignment(words[i]) || words[i] == "command") {
+			i++
+		}
+		if i+1 >= len(words) || baseName(words[i]) != "pk" {
+			continue
+		}
+		if sub := words[i+1]; sub != "ship" && sub != "changelog" {
+			continue
+		}
+		level, excludes, dryRun := "", []string(nil), false
+		for j := i + 2; j < len(words); j++ {
+			w := words[j]
+			switch {
+			case w == "--bump":
+				if j+1 < len(words) {
+					level = words[j+1]
+					j++
+				}
+			case strings.HasPrefix(w, "--bump="):
+				level = strings.TrimPrefix(w, "--bump=")
+			case w == "--exclude":
+				if j+1 < len(words) {
+					excludes = strings.Split(words[j+1], ",")
+					j++
+				}
+			case strings.HasPrefix(w, "--exclude="):
+				excludes = strings.Split(strings.TrimPrefix(w, "--exclude="), ",")
+			case w == "--dry-run":
+				dryRun = true
+			}
+		}
+		if level != "" && !dryRun {
+			return level, excludes, true
+		}
+	}
+	return "", nil, false
 }
 
 // isGitPush reports whether any subcommand is a git push.

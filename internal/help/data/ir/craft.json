@@ -341,7 +341,7 @@
               },
               {
                 "type": "text",
-                "text": ", and "
+                "text": ", "
               },
               {
                 "type": "code",
@@ -349,11 +349,27 @@
               },
               {
                 "type": "text",
-                "text": " are the developer's. Check: guard asks before a marked commit; for "
+                "text": ", and "
+              },
+              {
+                "type": "code",
+                "text": "--exclude"
+              },
+              {
+                "type": "text",
+                "text": " are the developer's. Check: guard asks before a marked commit and before a "
               },
               {
                 "type": "code",
                 "text": "--bump"
+              },
+              {
+                "type": "text",
+                "text": " lower than the commits infer; for "
+              },
+              {
+                "type": "code",
+                "text": "--exclude"
               },
               {
                 "type": "text",

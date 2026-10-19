@@ -65,7 +65,15 @@
         },
         {
           "type": "text",
-          "text": "), guard reads "
+          "text": ") or a release command carrying "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": ", guard reads "
         },
         {
           "type": "code",
@@ -73,7 +81,7 @@
         },
         {
           "type": "text",
-          "text": " and answers with a permission decision. Three policies apply; the strongest decision wins, and deny beats ask."
+          "text": " and answers with a permission decision. Four policies apply; the strongest decision wins, and deny beats ask."
         }
       ]
     },
@@ -173,6 +181,65 @@
               {
                 "type": "text",
                 "text": "): a commit whose message carries a breaking marker is questioned ("
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": ") or ignored ("
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": ")"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "bump policy ("
+              },
+              {
+                "type": "code",
+                "text": "guard.bump"
+              },
+              {
+                "type": "text",
+                "text": "): a "
+              },
+              {
+                "type": "code",
+                "text": "pk ship"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "pk changelog"
+              },
+              {
+                "type": "text",
+                "text": " whose "
+              },
+              {
+                "type": "code",
+                "text": "--bump"
+              },
+              {
+                "type": "text",
+                "text": " is lower than the bump the commits infer is questioned ("
               },
               {
                 "type": "code",
@@ -303,7 +370,7 @@
     {
       "type": "codeblock",
       "lang": "json",
-      "text": "\"guard\": {\n  \"branches\": [\"main\"],\n  \"breaking\": \"ask\",\n  \"mode\": \"block\",\n  \"push\": \"block\"\n}\n"
+      "text": "\"guard\": {\n  \"branches\": [\"main\"],\n  \"breaking\": \"ask\",\n  \"bump\": \"ask\",\n  \"mode\": \"block\",\n  \"push\": \"block\"\n}\n"
     },
     {
       "type": "heading",
@@ -401,6 +468,122 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "version-bumps",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Version bumps"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The commits decide the version: a breaking marker is major, "
+        },
+        {
+          "type": "code",
+          "text": "feat"
+        },
+        {
+          "type": "text",
+          "text": " is minor, anything else is patch, and "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " infers the bump from them. "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " on "
+        },
+        {
+          "type": "code",
+          "text": "pk ship"
+        },
+        {
+          "type": "text",
+          "text": " or "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " overrides the inference, and the override is the developer's call, like the marker. The hook asks before a "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " lower than what the commits infer (patch over a "
+        },
+        {
+          "type": "code",
+          "text": "feat"
+        },
+        {
+          "type": "text",
+          "text": ", minor or patch over a breaking change), and the question lists the commits that call for the higher bump. A higher "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " passes. So does "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": ", which writes nothing, and an "
+        },
+        {
+          "type": "code",
+          "text": "--exclude"
+        },
+        {
+          "type": "text",
+          "text": " beside the "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " counts in the measurement, as changelog counts it. "
+        },
+        {
+          "type": "code",
+          "text": "guard.bump: \"off\""
+        },
+        {
+          "type": "text",
+          "text": " disables the ask, not the rule."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "settings",
       "inlines": [
         {
@@ -436,7 +619,7 @@
     },
     {
       "type": "codeblock",
-      "text": "\"guard\": {\n  \"branches\": [\"\u003cbranch\u003e\", ...],\n  \"breaking\": \"ask\" | \"off\",\n  \"mode\": \"block\" | \"ask\" | \"off\",\n  \"push\": \"block\" | \"ask\" | \"off\"\n}\n"
+      "text": "\"guard\": {\n  \"branches\": [\"\u003cbranch\u003e\", ...],\n  \"breaking\": \"ask\" | \"off\",\n  \"bump\": \"ask\" | \"off\",\n  \"mode\": \"block\" | \"ask\" | \"off\",\n  \"push\": \"block\" | \"ask\" | \"off\"\n}\n"
     },
     {
       "type": "list",
@@ -515,6 +698,69 @@
               {
                 "type": "text",
                 "text": ") is questioned, or not."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.bump"
+              },
+              {
+                "type": "text",
+                "text": ": "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "off"
+              },
+              {
+                "type": "text",
+                "text": "; default "
+              },
+              {
+                "type": "code",
+                "text": "ask"
+              },
+              {
+                "type": "text",
+                "text": ". A "
+              },
+              {
+                "type": "code",
+                "text": "--bump"
+              },
+              {
+                "type": "text",
+                "text": " on "
+              },
+              {
+                "type": "code",
+                "text": "pk ship"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "code",
+                "text": "pk changelog"
+              },
+              {
+                "type": "text",
+                "text": " lower than the bump the commits infer is questioned, or not."
               }
             ]
           }

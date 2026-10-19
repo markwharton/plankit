@@ -56,8 +56,9 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
   must list the target; if it errors or the target is absent, make a
   new commit. Check: the command's output appears before the rewrite.
 - **Never mark a change breaking on your own judgment.** `!`,
-  `BREAKING CHANGE`, and `--bump` are the developer's. Check: guard
-  asks before a marked commit; for `--bump`, none automated.
+  `BREAKING CHANGE`, `--bump`, and `--exclude` are the developer's.
+  Check: guard asks before a marked commit and before a `--bump` lower
+  than the commits infer; for `--exclude`, none automated.
 
 ## Prompts
 

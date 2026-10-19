@@ -49,6 +49,7 @@ const (
 	DefaultGuardMode     = "block"      // guard.mode
 	DefaultGuardPush     = "block"      // guard.push
 	DefaultGuardBreaking = "ask"        // guard.breaking
+	DefaultGuardBump     = "ask"        // guard.bump
 	DefaultPreserveDir   = "docs/plans" // preserve.dir
 	DefaultPreserveMode  = "manual"     // preserve.mode
 )
@@ -60,8 +61,12 @@ type GuardConfig struct {
 	// marker (! or a BREAKING CHANGE footer). Markers are user-approved
 	// claims, not agent judgment, so guard asks before one is written.
 	Breaking string `json:"breaking,omitempty"` // ask | off
-	Mode     string `json:"mode,omitempty"`     // block | ask | off
-	Push     string `json:"push,omitempty"`     // block | ask | off
+	// Bump governs a --bump on pk ship or pk changelog that is lower than
+	// the bump the commits infer. The commits decide the version; the
+	// override is the developer's, so guard asks before an agent uses one.
+	Bump string `json:"bump,omitempty"` // ask | off
+	Mode string `json:"mode,omitempty"` // block | ask | off
+	Push string `json:"push,omitempty"` // block | ask | off
 }
 
 // ResolvedMode returns guard.mode with the default applied.
@@ -86,6 +91,14 @@ func (g GuardConfig) ResolvedBreaking() string {
 		return DefaultGuardBreaking
 	}
 	return g.Breaking
+}
+
+// ResolvedBump returns guard.bump with the default applied.
+func (g GuardConfig) ResolvedBump() string {
+	if g.Bump == "" {
+		return DefaultGuardBump
+	}
+	return g.Bump
 }
 
 // PreserveConfig holds the preserve section.
@@ -288,6 +301,7 @@ func Default(releaseBranch string) *PkConfig {
 			Branches: []string{releaseBranch},
 			Mode:     DefaultGuardMode,
 			Breaking: DefaultGuardBreaking,
+			Bump:     DefaultGuardBump,
 			Push:     DefaultGuardPush,
 		},
 		Preserve: PreserveConfig{Dir: DefaultPreserveDir, Mode: DefaultPreserveMode},

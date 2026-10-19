@@ -120,6 +120,13 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 		b.WriteString("Add a breaking marker (! or BREAKING CHANGE) only on explicit user direction.\n\n")
 	}
 
+	switch cfg.Guard.ResolvedBump() {
+	case "ask":
+		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given. guard asks before a --bump lower than the commits infer.\n\n")
+	default:
+		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given.\n\n")
+	}
+
 	if mode := cfg.Guard.ResolvedMode(); mode != "off" && len(cfg.Guard.Branches) > 0 {
 		branches := strings.Join(cfg.Guard.Branches, ", ")
 		verb := "is"

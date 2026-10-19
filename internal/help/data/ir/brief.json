@@ -134,6 +134,14 @@
         },
         {
           "type": "code",
+          "text": "guard.bump"
+        },
+        {
+          "type": "text",
+          "text": " decides whether the version rule mentions the ask. "
+        },
+        {
+          "type": "code",
           "text": "guard.mode"
         },
         {

@@ -56,17 +56,20 @@ of decisions, reversals included.
 ## Branches
 
 The guard hook runs before every shell command the agent issues. It
-reads the policy file and answers with a decision. Three policies
+reads the policy file and answers with a decision. Four policies
 apply. On a protected branch, a git mutation (`commit`, `merge`,
 `push`, `rebase`, `reset`) is denied or questioned. A `git push` on
 any branch is denied or questioned. A commit whose message carries a
 breaking marker (`!` after the type, or a `BREAKING CHANGE:` footer)
-is questioned. When policies overlap, deny beats ask.
+is questioned. A `pk ship` or `pk changelog` whose `--bump` is lower
+than the bump the commits infer is questioned. When policies overlap,
+deny beats ask.
 
 The breaking marker drives the next major version. It is the
 developer's claim to make, so the agent is asked before it writes
 one. `--bump` on the release commands is the same claim and the same
-rule.
+rule: the commits decide the version, and the agent is asked before a
+`--bump` lower than what they infer.
 
 The brief hook runs as a session starts, resumes, or compacts. It
 tells the session the policy in words: the commit types, the
@@ -83,7 +86,8 @@ a release.
 
 `pk changelog` reads the commits since the last tag and infers the
 version: a breaking marker is major, `feat` is minor, anything else
-is patch. It writes the section into CHANGELOG.md, stamps the version
+is patch. `--bump` overrides the inference, and the run says so next to
+the version it generates. It writes the section into CHANGELOG.md, stamps the version
 into the files the policy names, and commits with a `Release-Tag`
 trailer. No tag exists yet; the commit is there to review, and
 `pk changelog --undo` unwinds it while it is unpushed.
