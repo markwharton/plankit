@@ -6,7 +6,8 @@ description: Report plankit configuration and repository state
 # pk status
 
 Reports the resolved policy from `.pk.json`, the current branch and
-tree state, the preserved plan count, and the latest tag.
+tree state, the preserved plan count, the pending plan, and the latest
+tag.
 
 ## Usage
 
@@ -29,9 +30,12 @@ root commit, carrying no unreleased work. In merge flow, a release
 branch that has moved past its last tag is noted with the number of
 commits not in a release. A last tag the checked-out branch does not
 contain, the mark of a history rewritten after a release, is noted
-with the way out. One whose `.claude/settings.json` lacks a
-plugin entry gets a note with the JSON to merge in. `--quiet` drops
-the notes.
+with the way out. A pending plan, recorded by the preserve hook and
+not yet committed, is shown with its path and noted with its two ways
+out, `/plankit:preserve` and `pk preserve --discard`; a pointer whose
+plan file is gone is marked missing. One whose `.claude/settings.json`
+lacks a plugin entry gets a note with the JSON to merge in. `--quiet`
+drops the notes.
 
 ## Flags
 

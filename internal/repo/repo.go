@@ -16,6 +16,7 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
+	"github.com/markwharton/plankit/internal/preserve"
 )
 
 // InitCmd configures a repository for plankit.
@@ -288,6 +289,7 @@ type state struct {
 	Guarded    []string `json:"guardedBranches,omitempty"`
 	Release    string   `json:"releaseBranch,omitempty"`
 	Plans      int      `json:"plans"`
+	Pending    string   `json:"pendingPlan,omitempty"`
 	LatestTag  string   `json:"latestTag,omitempty"`
 }
 
@@ -332,6 +334,8 @@ func runStatus(ctx *cli.Context) error {
 	}
 	s.Clean, _ = git.Clean(root)
 	s.LatestTag = git.LatestTag(root)
+	pending, pendingStale, pendingOK := preserve.PendingPlan(root)
+	s.Pending = pending
 
 	if ctx.Format == "json" {
 		if err := json.NewEncoder(ctx.Stdout).Encode(s); err != nil {
@@ -361,6 +365,14 @@ func runStatus(ctx *cli.Context) error {
 	line("protect", s.PlansDir+"/ immutable")
 	line("release", s.Release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))
+	switch {
+	case !pendingOK:
+		line("pending", "none")
+	case pendingStale:
+		line("pending", s.Pending+" (missing)")
+	default:
+		line("pending", s.Pending)
+	}
 	tag := s.LatestTag
 	if tag == "" {
 		tag = "none yet"
@@ -400,6 +412,14 @@ func runStatus(ctx *cli.Context) error {
 		if outside != "" {
 			msg.Notef(ctx.Stderr, "%s", outside)
 		}
+	}
+	// The pending plan names its two ways out, so a pointer left behind
+	// by a plan preserved elsewhere is seen and dealt with.
+	switch {
+	case pendingOK && pendingStale:
+		msg.Notef(ctx.Stderr, "the pending plan's file is gone: pk preserve --discard drops the pointer")
+	case pendingOK:
+		msg.Notef(ctx.Stderr, "a plan is pending: /plankit:preserve commits it, pk preserve --discard drops it")
 	}
 	if len(missingEntries) > 0 {
 		// The entries are rendered by the same code init writes, so the

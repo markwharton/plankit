@@ -29,7 +29,7 @@
         },
         {
           "type": "text",
-          "text": ", the current branch and tree state, the preserved plan count, and the latest tag."
+          "text": ", the current branch and tree state, the preserved plan count, the pending plan, and the latest tag."
         }
       ]
     },
@@ -104,7 +104,23 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A configured repository whose release branch is its only branch gets a note naming the command that starts a working branch. One whose release branch does not exist gets the command that creates it at the root commit, carrying no unreleased work. In merge flow, a release branch that has moved past its last tag is noted with the number of commits not in a release. A last tag the checked-out branch does not contain, the mark of a history rewritten after a release, is noted with the way out. One whose "
+          "text": "A configured repository whose release branch is its only branch gets a note naming the command that starts a working branch. One whose release branch does not exist gets the command that creates it at the root commit, carrying no unreleased work. In merge flow, a release branch that has moved past its last tag is noted with the number of commits not in a release. A last tag the checked-out branch does not contain, the mark of a history rewritten after a release, is noted with the way out. A pending plan, recorded by the preserve hook and not yet committed, is shown with its path and noted with its two ways out, "
+        },
+        {
+          "type": "code",
+          "text": "/plankit:preserve"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "pk preserve --discard"
+        },
+        {
+          "type": "text",
+          "text": "; a pointer whose plan file is gone is marked missing. One whose "
         },
         {
           "type": "code",

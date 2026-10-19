@@ -46,7 +46,9 @@ plan, the preserve hook copies it, byte for byte, into the plans
 directory under a dated, sequenced filename. In auto mode preserve
 commits it at once. In manual mode, the default, preserve records
 which plan was approved and tells the session; `/plankit:preserve`
-commits it later.
+commits it later, `pk preserve --discard` drops it when the plan
+belongs to another repository, and `pk status` shows it while it
+waits.
 
 The protect hook denies every edit under the plans directory. A plan
 is never changed after approval. When the approach changes, a new plan

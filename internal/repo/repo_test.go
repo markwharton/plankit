@@ -432,6 +432,54 @@ func TestStatusNotARepo(t *testing.T) {
 	}
 }
 
+func TestStatusShowsThePendingPlan(t *testing.T) {
+	dir := scratch(t, true)
+	run(t, "init", "--project-dir", dir)
+	_, text, errw := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(text, "pending:   none") || strings.Contains(errw, "pending") {
+		t.Fatalf("nothing pending: %s / %s", text, errw)
+	}
+
+	// The pointer is written the way the hook writes it: one line, the
+	// plan's path. Status reads it without consuming it.
+	plan := filepath.Join(t.TempDir(), ".claude", "plans", "widget.md")
+	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(plan, []byte("# widget\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ptr := filepath.Join(dir, ".git", "pk-pending-plan")
+	if err := os.WriteFile(ptr, []byte(plan+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, text, errw = run(t, "status", "--project-dir", dir)
+	if !strings.Contains(text, "pending:   "+plan+"\n") || !strings.Contains(errw, "a plan is pending: /plankit:preserve commits it, pk preserve --discard drops it") {
+		t.Fatalf("pending: %s / %s", text, errw)
+	}
+	_, out, _ := run(t, "status", "--project-dir", dir, "--format", "json")
+	var s map[string]any
+	if err := json.Unmarshal([]byte(out), &s); err != nil {
+		t.Fatal(err)
+	}
+	if s["pendingPlan"] != plan {
+		t.Fatalf("json pendingPlan = %v", s["pendingPlan"])
+	}
+	if _, _, errw := run(t, "status", "--project-dir", dir, "--quiet"); strings.Contains(errw, "pending") {
+		t.Fatalf("--quiet drops the note: %s", errw)
+	}
+
+	// A pointer whose plan is gone is marked, and the note names the way out.
+	os.Remove(plan)
+	_, text, errw = run(t, "status", "--project-dir", dir)
+	if !strings.Contains(text, "pending:   "+plan+" (missing)\n") || !strings.Contains(errw, "the pending plan's file is gone: pk preserve --discard drops the pointer") {
+		t.Fatalf("stale: %s / %s", text, errw)
+	}
+	if _, err := os.Stat(ptr); err != nil {
+		t.Fatal("status must not consume the pointer")
+	}
+}
+
 func TestStatusJSON(t *testing.T) {
 	dir := scratch(t, true)
 	run(t, "init", "--project-dir", dir)
