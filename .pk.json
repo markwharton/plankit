@@ -75,6 +75,7 @@
       "main"
     ],
     "breaking": "ask",
+    "bump": "ask",
     "mode": "block",
     "push": "block"
   },
