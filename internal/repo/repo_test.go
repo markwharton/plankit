@@ -819,6 +819,57 @@ func TestStatusTagLineReportsOriginWhenLocalHasNone(t *testing.T) {
 	}
 }
 
+// No release branch is the trunk flow, and the report says so rather
+// than printing an empty value a reader takes for a gap.
+func TestStatusReleaseLineNamesTheFlow(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "release:   main\n") {
+		t.Fatalf("merge flow:\n%s", out)
+	}
+	cfg, _ := config.Load(dir)
+	cfg.Release.Branch = ""
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	// No origin: the flow is named without a branch.
+	_, out, _ := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "release:   trunk flow: pk ship tags origin's default branch\n") {
+		t.Fatalf("trunk flow without origin:\n%s", out)
+	}
+	// An origin the clone holds no default-branch record for is asked.
+	// The bare clone is taken from develop, so point its HEAD at main.
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	mustGit(t, dir, "clone", "-q", "--bare", ".", bare)
+	mustGit(t, bare, "symbolic-ref", "HEAD", "refs/heads/main")
+	mustGit(t, dir, "remote", "add", "origin", bare)
+	if _, ok := git.OriginHead(dir); ok {
+		t.Fatal("setup: the clone should hold no record of origin's HEAD")
+	}
+	_, out, _ = run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "release:   trunk flow: pk ship tags main, origin's default branch\n") {
+		t.Fatalf("trunk flow, origin asked:\n%s", out)
+	}
+	// A clone that recorded origin's default branch names it from the
+	// record.
+	mustGit(t, dir, "fetch", "-q", "origin")
+	mustGit(t, dir, "remote", "set-head", "origin", "main")
+	_, out, _ = run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "release:   trunk flow: pk ship tags main, origin's default branch\n") {
+		t.Fatalf("trunk flow, record held:\n%s", out)
+	}
+	_, js, _ := run(t, "status", "--project-dir", dir, "--format", "json")
+	var st map[string]any
+	if err := json.Unmarshal([]byte(js), &st); err != nil {
+		t.Fatal(err)
+	}
+	if st["releaseFlow"] != "trunk" || st["releaseBranch"] != nil {
+		t.Fatalf("json: %v", st)
+	}
+}
+
 // A last tag the checked-out branch does not contain is noted, under
 // the quiet gate, and gone once the tag is.
 func TestStatusNotesATagOutsideHistory(t *testing.T) {

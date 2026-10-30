@@ -67,6 +67,55 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The release line names the branch releases merge into, or, when "
+        },
+        {
+          "type": "code",
+          "text": ".pk.json"
+        },
+        {
+          "type": "text",
+          "text": " sets none, the trunk flow: "
+        },
+        {
+          "type": "code",
+          "text": "trunk flow: pk ship tags main, origin's default branch"
+        },
+        {
+          "type": "text",
+          "text": ". The branch comes from the clone's record of origin's default, or from origin when the clone holds none; only a repository with no origin leaves it unnamed. An empty release branch is that flow, not a gap in the policy. JSON carries it as "
+        },
+        {
+          "type": "code",
+          "text": "releaseFlow"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "merge"
+        },
+        {
+          "type": "text",
+          "text": " or "
+        },
+        {
+          "type": "code",
+          "text": "trunk"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "usage",

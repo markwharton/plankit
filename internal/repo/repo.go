@@ -289,6 +289,7 @@ type state struct {
 	GuardBump  string   `json:"guardBump,omitempty"`
 	Guarded    []string `json:"guardedBranches,omitempty"`
 	Release    string   `json:"releaseBranch,omitempty"`
+	Flow       string   `json:"releaseFlow,omitempty"`
 	Plans      int      `json:"plans"`
 	Pending    string   `json:"pendingPlan,omitempty"`
 	LatestTag  string   `json:"latestTag,omitempty"`
@@ -332,6 +333,10 @@ func runStatus(ctx *cli.Context) error {
 		s.GuardBump = cfg.Guard.ResolvedBump()
 		s.Guarded = cfg.Guard.Branches
 		s.Release = cfg.Release.Branch
+		s.Flow = "merge"
+		if s.Release == "" {
+			s.Flow = "trunk"
+		}
 		// The settings file is checked with the policy: a file that does
 		// not parse is a problem in every mode, before any report.
 		settings, err := readSettings(root)
@@ -387,7 +392,23 @@ func runStatus(ctx *cli.Context) error {
 	line("preserve", s.Preserve)
 	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s, bump: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, s.GuardBump, strings.Join(s.Guarded, ", ")))
 	line("protect", s.PlansDir+"/ immutable")
-	line("release", s.Release)
+	release := s.Release
+	if s.Flow == "trunk" {
+		// No release branch is a flow, not a gap: say which, and name
+		// the branch. The clone's record of origin's default is read
+		// first; a clone without one, as a single-branch clone can be,
+		// asks origin, the one call pk changelog makes for the same
+		// answer. Only a repository with no origin leaves it unnamed.
+		release = "trunk flow: pk ship tags origin's default branch"
+		def, ok := git.OriginHead(root)
+		if !ok {
+			def, ok, _ = git.DefaultBranch(root)
+		}
+		if ok {
+			release = fmt.Sprintf("trunk flow: pk ship tags %s, origin's default branch", def)
+		}
+	}
+	line("release", release)
 	line("plans", fmt.Sprintf("%d preserved", s.Plans))
 	switch {
 	case !pendingOK:
