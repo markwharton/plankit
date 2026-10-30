@@ -9,6 +9,13 @@ Reports the resolved policy from `.pk.json`, the current branch and
 tree state, the preserved plan count, the pending plan, and the latest
 tag.
 
+The tag line reads the clone. When the clone has no tags, as a fresh
+clone of only the working branch does in a cloud sandbox, the line
+says what origin has, `none locally; origin has v1.2.0`, read from
+origin without fetching; `none yet` means neither has a version tag,
+so nothing has been released. `pk changelog` fetches the tags itself
+when it runs.
+
 ## Usage
 
 ```bash

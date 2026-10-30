@@ -34,6 +34,39 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The tag line reads the clone. When the clone has no tags, as a fresh clone of only the working branch does in a cloud sandbox, the line says what origin has, "
+        },
+        {
+          "type": "code",
+          "text": "none locally; origin has v1.2.0"
+        },
+        {
+          "type": "text",
+          "text": ", read from origin without fetching; "
+        },
+        {
+          "type": "code",
+          "text": "none yet"
+        },
+        {
+          "type": "text",
+          "text": " means neither has a version tag, so nothing has been released. "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " fetches the tags itself when it runs."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "usage",

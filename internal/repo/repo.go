@@ -17,6 +17,7 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/preserve"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // InitCmd configures a repository for plankit.
@@ -291,6 +292,23 @@ type state struct {
 	Plans      int      `json:"plans"`
 	Pending    string   `json:"pendingPlan,omitempty"`
 	LatestTag  string   `json:"latestTag,omitempty"`
+	OriginTag  string   `json:"originLatestTag,omitempty"`
+}
+
+// originLatestTag is the highest v-prefixed semver tag origin
+// advertises, or "" when it has none or cannot be asked. A clone that
+// fetched only its working branch, as a cloud sandbox does, has no
+// local tags; this is how the report says what origin knows without
+// changing the clone.
+func originLatestTag(root string) string {
+	var best string
+	var bestV version.Semver
+	for _, tag := range git.RemoteTags(root) {
+		if sv, ok := version.ParseSemver(tag); ok && (best == "" || sv.Compare(bestV) > 0) {
+			best, bestV = tag, sv
+		}
+	}
+	return best
 }
 
 func runStatus(ctx *cli.Context) error {
@@ -334,6 +352,12 @@ func runStatus(ctx *cli.Context) error {
 	}
 	s.Clean, _ = git.Clean(root)
 	s.LatestTag = git.LatestTag(root)
+	if s.LatestTag == "" {
+		// A clone with no tags is usually one that fetched only its
+		// working branch. Say what origin has, so "none" is never read
+		// as "nothing has been released".
+		s.OriginTag = originLatestTag(root)
+	}
 	pending, pendingStale, pendingOK := preserve.PendingPlan(root)
 	s.Pending = pending
 
@@ -374,7 +398,10 @@ func runStatus(ctx *cli.Context) error {
 		line("pending", s.Pending)
 	}
 	tag := s.LatestTag
-	if tag == "" {
+	switch {
+	case tag == "" && s.OriginTag != "":
+		tag = "none locally; origin has " + s.OriginTag
+	case tag == "":
 		tag = "none yet"
 	}
 	line("tag", tag)

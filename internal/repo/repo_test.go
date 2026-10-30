@@ -780,6 +780,45 @@ func TestStatusNotesTheReleaseBranchState(t *testing.T) {
 	}
 }
 
+// A clone with no local tags reports what origin has, so "none" is
+// never read as "nothing has been released". Origin is read, never
+// fetched: the clone's tags stay as they were.
+func TestStatusTagLineReportsOriginWhenLocalHasNone(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	mustGit(t, dir, "tag", "v0.1.0")
+	mustGit(t, dir, "tag", "v0.2.0")
+	mustGit(t, dir, "tag", "release-2026")
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	mustGit(t, dir, "clone", "-q", "--bare", ".", bare)
+	mustGit(t, dir, "remote", "add", "origin", bare)
+	mustGit(t, dir, "tag", "-d", "v0.1.0", "v0.2.0", "release-2026")
+
+	_, out, _ := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "tag:       none locally; origin has v0.2.0") {
+		t.Fatalf("tag line:\n%s", out)
+	}
+	if tags, _ := git.Exec(dir, "tag", "--list"); tags != "" {
+		t.Fatalf("status fetched tags: %q", tags)
+	}
+	_, js, _ := run(t, "status", "--project-dir", dir, "--format", "json")
+	var st map[string]any
+	if err := json.Unmarshal([]byte(js), &st); err != nil {
+		t.Fatal(err)
+	}
+	if st["originLatestTag"] != "v0.2.0" || st["latestTag"] != nil {
+		t.Fatalf("json: %v", st)
+	}
+
+	// Origin with no semver tag: still none yet.
+	mustGit(t, bare, "tag", "-d", "v0.1.0", "v0.2.0")
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "tag:       none yet") {
+		t.Fatalf("origin without semver tags:\n%s", out)
+	}
+}
+
 // A last tag the checked-out branch does not contain is noted, under
 // the quiet gate, and gone once the tag is.
 func TestStatusNotesATagOutsideHistory(t *testing.T) {

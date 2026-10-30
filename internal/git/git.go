@@ -104,6 +104,25 @@ func LatestTag(dir string) string {
 	return strings.SplitN(out, "\n", 2)[0]
 }
 
+// RemoteTags lists the tag names origin advertises, peeled entries
+// dropped, or nil when origin has none or cannot be asked. It reads the
+// remote and writes nothing.
+func RemoteTags(dir string) []string {
+	out, err := Exec(dir, "ls-remote", "--tags", "origin")
+	if err != nil {
+		return nil
+	}
+	var tags []string
+	for _, line := range strings.Split(out, "\n") {
+		_, ref, found := strings.Cut(line, "\trefs/tags/")
+		if !found || strings.HasSuffix(ref, "^{}") {
+			continue
+		}
+		tags = append(tags, ref)
+	}
+	return tags
+}
+
 // CountCommits returns the number of commits in revRange, a revision
 // or a range such as "v1.0.0..main".
 func CountCommits(dir, revRange string) (int, error) {
