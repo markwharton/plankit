@@ -344,6 +344,96 @@
     {
       "type": "heading",
       "level": 2,
+      "id": "cloud-sessions",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Cloud sessions"
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A cloud session at claude.ai/code starts from a fresh clone and never installs the plugins a repository enables, so plankit's hooks and skills are absent there unless the cloud environment installs the plugin. Give the environment a setup script:"
+        }
+      ]
+    },
+    {
+      "type": "codeblock",
+      "text": "#!/bin/bash\nset -x\nif command -v claude \u003e/dev/null 2\u003e\u00261; then\n  claude plugin install plankit --marketplace https://plankit.com/marketplace.json --scope user \\\n    || echo \"setup: plankit install failed\" \u003e\u00262\nelse\n  echo \"setup: claude CLI not on PATH during setup\" \u003e\u00262\nfi\n"
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Every line is non-fatal: a non-zero exit stops the session starting. Under Network access, allow "
+        },
+        {
+          "type": "code",
+          "text": "plankit.com"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "github.com"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "*.githubusercontent.com"
+        },
+        {
+          "type": "text",
+          "text": "; the plugin archive is a GitHub release asset and downloads through a redirect to the last of those. The environment is set once per account, in the environment selector under the message box, and serves every repository that enables the plugin."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "To confirm it took effect, ask a session in that environment to run "
+        },
+        {
+          "type": "code",
+          "text": "pk status"
+        },
+        {
+          "type": "text",
+          "text": ": pk is only present when the plugin installed, so the policy block printing is the proof. "
+        },
+        {
+          "type": "code",
+          "text": "pk: command not found"
+        },
+        {
+          "type": "text",
+          "text": " means the session is in an environment without the script; pick the right environment rather than installing pk by hand, which gives a session pk without the hooks. Tags are not part of the clone; "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " fetches them from origin when none are present."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
       "id": "migrating-from-pre-plugin-plankit-v0-x",
       "inlines": [
         {

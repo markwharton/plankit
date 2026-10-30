@@ -54,6 +54,40 @@ plugin only; no repository changes. A pk installed with `go install` or
 Homebrew is updated separately, and the brief says when it is behind
 the plugin.
 
+## Cloud sessions
+
+A cloud session at claude.ai/code starts from a fresh clone and never
+installs the plugins a repository enables, so plankit's hooks and
+skills are absent there unless the cloud environment installs the
+plugin. Give the environment a setup script:
+
+```
+#!/bin/bash
+set -x
+if command -v claude >/dev/null 2>&1; then
+  claude plugin install plankit --marketplace https://plankit.com/marketplace.json --scope user \
+    || echo "setup: plankit install failed" >&2
+else
+  echo "setup: claude CLI not on PATH during setup" >&2
+fi
+```
+
+Every line is non-fatal: a non-zero exit stops the session starting.
+Under Network access, allow `plankit.com`, `github.com` and
+`*.githubusercontent.com`; the plugin archive is a GitHub release
+asset and downloads through a redirect to the last of those. The
+environment is set once per account, in the environment selector
+under the message box, and serves every repository that enables the
+plugin.
+
+To confirm it took effect, ask a session in that environment to run
+`pk status`: pk is only present when the plugin installed, so the
+policy block printing is the proof. `pk: command not found` means the
+session is in an environment without the script; pick the right
+environment rather than installing pk by hand, which gives a session
+pk without the hooks. Tags are not part of the clone; `pk changelog`
+fetches them from origin when none are present.
+
 ## Migrating from pre-plugin plankit (v0.x)
 
 The plugin replaces the files `pk setup` copied into a repository. In
