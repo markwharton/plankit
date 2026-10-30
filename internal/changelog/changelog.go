@@ -118,7 +118,7 @@ func run(ctx *cli.Context) error {
 		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok && branch != def {
 			return cli.WithHint(
 				cli.Statef("you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", branch, def),
-				"to release this work from %s: git switch %s && git merge %s, then pk changelog && pk release", def, def, branch)
+				"land %s on %s first (a pull request, or a merge you have decided on), then on an up-to-date %s: pk changelog && pk release", branch, def, def)
 		}
 	}
 

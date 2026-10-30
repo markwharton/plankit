@@ -339,6 +339,26 @@ func TestTrunkFlowReleasesFromDefaultBranch(t *testing.T) {
 	}
 }
 
+// Trunk flow on a non-default branch is refused in pre-flight, and the
+// hint lands the branch first rather than prescribing a local merge.
+func TestTrunkFlowRefusesNonDefaultBranch(t *testing.T) {
+	dir, bare := repo(t, func(c *config.PkConfig) {
+		c.Release.Branch = ""
+		c.Guard.Branches = nil
+	})
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "chore: release v0.1.0\n\nRelease-Tag: v0.1.0")
+	code, errw := runRel(t, dir) // on develop; origin default is main
+	if code != cli.ExitState || !strings.Contains(errw, "trunk flow releases from the default branch") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if !strings.Contains(errw, "land develop on main first (a pull request") || strings.Contains(errw, "git merge") {
+		t.Fatalf("hint: %q", errw)
+	}
+	if bareRef(t, bare, "refs/tags/v0.1.0") != "" {
+		t.Fatal("nothing should have been pushed")
+	}
+}
+
 // A tag the working branch does not contain stops the release in
 // pre-flight: no tag, no merge, the working branch still checked out.
 func TestTagOutsideHistoryStopsRelease(t *testing.T) {

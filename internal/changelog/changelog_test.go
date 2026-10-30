@@ -476,6 +476,11 @@ func TestTrunkFlowRefusesNonDefaultBranch(t *testing.T) {
 	if code != cli.ExitState || !strings.Contains(errw, "trunk flow releases from the default branch") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
+	// The hint lands the branch first, by whatever route the repository
+	// uses; it never prescribes a local merge, which bypasses a PR.
+	if !strings.Contains(errw, "land develop on main first (a pull request") || strings.Contains(errw, "git merge") {
+		t.Fatalf("hint: %q", errw)
+	}
 
 	mustGit(t, dir, "switch", "-q", "main")
 	mustGit(t, dir, "merge", "-q", "--ff-only", "develop")
