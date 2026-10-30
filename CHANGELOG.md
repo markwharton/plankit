@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.7.1] - 2026-10-30
+
+### Fixed
+
+- the trunk-flow hint no longer prescribes a local merge (9253fa1)
+- pk changelog fetches origin's tags when the clone has none (c94dfd4)
+
+### Documentation
+
+- overview explains how cloud sessions get the plugin (69a7ef1)
+
+### Maintenance
+
+- state guard.bump in .pk.json (1b6bb6e)
+
 ## [v1.7.0] - 2026-10-19
 
 ### Added
@@ -1335,3 +1350,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.6.2]: https://github.com/markwharton/plankit/compare/v1.6.1...v1.6.2
 [v1.6.3]: https://github.com/markwharton/plankit/compare/v1.6.2...v1.6.3
 [v1.7.0]: https://github.com/markwharton/plankit/compare/v1.6.3...v1.7.0
+[v1.7.1]: https://github.com/markwharton/plankit/compare/v1.7.0...v1.7.1
