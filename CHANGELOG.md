@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.7.2] - 2026-10-30
+
+### Fixed
+
+- pk status reports origin's latest tag when the clone has none (ad461b9)
+- pk status names the trunk flow instead of an empty release line (3b03780)
+- pk status says "no protected branches" instead of a dangling "on" (f27a3d7)
+
 ## [v1.7.1] - 2026-10-30
 
 ### Fixed
@@ -1351,3 +1359,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.6.3]: https://github.com/markwharton/plankit/compare/v1.6.2...v1.6.3
 [v1.7.0]: https://github.com/markwharton/plankit/compare/v1.6.3...v1.7.0
 [v1.7.1]: https://github.com/markwharton/plankit/compare/v1.7.0...v1.7.1
+[v1.7.2]: https://github.com/markwharton/plankit/compare/v1.7.1...v1.7.2
