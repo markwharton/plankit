@@ -27,7 +27,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
-      - run: make site
+      - name: Build the site with pk stamped as the latest release
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          make site VERSION="${TAG#v}"
       - name: Mirror the published marketplace from the latest release
         run: |
           if curl -fsSL -o site/dist/marketplace.json \
