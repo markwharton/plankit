@@ -24,6 +24,10 @@ repository with no origin leaves it unnamed. An empty release branch
 is that flow, not a gap in the policy. JSON carries it as
 `releaseFlow`, `merge` or `trunk`.
 
+The guard line ends with the protected branches, or `no protected
+branches` when `guard.branches` is empty: then no branch is guarded
+against mutation, while the push guard still applies on every branch.
+
 ## Usage
 
 ```bash

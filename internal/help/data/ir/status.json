@@ -116,6 +116,31 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The guard line ends with the protected branches, or "
+        },
+        {
+          "type": "code",
+          "text": "no protected branches"
+        },
+        {
+          "type": "text",
+          "text": " when "
+        },
+        {
+          "type": "code",
+          "text": "guard.branches"
+        },
+        {
+          "type": "text",
+          "text": " is empty: then no branch is guarded against mutation, while the push guard still applies on every branch."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "usage",

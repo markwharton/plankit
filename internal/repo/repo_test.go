@@ -870,6 +870,27 @@ func TestStatusReleaseLineNamesTheFlow(t *testing.T) {
 	}
 }
 
+// An empty guard.branches protects no branch against mutation; the
+// line says so rather than ending in a dangling "on".
+func TestStatusGuardLineWithoutBranches(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "bump: ask) on main\n") {
+		t.Fatalf("guarded branch:\n%s", out)
+	}
+	cfg, _ := config.Load(dir)
+	cfg.Guard.Branches = nil
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatal(err)
+	}
+	_, out, _ := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "bump: ask); no protected branches\n") || strings.Contains(out, " on \n") {
+		t.Fatalf("no guarded branch:\n%s", out)
+	}
+}
+
 // A last tag the checked-out branch does not contain is noted, under
 // the quiet gate, and gone once the tag is.
 func TestStatusNotesATagOutsideHistory(t *testing.T) {

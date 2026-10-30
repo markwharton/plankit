@@ -390,7 +390,11 @@ func runStatus(ctx *cli.Context) error {
 	line("project", s.Root)
 	line("branch", fmt.Sprintf("%s (%s)", s.Branch, tree))
 	line("preserve", s.Preserve)
-	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s, bump: %s) on %s", s.GuardMode, s.GuardPush, s.GuardBreak, s.GuardBump, strings.Join(s.Guarded, ", ")))
+	guarded := "; no protected branches"
+	if len(s.Guarded) > 0 {
+		guarded = " on " + strings.Join(s.Guarded, ", ")
+	}
+	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s, bump: %s)%s", s.GuardMode, s.GuardPush, s.GuardBreak, s.GuardBump, guarded))
 	line("protect", s.PlansDir+"/ immutable")
 	release := s.Release
 	if s.Flow == "trunk" {
