@@ -143,14 +143,26 @@ func run(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	latestTag, baseVersion, logRange, commits := since.LatestTag, since.Base, since.Range, since.Commits
-	if latestTag == "" {
-		// Origin has tags, local doesn't: common in shallow clones that
-		// fetched only the working branch. That is not a first release.
-		if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
-			return cli.WithHint(cli.Statef("no version tags found locally"),
+	if since.LatestTag == "" {
+		// No local tag: common in a fresh clone that fetched only the
+		// working branch, such as a cloud sandbox. Origin's tags decide
+		// whether this is a first release, so fetch them and measure
+		// again. Only when the fetch itself fails does the user hear
+		// about it, and only if origin does have tags.
+		if _, ferr := git.Exec(root, "fetch", "origin", "--tags", "--quiet"); ferr == nil {
+			if since, err = commitsSinceLastTag(root, branch); err != nil {
+				return err
+			}
+			if since.LatestTag != "" {
+				fmt.Fprintf(ctx.Stderr, "fetched tags from origin: latest is %s\n", since.LatestTag)
+			}
+		} else if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
+			return cli.WithHint(cli.Statef("no version tags found locally and git fetch failed: %v", ferr),
 				"origin has tags; fetch them: git fetch --tags")
 		}
+	}
+	latestTag, baseVersion, logRange, commits := since.LatestTag, since.Base, since.Range, since.Commits
+	if latestTag == "" {
 		total, err := git.CountCommits(root, "HEAD")
 		if err != nil {
 			return fmt.Errorf("failed to count commits: %v", err)

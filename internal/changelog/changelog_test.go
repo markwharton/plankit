@@ -524,12 +524,48 @@ func TestFirstReleaseCoversAllHistory(t *testing.T) {
 
 // Origin has tags that the clone never fetched: that is not a first
 // release, and the hint is to fetch.
+// A clone that fetched only the working branch has no tags, as a cloud
+// sandbox does. Origin's tags anchor the release, so changelog fetches
+// them and measures from the latest rather than treating the clone as
+// a first release.
 func TestNoLocalTagsButOriginHasThem(t *testing.T) {
+	fixedNow(t)
 	dir := repo(t, nil)
 	mustGit(t, dir, "tag", "-d", "v0.0.0")
 	commit(t, dir, "feat: x")
-	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitState || !strings.Contains(errw, "git fetch --tags") {
+	code, out, errw := runCL(t, dir, "--dry-run")
+	if code != cli.ExitOK {
 		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if !strings.Contains(errw, "fetched tags from origin: latest is v0.0.0") {
+		t.Fatalf("errw = %q", errw)
+	}
+	if !strings.HasPrefix(out, "## [v0.1.0] - 2026-09-05") {
+		t.Fatalf("stdout = %q", out)
+	}
+	if strings.Contains(errw, "first release") {
+		t.Fatalf("measured as a first release: %q", errw)
+	}
+	if tags, _ := git.Exec(dir, "tag", "--list", "v0.0.0"); tags != "v0.0.0" {
+		t.Fatalf("tag not fetched: %q", tags)
+	}
+}
+
+// When the fetch itself fails and origin does have tags, changelog
+// stops with the fetch error and the hint, never a made-up v0.0.0.
+func TestNoLocalTagsAndFetchFails(t *testing.T) {
+	dir := repo(t, nil)
+	mustGit(t, dir, "tag", "-d", "v0.0.0")
+	commit(t, dir, "feat: x")
+	// Fetching into the checked-out branch is refused by git, so the
+	// fetch fails while ls-remote still answers.
+	mustGit(t, dir, "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*")
+	code, _, errw := runCL(t, dir, "--dry-run")
+	if code != cli.ExitState || !strings.Contains(errw, "git fetch failed") || !strings.Contains(errw, "git fetch --tags") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if headSubject(t, dir) != "feat: x" {
+		t.Fatal("dry-run committed")
 	}
 }
 

@@ -385,6 +385,39 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A clone with no local tags is not a first release when origin has them: a fresh clone that fetched only the working branch, as a cloud sandbox does. "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " fetches origin's tags first and says so, "
+        },
+        {
+          "type": "code",
+          "text": "fetched tags from origin: latest is v1.2.0"
+        },
+        {
+          "type": "text",
+          "text": ", then measures from that tag. Only when the fetch itself fails does it stop, with the error and the hint "
+        },
+        {
+          "type": "code",
+          "text": "git fetch --tags"
+        },
+        {
+          "type": "text",
+          "text": "."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "flags",
