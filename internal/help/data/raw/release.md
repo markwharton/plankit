@@ -11,11 +11,30 @@ atomically to origin.
 
 ## Two flows
 
-With `release.branch` configured, the merge flow: fast-forward the
-release branch to the working branch, tag, push branch and tag
-together, switch back, push the working branch. Without it, the trunk
-flow: tag and push the default branch, and refuse to run anywhere
-else.
+Merge flow keeps two branches: work lands on the working branch, and a
+release fast-forwards the release branch to it, tags, pushes branch and
+tag together, switches back, and pushes the working branch. Trunk flow
+keeps one: a release tags and pushes the default branch, and refuses
+to run anywhere else. `release.branch` set selects merge flow; empty
+selects trunk flow.
+
+Merge flow needs a second place where unreleased work can live and
+run. For code, that place is the developer's own machine: check out the
+working branch, build it, run it. A repository that is itself a live
+system has no such place unless a second system is set up for
+development. A Microsoft Fabric workspace connected to `main` is a live
+system; development would mean a second workspace, with every connector
+and credential set up again: a second bill, and a second copy of the
+data to secure. Until that is worth doing, use trunk flow. The choice
+is a cost, not a commitment: either flow becomes the other later, and
+tags made under one stay valid under the other.
+
+To move to merge flow, create the working branch from the release
+branch, set `release.branch` and `guard.branches` on it, and ship; the
+first release fast-forwards. To move to trunk flow, ship once more,
+delete the working branch, and on the release branch remove those two
+keys from your own terminal, since guard blocks a session committing
+on a guarded branch.
 
 ## Pre-flight
 
