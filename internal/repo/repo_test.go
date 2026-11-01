@@ -826,9 +826,14 @@ func TestStatusReleaseLineNamesTheFlow(t *testing.T) {
 	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
 		t.Fatalf("init: %s", errw)
 	}
-	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "release:   main\n") {
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "release:   merge flow: pk ship merges develop into main and tags it\n") {
 		t.Fatalf("merge flow:\n%s", out)
 	}
+	mustGit(t, dir, "switch", "-q", "main")
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "release:   merge flow: pk ship merges the working branch into main and tags it\n") {
+		t.Fatalf("merge flow on the release branch:\n%s", out)
+	}
+	mustGit(t, dir, "switch", "-q", "develop")
 	cfg, _ := config.Load(dir)
 	cfg.Release.Branch = ""
 	if err := config.Write(dir, cfg); err != nil {

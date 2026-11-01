@@ -16,13 +16,15 @@ origin without fetching; `none yet` means neither has a version tag,
 so nothing has been released. `pk changelog` fetches the tags itself
 when it runs.
 
-The release line names the branch releases merge into, or, when
-`.pk.json` sets none, the trunk flow: `trunk flow: pk ship tags main,
-origin's default branch`. The branch comes from the clone's record of
-origin's default, or from origin when the clone holds none; only a
-repository with no origin leaves it unnamed. An empty release branch
-is that flow, not a gap in the policy. JSON carries it as
-`releaseFlow`, `merge` or `trunk`.
+The release line names the flow and what a release does. Merge flow:
+`merge flow: pk ship merges develop into main and tags it`, the branch
+checked out as the source. Trunk flow, when `.pk.json` sets no release
+branch:
+`trunk flow: pk ship tags main, origin's default branch`. The default
+branch comes from the clone's record of origin's default, or from
+origin when the clone holds none; only a repository with no origin
+leaves it unnamed. An empty release branch is that flow, not a gap in
+the policy. JSON carries it as `releaseFlow`, `merge` or `trunk`.
 
 The guard line ends with the protected branches, or `no protected
 branches` when `guard.branches` is empty: then no branch is guarded

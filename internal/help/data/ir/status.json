@@ -71,7 +71,15 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The release line names the branch releases merge into, or, when "
+          "text": "The release line names the flow and what a release does. Merge flow: "
+        },
+        {
+          "type": "code",
+          "text": "merge flow: pk ship merges develop into main and tags it"
+        },
+        {
+          "type": "text",
+          "text": ", the branch checked out as the source. Trunk flow, when "
         },
         {
           "type": "code",
@@ -79,7 +87,7 @@
         },
         {
           "type": "text",
-          "text": " sets none, the trunk flow: "
+          "text": " sets no release branch: "
         },
         {
           "type": "code",
@@ -87,7 +95,7 @@
         },
         {
           "type": "text",
-          "text": ". The branch comes from the clone's record of origin's default, or from origin when the clone holds none; only a repository with no origin leaves it unnamed. An empty release branch is that flow, not a gap in the policy. JSON carries it as "
+          "text": ". The default branch comes from the clone's record of origin's default, or from origin when the clone holds none; only a repository with no origin leaves it unnamed. An empty release branch is that flow, not a gap in the policy. JSON carries it as "
         },
         {
           "type": "code",
