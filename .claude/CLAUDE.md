@@ -187,5 +187,12 @@ the change.
   appears where the reader is a session (the brief, a hook message),
   where the thing exists only in Claude Code (craft's prompts), and
   once per document to say what the shortcut form is.
+- A summary names the act; the precondition is stated where it is
+  checked. Merge flow "merges" on every surface that summarises (the
+  status line, the brief, the README, the status and brief pages) and
+  "fast-forwards" only where a reader learns why a release refuses
+  (the release page, the dry-run preview, the refusal messages,
+  docs/architecture.md). The same split holds for any act that can
+  refuse: the summary's verb is the act, not the mechanism.
 - Derived values (digests, pins, compiled output) are never committed
   to a source branch.
