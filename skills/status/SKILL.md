@@ -18,8 +18,9 @@ when it runs.
 
 The release line names the flow and what a release does. Merge flow:
 `merge flow: pk ship merges develop into main and tags it`, the branch
-checked out as the source. Trunk flow, when `.pk.json` sets no release
-branch:
+checked out as the source; on the release branch itself the source
+reads `the working branch`. Trunk flow, when `.pk.json` sets no
+release branch:
 `trunk flow: pk ship tags main, origin's default branch`. The default
 branch comes from the clone's record of origin's default, or from
 origin when the clone holds none; only a repository with no origin
