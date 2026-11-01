@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.8.0] - 2026-11-01
+
+### Added
+
+- the release line names the merge flow and its branches (d0236f9)
+
+### Documentation
+
+- pk release says when each flow fits and how to move between them (41c61bc)
+- release notes for v1.8.0 (3d2f1aa)
+
+### Maintenance
+
+- stamp the site's pk with the latest release so the demo brief names it (3ee5b55)
+
 ## [v1.7.2] - 2026-10-30
 
 ### Fixed
@@ -1360,3 +1375,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.7.0]: https://github.com/markwharton/plankit/compare/v1.6.3...v1.7.0
 [v1.7.1]: https://github.com/markwharton/plankit/compare/v1.7.0...v1.7.1
 [v1.7.2]: https://github.com/markwharton/plankit/compare/v1.7.1...v1.7.2
+[v1.8.0]: https://github.com/markwharton/plankit/compare/v1.7.2...v1.8.0
