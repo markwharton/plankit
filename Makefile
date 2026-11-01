@@ -1,6 +1,6 @@
-# VERSION stamps the binaries: set it from the tag at release (release.yml
-# passes the tag without its v), leave it empty for a development build,
-# which then reports dev+<commit>.
+# VERSION stamps the binaries: set it from the tag (release.yml and site.yml
+# pass the tag without its v), leave it empty for a development build, which
+# then reports dev+<commit>.
 VERSION ?=
 LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/version.stamped=$(VERSION))
 
