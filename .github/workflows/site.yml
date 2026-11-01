@@ -29,7 +29,7 @@ jobs:
           go-version-file: go.mod
       - name: Build the site with pk stamped as the latest release
         run: |
-          TAG=$(git describe --tags --abbrev=0)
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
           make site VERSION="${TAG#v}"
       - name: Mirror the published marketplace from the latest release
         run: |
