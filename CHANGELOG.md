@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.8.1] - 2026-11-01
+
+### Changed
+
+- one Flow method names the release flow for every command (b891fb4)
+
+### Documentation
+
+- the merge-flow line on the release branch (e7c48e7)
+- a summary names the act, the precondition is stated where it is checked (dd4c291)
+
+### Maintenance
+
+- the site builds unstamped when no tag exists (4486611)
+- the Makefile names both workflows that pass VERSION (fd16dc0)
+
 ## [v1.8.0] - 2026-11-01
 
 ### Added
@@ -1376,3 +1392,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.7.1]: https://github.com/markwharton/plankit/compare/v1.7.0...v1.7.1
 [v1.7.2]: https://github.com/markwharton/plankit/compare/v1.7.1...v1.7.2
 [v1.8.0]: https://github.com/markwharton/plankit/compare/v1.7.2...v1.8.0
+[v1.8.1]: https://github.com/markwharton/plankit/compare/v1.8.0...v1.8.1
