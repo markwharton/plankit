@@ -60,12 +60,13 @@ func run(ctx *cli.Context) error {
 	if strings.HasPrefix(releaseBranch, "-") {
 		return cli.Statef("invalid release.branch %q in .pk.json; branch names cannot start with -", releaseBranch)
 	}
-	needsMerge := releaseBranch != "" && sourceBranch != releaseBranch
+	flow := pk.Release.Flow()
+	needsMerge := flow == config.MergeFlow && sourceBranch != releaseBranch
 
 	// On the release branch with merge flow configured: refuse. With no
 	// other local branch this is the main-only dead-end, so point at the
 	// way out rather than an instruction the person cannot follow.
-	if releaseBranch != "" && sourceBranch == releaseBranch {
+	if flow == config.MergeFlow && sourceBranch == releaseBranch {
 		err := cli.Statef("you're on the release branch %q; switch to your working branch first", releaseBranch)
 		if !git.HasOtherLocalBranch(root, releaseBranch) {
 			err = cli.WithHint(err, "to start one: git switch -c develop && git push -u origin develop, then pk changelog && pk release")
@@ -108,7 +109,7 @@ func run(ctx *cli.Context) error {
 	// the branch-on-origin check below. Skipped on detached HEAD and when
 	// origin advertises no HEAD symref.
 	defaultVerified := false
-	if releaseBranch == "" && sourceBranch != "" {
+	if flow == config.TrunkFlow && sourceBranch != "" {
 		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok {
 			if sourceBranch != def {
 				return cli.WithHint(
@@ -244,7 +245,7 @@ func run(ctx *cli.Context) error {
 			}
 			msg.Itemf(w, "Merged %s into %s", sourceBranch, releaseBranch)
 		}
-	} else if releaseBranch == "" {
+	} else if flow == config.TrunkFlow {
 		msg.Itemf(w, "Trunk flow (no release.branch in .pk.json)")
 		if defaultVerified {
 			msg.Itemf(w, "On %s (default branch on origin)", sourceBranch)

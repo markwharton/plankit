@@ -145,7 +145,7 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 		case "ask":
 			b.WriteString(" Pushing prompts for confirmation.")
 		}
-		if cfg.Release.Branch != "" {
+		if cfg.Release.Flow() == config.MergeFlow {
 			fmt.Fprintf(&b, " Work on the development branch; releases merge into %s with pk ship.\n\n", cfg.Release.Branch)
 		} else {
 			b.WriteString(" Releases run from the default branch with pk ship.\n\n")

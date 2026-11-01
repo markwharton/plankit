@@ -114,7 +114,7 @@ func run(ctx *cli.Context) error {
 	// branch-on-origin check, whose "push it" hint would otherwise walk
 	// the user straight into this refusal. Skipped on detached HEAD and
 	// when origin advertises no HEAD symref.
-	if cfg.Release.Branch == "" && branch != "" {
+	if cfg.Release.Flow() == config.TrunkFlow && branch != "" {
 		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok && branch != def {
 			return cli.WithHint(
 				cli.Statef("you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", branch, def),

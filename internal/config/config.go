@@ -184,6 +184,21 @@ type ReleaseSection struct {
 	Hooks  ReleaseHooks `json:"hooks,omitempty"`
 }
 
+// The two release flows, as Flow names them and pk status reports them.
+const (
+	MergeFlow = "merge"
+	TrunkFlow = "trunk"
+)
+
+// Flow returns the release flow release.branch selects: MergeFlow when a
+// release branch is set, TrunkFlow when it is empty.
+func (r ReleaseSection) Flow() string {
+	if r.Branch == "" {
+		return TrunkFlow
+	}
+	return MergeFlow
+}
+
 // PkConfig is the .pk.json schema. Each top-level key maps to a pk
 // command.
 type PkConfig struct {

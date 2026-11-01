@@ -333,10 +333,7 @@ func runStatus(ctx *cli.Context) error {
 		s.GuardBump = cfg.Guard.ResolvedBump()
 		s.Guarded = cfg.Guard.Branches
 		s.Release = cfg.Release.Branch
-		s.Flow = "merge"
-		if s.Release == "" {
-			s.Flow = "trunk"
-		}
+		s.Flow = cfg.Release.Flow()
 		// The settings file is checked with the policy: a file that does
 		// not parse is a problem in every mode, before any report.
 		settings, err := readSettings(root)
@@ -396,8 +393,9 @@ func runStatus(ctx *cli.Context) error {
 	}
 	line("guard", fmt.Sprintf("%s (push: %s, breaking: %s, bump: %s)%s", s.GuardMode, s.GuardPush, s.GuardBreak, s.GuardBump, guarded))
 	line("protect", s.PlansDir+"/ immutable")
-	release := s.Release
-	if s.Flow == "merge" {
+	var release string
+	switch s.Flow {
+	case config.MergeFlow:
 		// Name the flow and both branches. The source is the branch
 		// checked out, since a release comes from the branch it is run
 		// on; standing on the release branch itself leaves it unnamed.
@@ -406,8 +404,7 @@ func runStatus(ctx *cli.Context) error {
 			from = s.Branch
 		}
 		release = fmt.Sprintf("merge flow: pk ship merges %s into %s and tags it", from, s.Release)
-	}
-	if s.Flow == "trunk" {
+	case config.TrunkFlow:
 		// No release branch is a flow, not a gap: say which, and name
 		// the branch. The clone's record of origin's default is read
 		// first; a clone without one, as a single-branch clone can be,
