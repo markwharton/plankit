@@ -79,7 +79,15 @@
         },
         {
           "type": "text",
-          "text": ", the branch checked out as the source. Trunk flow, when "
+          "text": ", the branch checked out as the source; on the release branch itself the source reads "
+        },
+        {
+          "type": "code",
+          "text": "the working branch"
+        },
+        {
+          "type": "text",
+          "text": ". Trunk flow, when "
         },
         {
           "type": "code",
