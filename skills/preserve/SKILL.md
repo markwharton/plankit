@@ -9,7 +9,9 @@ description: Keep each approved plan as a record in the plans directory, on appr
 the plans directory, `preserve.dir` in `.pk.json`, under a dated,
 sequenced, slugged filename and commits it with a `plan:` message.
 The commit holds the plan file alone; anything else staged stays
-staged.
+staged. The subject carries `[skip ci]` when the plan is the only
+unpushed work on the branch; when unpushed commits precede it, or the
+branch has no upstream, the marker is left off and the output says so.
 
 ## Modes
 

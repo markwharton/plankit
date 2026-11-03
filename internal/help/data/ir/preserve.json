@@ -49,7 +49,15 @@
         },
         {
           "type": "text",
-          "text": " message. The commit holds the plan file alone; anything else staged stays staged."
+          "text": " message. The commit holds the plan file alone; anything else staged stays staged. The subject carries "
+        },
+        {
+          "type": "code",
+          "text": "[skip ci]"
+        },
+        {
+          "type": "text",
+          "text": " when the plan is the only unpushed work on the branch; when unpushed commits precede it, or the branch has no upstream, the marker is left off and the output says so."
         }
       ]
     },

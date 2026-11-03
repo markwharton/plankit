@@ -328,14 +328,12 @@ func undo(ctx *cli.Context, root string) error {
 		return cli.Statef("%v", err)
 	}
 	// No upstream means the commit cannot be on the remote: undo is safe.
-	if upstream, err := git.Exec(root, "rev-parse", "--abbrev-ref", "HEAD@{upstream}"); err == nil && strings.TrimSpace(upstream) != "" {
-		ahead, err := git.Exec(root, "log", "@{u}..HEAD", "--oneline")
-		if err != nil {
-			return fmt.Errorf("git log @{u}..HEAD failed: %v", err)
-		}
-		if strings.TrimSpace(ahead) == "" {
-			return cli.Statef("HEAD is already on the remote; cannot undo a pushed commit")
-		}
+	ahead, known, err := git.Ahead(root)
+	if err != nil {
+		return fmt.Errorf("git rev-list @{u}..HEAD failed: %v", err)
+	}
+	if known && ahead == 0 {
+		return cli.Statef("HEAD is already on the remote; cannot undo a pushed commit")
 	}
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
 		return fmt.Errorf("git reset failed: %v", err)

@@ -99,9 +99,34 @@ func commitCount(t *testing.T, dir string) int {
 	return n
 }
 
+// withUpstream gives the repo a bare origin and pushes main to it with
+// the upstream set, so HEAD is on the remote and nothing is unpushed.
+// Returns the origin path.
+func withUpstream(t *testing.T, dir string) string {
+	t.Helper()
+	origin := t.TempDir()
+	for _, step := range []struct {
+		dir  string
+		args []string
+	}{
+		{origin, []string{"init", "-q", "--bare"}},
+		{dir, []string{"remote", "add", "origin", origin}},
+		{dir, []string{"push", "-q", "-u", "origin", "main"}},
+	} {
+		if _, err := git.Exec(step.dir, step.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return origin
+}
+
+// TestAutoModePreservesAndCommits is the plan-only case: HEAD is on
+// its upstream, so the plan commit is all the next push carries and
+// the subject takes [skip ci].
 func TestAutoModePreservesAndCommits(t *testing.T) {
 	fixedNow(t)
 	dir, plan := scratch(t, "auto", planBody)
+	withUpstream(t, dir)
 	before := commitCount(t, dir)
 
 	out, _ := runPreserve(t, dir, plan)
@@ -121,7 +146,48 @@ func TestAutoModePreservesAndCommits(t *testing.T) {
 	if subject != "plan: Ship The Widget [skip ci]" {
 		t.Fatalf("subject = %q", subject)
 	}
-	if !strings.Contains(out, "Approved plan committed: docs/plans/2026-09-05-001-ship-the-widget.md") {
+	if !strings.Contains(out, "Approved plan committed: docs/plans/2026-09-05-001-ship-the-widget.md\"") {
+		t.Fatalf("systemMessage: %s", out)
+	}
+}
+
+// TestMarkerLeftOffWhenUnpushedCommitsPrecedeThePlan: the plan lands on
+// top of unpushed work, so the subject carries no [skip ci] and the
+// preview and the response both say why.
+func TestMarkerLeftOffWhenUnpushedCommitsPrecedeThePlan(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	withUpstream(t, dir)
+	os.WriteFile(filepath.Join(dir, "b.txt"), []byte("b\n"), 0o644)
+	git.Exec(dir, "add", "b.txt")
+	git.Exec(dir, "commit", "-q", "-m", "feat: b")
+
+	_, errw := runPreserve(t, dir, plan, "--dry-run")
+	if !strings.Contains(errw, "  Commit: plan: Ship The Widget\n") || !strings.Contains(errw, "  CI:     [skip ci] left off: unpushed commits precede it\n") {
+		t.Fatalf("preview: %s", errw)
+	}
+
+	out, _ := runPreserve(t, dir, plan)
+	subject, _ := git.Exec(dir, "log", "-1", "--format=%s")
+	if subject != "plan: Ship The Widget" {
+		t.Fatalf("subject = %q", subject)
+	}
+	if !strings.Contains(out, "Approved plan committed: docs/plans/2026-09-05-001-ship-the-widget.md ([skip ci] left off: unpushed commits precede it)") {
+		t.Fatalf("systemMessage: %s", out)
+	}
+}
+
+// TestMarkerLeftOffWithoutAnUpstream: with no upstream nothing says
+// what is unpushed, so the marker stays off and the response says so.
+func TestMarkerLeftOffWithoutAnUpstream(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	out, _ := runPreserve(t, dir, plan)
+	subject, _ := git.Exec(dir, "log", "-1", "--format=%s")
+	if subject != "plan: Ship The Widget" {
+		t.Fatalf("subject = %q", subject)
+	}
+	if !strings.Contains(out, "([skip ci] left off: the branch has no upstream)") {
 		t.Fatalf("systemMessage: %s", out)
 	}
 }
@@ -164,19 +230,7 @@ func TestOtherChangesStayOutOfThePlanCommit(t *testing.T) {
 func TestPushCarriesOnlyThePlanCommit(t *testing.T) {
 	fixedNow(t)
 	dir, plan := scratch(t, "auto", planBody)
-	origin := t.TempDir()
-	for _, step := range []struct {
-		dir  string
-		args []string
-	}{
-		{origin, []string{"init", "-q", "--bare"}},
-		{dir, []string{"remote", "add", "origin", origin}},
-		{dir, []string{"push", "-q", "origin", "main"}},
-	} {
-		if _, err := git.Exec(step.dir, step.args...); err != nil {
-			t.Fatal(err)
-		}
-	}
+	origin := withUpstream(t, dir)
 	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("c\n"), 0o644)
 	git.Exec(dir, "add", "c.txt")
 
@@ -413,7 +467,7 @@ func TestCRLFPlanKeepsCleanTitle(t *testing.T) {
 		t.Fatalf("CRLF slug: %v", err)
 	}
 	subject, _ := git.Exec(dir, "log", "-1", "--format=%s")
-	if subject != "plan: Windows Plan [skip ci]" {
+	if subject != "plan: Windows Plan" {
 		t.Fatalf("subject carries CR? %q", subject)
 	}
 }

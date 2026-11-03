@@ -278,11 +278,38 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	filename := fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
 	relPath := path.Join(policy.ResolvedDir(), filename)
 
+	// The marker skips CI for the whole push it lands in, so it goes on
+	// only when the plan commit is the only thing the next push carries:
+	// HEAD is on its upstream. Unpushed commits before it, or no upstream
+	// to compare with, leave the marker off and the output says why.
+	ahead, known, err := git.Ahead(root)
+	if err != nil {
+		msg.Hookf(ctx.Stderr, "preserve", "git rev-list failed: %v", err)
+		return
+	}
+	subject := fmt.Sprintf("%s: %s", config.PlanType, title)
+	reason := ""
+	switch {
+	case !known:
+		reason = "the branch has no upstream"
+	case ahead > 0:
+		reason = "unpushed commits precede it"
+	default:
+		subject += " [skip ci]"
+	}
+	why := ""
+	if reason != "" {
+		why = fmt.Sprintf(" ([skip ci] left off: %s)", reason)
+	}
+
 	if ctx.Bool("dry-run") {
 		fmt.Fprintf(ctx.Stderr, "pk preserve --dry-run:\n")
 		fmt.Fprintf(ctx.Stderr, "  Plan:   %s\n", title)
 		fmt.Fprintf(ctx.Stderr, "  File:   %s\n", relPath)
-		fmt.Fprintf(ctx.Stderr, "  Commit: plan: %s [skip ci]\n", title)
+		fmt.Fprintf(ctx.Stderr, "  Commit: %s\n", subject)
+		if reason != "" {
+			fmt.Fprintf(ctx.Stderr, "  CI:     [skip ci] left off: %s\n", reason)
+		}
 		if ctx.Bool("push") {
 			fmt.Fprintf(ctx.Stderr, "  Push:   git push origin HEAD\n")
 		}
@@ -309,7 +336,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		return
 	}
 	// The commit holds the plan alone; other staged work stays staged.
-	if err := git.CommitPaths(root, fmt.Sprintf("%s: %s [skip ci]", config.PlanType, title), relPath); err != nil {
+	if err := git.CommitPaths(root, subject, relPath); err != nil {
 		msg.Hookf(ctx.Stderr, "preserve", "git commit failed: %v", err)
 		return
 	}
@@ -317,12 +344,12 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 
 	if ctx.Bool("push") {
 		if _, err := git.Exec(root, "push", "origin", "HEAD"); err != nil {
-			writeResponse(ctx, fmt.Sprintf("Plan committed locally but push failed: %s", relPath), "")
+			writeResponse(ctx, fmt.Sprintf("Plan committed locally but push failed: %s%s", relPath, why), "")
 		} else {
-			writeResponse(ctx, fmt.Sprintf("Approved plan committed and pushed: %s", relPath), "")
+			writeResponse(ctx, fmt.Sprintf("Approved plan committed and pushed: %s%s", relPath, why), "")
 		}
 	} else {
-		writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s", relPath), "")
+		writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s%s", relPath, why), "")
 	}
 }
 

@@ -133,6 +133,21 @@ func CountCommits(dir, revRange string) (int, error) {
 	return strconv.Atoi(out)
 }
 
+// Ahead reports how many commits HEAD holds that its upstream does
+// not. The bool is false when the branch has no upstream, so the count
+// is unknown: every commit may be unpushed, or there is no remote at
+// all. The error is a failed count, never a missing upstream.
+func Ahead(dir string) (int, bool, error) {
+	if _, err := Exec(dir, "rev-parse", "--abbrev-ref", "@{u}"); err != nil {
+		return 0, false, nil
+	}
+	n, err := CountCommits(dir, "@{u}..HEAD")
+	if err != nil {
+		return 0, true, err
+	}
+	return n, true, nil
+}
+
 // IsAncestor reports whether ancestor is reachable from rev. Exit 1
 // from git is false; any other failure is the error.
 func IsAncestor(dir, ancestor, rev string) (bool, error) {
