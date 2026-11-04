@@ -49,11 +49,30 @@ func scratch(t *testing.T, mode, content string) (string, string) {
 	git.Exec(dir, "add", ".pk.json")
 	git.Exec(dir, "commit", "-q", "-m", "config")
 
-	claudePlans := filepath.Join(t.TempDir(), ".claude", "plans")
+	// The plan lives where Claude Code writes it: ~/.claude/plans of a home
+	// that is this test's, with no CLAUDE_CONFIG_DIR in the environment.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	claudePlans := filepath.Join(home, ".claude", "plans")
 	os.MkdirAll(claudePlans, 0o755)
 	planPath := filepath.Join(claudePlans, "widget.md")
 	os.WriteFile(planPath, []byte(content), 0o644)
 	return dir, planPath
+}
+
+// configDirPlan points CLAUDE_CONFIG_DIR at a second configuration
+// directory (a second account) and writes a plan under its plans/.
+func configDirPlan(t *testing.T, content string) string {
+	t.Helper()
+	configDir := filepath.Join(t.TempDir(), ".claude-work")
+	plans := filepath.Join(configDir, "plans")
+	os.MkdirAll(plans, 0o755)
+	planPath := filepath.Join(plans, "widget.md")
+	os.WriteFile(planPath, []byte(content), 0o644)
+	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
+	return planPath
 }
 
 // runPreserveIO runs the command: with a plan path, as the hook with
@@ -600,12 +619,87 @@ func TestPlanFlagDryRunPreviewsOnly(t *testing.T) {
 func TestExtractPlanPathHandlesWindowsEscapes(t *testing.T) {
 	raw := json.RawMessage(`{"filePath":"C:\\Users\\m\\.claude\\plans\\p.md"}`)
 	home := func() (string, error) { return "C:\\Users\\m", nil }
-	if got := extractPlanPath(raw, home); got != "C:/Users/m/.claude/plans/p.md" {
+	dir := claudePlansDir("", home)
+	if dir != "C:/Users/m/.claude/plans" {
+		t.Fatalf("claudePlansDir = %q", dir)
+	}
+	if got := extractPlanPath(raw, dir, home); got != "C:/Users/m/.claude/plans/p.md" {
 		t.Fatalf("got %q", got)
 	}
+	unix := func() (string, error) { return "/home/m", nil }
 	legacy := json.RawMessage(`"Plan saved to /home/m/.claude/plans/x.md"`)
-	if got := extractPlanPath(legacy, os.UserHomeDir); got != "/home/m/.claude/plans/x.md" {
+	if got := extractPlanPath(legacy, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/x.md" {
 		t.Fatalf("legacy form: %q", got)
+	}
+	tilde := json.RawMessage(`{"filePath":"~/.claude/plans/t.md"}`)
+	if got := extractPlanPath(tilde, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/t.md" {
+		t.Fatalf("tilde form: %q", got)
+	}
+}
+
+// TestClaudePlansDirFollowsClaudeConfigDir: Claude Code keeps a relocated
+// configuration (a second account) under CLAUDE_CONFIG_DIR, and its
+// plans under plans/ there; the default ~/.claude/plans then belongs
+// to another session and must not match.
+func TestClaudePlansDirFollowsClaudeConfigDir(t *testing.T) {
+	unix := func() (string, error) { return "/home/m", nil }
+	if got := claudePlansDir("/home/m/.claude-work", unix); got != "/home/m/.claude-work/plans" {
+		t.Fatalf("configured: %q", got)
+	}
+	if got := claudePlansDir("~/.claude-work/", unix); got != "/home/m/.claude-work/plans" {
+		t.Fatalf("tilde and trailing slash: %q", got)
+	}
+	if got := claudePlansDir("C:\\Users\\m\\.claude-work", unix); got != "C:/Users/m/.claude-work/plans" {
+		t.Fatalf("windows: %q", got)
+	}
+	if got := claudePlansDir("", func() (string, error) { return "", os.ErrNotExist }); got != "" {
+		t.Fatalf("no home, no variable: %q", got)
+	}
+	dir := claudePlansDir("/home/m/.claude-work", unix)
+	work := json.RawMessage(`{"filePath":"/home/m/.claude-work/plans/p.md"}`)
+	if got := extractPlanPath(work, dir, unix); got != "/home/m/.claude-work/plans/p.md" {
+		t.Fatalf("work account plan: %q", got)
+	}
+	other := json.RawMessage(`{"filePath":"/home/m/.claude/plans/p.md"}`)
+	if got := extractPlanPath(other, dir, unix); got != "" {
+		t.Fatalf("the other account's plan matched: %q", got)
+	}
+}
+
+func TestHookPreservesAPlanUnderClaudeConfigDir(t *testing.T) {
+	fixedNow(t)
+	dir, _ := scratch(t, "auto", planBody)
+	plan := configDirPlan(t, planBody)
+	before := commitCount(t, dir)
+	runPreserve(t, dir, plan)
+	if commitCount(t, dir) != before+1 {
+		t.Fatal("the plan under CLAUDE_CONFIG_DIR was not preserved")
+	}
+	if _, err := os.Stat(filepath.Join(plansDir(dir), "2026-09-05-001-ship-the-widget.md")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPlanFlagAcceptsClaudeConfigDirAndRefusesTheDefaultBesideIt(t *testing.T) {
+	fixedNow(t)
+	dir, defaultPlan := scratch(t, "manual", planBody)
+	plan := configDirPlan(t, planBody)
+	before := commitCount(t, dir)
+
+	out, errw, code := runPreserveIO(t, dir, "", "--plan", defaultPlan)
+	if code != cli.ExitUsage {
+		t.Fatalf("the default directory's plan was accepted with CLAUDE_CONFIG_DIR set: exit %d, out=%q", code, out)
+	}
+	if !strings.Contains(errw, ".claude-work/plans/") || !strings.Contains(errw, "CLAUDE_CONFIG_DIR") {
+		t.Fatalf("refusal must name the session's directory: %s", errw)
+	}
+	if commitCount(t, dir) != before {
+		t.Fatal("refusal acted")
+	}
+
+	runPreserve(t, dir, "", "--plan", plan)
+	if commitCount(t, dir) != before+1 {
+		t.Fatal("the plan under CLAUDE_CONFIG_DIR was not preserved by --plan")
 	}
 }
 

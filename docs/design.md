@@ -275,7 +275,8 @@ echo '{"cwd":"'"$PWD"'","tool_input":{"command":"pk ship --bump patch"}}' | pk g
 echo '{"cwd":"'"$PWD"'","tool_input":{"file_path":"'"$PWD"'/docs/plans/example.md"}}' | pk protect | jq
 
 # preserve: PostToolUse on ExitPlanMode. tool_response carries the
-# approved plan's path under ~/.claude/plans/. With no readable plan of
+# approved plan's path under ~/.claude/plans/ (plans/ under CLAUDE_CONFIG_DIR
+# when that is set; nothing else matches). With no readable plan of
 # at least minPlanSize bytes (grep minPlanSize internal/preserve/preserve.go)
 # at that path the hook is silent. --dry-run prints the reason to stderr.
 echo '{"cwd":"'"$PWD"'","tool_response":{"filePath":"~/.claude/plans/example.md"}}' | pk preserve --dry-run

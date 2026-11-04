@@ -56,6 +56,11 @@ const pointerFilename = "pk-pending-plan"
 // now is stubbed in tests to pin the date prefix.
 var now = time.Now
 
+// configDirEnv is Claude Code's own variable for a relocated configuration
+// directory (a second account on one machine, for example). Plans live in
+// plans/ under it; with it unset they live under ~/.claude.
+const configDirEnv = "CLAUDE_CONFIG_DIR"
+
 // Cmd is the preserve command: hook-driven and explicitly invocable.
 var Cmd = &cli.Command{
 	Name:    "preserve",
@@ -64,7 +69,7 @@ var Cmd = &cli.Command{
 	Flags: []cli.FlagSpec{
 		{Name: "discard", Type: cli.BoolFlag, Usage: "Remove the pending plan pointer without preserving the plan it names"},
 		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Preview without writing or committing"},
-		{Name: "plan", Type: cli.StringFlag, Usage: "Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)"},
+		{Name: "plan", Type: cli.StringFlag, Usage: "Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans, or plans/ under CLAUDE_CONFIG_DIR when that is set)"},
 		{Name: "push", Type: cli.BoolFlag, Usage: "Push to origin after committing"},
 	},
 	Run: run,
@@ -110,7 +115,7 @@ func run(ctx *cli.Context) error {
 	}
 
 	if hookInvocation {
-		planPath = extractPlanPath(input.ToolResponse, os.UserHomeDir)
+		planPath = extractPlanPath(input.ToolResponse, sessionPlansDir(), os.UserHomeDir)
 		if planPath != "" {
 			if _, err := os.Stat(planPath); err != nil {
 				planPath = "" // the payload named a plan that is gone
@@ -190,9 +195,14 @@ func notConfigured(err error) error {
 // every reason not to act is an error naming it. A pointer naming the
 // same file is consumed as an explicit run consumes it.
 func runNamed(ctx *cli.Context, typed string) error {
-	planPath := matchPlanPath(typed, os.UserHomeDir)
+	plans := sessionPlansDir()
+	planPath := matchPlanPath(typed, plans, os.UserHomeDir)
 	if planPath == "" {
-		return cli.Usagef("--plan %s is not a Claude Code plan: the path must be a .md file under ~/.claude/plans/", typed)
+		where := plans + "/"
+		if plans == "" {
+			where = "~/.claude/plans/"
+		}
+		return cli.Usagef("--plan %s is not a Claude Code plan: the path must be a .md file under %s (the session's plans directory: plans/ under %s when that is set, else ~/.claude/plans)", typed, where, configDirEnv)
 	}
 	content, err := os.ReadFile(planPath)
 	if err != nil {
@@ -413,9 +423,36 @@ func removePointer(root string) {
 	os.Remove(pointerPath(root))
 }
 
-// planPathRegex matches Claude Code plan file paths. The optional drive
-// letter handles Windows paths after backslash normalization.
-var planPathRegex = regexp.MustCompile(`(?:[A-Za-z]:)?/[^ "]*\.claude/plans/[^ "]*\.md`)
+// sessionPlansDir is the plans directory of the Claude Code session the
+// hook or the person runs in: claudePlansDir over the process environment.
+func sessionPlansDir() string {
+	return claudePlansDir(os.Getenv(configDirEnv), os.UserHomeDir)
+}
+
+// claudePlansDir is the one directory Claude Code writes approved plans to:
+// plans/ under configDir (CLAUDE_CONFIG_DIR) when that is set, else
+// ~/.claude/plans. Only that directory counts, because a second account
+// keeps its own ~/.claude/plans and a file of the same name there is
+// another session's plan. Forward slashes throughout so a Windows path
+// matches after normalization; a leading ~/ is expanded; "" when neither
+// the variable nor the home directory is available.
+func claudePlansDir(configDir string, homeDir func() (string, error)) string {
+	home := ""
+	if h, err := homeDir(); err == nil {
+		home = strings.ReplaceAll(h, `\`, "/")
+	}
+	if configDir != "" {
+		dir := strings.ReplaceAll(configDir, `\`, "/")
+		if strings.HasPrefix(dir, "~/") && home != "" {
+			dir = home + dir[1:]
+		}
+		return strings.TrimRight(path.Clean(dir), "/") + "/plans"
+	}
+	if home == "" {
+		return ""
+	}
+	return home + "/.claude/plans"
+}
 
 // extractPlanPath finds the plan file path in a PostToolUse
 // tool_response. The harness sends an object carrying the path in a
@@ -423,7 +460,7 @@ var planPathRegex = regexp.MustCompile(`(?:[A-Za-z]:)?/[^ "]*\.claude/plans/[^ "
 // structurally lets encoding/json handle escaping, so a Windows path's
 // escaped backslashes decode to single separators before normalization;
 // matching raw bytes would turn each \\ into // and break the path.
-func extractPlanPath(toolResponse json.RawMessage, homeDir func() (string, error)) string {
+func extractPlanPath(toolResponse json.RawMessage, dir string, homeDir func() (string, error)) string {
 	if len(toolResponse) == 0 {
 		return ""
 	}
@@ -431,27 +468,32 @@ func extractPlanPath(toolResponse json.RawMessage, homeDir func() (string, error
 		FilePath string `json:"filePath"`
 	}
 	if json.Unmarshal(toolResponse, &obj) == nil && obj.FilePath != "" {
-		if p := matchPlanPath(obj.FilePath, homeDir); p != "" {
+		if p := matchPlanPath(obj.FilePath, dir, homeDir); p != "" {
 			return p
 		}
 	}
 	var s string
 	if json.Unmarshal(toolResponse, &s) == nil {
-		return matchPlanPath(s, homeDir)
+		return matchPlanPath(s, dir, homeDir)
 	}
 	return ""
 }
 
 // matchPlanPath normalizes backslashes to forward slashes so Windows
 // paths match, expands a leading ~/ to the home directory, then returns
-// the first .claude/plans/*.md path found, or "".
-func matchPlanPath(text string, homeDir func() (string, error)) string {
+// the first <dir>/*.md path found in the text, or "". dir is claudePlansDir's
+// answer; "" matches nothing.
+func matchPlanPath(text, dir string, homeDir func() (string, error)) string {
+	if dir == "" {
+		return ""
+	}
 	normalized := strings.ReplaceAll(text, `\`, "/")
 	if home, err := homeDir(); err == nil {
 		home = strings.ReplaceAll(home, `\`, "/")
 		normalized = strings.ReplaceAll(normalized, "~/", home+"/")
 	}
-	return planPathRegex.FindString(normalized)
+	re := regexp.MustCompile(regexp.QuoteMeta(dir) + `/[^ "]*\.md`)
+	return re.FindString(normalized)
 }
 
 // extractTitle finds the first H1 heading. CRLF content sheds its \r

@@ -272,7 +272,7 @@
         },
         {
           "type": "text",
-          "text": ", and it becomes the next sequence number for the day. The same rules apply: the path is a Claude Code plan under "
+          "text": ", and it becomes the next sequence number for the day. The same rules apply: the path is a Claude Code plan under the session's plans directory ("
         },
         {
           "type": "code",
@@ -280,7 +280,23 @@
         },
         {
           "type": "text",
-          "text": ", and identical bytes report the existing file. While the pointer names a different plan, "
+          "text": ", or "
+        },
+        {
+          "type": "code",
+          "text": "plans/"
+        },
+        {
+          "type": "text",
+          "text": " under "
+        },
+        {
+          "type": "code",
+          "text": "CLAUDE_CONFIG_DIR"
+        },
+        {
+          "type": "text",
+          "text": " when that is set: a second account keeps its own, and a same-named file in the other account's directory is another session's plan), and identical bytes report the existing file. While the pointer names a different plan, "
         },
         {
           "type": "code",
@@ -365,7 +381,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --discard\n        Remove the pending plan pointer without preserving the plan it names\n  --dry-run\n        Preview without writing or committing\n  --plan \u003cvalue\u003e\n        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)\n  --push\n        Push to origin after committing\n"
+      "text": "  --discard\n        Remove the pending plan pointer without preserving the plan it names\n  --dry-run\n        Preview without writing or committing\n  --plan \u003cvalue\u003e\n        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans, or plans/ under CLAUDE_CONFIG_DIR when that is set)\n  --push\n        Push to origin after committing\n"
     },
     {
       "type": "para",
