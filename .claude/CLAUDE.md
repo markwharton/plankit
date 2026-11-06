@@ -24,11 +24,10 @@ It is not plugin content: the plugin ships context through skills/.
 ### Quick Commands
 
 ```bash
-make build          # docgen + go build -> ./pk
+make build          # docgen + go build -> bin/pk-<os>-<arch>, run as ./bin/pk
 make test           # go vet + go test ./... (repo and tools/docgen)
 make docs           # compile skills/ into internal/help/data (committed)
 make fmt            # gofmt the tree
-make bin-local      # build bin/pk-<os>-<arch> so the bin/pk shim works
 make dist           # cross-compile all shim targets into bin/
 go test -run TestName ./internal/<pkg>   # single test
 ```

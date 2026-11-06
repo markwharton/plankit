@@ -6,19 +6,23 @@ LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/versi
 
 .PHONY: build test docs site site-preview site-serve fmt
 
+# The one local binary: the platform-named file the bin/pk shim runs,
+# so a checkout used with --plugin-dir is current after every build.
+LOCAL := bin/pk-$(shell go env GOOS)-$(shell go env GOARCH)
+
 build: docs
-	go build -ldflags "$(LDFLAGS)" -o pk ./cmd/pk
+	go build -ldflags "$(LDFLAGS)" -o $(LOCAL) ./cmd/pk
 
 docs:
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data
 
 site: build
-	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL)
 
 # Local preview: links end in .html for a plain static server, and release
 # notes whose tag does not exist yet are rendered too.
 site-preview: build
-	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../pk -notes all -links html
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL) -notes all -links html
 
 # Serve the preview on this machine. SITE_HOST=0.0.0.0 serves on every
 # interface, so a phone on the same network can open it.
@@ -37,11 +41,11 @@ fmt:
 	cd tools/docgen && gofmt -w .
 
 # Cross-compile the platform binaries the bin/ shims dispatch to. They
-# are release assets, built by the release workflow; bin-local is enough
-# for --plugin-dir testing.
+# are release assets, built by the release workflow; make build is
+# enough for --plugin-dir testing on this machine.
 TRIPLES := darwin-arm64 darwin-amd64 linux-amd64 linux-arm64 windows-amd64 windows-arm64
 
-.PHONY: dist bin-local
+.PHONY: dist
 dist: docs
 	@for t in $(TRIPLES); do \
 		os=$${t%-*}; arch=$${t#*-}; ext=""; \
@@ -49,6 +53,3 @@ dist: docs
 		echo "  bin/pk-$$t$$ext"; \
 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/pk-$$t$$ext ./cmd/pk; \
 	done
-
-bin-local: docs
-	go build -ldflags "$(LDFLAGS)" -o bin/pk-$$(go env GOOS)-$$(go env GOARCH) ./cmd/pk

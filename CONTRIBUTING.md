@@ -3,13 +3,12 @@
 ## Build and test
 
 ```bash
-make build      # docgen + go build -> ./pk
+make build      # docgen + go build -> bin/pk-<os>-<arch>, run as ./bin/pk
 make test       # go vet + go test ./... (repo and tools/docgen)
 make docs       # compile skills/ into internal/help/data (committed)
 make site       # render the website into site/dist (not committed)
 make site-serve # preview the site at http://localhost:8000
 make fmt        # gofmt the tree
-make bin-local  # build bin/pk-<os>-<arch> behind the bin/pk shim
 make dist       # cross-compile every shim target into bin/
 ```
 
@@ -109,12 +108,12 @@ Publishing prerequisites, once per repository:
 - Until the first release exists there is no published marketplace;
   `.claude-plugin/marketplace.json` in the tree is the development
   manifest for `claude --plugin-dir` and validation only. Use that
-  with `make bin-local` for local work before the first release.
+  with `make build` for local work before the first release.
 
 Pre-release checklist:
 
 - `make test` green and `claude plugin validate . --strict` clean.
-- `make bin-local`, then in a scratch repository
+- `make build`, then in a scratch repository
   `claude --plugin-dir <this checkout>`: `/plankit:status` answers,
   and a `git commit` on a protected branch is blocked.
 - **Bashless Windows gate**: on a Windows machine or VM without Git
