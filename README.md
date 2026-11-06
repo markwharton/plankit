@@ -1,13 +1,18 @@
 # plankit
 
-Plan-driven development for Claude Code: guarded branches, immutable
-plan records, and conventional-commit releases, shipped as a plugin.
-plankit is the plugin; pk is the command it installs.
+Plan-driven development for Claude Code, shipped as a plugin.
 
-The skills are the documentation. The same pages load as `/plankit:`
-shortcuts in Claude Code and render in a terminal as `pk help`. The pk
-binary holds every decision: the hooks that guard branches and
-preserve plans, and the changelog and release machinery. Uninstall the
+- **Plans are kept.** Approved plans are saved in the repository and
+  locked.
+- **Branches are guarded.** Claude cannot commit or push to `main`.
+- **Releases come from commits.** `pk ship` writes the changelog, tags
+  and pushes.
+- **Versions come from tags.** Computed forward and stamped where
+  needed, never looked up.
+
+plankit is the plugin; pk is the command it installs. The skills are
+the documentation: the same pages load as `/plankit:` shortcuts in
+Claude Code and render in a terminal as `pk help`. Uninstall the
 plugin and pk still does everything from a terminal.
 
 ## Install

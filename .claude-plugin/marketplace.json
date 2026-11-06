@@ -9,7 +9,7 @@
     {
       "name": "plankit",
       "source": "./",
-      "description": "Plan-driven development for Claude Code: guarded branches, immutable plan records, conventional-commit releases"
+      "description": "Plan-driven development for Claude Code, with release management and versioning for small teams"
     }
   ]
 }
