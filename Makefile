@@ -4,7 +4,7 @@
 VERSION ?=
 LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/version.stamped=$(VERSION))
 
-.PHONY: build test docs site site-preview site-serve vet fmt
+.PHONY: build test docs site site-preview site-serve fmt
 
 build: docs
 	go build -ldflags "$(LDFLAGS)" -o pk ./cmd/pk
@@ -36,8 +36,9 @@ fmt:
 	gofmt -w cmd internal
 	cd tools/docgen && gofmt -w .
 
-# Cross-compile the platform binaries the bin/ shims dispatch to. Release
-# assets in layer 6; bin-local is enough for --plugin-dir testing.
+# Cross-compile the platform binaries the bin/ shims dispatch to. They
+# are release assets, built by the release workflow; bin-local is enough
+# for --plugin-dir testing.
 TRIPLES := darwin-arm64 darwin-amd64 linux-amd64 linux-arm64 windows-amd64 windows-arm64
 
 .PHONY: dist bin-local

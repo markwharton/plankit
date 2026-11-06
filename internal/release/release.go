@@ -4,11 +4,10 @@
 // current branch fast-forwards into the release branch first; without
 // it, trunk flow tags and pushes the default branch directly.
 //
-// Ported from v1, including the failure discipline: everything mutating
-// happens under a defer that deletes an unpushed tag, rolls back the
-// merge, and switches back to the source branch, so an aborted release
-// leaves the repository as it found it. v2 deltas: exits follow the
-// layer-0 taxonomy, ceremony prints on stderr, stdout stays empty.
+// Everything that mutates happens under a defer that deletes an
+// unpushed tag, rolls back the merge, and switches back to the source
+// branch, so an aborted release leaves the repository as it found it.
+// Ceremony prints on stderr; stdout stays empty.
 package release
 
 import (

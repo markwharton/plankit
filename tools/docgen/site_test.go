@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/markwharton/plankit/internal/config"
-	"github.com/markwharton/plankit/internal/version"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/version"
 )
 
 // TestBuildSite renders a miniature repository through the real site

@@ -16,9 +16,9 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/markwharton/plankit/internal/msg"
-	"strings"
 )
 
 // FlagType enumerates the flag kinds a command may declare.
@@ -84,7 +84,9 @@ func RunIO(argv []string, cmds []*Command, stdin io.Reader, stdout, stderr io.Wr
 
 	cmd := lookup(cmds, name)
 	if cmd == nil {
-		if name == "help" { // help not registered yet (layer 1): fall back
+		// A command list without help (a test's, or one command run
+		// inside another): the usage is the help there is.
+		if name == "help" {
 			printUsage(stdout, cmds)
 			return ExitOK
 		}

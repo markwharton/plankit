@@ -260,7 +260,6 @@ func runInit(ctx *cli.Context) error {
 	return nil
 }
 
-// StatusCmd reports configuration and repository state.
 // legacyWiring reports the files a v0.x pk setup copied into a
 // repository, which the plugin now ships itself. Each path is pk's own
 // and cannot be mistaken for a project's: while they are present, the
@@ -278,6 +277,7 @@ func legacyWiring(root string) bool {
 	return false
 }
 
+// StatusCmd reports configuration and repository state.
 var StatusCmd = &cli.Command{
 	Name:    "status",
 	Summary: "Report plankit configuration and repository state",

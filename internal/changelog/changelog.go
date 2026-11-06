@@ -4,11 +4,10 @@
 // the git tag at the right moment; pk changelog --undo unwinds a
 // release commit that is only on the current branch.
 //
-// Ported from v1. The v2 deltas: an unconfigured repository is refused
-// (state exit, hint pk init) rather than defaulted; the dry-run section
-// prints on stdout so it can be redirected, with all progress on stderr;
-// and exits follow the layer-0 taxonomy (state 2 for refusals, usage 1,
-// internal 3).
+// An unconfigured repository is refused, with the hint to run pk init.
+// The dry-run section prints on stdout so it can be redirected, with
+// all progress on stderr. A refusal exits 2, a bad invocation 1, and a
+// failure of pk itself 3.
 package changelog
 
 import (
@@ -177,14 +176,14 @@ func run(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		since := ""
+		after := ""
 		if latestTag != "" {
-			since = " since " + latestTag
+			after = " since " + latestTag
 		}
 		if total == 0 {
-			fmt.Fprintf(ctx.Stderr, "no commits%s\n", since)
+			fmt.Fprintf(ctx.Stderr, "no commits%s\n", after)
 		} else {
-			fmt.Fprintf(ctx.Stderr, "%d commits%s, none conventional\n", total, since)
+			fmt.Fprintf(ctx.Stderr, "%d commits%s, none conventional\n", total, after)
 		}
 		return nil
 	}

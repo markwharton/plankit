@@ -283,10 +283,3 @@ func flatten(spans []Span) string {
 func splitLines(text string) []string {
 	return strings.Split(strings.TrimRight(text, "\n"), "\n")
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

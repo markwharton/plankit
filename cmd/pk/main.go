@@ -15,6 +15,3 @@ import (
 func main() {
 	os.Exit(cli.Run(os.Args, registry.Commands()))
 }
-
-// commands is the explicit registry. Each layer appends here; there is no
-// init-time magic, so reading this list is reading the product surface.

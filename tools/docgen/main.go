@@ -12,6 +12,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -19,7 +20,6 @@ import (
 	"regexp"
 	"strings"
 
-	"errors"
 	"github.com/markwharton/plankit/internal/help"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
