@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -175,14 +176,7 @@ func WritePostToolUse(w io.Writer, systemMessage, additionalContext string) erro
 // also set as real environment variables, so a hook can write $VERSION
 // once and have it work on every platform (cmd does not expand $VAR).
 func RunScript(w io.Writer, dir, command string, env map[string]string) error {
-	if len(env) > 0 {
-		command = os.Expand(command, func(key string) string {
-			if v, ok := env[key]; ok {
-				return v
-			}
-			return "$" + key
-		})
-	}
+	command = expand(command, env)
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", command)
@@ -201,6 +195,63 @@ func RunScript(w io.Writer, dir, command string, env map[string]string) error {
 		}
 	}
 	return cmd.Run()
+}
+
+// expand substitutes $NAME and ${NAME} in command for the names env
+// holds, and copies every other byte as it was written. A variable that
+// is not pk's, and every other form the shell reads after a dollar sign
+// (${NAME:-default}, $(command), $$), reaches the shell untouched.
+func expand(command string, env map[string]string) string {
+	var b strings.Builder
+	for i := 0; i < len(command); {
+		if command[i] == '$' {
+			if name, end := reference(command, i); name != "" {
+				if v, ok := env[name]; ok {
+					b.WriteString(v)
+					i = end
+					continue
+				}
+			}
+		}
+		b.WriteByte(command[i])
+		i++
+	}
+	return b.String()
+}
+
+// reference reads a plain variable reference at the dollar sign s[i],
+// $NAME or ${NAME}, and returns the name and the index just past the
+// reference. The name is "" when the dollar sign opens anything else.
+func reference(s string, i int) (string, int) {
+	j := i + 1
+	braced := j < len(s) && s[j] == '{'
+	if braced {
+		j++
+	}
+	start := j
+	for j < len(s) && isNameByte(s[j], j == start) {
+		j++
+	}
+	name := s[start:j]
+	if braced {
+		if j >= len(s) || s[j] != '}' {
+			return "", i
+		}
+		j++
+	}
+	return name, j
+}
+
+// isNameByte reports whether c may appear in a shell variable name:
+// a letter or an underscore anywhere, a digit after the first byte.
+func isNameByte(c byte, first bool) bool {
+	switch {
+	case c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z':
+		return true
+	case c >= '0' && c <= '9':
+		return !first
+	}
+	return false
 }
 
 // WriteSessionStart emits a SessionStart response whose additionalContext

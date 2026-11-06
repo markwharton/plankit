@@ -92,3 +92,43 @@ func TestWritePostToolUseOmitsEmptyContext(t *testing.T) {
 		t.Fatalf("context form: %s", s)
 	}
 }
+
+// A lifecycle hook command reaches the shell with pk's variables
+// filled in and every other reference as it was written.
+func TestRunScriptLeavesOtherVariablesToTheShell(t *testing.T) {
+	var out bytes.Buffer
+	command := `FOO=bar; echo "[${FOO}_x] [${NOPE:-fallback}] [v${VERSION}] [$VERSION] [${VERSION:-none}]"`
+	if err := RunScript(&out, t.TempDir(), command, map[string]string{"VERSION": "1.2.3"}); err != nil {
+		t.Fatalf("%v: %s", err, out.String())
+	}
+	if got, want := strings.TrimSpace(out.String()), "[bar_x] [fallback] [v1.2.3] [1.2.3] [1.2.3]"; got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+}
+
+func TestExpandSubstitutesOnlyItsOwnNames(t *testing.T) {
+	env := map[string]string{"VERSION": "1.2.3", "TAG": "v1.2.3"}
+	cases := map[string]string{
+		"$VERSION":            "1.2.3",
+		"${VERSION}":          "1.2.3",
+		"v${VERSION}-$TAG":    "v1.2.3-v1.2.3",
+		"$VERSIONS":           "$VERSIONS",
+		"${VERSION:-none}":    "${VERSION:-none}",
+		"${FOO}_x":            "${FOO}_x",
+		"${NOPE:-fallback}":   "${NOPE:-fallback}",
+		"$(date) $$ $? $1":    "$(date) $$ $? $1",
+		"${VERSION":           "${VERSION",
+		"cost: 5$":            "cost: 5$",
+		"${}":                 "${}",
+		"no references here":  "no references here",
+		"$TAG$VERSION${TAG}$": "v1.2.31.2.3v1.2.3$",
+	}
+	for in, want := range cases {
+		if got := expand(in, env); got != want {
+			t.Errorf("expand(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := expand("$VERSION", nil); got != "$VERSION" {
+		t.Errorf("with no env: %q", got)
+	}
+}
