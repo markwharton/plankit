@@ -268,7 +268,7 @@ func runDiscard(ctx *cli.Context) error {
 // preserve writes the plan into the plans directory under the next
 // filename for the day and commits it, reporting through the response
 // envelope.
-// Identical bytes already preserved report the existing file instead.
+// Identical bytes already committed report the existing file instead.
 // Failures are reported the hook's way, never as an exit code, because
 // the automatic hook shares this path.
 func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, content []byte, title string) {
@@ -279,14 +279,41 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	}
 	destDir := policy.DirPath(root)
 
-	dupName, seq := scanDestDir(destDir, datePrefix, content)
-	if dupName != "" {
-		removePointer(root)
-		writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", path.Join(policy.ResolvedDir(), dupName)), "")
+	// The file is the one already holding these bytes, when there is
+	// one, else the next name for the day.
+	filename, seq := scanDestDir(destDir, datePrefix, content)
+	leftover := filename != ""
+	if !leftover {
+		filename = fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
+	}
+	relPath := path.Join(policy.ResolvedDir(), filename)
+
+	// A plan is preserved when it is committed, and git commits nothing
+	// it ignores, so an ignored target is refused before any write.
+	ignored, err := git.Ignored(root, relPath)
+	if err != nil {
+		msg.Hookf(ctx.Stderr, "preserve", "git check-ignore failed: %v", err)
 		return
 	}
-	filename := fmt.Sprintf("%s-%03d-%s.md", datePrefix, seq, slug)
-	relPath := path.Join(policy.ResolvedDir(), filename)
+	if ignored {
+		msg.Hookf(ctx.Stderr, "preserve", "%s is ignored by git, so a plan cannot be committed there: change preserve.dir in %s, or the ignore rule", relPath, config.FileName)
+		return
+	}
+	if leftover {
+		// The same bytes, committed, are the plan already preserved. Not
+		// committed, the file is what a run whose commit failed left
+		// behind, and this run commits it as it stands.
+		clean, err := git.Clean(root, relPath)
+		if err != nil {
+			msg.Hookf(ctx.Stderr, "preserve", "git status failed: %v", err)
+			return
+		}
+		if clean {
+			removePointer(root)
+			writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", relPath), "")
+			return
+		}
+	}
 
 	// The marker skips CI for the whole push it lands in, so it goes on
 	// only when the plan commit is the only thing the next push carries:
@@ -326,24 +353,15 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		return
 	}
 
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "failed to create directory: %v", err)
-		return
-	}
-	if err := os.WriteFile(filepath.Join(destDir, filename), content, 0o644); err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "failed to write plan: %v", err)
-		return
-	}
-	// A clean plan path means the identical bytes were already committed.
-	clean, err := git.Clean(root, relPath)
-	if err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "git status failed: %v", err)
-		return
-	}
-	if clean {
-		removePointer(root)
-		writeResponse(ctx, "Plan unchanged, no commit needed.", "")
-		return
+	if !leftover {
+		if err := os.MkdirAll(destDir, 0o755); err != nil {
+			msg.Hookf(ctx.Stderr, "preserve", "failed to create directory: %v", err)
+			return
+		}
+		if err := os.WriteFile(filepath.Join(destDir, filename), content, 0o644); err != nil {
+			msg.Hookf(ctx.Stderr, "preserve", "failed to write plan: %v", err)
+			return
+		}
 	}
 	// The commit holds the plan alone; other staged work stays staged.
 	if err := git.CommitPaths(root, subject, relPath); err != nil {

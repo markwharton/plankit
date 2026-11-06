@@ -204,7 +204,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Identical plan bytes are never preserved twice; a duplicate reports the existing file. A plan shorter than "
+          "text": "Identical plan bytes are never preserved twice; a duplicate reports the existing file. A plan is preserved once it is committed: a file a failed commit left behind is committed by the next run, and a plans directory that git ignores is refused. A plan shorter than "
         },
         {
           "type": "code",

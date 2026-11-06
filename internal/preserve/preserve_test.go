@@ -540,6 +540,68 @@ func TestPlanFlagPreservesARevisedPlanWithoutAPointer(t *testing.T) {
 	}
 }
 
+// A plan is preserved when it is committed. A run whose commit failed
+// leaves the file behind; the next run commits that file, once, and
+// only then is the plan already preserved.
+func TestAPlanWhoseCommitFailedIsCommittedOnTheNextRun(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	hook := filepath.Join(dir, ".git", "hooks", "pre-commit")
+	if err := os.MkdirAll(filepath.Dir(hook), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(hook, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	if _, errw := runPreserve(t, dir, plan); !strings.Contains(errw, "git commit failed") || commitCount(t, dir) != before {
+		t.Fatalf("the commit should have failed: commits=%d errw=%q", commitCount(t, dir), errw)
+	}
+
+	if err := os.Remove(hook); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := runPreserve(t, dir, plan)
+	if commitCount(t, dir) != before+1 || !strings.Contains(out, "Approved plan committed: docs/plans/2026-09-05-001-ship-the-widget.md") {
+		t.Fatalf("the leftover plan was not committed: commits=%d out=%s", commitCount(t, dir), out)
+	}
+	if entries, _ := os.ReadDir(plansDir(dir)); len(entries) != 1 {
+		t.Fatalf("plans dir has %d entries, want the one file", len(entries))
+	}
+	if clean, _ := git.Clean(dir); !clean {
+		t.Fatal("the tree should be clean once the plan is committed")
+	}
+
+	out, _ = runPreserve(t, dir, plan)
+	if commitCount(t, dir) != before+1 || !strings.Contains(out, "already preserved") {
+		t.Fatalf("a committed plan is already preserved: commits=%d out=%s", commitCount(t, dir), out)
+	}
+}
+
+// A plans directory git ignores can hold no commit: preserve refuses
+// before it writes anything and names the setting.
+func TestAnIgnoredPlansDirectoryIsRefused(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "auto", planBody)
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("docs/plans/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git.Exec(dir, "add", ".gitignore")
+	git.Exec(dir, "commit", "-q", "-m", "ignore")
+	before := commitCount(t, dir)
+
+	out, errw := runPreserve(t, dir, plan)
+	if out != "" || !strings.Contains(errw, "ignored by git") || !strings.Contains(errw, "preserve.dir") {
+		t.Fatalf("out=%q errw=%q", out, errw)
+	}
+	if _, err := os.Stat(plansDir(dir)); !os.IsNotExist(err) {
+		t.Fatal("refused, yet the plans directory was written")
+	}
+	if commitCount(t, dir) != before {
+		t.Fatal("refused, yet a commit was made")
+	}
+}
+
 func TestPlanFlagIdenticalBytesReportTheExistingFile(t *testing.T) {
 	fixedNow(t)
 	dir, plan := scratch(t, "auto", planBody)

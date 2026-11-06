@@ -159,10 +159,22 @@ func Holders(dir, rev string) ([]string, error) {
 	return strings.Fields(out), nil
 }
 
-// IsAncestor reports whether ancestor is reachable from rev. Exit 1
-// from git is false; any other failure is the error.
+// IsAncestor reports whether ancestor is reachable from rev.
 func IsAncestor(dir, ancestor, rev string) (bool, error) {
 	_, err := Exec(dir, "merge-base", "--is-ancestor", ancestor, rev)
+	return answer(err)
+}
+
+// Ignored reports whether git's ignore rules cover path, which need not
+// exist. An ignored path can be written but never committed.
+func Ignored(dir, path string) (bool, error) {
+	_, err := Exec(dir, "check-ignore", "-q", "--", path)
+	return answer(err)
+}
+
+// answer reads the result of a git command that replies with its exit
+// status: 0 is yes, 1 is no, and any other failure is the error.
+func answer(err error) (bool, error) {
 	if err == nil {
 		return true, nil
 	}

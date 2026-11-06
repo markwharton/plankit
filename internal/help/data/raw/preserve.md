@@ -31,7 +31,9 @@ the mode. `--push` also pushes the commit. `--dry-run` previews the
 filename and commit message.
 
 Identical plan bytes are never preserved twice; a duplicate reports
-the existing file. A plan shorter than `minPlanSize` bytes is ignored (`grep minPlanSize internal/preserve/preserve.go`).
+the existing file. A plan is preserved once it is committed: a file a
+failed commit left behind is committed by the next run, and a plans
+directory that git ignores is refused. A plan shorter than `minPlanSize` bytes is ignored (`grep minPlanSize internal/preserve/preserve.go`).
 A typed run with nothing pending says so; the hook declines in
 silence, because its stdout is the response envelope.
 
