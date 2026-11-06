@@ -750,3 +750,18 @@ func TestAnOriginThatDoesNotAnswerIsAPrecondition(t *testing.T) {
 		t.Fatal("refused, yet a release commit was made")
 	}
 }
+
+// Only a missing CHANGELOG.md starts a new changelog. One that is
+// there and cannot be read is an error naming the read, never an empty
+// changelog to write over.
+func TestAChangelogThatIsThereMustBeReadable(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	if err := os.Mkdir(filepath.Join(dir, "CHANGELOG.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errw := runCL(t, dir)
+	if code == cli.ExitOK || !strings.Contains(errw, "failed to read CHANGELOG.md") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+}

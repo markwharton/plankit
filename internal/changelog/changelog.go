@@ -14,6 +14,7 @@ package changelog
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -274,7 +275,12 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		repoURL = git.ParseRepoURL(remoteURL)
 	}
 	changelogPath := filepath.Join(root, "CHANGELOG.md")
-	existing, _ := readFile(changelogPath)
+	// Only a missing file starts a new changelog: one that is there and
+	// cannot be read is never treated as empty and written over.
+	existing, err := readFile(changelogPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to read CHANGELOG.md: %v", err)
+	}
 	updated := insertSection(string(existing), section)
 	if repoURL != "" {
 		// A compare needs two ends; the first release links its commits.

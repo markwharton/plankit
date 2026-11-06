@@ -478,3 +478,19 @@ func TestPagesListTheMutations(t *testing.T) {
 		}
 	}
 }
+
+// A branch guard cannot read is a problem it cannot act on: reported
+// with the exit Claude Code shows, and no decision is made.
+func TestABranchThatCannotBeReadIsReported(t *testing.T) {
+	dir := scratch(t, "block", "off")
+	if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a ref\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	payload, _ := json.Marshal(map[string]any{"cwd": dir, "tool_input": map[string]string{"command": "git commit -m x"}})
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "guard"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "pk guard:") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+}

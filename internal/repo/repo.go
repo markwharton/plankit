@@ -355,7 +355,9 @@ func runStatus(ctx *cli.Context) error {
 	if branch, err := git.CurrentBranch(root); err == nil {
 		s.Branch = branch
 	}
-	s.Clean, _ = git.Clean(root)
+	if s.Clean, err = git.Clean(root); err != nil {
+		return cli.Statef("%v", err)
+	}
 	if s.LatestTag, _, err = changelog.LatestTag(root); err != nil {
 		return cli.Statef("%v", err)
 	}

@@ -78,7 +78,7 @@ func run(ctx *cli.Context) error {
 	if mode := cfg.Guard.ResolvedMode(); mutation && mode != "off" && len(cfg.Guard.Branches) > 0 {
 		branch, err := git.CurrentBranch(root)
 		if err != nil {
-			return nil
+			return hookio.Report(ctx.Stderr, "guard", err) // shown, not blocking; guard takes no action
 		}
 		for _, protected := range cfg.Guard.Branches {
 			if branch != "" && branch == protected {

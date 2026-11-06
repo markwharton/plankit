@@ -967,3 +967,19 @@ func TestADetachedHeadIsNotABranch(t *testing.T) {
 		t.Fatalf("status:\n%s", out)
 	}
 }
+
+// A git status that fails is reported; the tree is never called dirty
+// on the strength of a command that did not answer.
+func TestStatusReportsAGitStatusThatFails(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("not an index"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errw := run(t, "status", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, "git status failed") || strings.Contains(out, "(dirty)") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
+	}
+}
