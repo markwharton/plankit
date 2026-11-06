@@ -177,6 +177,13 @@ the change.
   them, or state the concept once in the document that owns it.
 - One-liners (a command's `Summary`, a skill's `description`) state
   purpose, not features.
+- Say it straight. A heading names what follows ("Sources", "Not
+  checked"); a sentence states the fact. No inverted or aphoristic
+  constructions: not "Sources, and what is not one", not "Parity is
+  not the measure", not "A refused step leaves nothing behind". Before
+  finishing a document, a release note, or a commit message, reread
+  every heading, every bold claim, and every "X, not Y" sentence and
+  rewrite any that a reader has to decode.
 - When behavior changes, reread the affected `Summary`, `description`,
   and docs/architecture.md before committing.
 - Skills ship verbatim into model contexts: plain markdown, no
