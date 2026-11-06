@@ -69,3 +69,29 @@ func TestCompare(t *testing.T) {
 		}
 	}
 }
+
+// Latest is the one chooser of the latest release: semver precedence
+// over the names that are release tags, whatever order they arrive in.
+func TestLatest(t *testing.T) {
+	cases := []struct {
+		names []string
+		want  string
+	}{
+		{nil, ""},
+		{[]string{"notes", "vnext", "v2"}, ""},
+		{[]string{"v0.2.0", "v0.10.0", "v0.9.9"}, "v0.10.0"},
+		{[]string{"vnext", "v1.0.0", "vscode-1.0"}, "v1.0.0"},
+		{[]string{"2.0.0", "v1.0.0"}, "v1.0.0"},
+		{[]string{"v1.0.0-rc1", "v1.0.0"}, "v1.0.0"},
+		{[]string{"v1.0.0", "v1.1.0-rc1"}, "v1.1.0-rc1"},
+	}
+	for _, c := range cases {
+		got, sv, ok := Latest(c.names)
+		if got != c.want || ok != (c.want != "") {
+			t.Errorf("Latest(%v) = %q, %v; want %q", c.names, got, ok, c.want)
+		}
+		if ok && sv.String() != got {
+			t.Errorf("Latest(%v) version %s does not match its tag %s", c.names, sv, got)
+		}
+	}
+}

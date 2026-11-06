@@ -94,14 +94,14 @@ func HasCommits(dir string) bool {
 	return err == nil
 }
 
-// LatestTag returns the highest v-prefixed tag by version sort, or ""
-// when none exist.
-func LatestTag(dir string) string {
-	out, err := Exec(dir, "tag", "-l", "v*", "--sort=-v:refname")
-	if err != nil || out == "" {
-		return ""
+// Tags lists the clone's tag names. Which of them is the latest release
+// is version.Latest's question, not this package's.
+func Tags(dir string) ([]string, error) {
+	out, err := Exec(dir, "tag", "--list")
+	if err != nil {
+		return nil, err
 	}
-	return strings.SplitN(out, "\n", 2)[0]
+	return strings.Fields(out), nil
 }
 
 // RemoteTags lists the tag names origin advertises, peeled entries

@@ -430,21 +430,16 @@ type sinceTag struct {
 // same thing. Local only: no call reaches origin, because the guard hook
 // reads this under its timeout.
 func commitsSinceLastTag(root, branch string) (sinceTag, error) {
-	tagOutput, err := git.Exec(root, "tag", "--list", "v*", "--sort=-v:refname")
+	latestTag, base, err := LatestTag(root)
 	if err != nil {
-		return sinceTag{}, fmt.Errorf("failed to list tags: %v", err)
+		return sinceTag{}, err
 	}
-	latestTag, base, found := latestSemverTag(tagOutput)
-	if found {
-		outside, err := TagOutsideHistory(root, branch)
-		if err != nil {
-			return sinceTag{}, err
-		}
-		if outside != "" {
-			return sinceTag{}, cli.Statef("%s", outside)
-		}
-	} else {
-		latestTag, base = "", version.Semver{}
+	outside, err := TagOutsideHistory(root, branch, latestTag)
+	if err != nil {
+		return sinceTag{}, err
+	}
+	if outside != "" {
+		return sinceTag{}, cli.Statef("%s", outside)
 	}
 	logRange := "HEAD"
 	if latestTag != "" {
@@ -695,26 +690,25 @@ func lastLine(s string) string {
 	return ""
 }
 
-func latestSemverTag(tagOutput string) (string, version.Semver, bool) {
-	for _, line := range strings.Split(tagOutput, "\n") {
-		tag := strings.TrimSpace(line)
-		if tag == "" {
-			continue
-		}
-		if sv, ok := version.ParseSemver(tag); ok {
-			return tag, sv, true
-		}
+// LatestTag returns the clone's latest release tag and its version: the
+// highest semver tag, "" before the first release. Every reader of the
+// last release asks here, so they all measure from the same tag.
+func LatestTag(root string) (string, version.Semver, error) {
+	tags, err := git.Tags(root)
+	if err != nil {
+		return "", version.Semver{}, fmt.Errorf("failed to list tags: %v", err)
 	}
-	return "", version.Semver{}, false
+	tag, sv, _ := version.Latest(tags)
+	return tag, sv, nil
 }
 
-// TagOutsideHistory returns the message for a latest version tag that
+// TagOutsideHistory returns the message for a latest release tag that
 // the branch does not contain, or "" when the tag is in the branch's
-// history or there is no tag. A branch rewritten after a release leaves
-// the tag on the old commits, and an entry measured from it would list
-// that release's work again; the way out is the developer's.
-func TagOutsideHistory(root, branch string) (string, error) {
-	tag := git.LatestTag(root)
+// history or tag is "". The caller passes the tag it measured from
+// LatestTag. A branch rewritten after a release leaves the tag on the
+// old commits, and an entry measured from it would list that release's
+// work again; the way out is the developer's.
+func TagOutsideHistory(root, branch, tag string) (string, error) {
 	if tag == "" {
 		return "", nil
 	}

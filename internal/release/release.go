@@ -178,14 +178,18 @@ func run(ctx *cli.Context) error {
 				"to create it: git branch %s && git push -u origin %s", releaseBranch, releaseBranch)
 		}
 	}
-	outside, err := changelog.TagOutsideHistory(root, sourceBranch)
+	last, _, err := changelog.LatestTag(root)
+	if err != nil {
+		return err
+	}
+	outside, err := changelog.TagOutsideHistory(root, sourceBranch, last)
 	if err != nil {
 		return err
 	}
 	if outside != "" {
 		return cli.Statef("%s", outside)
 	}
-	if last := git.LatestTag(root); last != "" {
+	if last != "" {
 		msg.Itemf(w, "Last tag %s is in %s's history", last, sourceBranch)
 	}
 	msg.Itemf(w, "Release-Tag trailer: %s", tag)

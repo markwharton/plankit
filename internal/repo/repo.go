@@ -128,16 +128,22 @@ func runInit(ctx *cli.Context) error {
 	// after it; init says how much there is and how to keep it as history
 	// instead, naming the commit so the command stays exact.
 	preceding, last := 0, ""
-	if hadCommits && git.LatestTag(root) == "" {
-		n, err := git.CountCommits(root, "HEAD")
+	if hadCommits {
+		tag, _, err := changelog.LatestTag(root)
 		if err != nil {
-			return cli.Statef("cannot count commits: %v", err)
+			return cli.Statef("%v", err)
 		}
-		sha, err := git.Exec(root, "rev-parse", "--short", "HEAD")
-		if err != nil {
-			return cli.Statef("cannot read HEAD: %v", err)
+		if tag == "" {
+			n, err := git.CountCommits(root, "HEAD")
+			if err != nil {
+				return cli.Statef("cannot count commits: %v", err)
+			}
+			sha, err := git.Exec(root, "rev-parse", "--short", "HEAD")
+			if err != nil {
+				return cli.Statef("cannot read HEAD: %v", err)
+			}
+			preceding, last = n, sha
 		}
-		preceding, last = n, sha
 	}
 	// The working branch is created when the release branch is the only
 	// one; the release branch is created, at the root so it carries no
@@ -296,20 +302,13 @@ type state struct {
 	OriginTag  string   `json:"originLatestTag,omitempty"`
 }
 
-// originLatestTag is the highest v-prefixed semver tag origin
-// advertises, or "" when it has none or cannot be asked. A clone that
-// fetched only its working branch, as a cloud sandbox does, has no
-// local tags; this is how the report says what origin knows without
-// changing the clone.
+// originLatestTag is the latest release tag origin advertises, or ""
+// when it has none or cannot be asked. A clone that fetched only its
+// working branch, as a cloud sandbox does, has no local tags; this is
+// how the report says what origin knows without changing the clone.
 func originLatestTag(root string) string {
-	var best string
-	var bestV version.Semver
-	for _, tag := range git.RemoteTags(root) {
-		if sv, ok := version.ParseSemver(tag); ok && (best == "" || sv.Compare(bestV) > 0) {
-			best, bestV = tag, sv
-		}
-	}
-	return best
+	tag, _, _ := version.Latest(git.RemoteTags(root))
+	return tag
 }
 
 func runStatus(ctx *cli.Context) error {
@@ -353,7 +352,9 @@ func runStatus(ctx *cli.Context) error {
 		s.Branch = branch
 	}
 	s.Clean, _ = git.Clean(root)
-	s.LatestTag = git.LatestTag(root)
+	if s.LatestTag, _, err = changelog.LatestTag(root); err != nil {
+		return cli.Statef("%v", err)
+	}
 	if s.LatestTag == "" {
 		// A clone with no tags is usually one that fetched only its
 		// working branch. Say what origin has, so "none" is never read
@@ -464,7 +465,7 @@ func runStatus(ctx *cli.Context) error {
 		}
 	}
 	if s.Branch != "" {
-		outside, err := changelog.TagOutsideHistory(root, s.Branch)
+		outside, err := changelog.TagOutsideHistory(root, s.Branch, s.LatestTag)
 		if err != nil {
 			return cli.Statef("%v", err)
 		}

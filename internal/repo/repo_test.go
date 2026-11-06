@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
@@ -34,6 +35,16 @@ func mustGit(t *testing.T, dir string, args ...string) {
 	if _, err := git.Exec(dir, args...); err != nil {
 		t.Fatalf("git %v: %v", args, err)
 	}
+}
+
+// latestTag is the clone's latest release tag, "" when it has none.
+func latestTag(t *testing.T, dir string) string {
+	t.Helper()
+	tag, _, err := changelog.LatestTag(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tag
 }
 
 func run(t *testing.T, args ...string) (int, string, string) {
@@ -92,7 +103,7 @@ func TestInitThenStatusRoundTrips(t *testing.T) {
 	if _, err := os.Stat(cfg.Preserve.DirPath(dir)); !os.IsNotExist(err) {
 		t.Fatal("init must not create the plans directory; preserve creates it on first use")
 	}
-	if got := git.LatestTag(dir); got != "" {
+	if got := latestTag(t, dir); got != "" {
 		t.Fatalf("init must not tag; got %q", got)
 	}
 	// The brief is printed in full: the session that ran init was not
@@ -139,7 +150,7 @@ func TestInitBootstrapsEmptyRepo(t *testing.T) {
 	if tracked, _ := git.Exec(dir, "ls-tree", "-r", "--name-only", "HEAD"); tracked != settingsFile+"\n"+config.FileName {
 		t.Fatalf("root commit tracks %q", tracked)
 	}
-	if git.LatestTag(dir) != "" {
+	if latestTag(t, dir) != "" {
 		t.Fatal("init must not tag")
 	}
 	if b, _ := git.CurrentBranch(dir); b != "develop" {
@@ -215,7 +226,7 @@ func TestInitNoCommitLeavesTheRestToTheDeveloper(t *testing.T) {
 	if untracked, _ := git.Exec(dir, "ls-files", "--others"); untracked != settingsFile+"\n"+config.FileName {
 		t.Fatalf("untracked = %q", untracked)
 	}
-	if git.LatestTag(dir) != "" || git.BranchExists(dir, "develop") {
+	if latestTag(t, dir) != "" || git.BranchExists(dir, "develop") {
 		t.Fatal("tagged or branched without a commit")
 	}
 	for _, want := range []string{"commit .pk.json and .claude/settings.json yourself", "guard blocks", "then git switch -c develop"} {
@@ -235,7 +246,7 @@ func TestInitWorkBeforeInitJoinsTheFirstRelease(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	if git.LatestTag(dir) != "" {
+	if latestTag(t, dir) != "" {
 		t.Fatal("init tagged")
 	}
 	if subject, _ := git.Exec(dir, "log", "-1", "--format=%s"); subject != configureSubject {
@@ -308,7 +319,7 @@ func TestInitDryRunTouchesNothing(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, settingsFile)); !os.IsNotExist(err) {
 		t.Fatal("dry-run wrote the settings file")
 	}
-	if git.HasCommits(dir) || git.LatestTag(dir) != "" || git.BranchExists(dir, "develop") {
+	if git.HasCommits(dir) || latestTag(t, dir) != "" || git.BranchExists(dir, "develop") {
 		t.Fatal("dry-run changed the repository")
 	}
 }
@@ -917,5 +928,18 @@ func TestStatusNotesATagOutsideHistory(t *testing.T) {
 	mustGit(t, dir, "tag", "-d", "v0.0.1")
 	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "not in develop's history") {
 		t.Fatalf("note after the tag is gone:\n%s", errw)
+	}
+}
+
+// A v-prefixed tag that is not a version is never the latest tag.
+func TestStatusPassesOverANonVersionTag(t *testing.T) {
+	dir := scratch(t, true)
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init: %s", errw)
+	}
+	mustGit(t, dir, "tag", "v0.1.0")
+	mustGit(t, dir, "tag", "vnext")
+	if _, out, _ := run(t, "status", "--project-dir", dir); !strings.Contains(out, "tag:       v0.1.0\n") {
+		t.Fatalf("tag line:\n%s", out)
 	}
 }

@@ -665,3 +665,19 @@ func TestTagOutsideHistoryIsRefused(t *testing.T) {
 		t.Fatalf("with the stray tag gone: code=%d errw=%q", code, errw)
 	}
 }
+
+// A v-prefixed tag that is not a version is not a release: it neither
+// anchors the range nor counts as the last tag, wherever it sits.
+func TestANonVersionTagIsNotARelease(t *testing.T) {
+	fixedNow(t)
+	dir := repo(t, nil)
+	commit(t, dir, "fix: new work")
+	mustGit(t, dir, "switch", "-q", "-c", "side", "v0.0.0")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "chore: elsewhere")
+	mustGit(t, dir, "tag", "vnext")
+	mustGit(t, dir, "switch", "-q", "develop")
+	code, out, errw := runCL(t, dir, "--dry-run")
+	if code != cli.ExitOK || !strings.HasPrefix(out, "## [v0.0.1] - 2026-09-05") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
+	}
+}

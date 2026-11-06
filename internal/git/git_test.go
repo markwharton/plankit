@@ -3,6 +3,7 @@ package git
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -60,16 +61,16 @@ func TestBranchCleanCommitsTags(t *testing.T) {
 	if !HasCommits(dir) {
 		t.Fatal("HasCommits should be true")
 	}
-	if got := LatestTag(dir); got != "" {
-		t.Fatalf("LatestTag=%q want empty", got)
+	if tags, err := Tags(dir); err != nil || len(tags) != 0 {
+		t.Fatalf("Tags=%v err=%v want none", tags, err)
 	}
 	if err := CreateTag(dir, "v0.0.0"); err != nil {
 		t.Fatal(err)
 	}
 	mustGit(t, dir, "tag", "v0.10.0")
-	mustGit(t, dir, "tag", "v0.2.0")
-	if got := LatestTag(dir); got != "v0.10.0" {
-		t.Fatalf("LatestTag=%q want v0.10.0 (version sort)", got)
+	mustGit(t, dir, "tag", "notes")
+	if tags, err := Tags(dir); err != nil || strings.Join(tags, " ") != "notes v0.0.0 v0.10.0" {
+		t.Fatalf("Tags=%v err=%v want every tag name", tags, err)
 	}
 }
 
