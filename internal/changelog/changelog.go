@@ -324,12 +324,16 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 // commit, a tagged release, and a merge that was not rolled back alike.
 // git reset --hard HEAD~1 restores CHANGELOG.md and version files.
 func undo(ctx *cli.Context, root string) error {
+	// Every reason not to undo is the one refusal, with its reason.
+	refuse := func(format string, a ...any) error {
+		return cli.Statef("cannot undo: "+format, a...)
+	}
 	_, trailerValue, err := ReadReleaseTagTrailer(root)
 	if err != nil {
-		return cli.Statef("cannot undo: %v", err)
+		return refuse("%v", err)
 	}
 	if err := git.CheckCleanTree(root); err != nil {
-		return cli.Statef("cannot undo: %v", err)
+		return refuse("%v", err)
 	}
 	holders, err := git.Holders(root, "HEAD")
 	if err != nil {
@@ -351,7 +355,7 @@ func undo(ctx *cli.Context, root string) error {
 		}
 	}
 	if len(others) > 0 {
-		return cli.Statef("cannot undo: the release commit is also on %s", strings.Join(others, ", "))
+		return refuse("the release commit is also on %s", strings.Join(others, ", "))
 	}
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
 		return err

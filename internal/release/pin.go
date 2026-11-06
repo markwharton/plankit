@@ -63,7 +63,7 @@ func runPin(ctx *cli.Context) error {
 		return nil
 	default:
 		var noPin *noPinError
-		if asNoPin(err, &noPin) {
+		if errors.As(err, &noPin) {
 			// Present but pinless is a warning, not a failure, so a
 			// renamed or reformatted target never aborts a release.
 			msg.Warnf(ctx.Stderr, "%v", err)
@@ -75,42 +75,47 @@ func runPin(ctx *cli.Context) error {
 	}
 }
 
-// readPinTarget returns the target's lines. The bool is false when the
+// rewriteFirst is the one walk over a pin target: it rewrites the
+// first line the rewrite function accepts and writes the file back,
+// its mode untouched. The bool is false, with no error, only when the
 // file does not exist, the one case pin treats as nothing to do; any
 // other read error is returned, so a target that is there and cannot
-// be read is never mistaken for one that is missing.
-func readPinTarget(path string) ([]string, bool, error) {
+// be read is never mistaken for one that is missing. A file where no
+// line is accepted is *noPinError, for the named pin or, with name "",
+// the shell form.
+func rewriteFirst(path, name string, rewrite func(line string) (string, bool)) (bool, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, false, nil
+		return false, nil
 	}
 	if err != nil {
-		return nil, false, err
-	}
-	return strings.Split(string(data), "\n"), true, nil
-}
-
-// pinVersion updates the first SOMETHING_VERSION="vX.Y.Z" line (any
-// uppercase variable ending in VERSION). updated=false with nil error
-// means the file does not exist; a file without a pin returns
-// *noPinError.
-func pinVersion(path, ver string) (bool, error) {
-	lines, exists, err := readPinTarget(path)
-	if err != nil || !exists {
 		return false, err
 	}
+	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
-		name, ok := versionPinName(line)
+		replaced, ok := rewrite(line)
 		if !ok {
 			continue
 		}
-		lines[i] = fmt.Sprintf(`%s="v%s"`, name, strings.TrimPrefix(ver, "v"))
-		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o755); err != nil {
+		lines[i] = replaced
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 			return false, err
 		}
 		return true, nil
 	}
-	return false, &noPinError{File: filepath.Base(path)}
+	return false, &noPinError{File: filepath.Base(path), Name: name}
+}
+
+// pinVersion updates the first SOMETHING_VERSION="vX.Y.Z" line (any
+// uppercase variable ending in VERSION).
+func pinVersion(path, ver string) (bool, error) {
+	return rewriteFirst(path, "", func(line string) (string, bool) {
+		name, ok := versionPinName(line)
+		if !ok {
+			return "", false
+		}
+		return fmt.Sprintf(`%s="v%s"`, name, strings.TrimPrefix(ver, "v")), true
+	})
 }
 
 // versionPinName matches SOMETHING_VERSION="v..." and returns the
@@ -136,26 +141,17 @@ func versionPinName(line string) (string, bool) {
 // the named identifier (=, :=, or a bare colon for YAML). The v prefix
 // is inferred from the existing value.
 func pinVersionNamed(path, name, ver string) (bool, error) {
-	lines, exists, err := readPinTarget(path)
-	if err != nil || !exists {
-		return false, err
-	}
-	for i, line := range lines {
+	return rewriteFirst(path, name, func(line string) (string, bool) {
 		m, ok := matchNamedPin(line, name)
 		if !ok {
-			continue
+			return "", false
 		}
 		newVer := strings.TrimPrefix(ver, "v")
 		if strings.HasPrefix(m.value, "v") {
 			newVer = "v" + newVer
 		}
-		lines[i] = m.linePrefix + newVer + string(m.quote) + m.lineSuffix
-		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-	return false, &noPinError{File: filepath.Base(path), Name: name}
+		return m.linePrefix + newVer + string(m.quote) + m.lineSuffix, true
+	})
 }
 
 type namedPinMatch struct {
@@ -246,12 +242,4 @@ func (e *noPinError) Error() string {
 		return e.File + " has no VERSION pin"
 	}
 	return fmt.Sprintf("%s has no pin for %q", e.File, e.Name)
-}
-
-func asNoPin(err error, target **noPinError) bool {
-	np, ok := err.(*noPinError)
-	if ok {
-		*target = np
-	}
-	return ok
 }
