@@ -127,6 +127,11 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given.\n\n")
 	}
 
+	// One paragraph of up to three sentences, each from its own dial:
+	// the protected branches, pushing, and the release flow. guard.push
+	// applies on every branch and the flow exists whatever is guarded,
+	// so neither sentence depends on the one before it.
+	var policy []string
 	if mode := cfg.Guard.ResolvedMode(); mode != "off" && len(cfg.Guard.Branches) > 0 {
 		branches := strings.Join(cfg.Guard.Branches, ", ")
 		verb := "is"
@@ -135,22 +140,23 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 		}
 		switch mode {
 		case "block":
-			fmt.Fprintf(&b, "%s %s protected: commits and pushes there are blocked.", branches, verb)
+			policy = append(policy, fmt.Sprintf("%s %s protected: commits and pushes there are blocked.", branches, verb))
 		case "ask":
-			fmt.Fprintf(&b, "%s %s protected: commits and pushes there prompt for confirmation.", branches, verb)
-		}
-		switch cfg.Guard.ResolvedPush() {
-		case "block":
-			b.WriteString(" Pushing is the developer's action; do not push.")
-		case "ask":
-			b.WriteString(" Pushing prompts for confirmation.")
-		}
-		if cfg.Release.Flow() == config.MergeFlow {
-			fmt.Fprintf(&b, " Work on the development branch; releases merge into %s with pk ship.\n\n", cfg.Release.Branch)
-		} else {
-			b.WriteString(" Releases run from the default branch with pk ship.\n\n")
+			policy = append(policy, fmt.Sprintf("%s %s protected: commits and pushes there prompt for confirmation.", branches, verb))
 		}
 	}
+	switch cfg.Guard.ResolvedPush() {
+	case "block":
+		policy = append(policy, "Pushing is the developer's action; do not push.")
+	case "ask":
+		policy = append(policy, "Pushing prompts for confirmation.")
+	}
+	if cfg.Release.Flow() == config.MergeFlow {
+		policy = append(policy, fmt.Sprintf("Work on the development branch; releases merge into %s with pk ship.", cfg.Release.Branch))
+	} else {
+		policy = append(policy, "Releases run from the default branch with pk ship.")
+	}
+	b.WriteString(strings.Join(policy, " ") + "\n\n")
 
 	plans := cfg.Preserve.ResolvedDir() + "/"
 	switch cfg.Preserve.ResolvedMode() {

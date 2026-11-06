@@ -35,7 +35,7 @@ marker rule mentions the ask. `guard.bump` decides whether the version
 rule mentions the ask. `guard.mode` and `guard.push` describe
 the protected branches and pushing. `release.branch` names where
 releases merge. `preserve.mode` describes how plans are kept. A dial
-set to off drops its paragraph.
+set to off drops its sentence.
 
 ## Flags
 
