@@ -29,6 +29,12 @@ documentation that changed no behavior.
 Six commits can make one paragraph, and one commit can be the whole
 note.
 
+Work from the facts, not from the voice. First list what the release
+changed, as pk now behaves: a command, what it does, what it prints.
+Then choose the two or three a reader would act on. Then write each as
+its paragraph. A note written in the other order, voice first and facts
+poured in, comes out as slogans with the changelog repeated under them.
+
 ## Voice
 
 - Write forward, in the present, from the reader's side: what is true
@@ -42,9 +48,16 @@ note.
   the code, a command's output, or a page.
 - Themed paragraphs, not one per commit. A minor is two to four short
   paragraphs; a major earns more.
-- Open each paragraph with its claim in bold, one per paragraph:
-  `**A release starts when you ask for one.**` The rest of the
-  paragraph earns it. The site sets that weight in `.note strong`.
+- Open each paragraph with its claim in bold, one per paragraph. The
+  claim names the thing and what it does now, so a reader can check it
+  against the command or the page: `**\`pk status\` names the flow on
+  its release line.**` Not a coined phrase: not "A refused step leaves
+  nothing behind", not "keeps what you wrote". The rest of the
+  paragraph earns the claim. The site sets that weight in
+  `.note strong`.
+- Before finishing, reread every bold claim and every "X, not Y"
+  sentence, and rewrite any a reader has to decode. The rule, with its
+  shapes, is "Say it straight" in `.claude/CLAUDE.md`.
 - Prose says what and why. Anything to type, and anything pk printed,
   goes in a code block. Inline code is for names: files, branches,
   keys, command names.
