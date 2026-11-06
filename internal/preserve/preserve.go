@@ -521,7 +521,10 @@ func extractPlanPath(toolResponse json.RawMessage, dir string, homeDir func() (s
 // matchPlanPath normalizes backslashes to forward slashes so Windows
 // paths match, expands a leading ~/ to the home directory, then returns
 // the first <dir>/*.md path found in the text, or "". dir is claudePlansDir's
-// answer; "" matches nothing.
+// answer; "" matches nothing. The path is returned clean, and one that
+// climbs back out of dir (<dir>/../x.md) is not under it and matches
+// nothing: this is where "inside the plans directory" is decided, for
+// the hook's payload and --plan alike.
 func matchPlanPath(text, dir string, homeDir func() (string, error)) string {
 	if dir == "" {
 		return ""
@@ -532,7 +535,15 @@ func matchPlanPath(text, dir string, homeDir func() (string, error)) string {
 		normalized = strings.ReplaceAll(normalized, "~/", home+"/")
 	}
 	re := regexp.MustCompile(regexp.QuoteMeta(dir) + `/[^ "]*\.md`)
-	return re.FindString(normalized)
+	found := re.FindString(normalized)
+	if found == "" {
+		return ""
+	}
+	clean := path.Clean(found)
+	if !strings.HasPrefix(clean, dir+"/") {
+		return ""
+	}
+	return clean
 }
 
 // extractTitle finds the first H1 heading. CRLF content sheds its \r

@@ -884,3 +884,34 @@ func TestAPayloadThatDoesNotParseIsReported(t *testing.T) {
 		t.Fatal("the pointer must be left alone")
 	}
 }
+
+// A path that enters the plans directory and climbs back out of it is
+// not a plan. One that wanders and comes back is, under its clean name.
+func TestPlanFlagRefusesAPathThatClimbsOutOfThePlansDirectory(t *testing.T) {
+	fixedNow(t)
+	dir, plan := scratch(t, "manual", planBody)
+	plans := filepath.Dir(plan)
+	outside := filepath.Join(filepath.Dir(plans), "outside.md")
+	if err := os.WriteFile(outside, []byte(planBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+
+	climbing := plans + "/../outside.md"
+	out, errw, code := runPreserveIO(t, dir, "", "--plan", climbing)
+	if code != cli.ExitUsage || !strings.Contains(errw, "is not a Claude Code plan") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if out != "" || commitCount(t, dir) != before {
+		t.Fatalf("refusal acted: out=%q", out)
+	}
+
+	if err := os.MkdirAll(filepath.Join(plans, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	returning := plans + "/sub/../" + filepath.Base(plan)
+	out, errw, code = runPreserveIO(t, dir, "", "--plan", returning)
+	if code != cli.ExitOK || !strings.Contains(out, "Approved plan committed") || commitCount(t, dir) != before+1 {
+		t.Fatalf("a path that returns inside is a plan: code=%d out=%q errw=%q", code, out, errw)
+	}
+}
