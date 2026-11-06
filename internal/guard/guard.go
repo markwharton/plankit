@@ -131,19 +131,19 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
-	const pushDenyReason = "pk guard: push blocked. Pushing is the developer's explicit action; the commit is local. Push it yourself, or use pk preserve / pk release, when ready."
-	const pushAskReason = "pk guard: the agent is about to git push. Pushing is the developer's call. Allow this push?"
+	const pushDenyReason = "push blocked. Pushing is the developer's explicit action; the commit is local. Push it yourself, or use pk preserve / pk release, when ready."
+	const pushAskReason = "the agent is about to git push. Pushing is the developer's call. Allow this push?"
 	switch {
 	case pushDeny:
 		return writeDecision(ctx, hookio.PermissionDeny, pushDenyReason)
 	case branchDeny:
-		return writeDecision(ctx, hookio.PermissionDeny, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", protectedBranch))
+		return writeDecision(ctx, hookio.PermissionDeny, fmt.Sprintf("branch %q is protected. Switch to your development branch and use pk release from there.", protectedBranch))
 	case pushAsk:
 		return writeDecision(ctx, hookio.PermissionAsk, pushAskReason)
 	case branchAsk:
-		return writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
+		return writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("branch %q is protected. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
 	case breakingAsk:
-		return writeDecision(ctx, hookio.PermissionAsk, "pk guard: the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
+		return writeDecision(ctx, hookio.PermissionAsk, "the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
 	case bumpAsk:
 		return writeDecision(ctx, hookio.PermissionAsk, bumpReason)
 	}
@@ -155,7 +155,7 @@ func run(ctx *cli.Context) error {
 func bumpAskReason(requested string, inferred changelog.Inference) string {
 	var b strings.Builder
 	name := version.BumpName(inferred.Bump)
-	fmt.Fprintf(&b, "pk guard: --bump %s is lower than the %s the commits infer. The commits decide the version; --bump is the developer's override, never a way to match a number named earlier. Commits that call for %s:\n", requested, name, name)
+	fmt.Fprintf(&b, "--bump %s is lower than the %s the commits infer. The commits decide the version; --bump is the developer's override, never a way to match a number named earlier. Commits that call for %s:\n", requested, name, name)
 	for _, c := range inferred.Drivers {
 		fmt.Fprintf(&b, "  %s %s\n", c.Hash, c.Subject())
 	}
@@ -164,7 +164,7 @@ func bumpAskReason(requested string, inferred changelog.Inference) string {
 }
 
 func writeDecision(ctx *cli.Context, decision, reason string) error {
-	if err := hookio.WritePermissionDecision(ctx.Stdout, decision, reason); err != nil {
+	if err := hookio.WritePermissionDecision(ctx.Stdout, "guard", decision, reason); err != nil {
 		return hookio.Report(ctx.Stderr, "guard", err)
 	}
 	return nil

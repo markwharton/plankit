@@ -49,7 +49,7 @@ func run(ctx *cli.Context) error {
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, root, cfg.Preserve.DirPath(root)) {
-		err := hookio.WritePermissionDecision(ctx.Stdout, hookio.PermissionDeny,
+		err := hookio.WritePermissionDecision(ctx.Stdout, "protect", hookio.PermissionDeny,
 			cfg.Preserve.ResolvedDir()+"/ files are immutable historical records. They must not be edited or overwritten after creation.")
 		if err != nil {
 			return hookio.Report(ctx.Stderr, "protect", err)

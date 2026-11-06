@@ -53,7 +53,7 @@ func TestDeniesWritesUnderPlans(t *testing.T) {
 		"docs/plans/sub/y.md",
 	} {
 		out := runProtect(t, dir, p)
-		if !strings.Contains(out, `"permissionDecision":"deny"`) || !strings.Contains(out, "immutable") {
+		if !strings.Contains(out, `"permissionDecision":"deny"`) || !strings.Contains(out, "pk protect: docs/plans/ files are immutable") {
 			t.Errorf("path %q should be denied, got %q", p, out)
 		}
 	}

@@ -128,7 +128,7 @@ func runGuard(t *testing.T, dir, command string) (string, string) {
 func TestBlocksMutationOnProtectedBranch(t *testing.T) {
 	dir := scratch(t, "block", "off")
 	out, _ := runGuard(t, dir, "git commit -m x")
-	if !strings.Contains(out, `"permissionDecision":"deny"`) || !strings.Contains(out, `Branch \"main\" is protected`) {
+	if !strings.Contains(out, `"permissionDecision":"deny"`) || !strings.Contains(out, `pk guard: branch \"main\" is protected`) {
 		t.Fatalf("out = %s", out)
 	}
 }

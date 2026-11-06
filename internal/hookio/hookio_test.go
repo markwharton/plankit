@@ -68,7 +68,7 @@ func TestResolveDirPrecedence(t *testing.T) {
 
 func TestWritePermissionDecision(t *testing.T) {
 	var b bytes.Buffer
-	if err := WritePermissionDecision(&b, PermissionDeny, "because"); err != nil {
+	if err := WritePermissionDecision(&b, "guard", PermissionDeny, "because"); err != nil {
 		t.Fatal(err)
 	}
 	var out struct {
@@ -81,7 +81,7 @@ func TestWritePermissionDecision(t *testing.T) {
 	if err := json.Unmarshal(b.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if out.H.Event != "PreToolUse" || out.H.Decision != "deny" || out.H.Reason != "because" {
+	if out.H.Event != "PreToolUse" || out.H.Decision != "deny" || out.H.Reason != "pk guard: because" {
 		t.Fatalf("decision: %+v", out.H)
 	}
 }

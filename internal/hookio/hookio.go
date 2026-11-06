@@ -133,10 +133,13 @@ const (
 	PermissionAsk   = "ask"
 )
 
-// WritePermissionDecision emits a PreToolUse decision. The schema
-// requires hookEventName whenever hookSpecificOutput is present, so it
-// is set here; callers don't have to remember.
-func WritePermissionDecision(w io.Writer, decision, reason string) error {
+// WritePermissionDecision emits a PreToolUse decision for the named
+// hook. The reason is written as "pk <hook>: <reason>", the prefix a
+// hook's stderr lines carry, so the person reading it knows which hook
+// spoke; callers write the reason alone. The schema requires
+// hookEventName whenever hookSpecificOutput is present, so it is set
+// here; callers don't have to remember.
+func WritePermissionDecision(w io.Writer, hook, decision, reason string) error {
 	resp := struct {
 		HookSpecificOutput struct {
 			HookEventName            string `json:"hookEventName"`
@@ -146,7 +149,7 @@ func WritePermissionDecision(w io.Writer, decision, reason string) error {
 	}{}
 	resp.HookSpecificOutput.HookEventName = "PreToolUse"
 	resp.HookSpecificOutput.PermissionDecision = decision
-	resp.HookSpecificOutput.PermissionDecisionReason = reason
+	resp.HookSpecificOutput.PermissionDecisionReason = "pk " + hook + ": " + reason
 	data, err := json.Marshal(resp)
 	if err != nil {
 		return err
