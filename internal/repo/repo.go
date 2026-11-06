@@ -237,7 +237,7 @@ func runInit(ctx *cli.Context) error {
 	if dryRun {
 		verb = "would create"
 	}
-	fmt.Fprintf(ctx.Stderr, "plankit configured in %s (%s: %s)\n", root, verb, strings.Join(created, ", "))
+	msg.Sayf(ctx.Stderr, "plankit configured in %s (%s: %s)", root, verb, strings.Join(created, ", "))
 	if ctx.Quiet {
 		return nil
 	}

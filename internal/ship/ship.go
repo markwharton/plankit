@@ -18,8 +18,6 @@
 package ship
 
 import (
-	"fmt"
-
 	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/msg"
@@ -82,7 +80,7 @@ func run(ctx *cli.Context) error {
 		if ctx.String("bump") != "" || ctx.String("exclude") != "" {
 			msg.Warnf(ctx.Stderr, "--bump and --exclude apply to changelog, which already ran (Release-Tag: %s); ignoring", pending)
 		}
-		fmt.Fprintf(ctx.Stderr, "Release-Tag %s already pending; skipping changelog\n", pending)
+		msg.Sayf(ctx.Stderr, "Release-Tag %s already pending; skipping changelog", pending)
 	} else {
 		args := []string{"pk", "changelog", "--project-dir", root}
 		if b := ctx.String("bump"); b != "" {

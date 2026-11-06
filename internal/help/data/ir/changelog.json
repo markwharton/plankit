@@ -368,7 +368,7 @@
         },
         {
           "type": "code",
-          "text": "no release yet: the first release covers all N commits"
+          "text": "No release yet: the first release covers all N commits"
         },
         {
           "type": "text",
@@ -409,7 +409,7 @@
         },
         {
           "type": "code",
-          "text": "fetched tags from origin: latest is v1.2.0"
+          "text": "Fetched tags from origin: latest is v1.2.0"
         },
         {
           "type": "text",

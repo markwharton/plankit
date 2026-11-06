@@ -588,7 +588,7 @@ func TestFirstReleaseCoversAllHistory(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("dry run exit %d: %s", code, errw)
 	}
-	if !strings.HasPrefix(errw, "no release yet: the first release covers all 2 commits\n") {
+	if !strings.HasPrefix(errw, "No release yet: the first release covers all 2 commits\n") {
 		t.Fatalf("stderr must open with the count:\n%s", errw)
 	}
 	if !strings.Contains(errw, "Generating v0.1.0") || !strings.Contains(out, "first feature") || !strings.Contains(out, "scaffold") {
@@ -622,7 +622,7 @@ func TestNoLocalTagsButOriginHasThem(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
-	if !strings.Contains(errw, "fetched tags from origin: latest is v0.0.0") {
+	if !strings.Contains(errw, "Fetched tags from origin: latest is v0.0.0") {
 		t.Fatalf("errw = %q", errw)
 	}
 	if !strings.HasPrefix(out, "## [v0.1.0] - 2026-09-05") {
@@ -658,7 +658,7 @@ func TestNoLocalTagsAndFetchFails(t *testing.T) {
 // the tag the range starts at and how many commits follow it.
 func TestNothingToListSaysWhatWasMeasured(t *testing.T) {
 	dir := repo(t, nil)
-	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.Contains(errw, "no commits since v0.0.0\n") {
+	if code, _, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.Contains(errw, "No commits since v0.0.0\n") {
 		t.Fatalf("tag on HEAD: code=%d errw=%q", code, errw)
 	}
 	commit(t, dir, "update stuff")

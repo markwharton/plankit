@@ -195,14 +195,14 @@ func run(ctx *cli.Context) error {
 			if _, err := git.Exec(root, "tag", "-d", tag); err != nil {
 				msg.Warnf(w, "failed to delete local tag %s: %v", tag, err)
 			} else {
-				fmt.Fprintf(w, "Cleaned up local tag %s\n", tag)
+				msg.Sayf(w, "Cleaned up local tag %s", tag)
 			}
 		}
 		if preMergeHead != "" && !released {
 			if _, err := git.Exec(root, "reset", "--hard", preMergeHead); err != nil {
 				msg.Warnf(w, "failed to roll back merge on %s: %v", releaseBranch, err)
 			} else {
-				fmt.Fprintf(w, "Rolled back merge on %s\n", releaseBranch)
+				msg.Sayf(w, "Rolled back merge on %s", releaseBranch)
 			}
 		}
 		if !switchedBack {
@@ -274,7 +274,7 @@ func run(ctx *cli.Context) error {
 		msg.Section(w, "Dry run complete")
 		msg.Itemf(w, "Would create tag %s", tag)
 		msg.Itemf(w, "Would push %s and %s", pushBranch, tag)
-		msg.Itemf(w, "All checks passed. Run without --dry-run to release.")
+		msg.Itemf(w, "All checks passed; run without --dry-run to release")
 		return nil
 	}
 
@@ -284,7 +284,8 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 	tagCreated = true
-	fmt.Fprintf(w, "\nCreated local tag %s\n", tag)
+	fmt.Fprintln(w, "")
+	msg.Sayf(w, "Created local tag %s", tag)
 
 	// prePush runs with the tag ref in existence (signing, artifact
 	// builds keyed on the tag). A failure aborts before any push; the

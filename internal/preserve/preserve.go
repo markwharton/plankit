@@ -135,7 +135,7 @@ func run(ctx *cli.Context) error {
 		// person who typed the command hears the outcome instead, the
 		// way the other commands narrate one.
 		if !hookInvocation {
-			fmt.Fprintln(ctx.Stderr, "No pending plan to preserve.")
+			msg.Sayf(ctx.Stderr, "No pending plan to preserve")
 		}
 		return nil
 	}
@@ -261,7 +261,7 @@ func runDiscard(ctx *cli.Context) error {
 	planPath, present, stale := peekPointer(root)
 	if !present {
 		removePointer(root) // an empty pointer file is nothing pending too
-		fmt.Fprintln(ctx.Stderr, "No pending plan to discard.")
+		msg.Sayf(ctx.Stderr, "No pending plan to discard")
 		return nil
 	}
 	missing := ""
@@ -269,14 +269,14 @@ func runDiscard(ctx *cli.Context) error {
 		missing = " (the plan file no longer exists)"
 	}
 	if ctx.Bool("dry-run") {
-		fmt.Fprintf(ctx.Stderr, "pk preserve --dry-run:\n")
-		fmt.Fprintf(ctx.Stderr, "  Discard: %s%s\n", planPath, missing)
+		msg.Section(ctx.Stderr, "pk preserve --dry-run")
+		msg.Itemf(ctx.Stderr, "Discard: %s%s", planPath, missing)
 		return nil
 	}
 	if err := os.Remove(pointerPath(root)); err != nil {
 		return cli.Statef("failed to remove the pending plan pointer: %v", err)
 	}
-	fmt.Fprintf(ctx.Stderr, "Discarded the pending plan: %s%s\n", planPath, missing)
+	msg.Sayf(ctx.Stderr, "Discarded the pending plan: %s%s", planPath, missing)
 	return nil
 }
 
@@ -351,15 +351,15 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	}
 
 	if ctx.Bool("dry-run") {
-		fmt.Fprintf(ctx.Stderr, "pk preserve --dry-run:\n")
-		fmt.Fprintf(ctx.Stderr, "  Plan:   %s\n", title)
-		fmt.Fprintf(ctx.Stderr, "  File:   %s\n", relPath)
-		fmt.Fprintf(ctx.Stderr, "  Commit: %s\n", subject)
+		msg.Section(ctx.Stderr, "pk preserve --dry-run")
+		msg.Itemf(ctx.Stderr, "Plan:   %s", title)
+		msg.Itemf(ctx.Stderr, "File:   %s", relPath)
+		msg.Itemf(ctx.Stderr, "Commit: %s", subject)
 		if reason != "" {
-			fmt.Fprintf(ctx.Stderr, "  CI:     [skip ci] left off: %s\n", reason)
+			msg.Itemf(ctx.Stderr, "CI:     [skip ci] left off: %s", reason)
 		}
 		if ctx.Bool("push") {
-			fmt.Fprintf(ctx.Stderr, "  Push:   git push origin HEAD\n")
+			msg.Itemf(ctx.Stderr, "Push:   git push origin HEAD")
 		}
 		return nil
 	}

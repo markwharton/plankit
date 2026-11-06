@@ -30,6 +30,14 @@ func Hintf(w io.Writer, format string, a ...any) {
 	fmt.Fprintf(w, "Hint: "+format+"\n", a...)
 }
 
+// Sayf writes one line of narration: what a command is doing or has
+// done, with no prefix. Narration starts with a capital and ends
+// without a full stop; a line that opens with a name or a number keeps
+// it as it is written.
+func Sayf(w io.Writer, format string, a ...any) {
+	fmt.Fprintf(w, format+"\n", a...)
+}
+
 // Section writes a section header: the title followed by a colon.
 func Section(w io.Writer, title string) {
 	fmt.Fprintf(w, "%s:\n", title)

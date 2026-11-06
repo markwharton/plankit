@@ -92,7 +92,7 @@ meant, and update origin's copy.
 No version tag means nothing has been released. The first release
 covers the whole history from an implied `v0.0.0`, and its entry links
 to the tag's commits rather than a compare. The run says so first:
-`no release yet: the first release covers all N commits`. To keep
+`No release yet: the first release covers all N commits`. To keep
 earlier history out of it, tag `v0.0.0` at the last commit that is
 history before running `pk changelog`; everything after that tag is
 the first release.
@@ -100,7 +100,7 @@ the first release.
 A clone with no local tags is not a first release when origin has
 them: a fresh clone that fetched only the working branch, as a cloud
 sandbox does. `pk changelog` fetches origin's tags first and says so,
-`fetched tags from origin: latest is v1.2.0`, then measures from that
+`Fetched tags from origin: latest is v1.2.0`, then measures from that
 tag. Only when the fetch itself fails does it stop, with the error and
 the hint `git fetch --tags`.
 

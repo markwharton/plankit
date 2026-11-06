@@ -152,7 +152,7 @@ func run(ctx *cli.Context) error {
 				return err
 			}
 			if since.LatestTag != "" {
-				fmt.Fprintf(ctx.Stderr, "fetched tags from origin: latest is %s\n", since.LatestTag)
+				msg.Sayf(ctx.Stderr, "Fetched tags from origin: latest is %s", since.LatestTag)
 			}
 		} else if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
 			return cli.WithHint(cli.Statef("no version tags found locally: %v", ferr),
@@ -165,7 +165,7 @@ func run(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(ctx.Stderr, "no release yet: the first release covers all %d commits\n", total)
+		msg.Sayf(ctx.Stderr, "No release yet: the first release covers all %d commits", total)
 	}
 	if len(commits) == 0 {
 		// Say what was measured: the tag the range starts at and how
@@ -181,20 +181,20 @@ func run(ctx *cli.Context) error {
 			after = " since " + latestTag
 		}
 		if total == 0 {
-			fmt.Fprintf(ctx.Stderr, "no commits%s\n", after)
+			msg.Sayf(ctx.Stderr, "No commits%s", after)
 		} else {
-			fmt.Fprintf(ctx.Stderr, "%d commits%s, none conventional\n", total, after)
+			msg.Sayf(ctx.Stderr, "%d commits%s, none conventional", total, after)
 		}
 		return nil
 	}
 	if x := ctx.String("exclude"); x != "" {
 		commits = applyExclude(ctx, commits, strings.Split(x, ","))
 		if len(commits) == 0 {
-			fmt.Fprintln(ctx.Stderr, "No conventional commits remain after --exclude.")
+			msg.Sayf(ctx.Stderr, "No conventional commits remain after --exclude")
 			return nil
 		}
 	}
-	fmt.Fprintf(ctx.Stderr, "Found %d conventional commit(s)\n", len(commits))
+	msg.Sayf(ctx.Stderr, "Found %d conventional commit(s)", len(commits))
 
 	bump, err := resolveBump(ctx.String("bump"), commits)
 	if err != nil {
@@ -205,9 +205,9 @@ func run(ctx *cli.Context) error {
 	// An override is named next to the bump it replaces: the commits
 	// decide the version, and a reader of the run sees when they did not.
 	if inferred := detectBump(commits); ctx.String("bump") != "" && bump != inferred {
-		fmt.Fprintf(ctx.Stderr, "Generating %s (--bump %s; the commits infer %s)\n", nextTag, version.BumpName(bump), version.BumpName(inferred))
+		msg.Sayf(ctx.Stderr, "Generating %s (--bump %s; the commits infer %s)", nextTag, version.BumpName(bump), version.BumpName(inferred))
 	} else {
-		fmt.Fprintf(ctx.Stderr, "Generating %s\n", nextTag)
+		msg.Sayf(ctx.Stderr, "Generating %s", nextTag)
 	}
 
 	// Refuse when HEAD already carries a Release-Tag trailer: one pending
@@ -222,7 +222,7 @@ func run(ctx *cli.Context) error {
 
 	groups := groupCommits(commits, cfg.Changelog.Types)
 	if len(groups) == 0 {
-		fmt.Fprintln(ctx.Stderr, "No visible commits after grouping (all hidden or unmapped types).")
+		msg.Sayf(ctx.Stderr, "No visible commits after grouping (all hidden or unmapped types)")
 		return nil
 	}
 	section := formatSection(nextTag, now().Format("2006-01-02"), groups, cfg.Changelog.ShowScope)
@@ -245,7 +245,7 @@ func run(ctx *cli.Context) error {
 		}
 		return cli.WithHint(err, "nothing was committed; the tree is clean")
 	}
-	fmt.Fprintf(ctx.Stderr, "Committed %s\n", nextTag)
+	msg.Sayf(ctx.Stderr, "Committed %s", nextTag)
 	if !ctx.Quiet {
 		msg.Hintf(ctx.Stderr, "to tag and push: pk release")
 	}
@@ -262,7 +262,7 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		if err := updateVersionFile(filepath.Join(root, vf.Path), ver); err != nil {
 			return cli.Statef("failed to update %s: %v", vf.Path, err)
 		}
-		fmt.Fprintf(ctx.Stderr, "Updated %s\n", vf.Path)
+		msg.Sayf(ctx.Stderr, "Updated %s", vf.Path)
 	}
 	hookEnv := map[string]string{"VERSION": ver}
 	if err := hookio.RunHook(ctx.Stderr, root, "postVersion", cfg.Changelog.Hooks.PostVersion, hookEnv); err != nil {
@@ -356,7 +356,7 @@ func undo(ctx *cli.Context, root string) error {
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
 		return err
 	}
-	fmt.Fprintf(ctx.Stderr, "Undid release commit %s; CHANGELOG.md and version files restored\n", trailerValue)
+	msg.Sayf(ctx.Stderr, "Undid release commit %s; CHANGELOG.md and version files restored", trailerValue)
 	return nil
 }
 

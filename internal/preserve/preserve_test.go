@@ -345,7 +345,7 @@ func TestTypedRunSaysWhyWhileTheHookStaysSilent(t *testing.T) {
 	if out != "" {
 		t.Fatalf("typed run wrote to stdout: %s", out)
 	}
-	if errw != "No pending plan to preserve.\n" {
+	if errw != "No pending plan to preserve\n" {
 		t.Fatalf("typed run narration: %q", errw)
 	}
 
@@ -385,7 +385,7 @@ func TestDiscardRemovesThePointerAndNamesThePlan(t *testing.T) {
 	if commitCount(t, dir) != before {
 		t.Fatal("discard must not commit")
 	}
-	if _, errw := runPreserve(t, dir, ""); errw != "No pending plan to preserve.\n" {
+	if _, errw := runPreserve(t, dir, ""); errw != "No pending plan to preserve\n" {
 		t.Fatalf("a typed run after discard: %q", errw)
 	}
 }
@@ -393,7 +393,7 @@ func TestDiscardRemovesThePointerAndNamesThePlan(t *testing.T) {
 func TestDiscardWithNothingPending(t *testing.T) {
 	dir, _ := scratch(t, "manual", planBody)
 	out, errw := runPreserve(t, dir, "", "--discard")
-	if out != "" || errw != "No pending plan to discard.\n" {
+	if out != "" || errw != "No pending plan to discard\n" {
 		t.Fatalf("out=%q errw=%q", out, errw)
 	}
 }
