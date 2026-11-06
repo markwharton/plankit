@@ -1,8 +1,8 @@
 {
   "name": "plankit",
   "displayName": "plankit",
-  "version": "1.8.2",
-  "description": "Plan-driven development for Claude Code: guarded branches, immutable plan records, conventional-commit releases",
+  "version": "1.8.3",
+  "description": "Plan-driven development for Claude Code, with release management and versioning for small teams",
   "author": {
     "name": "Mark Wharton",
     "url": "https://github.com/markwharton"

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.8.3] - 2026-11-06
+
+### Fixed
+
+- plans live under CLAUDE_CONFIG_DIR when it is set (7254bec)
+- pk changelog --undo refuses a release commit that something else holds (1112c81)
+- a failed release undoes the changelog commit ship made (8106e4a)
+
+### Documentation
+
+- the opening and plugin description say what plankit is (4d7bfb8)
+
 ## [v1.8.2] - 2026-11-03
 
 ### Fixed
@@ -1400,3 +1412,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.8.0]: https://github.com/markwharton/plankit/compare/v1.7.2...v1.8.0
 [v1.8.1]: https://github.com/markwharton/plankit/compare/v1.8.0...v1.8.1
 [v1.8.2]: https://github.com/markwharton/plankit/compare/v1.8.1...v1.8.2
+[v1.8.3]: https://github.com/markwharton/plankit/compare/v1.8.2...v1.8.3

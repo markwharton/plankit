@@ -42,7 +42,10 @@ on stdin and records it in `.git/pk-pending-plan`. A typed
 `pk preserve` consumes the pointer. A plan revised after it was
 preserved has no pointer: preserve it again with `--plan <path>`, and
 it becomes the next sequence number for the day. The same rules
-apply: the path is a Claude Code plan under `~/.claude/plans/`, and
+apply: the path is a Claude Code plan under the session's plans directory
+(`~/.claude/plans/`, or `plans/` under `CLAUDE_CONFIG_DIR` when that is set:
+a second account keeps its own, and a same-named file in the other
+account's directory is another session's plan), and
 identical bytes report the existing file. While the pointer names a
 different plan, `--plan` refuses and names both files; preserve the
 pending plan first.
@@ -70,7 +73,7 @@ its own.
   --dry-run
         Preview without writing or committing
   --plan <value>
-        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans)
+        Plan file to preserve, for a plan revised after approval (a path under ~/.claude/plans, or plans/ under CLAUDE_CONFIG_DIR when that is set)
   --push
         Push to origin after committing
 ```
