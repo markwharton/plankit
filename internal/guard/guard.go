@@ -38,18 +38,20 @@ var Cmd = &cli.Command{
 // than the commits infer). The strongest applicable decision wins
 // (deny > ask), so a push to a protected branch is never downgraded.
 //
-// Internal errors (unreadable input, malformed .pk.json, git failures)
-// fail open: guard logs to stderr and emits no decision, always exit 0.
-// Stdin comes from the trusted harness, and failing closed would block
-// every Bash call while, say, .pk.json is mid-edit. Guard is a guardrail
-// against an agent following its defaults, not a security boundary.
+// A problem guard cannot act on (a payload that does not parse, a
+// .pk.json that fails to load) is reported with hookio.ExitReport and
+// no decision is made: Claude Code shows the message and the command
+// continues. Stdin comes from the trusted harness, and failing closed
+// would block every Bash call while, say, .pk.json is mid-edit. Guard
+// is a guardrail against an agent following its defaults, not a
+// security boundary.
 func run(ctx *cli.Context) error {
-	input, err := hookio.ReadInput(ctx.Stdin)
+	input, ok, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "guard", "failed to read input: %v", err)
-		return nil
+		msg.Hookf(ctx.Stderr, "guard", "%v", err)
+		return cli.Silent(hookio.ExitReport) // shown, not blocking; guard takes no action
 	}
-	if input.ToolInput == nil || input.ToolInput.Command == "" {
+	if !ok || input.ToolInput == nil || input.ToolInput.Command == "" {
 		return nil
 	}
 	calls := invocations(input.ToolInput.Command)

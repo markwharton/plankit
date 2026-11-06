@@ -69,8 +69,10 @@ go test -run TestName ./internal/<pkg>   # single test
 - **Presentation is never configured**: flags (`--format`, `--plain`)
   beat env (`NO_COLOR`, `CLICOLOR_FORCE`) beat the TTY probe. Non-TTY
   help output is the exact authored bytes.
-- **Hooks fail open and gate on config**: every hook exits 0, and a
-  repository without `.pk.json` gets a fast silent no-op.
+- **Hooks never block by failing, and gate on config**: a hook exits 0
+  when it acts or declines, reports a problem it cannot act on with
+  exit 1, and never exits 2. A repository without `.pk.json` gets a
+  fast silent no-op.
 
 ### Code Patterns
 
@@ -97,11 +99,12 @@ go test -run TestName ./internal/<pkg>   # single test
 ### Hook Protocol
 
 - **PreToolUse**: permission decisions go on stdout
-  (`hookSpecificOutput` with allow/deny/ask); exit 0 always.
+  (`hookSpecificOutput` with allow/deny/ask), with exit 0.
 - **PostToolUse**: `systemMessage` for the user,
   `hookSpecificOutput.additionalContext` for Claude's next turn.
-- A crashed hook must not block work: pk hooks exit 0 on their own
-  failures by design.
+- A hook that fails must not block work: pk hooks report their own
+  failures on stderr with exit 1, which Claude Code shows without
+  blocking, and never exit 2.
 
 ### Commits and Releases
 

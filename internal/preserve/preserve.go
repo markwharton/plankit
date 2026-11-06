@@ -83,18 +83,19 @@ func run(ctx *cli.Context) error {
 		return runNamed(ctx, typed)
 	}
 
-	var planPath, payloadCWD string
+	var planPath string
 
-	input, err := hookio.ReadInput(ctx.Stdin)
-	if err == nil {
-		payloadCWD = input.CWD
-	}
-	// A valid payload means the automatic ExitPlanMode hook, which honors
+	// A payload means the automatic ExitPlanMode hook, which honors
 	// preserve.mode. No payload means an explicit invocation, which
-	// consumes the pointer and always commits.
-	hookInvocation := err == nil
+	// consumes the pointer and always commits. A payload that does not
+	// parse is neither, and nothing is preserved on its word.
+	input, hookInvocation, err := hookio.ReadInput(ctx.Stdin)
+	if err != nil {
+		msg.Hookf(ctx.Stderr, "preserve", "%v", err)
+		return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
+	}
 
-	dir := hookio.ResolveDir(os.Getenv, payloadCWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
+	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, rootOK := git.FindRoot(dir)
 
 	// Both shapes read the policy file, for the mode and the plans

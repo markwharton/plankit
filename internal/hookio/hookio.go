@@ -3,15 +3,19 @@
 // current schema (hookSpecificOutput with permissionDecision for
 // PreToolUse, systemMessage plus additionalContext for PostToolUse).
 //
-// Hook commands always exit 0 and fail open: stdin comes from the
-// trusted harness, and failing closed would block every tool call
-// while, say, .pk.json is mid-edit. The hooks are guardrails against
-// an agent following its defaults, not a security boundary against an
-// adversary.
+// A hook command never blocks work by failing. It exits 0 when it acts
+// or declines, reports a problem it cannot act on (a policy file that
+// fails to load, a payload that does not parse) with ExitReport, and
+// never exits 2: stdin comes from the trusted harness, and failing
+// closed would block every tool call while, say, .pk.json is mid-edit.
+// The hooks are guardrails against an agent following its defaults,
+// not a security boundary against an adversary.
 package hookio
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -33,25 +37,27 @@ type ToolInput struct {
 	Command  string `json:"command,omitempty"`
 }
 
-// ReadInput reads and parses the hook payload. When stdin is a terminal
-// (someone ran the hook command by hand), it returns io.EOF immediately
-// instead of blocking; callers treat that as "no payload". An open pipe
-// with nothing on it (a shell tool that keeps stdin attached) gets the
-// same answer after a short wait: a real hook writes its payload and
-// closes stdin at once, so a second of silence means no payload. The
-// wait is a goroutine racing a timer because stdin is a blocking
-// descriptor outside Go's poller and read deadlines cannot attach to
-// it; on timeout the reader goroutine is abandoned, which is fine for
-// a process about to exit.
-func ReadInput(r io.Reader) (Input, error) {
+// ReadInput reads and parses the hook payload. The bool reports that a
+// payload arrived; the error is a payload that could not be read or
+// does not parse. No payload is neither: a nil reader, a terminal
+// (someone ran the hook command by hand, and it returns at once instead
+// of blocking), or a stdin that carries nothing. An open pipe with
+// nothing on it (a shell tool that keeps stdin attached) gets the same
+// answer after a short wait: a real hook writes its payload and closes
+// stdin at once, so a second of silence means no payload. The wait is a
+// goroutine racing a timer because stdin is a blocking descriptor
+// outside Go's poller and read deadlines cannot attach to it; on
+// timeout the reader goroutine is abandoned, which is fine for a
+// process about to exit.
+func ReadInput(r io.Reader) (Input, bool, error) {
 	if r == nil {
-		return Input{}, io.EOF
+		return Input{}, false, nil
 	}
 	var data []byte
 	var err error
 	if f, ok := r.(*os.File); ok {
 		if stat, serr := f.Stat(); serr == nil && stat.Mode()&os.ModeCharDevice != 0 {
-			return Input{}, io.EOF
+			return Input{}, false, nil
 		}
 		type result struct {
 			data []byte
@@ -66,19 +72,22 @@ func ReadInput(r io.Reader) (Input, error) {
 		case res := <-done:
 			data, err = res.data, res.err
 		case <-time.After(time.Second):
-			return Input{}, io.EOF
+			return Input{}, false, nil
 		}
 	} else {
 		data, err = io.ReadAll(r)
 	}
 	if err != nil {
-		return Input{}, err
+		return Input{}, false, err
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return Input{}, false, nil
 	}
 	var input Input
 	if err := json.Unmarshal(data, &input); err != nil {
-		return Input{}, err
+		return Input{}, false, fmt.Errorf("the payload does not parse: %v", err)
 	}
-	return input, nil
+	return input, true, nil
 }
 
 // ToolResponseString returns tool_response as text: unquoted when it is
@@ -273,8 +282,8 @@ func WriteSessionStart(w io.Writer, additionalContext string) error {
 }
 
 // ExitReport is the exit code a hook uses to report a problem it
-// cannot act on: a policy file that fails to load, an unreadable
-// payload. Claude Code shows the hook's stderr to the person and
+// cannot act on: a policy file that fails to load, a payload that does
+// not parse. Claude Code shows the hook's stderr to the person and
 // continues; exit 2 would block the tool call, so a hook never uses
 // it, and exit 0 would hide the message.
 const ExitReport = 1

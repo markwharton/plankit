@@ -11,6 +11,7 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/hookio"
 )
 
 func scratch(t *testing.T, configured bool) string {
@@ -166,5 +167,21 @@ func TestAnotherSpellingOfThePlansDirectoryIsDenied(t *testing.T) {
 		if !strings.Contains(out, `"permissionDecision":"deny"`) {
 			t.Errorf("path %q should be denied, got %q", p, out)
 		}
+	}
+}
+
+// A payload that does not parse is reported with the exit Claude Code
+// shows, and nothing is decided; no payload at all is nothing to judge.
+func TestAPayloadThatDoesNotParseIsReported(t *testing.T) {
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "protect"}, []*cli.Command{Cmd}, strings.NewReader("not json"), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "pk protect:") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+	out.Reset()
+	errw.Reset()
+	code = cli.RunIO([]string{"pk", "protect"}, []*cli.Command{Cmd}, strings.NewReader(""), &out, &errw)
+	if code != 0 || out.Len() != 0 {
+		t.Fatalf("empty stdin: code=%d out=%q errw=%q", code, out.String(), errw.String())
 	}
 }

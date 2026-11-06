@@ -120,7 +120,7 @@ func runGuard(t *testing.T, dir, command string) (string, string) {
 	var out, errw bytes.Buffer
 	code := cli.RunIO([]string{"pk", "guard"}, []*cli.Command{Cmd}, bytes.NewReader(payload), &out, &errw)
 	if code != 0 {
-		t.Fatalf("hook exit %d, must always be 0 (stderr: %s)", code, errw.String())
+		t.Fatalf("hook exit %d (stderr: %s)", code, errw.String())
 	}
 	return out.String(), errw.String()
 }
@@ -184,11 +184,20 @@ func TestUnconfiguredRepoIsSilent(t *testing.T) {
 	}
 }
 
-func TestMalformedPayloadFailsOpen(t *testing.T) {
+// A payload that does not parse is a problem guard cannot act on: it is
+// reported with the exit Claude Code shows, and no decision is made. No
+// payload at all is not a problem; guard has nothing to judge.
+func TestAPayloadThatDoesNotParseIsReported(t *testing.T) {
 	var out, errw bytes.Buffer
 	code := cli.RunIO([]string{"pk", "guard"}, []*cli.Command{Cmd}, strings.NewReader("not json"), &out, &errw)
-	if code != 0 || out.Len() != 0 || !strings.Contains(errw.String(), "pk guard:") {
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "pk guard:") {
 		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+	out.Reset()
+	errw.Reset()
+	code = cli.RunIO([]string{"pk", "guard"}, []*cli.Command{Cmd}, strings.NewReader(""), &out, &errw)
+	if code != 0 || out.Len() != 0 {
+		t.Fatalf("empty stdin: code=%d out=%q errw=%q", code, out.String(), errw.String())
 	}
 }
 

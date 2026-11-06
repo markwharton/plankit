@@ -3,24 +3,31 @@ package hookio
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"strings"
 	"testing"
 )
 
-func TestReadInputNilAndEmpty(t *testing.T) {
-	if _, err := ReadInput(nil); err != io.EOF {
-		t.Fatalf("nil reader: %v, want io.EOF", err)
+// No payload is not an error: a nil reader and a stdin that carries
+// nothing both report that none arrived. A payload that does not parse
+// is the error.
+func TestReadInputTellsNoPayloadFromABrokenOne(t *testing.T) {
+	if _, ok, err := ReadInput(nil); ok || err != nil {
+		t.Fatalf("nil reader: ok=%v err=%v, want no payload", ok, err)
 	}
-	if _, err := ReadInput(strings.NewReader("not json")); err == nil {
-		t.Fatal("malformed payload should error")
+	for _, empty := range []string{"", "  \n"} {
+		if _, ok, err := ReadInput(strings.NewReader(empty)); ok || err != nil {
+			t.Fatalf("empty stdin %q: ok=%v err=%v, want no payload", empty, ok, err)
+		}
+	}
+	if _, ok, err := ReadInput(strings.NewReader("not json")); ok || err == nil || !strings.Contains(err.Error(), "does not parse") {
+		t.Fatalf("malformed payload: ok=%v err=%v", ok, err)
 	}
 }
 
 func TestReadInputParsesPayload(t *testing.T) {
-	in, err := ReadInput(strings.NewReader(`{"cwd":"/x","tool_input":{"command":"git push","file_path":"a.md"},"tool_response":"done"}`))
-	if err != nil {
-		t.Fatal(err)
+	in, ok, err := ReadInput(strings.NewReader(`{"cwd":"/x","tool_input":{"command":"git push","file_path":"a.md"},"tool_response":"done"}`))
+	if err != nil || !ok {
+		t.Fatalf("ok=%v err=%v", ok, err)
 	}
 	if in.CWD != "/x" || in.ToolInput.Command != "git push" || in.ToolInput.FilePath != "a.md" {
 		t.Fatalf("payload: %+v", in)

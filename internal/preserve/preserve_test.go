@@ -860,3 +860,27 @@ func TestSlugify(t *testing.T) {
 		}
 	}
 }
+
+// A payload that does not parse is not a typed run: the pending plan is
+// left alone, nothing is committed, and the problem is reported with
+// the exit Claude Code shows.
+func TestAPayloadThatDoesNotParseIsReported(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	dir, plan := scratch(t, "manual", planBody)
+	pointer := filepath.Join(dir, ".git", "pk-pending-plan")
+	if err := os.WriteFile(pointer, []byte(plan+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := commitCount(t, dir)
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "preserve", "--project-dir", dir}, []*cli.Command{Cmd}, strings.NewReader("not json"), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "pk preserve:") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+	if commitCount(t, dir) != before {
+		t.Fatal("a payload that does not parse committed the pending plan")
+	}
+	if _, err := os.Stat(pointer); err != nil {
+		t.Fatal("the pointer must be left alone")
+	}
+}

@@ -6,8 +6,9 @@
 // render the same resolved config, so the brief cannot disagree with
 // what the other hooks then enforce.
 //
-// Hook contracts as for the others: exit 0 always, and an unconfigured
-// repository produces no output at all.
+// Hook contracts as for the others: a problem it cannot act on is
+// reported with hookio.ExitReport, never by blocking, and an
+// unconfigured repository produces no output at all.
 package brief
 
 import (
@@ -33,13 +34,14 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
-	input, err := hookio.ReadInput(ctx.Stdin)
-	hookInvocation := err == nil
-	payloadCWD := ""
-	if hookInvocation {
-		payloadCWD = input.CWD
+	// A payload means the SessionStart hook; none means a person at a
+	// terminal. A payload that does not parse is neither.
+	input, hookInvocation, err := hookio.ReadInput(ctx.Stdin)
+	if err != nil {
+		msg.Hookf(ctx.Stderr, "brief", "%v", err)
+		return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
 	}
-	dir := hookio.ResolveDir(os.Getenv, payloadCWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
+	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, ok := git.FindRoot(dir)
 
 	if hookInvocation {

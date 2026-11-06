@@ -272,3 +272,15 @@ func TestHookComparesWithThePluginTheShimNamed(t *testing.T) {
 		t.Fatalf("typed: code=%d errw=%q", code, terr.String())
 	}
 }
+
+// A payload that does not parse is not a person at a terminal: it is
+// reported with the exit Claude Code shows, and no brief is printed.
+func TestAPayloadThatDoesNotParseIsReported(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	dir := scratch(t, true)
+	var out, errw bytes.Buffer
+	code := cli.RunIO([]string{"pk", "brief", "--project-dir", dir}, []*cli.Command{Cmd}, strings.NewReader("not json"), &out, &errw)
+	if code != hookio.ExitReport || out.Len() != 0 || !strings.Contains(errw.String(), "pk brief:") {
+		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
+	}
+}

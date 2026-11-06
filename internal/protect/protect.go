@@ -28,12 +28,12 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
-	input, err := hookio.ReadInput(ctx.Stdin)
+	input, ok, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "protect", "failed to read input: %v", err)
-		return nil
+		msg.Hookf(ctx.Stderr, "protect", "%v", err)
+		return cli.Silent(hookio.ExitReport) // shown, not blocking; protect takes no action
 	}
-	if input.ToolInput == nil || input.ToolInput.FilePath == "" {
+	if !ok || input.ToolInput == nil || input.ToolInput.FilePath == "" {
 		return nil
 	}
 
