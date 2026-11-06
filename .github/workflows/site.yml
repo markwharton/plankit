@@ -17,9 +17,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -39,11 +36,17 @@ jobs:
           else
             echo "no release yet: the site ships without marketplace.json"
           fi
+      # The token is this step's alone: the build steps above never see
+      # it, so the step tests for it itself instead of in an `if`.
+      # wrangler is named at an exact version: it runs with the deploy
+      # token, so it never follows a new release on its own. Bumped by hand.
       - name: Deploy to Cloudflare Pages
-        if: env.CLOUDFLARE_API_TOKEN != ''
-        # An exact version: this runs with the deploy token, so it never
-        # follows a new release on its own. Bumped by hand.
-        run: npx --yes wrangler@3.114.17 pages deploy site/dist --project-name plankit-com --branch main
-      - name: Skipped deploy
-        if: env.CLOUDFLARE_API_TOKEN == ''
-        run: echo "CLOUDFLARE_API_TOKEN not set; built site/dist without deploying"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "CLOUDFLARE_API_TOKEN not set; built site/dist without deploying"
+            exit 0
+          fi
+          npx --yes wrangler@3.114.17 pages deploy site/dist --project-name plankit-com --branch main

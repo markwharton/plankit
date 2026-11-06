@@ -20,8 +20,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      TAP_DISPATCH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
@@ -68,10 +66,17 @@ jobs:
             "plankit-$TAG.zip" plankit.zip marketplace.json checksums.txt bin/pk-*
 
       # Fire-and-forget: the tap's daily schedule covers a failed ping.
+      # The token is this step's alone: no other step in the job sees it,
+      # so the step tests for it itself instead of in an `if`.
       - name: Notify the Homebrew tap
-        if: env.TAP_DISPATCH_TOKEN != ''
         continue-on-error: true
+        env:
+          TAP_DISPATCH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
         run: |
+          if [ -z "$TAP_DISPATCH_TOKEN" ]; then
+            echo "TAP_DISPATCH_TOKEN not set; the tap's daily schedule picks the release up"
+            exit 0
+          fi
           status=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $TAP_DISPATCH_TOKEN" \
