@@ -75,7 +75,9 @@ only on the current branch: not pushed, not tagged, not merged.
 
 `changelog.versionFiles` names JSON files whose root `version` field
 is spliced in place, formatting preserved. `postVersion` and
-`preCommit` hooks run with `$VERSION` (no v prefix).
+`preCommit` hooks run with `$VERSION` (no v prefix). When a version
+file or a hook fails, nothing is committed and the tree goes back to
+how the run found it, a hook's own changes included.
 
 Run it from the working branch. A protected branch is refused. The
 last version tag must be in the branch's history: a branch rewritten

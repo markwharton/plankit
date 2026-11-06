@@ -195,6 +195,19 @@ func CheckCleanTree(dir string) error {
 	return nil
 }
 
+// RestoreTree puts the working tree and the index back at HEAD: tracked
+// files are reset, untracked files and directories are removed, and
+// ignored files are left alone. That is the state CheckCleanTree
+// accepts, so a caller that checked for a clean tree before it wrote
+// anything can return to it.
+func RestoreTree(dir string) error {
+	if _, err := Exec(dir, "reset", "--hard", "-q", "HEAD"); err != nil {
+		return err
+	}
+	_, err := Exec(dir, "clean", "-fdq")
+	return err
+}
+
 // DefaultBranch discovers origin's default branch via the HEAD symref.
 // ok is false when origin advertises none (empty remote, hidden symref);
 // err is non-nil only when the command itself fails. Callers treat both

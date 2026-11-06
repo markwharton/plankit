@@ -434,6 +434,40 @@ func TestFailingHookAborts(t *testing.T) {
 	}
 }
 
+// A refused release puts the whole tree back: what pk stamped, and what
+// a hook edited or created before it failed.
+func TestARefusedReleasePutsTheWholeTreeBack(t *testing.T) {
+	dir := repo(t, func(c *config.PkConfig) {
+		c.Changelog.Hooks.PreCommit = "echo edited >> a.txt && echo new > made.txt && exit 1"
+	})
+	commit(t, dir, "feat: x")
+	code, _, errw := runCL(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "preCommit hook failed") || !strings.Contains(errw, "the tree is clean") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if status, _ := git.Exec(dir, "status", "--porcelain"); status != "" {
+		t.Fatalf("a hook's own changes must go back too, got:\n%s", status)
+	}
+
+	// A version file that cannot be stamped: the one stamped before it
+	// goes back as well.
+	dir = repo(t, func(c *config.PkConfig) {
+		c.Changelog.VersionFiles = []config.VersionFile{
+			{Path: "one.json", Type: "json"},
+			{Path: "missing.json", Type: "json"},
+		}
+	})
+	writeF(t, dir, "one.json", "{\"version\": \"0.0.0\"}\n")
+	commit(t, dir, "feat: y")
+	code, _, errw = runCL(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "failed to update missing.json") || !strings.Contains(errw, "the tree is clean") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if status, _ := git.Exec(dir, "status", "--porcelain"); status != "" {
+		t.Fatalf("the stamped version file must go back, got:\n%s", status)
+	}
+}
+
 func TestUndo(t *testing.T) {
 	dir := repo(t, nil)
 	commit(t, dir, "feat: x")

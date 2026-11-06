@@ -14,7 +14,6 @@ package changelog
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -236,18 +235,30 @@ func run(ctx *cli.Context) error {
 		return nil
 	}
 
-	ver := strings.TrimPrefix(nextTag, "v")
-	// Every file written before the commit is restored if a hook fails,
-	// so a refused release leaves the tree as clean as it found it.
-	var written []string
-	restore := func(stage string, err error) error {
-		for _, p := range written {
-			if _, cerr := git.Exec(root, "checkout", "--", p); cerr != nil {
-				os.Remove(filepath.Join(root, p)) // new in this run: not in HEAD
-			}
+	// The tree was clean when this run began, so whatever a failed write
+	// leaves behind was made by it: pk's stamps, the changelog, and
+	// anything a hook edited or created. A refused release puts all of
+	// it back and leaves the tree as it found it.
+	if err := writeRelease(ctx, root, cfg, latestTag, nextTag, section); err != nil {
+		if rerr := git.RestoreTree(root); rerr != nil {
+			msg.Warnf(ctx.Stderr, "the tree was not put back: %v", rerr)
+			return err
 		}
-		return cli.WithHint(cli.Statef("%s hook failed: %v", stage, err), "restored %s; the tree is clean", strings.Join(written, ", "))
+		return cli.WithHint(err, "nothing was committed; the tree is clean")
 	}
+	fmt.Fprintf(ctx.Stderr, "Committed %s\n", nextTag)
+	if !ctx.Quiet {
+		msg.Hintf(ctx.Stderr, "to tag and push: pk release")
+	}
+	return nil
+}
+
+// writeRelease does everything that touches the tree: it stamps the
+// version files, runs the hooks, writes CHANGELOG.md, and makes the
+// release commit. Any error it returns leaves the tree for its caller
+// to put back.
+func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nextTag, section string) error {
+	ver := strings.TrimPrefix(nextTag, "v")
 	for _, vf := range cfg.Changelog.VersionFiles {
 		if vf.Type != "" && vf.Type != "json" {
 			return cli.Usagef("unsupported versionFile type %q for %s (only \"json\" is supported)", vf.Type, vf.Path)
@@ -255,13 +266,12 @@ func run(ctx *cli.Context) error {
 		if err := updateVersionFile(filepath.Join(root, vf.Path), ver); err != nil {
 			return cli.Statef("failed to update %s: %v", vf.Path, err)
 		}
-		written = append(written, vf.Path)
 		fmt.Fprintf(ctx.Stderr, "Updated %s\n", vf.Path)
 	}
 	if h := cfg.Changelog.Hooks.PostVersion; h != "" {
 		fmt.Fprintln(ctx.Stderr, "Running postVersion hook...")
 		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return restore("postVersion", err)
+			return cli.Statef("postVersion hook failed: %v", err)
 		}
 	}
 
@@ -283,12 +293,11 @@ func run(ctx *cli.Context) error {
 	if err := writeFile(changelogPath, []byte(updated)); err != nil {
 		return fmt.Errorf("failed to write CHANGELOG.md: %v", err)
 	}
-	written = append(written, "CHANGELOG.md")
 
 	if h := cfg.Changelog.Hooks.PreCommit; h != "" {
 		fmt.Fprintln(ctx.Stderr, "Running preCommit hook...")
 		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return restore("preCommit", err)
+			return cli.Statef("preCommit hook failed: %v", err)
 		}
 	}
 
@@ -307,10 +316,6 @@ func run(ctx *cli.Context) error {
 	}
 	if _, err := git.Exec(root, "commit", "-m", "chore: release "+nextTag, "--trailer", "Release-Tag: "+nextTag); err != nil {
 		return fmt.Errorf("git commit failed: %v", err)
-	}
-	fmt.Fprintf(ctx.Stderr, "Committed %s\n", nextTag)
-	if !ctx.Quiet {
-		msg.Hintf(ctx.Stderr, "to tag and push: pk release")
 	}
 	return nil
 }
