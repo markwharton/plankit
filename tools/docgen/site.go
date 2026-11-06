@@ -51,6 +51,7 @@ type sitePage struct {
 	SchemaFile  string // the policy file's schema, linked in the footer
 	PrivacyHref string // the privacy page, linked in the footer
 	StyleHref   string // the stylesheet with its content hash, so a cache can only hold the right one
+	RepoURL     string // the repository's address, linked in the footer
 }
 
 // buildSite renders every page into out. root is the repository root
@@ -64,6 +65,10 @@ var linkExt = ""
 // helpDir is where the command pages live on the site: plankit.com/help/ship
 // is pk help ship. The sidebar that lists them is labeled the same.
 const helpDir = "help"
+
+// repoURL is the repository's address on the web, written once: the
+// design document, the latest release, and the footer all link from it.
+const repoURL = "https://github.com/markwharton/plankit"
 
 func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	layout, err := template.ParseFiles(filepath.Join(root, "site", "layout.html"))
@@ -133,11 +138,11 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	}
 	nav = append(nav,
 		navItem{Href: "/changelog" + linkExt, Label: "Changelog"},
-		navItem{Href: "https://github.com/markwharton/plankit/blob/main/docs/design.md", Label: "Design (GitHub)"},
+		navItem{Href: repoURL + "/blob/main/docs/design.md", Label: "Design (GitHub)"},
 	)
 
 	writeHTML := func(path, title string, body template.HTML, mermaid bool) error {
-		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile, StyleHref: styleHref, PrivacyHref: "/privacy" + linkExt}
+		p := sitePage{Path: path, Title: title, Body: body, Mermaid: mermaid, Home: path == "index.html", SchemaFile: config.SchemaFile, StyleHref: styleHref, PrivacyHref: "/privacy" + linkExt, RepoURL: repoURL}
 		clean := "/" + strings.TrimSuffix(path, ".html") + linkExt
 		for _, n := range nav {
 			n.Current = n.Href == clean
@@ -273,7 +278,7 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 	// The latest release is the highest semver tag, as pk measures it. A
 	// tree that is not a repository, or has no tag yet, gets no line.
 	if tag, _, err := changelog.LatestTag(root); err == nil && tag != "" {
-		b.WriteString(`<p class="muted release">Latest release: <a href="https://github.com/markwharton/plankit/releases/latest">` + template.HTMLEscapeString(tag) + `</a> · six platforms · <a href="/marketplace.json">marketplace.json</a></p>`)
+		b.WriteString(`<p class="muted release">Latest release: <a href="` + repoURL + `/releases/latest">` + template.HTMLEscapeString(tag) + `</a> · <a href="/marketplace.json">marketplace.json</a></p>`)
 	}
 	return template.HTML(b.String()), nil
 }
