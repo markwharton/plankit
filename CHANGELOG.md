@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.9.0] - 2026-11-07
+
+### Added
+
+- pk guard counts am, cherry-pick, pull, and revert as mutations (6f46e93)
+
+### Fixed
+
+- the latest release tag is the highest semver tag for every reader (5b2723e)
+- a refused release puts the whole tree back, hook changes included (215813b)
+- a plan whose commit failed is committed on the next run (8d8abfd)
+- a lifecycle hook command keeps the ${NAME} forms that are not pk's (e13ff33)
+- pk guard reads git through quotes, background commands, subshells, and shell keywords (979cec6)
+- pk brief states the push policy and the release flow whatever guard.mode is (db3c0d9)
+- a detached HEAD is refused by name, in changelog and release (05b3157)
+- pk pin reports a file it cannot read, where it called it missing (7c4ba98)
+- pk protect recognises the plans directory by its identity on disk (c3c74ea)
+- a failed preserve is reported, and a typed run exits non-zero (f10cfe9)
+- a payload that does not parse is reported with exit 1 by every hook (7a89006)
+- a plan path that climbs out of the plans directory is refused (221cc12)
+- an unreachable origin is a precondition, exit 2 with a hint (3a94667)
+- pk status and pk init treat a detached HEAD as no branch (0c5b325)
+- a version file's type and the release branch's name are checked at load (7d96e77)
+- read failures that were dropped are reported (a7feb3e)
+- an & is escaped only where GFM would read a character reference (20fd001)
+
+### Security
+
+- a credential in origin's URL never reaches CHANGELOG.md (810bf99)
+- wrangler and mermaid run at exact versions (fbfe82a)
+- the deploy and tap tokens reach only the step that uses them (438537c)
+
+### Changed
+
+- a refusal or a git failure raised by more than one command is worded once (ccdfc86)
+- lifecycle hooks, hook reports, and the breaking marker each have one implementation (82fc9ce)
+- pk pin walks its target once, and the undo refusal is written once (7f2698f)
+- docgen reads the IR, versions, tags, and frontmatter from the main module (9ea3808)
+- mode values, the help style table, and list joining each have one definition (90dfa12)
+- narration reads in one style, a capital at the start and no full stop (b3420c5)
+- every permission reason opens with the hook's name (9b9f4c1)
+
+### Documentation
+
+- say it straight, no inverted or aphoristic phrasing (cbeacf5)
+- a claim names the thing and what it does; work from the facts, then reread (0a9ecdf)
+- release notes for v1.9.0 (97d21f6)
+
+### Maintenance
+
+- make test runs the docgen tests (f374d6c)
+- Dependabot watches the docgen module (a9b56f3)
+- stale comments, an unused target name, and a doubled hook entry are cleared (509d1b5)
+- the stylesheet's sizes, radii, and fonts are tokens, and the repository address is written once (0255883)
+- one local build, the platform binary behind the bin/pk shim (6e93b49)
+- the download redirects are derived from the Makefile's platform list (e7f46bb)
+
 ## [v1.8.3] - 2026-11-06
 
 ### Fixed
@@ -1413,3 +1470,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.8.1]: https://github.com/markwharton/plankit/compare/v1.8.0...v1.8.1
 [v1.8.2]: https://github.com/markwharton/plankit/compare/v1.8.1...v1.8.2
 [v1.8.3]: https://github.com/markwharton/plankit/compare/v1.8.2...v1.8.3
+[v1.9.0]: https://github.com/markwharton/plankit/compare/v1.8.3...v1.9.0
