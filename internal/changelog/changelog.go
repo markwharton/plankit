@@ -95,7 +95,7 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
-	branch, err := git.Exec(root, "branch", "--show-current")
+	branch, err := git.CurrentBranch(root)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func run(ctx *cli.Context) error {
 
 	// Guarded branch: the release commit belongs on the working branch.
 	for _, protected := range cfg.Guard.Branches {
-		if branch == protected {
+		if branch != "" && branch == protected {
 			err := cli.Statef("you're on %q which is a protected branch; switch to your development branch first", branch)
 			if !git.HasOtherLocalBranch(root, branch) {
 				err = cli.WithHint(err, "%s", StartBranchHint)
@@ -338,7 +338,14 @@ func undo(ctx *cli.Context, root string) error {
 		return err
 	}
 	// A detached HEAD has no branch of its own, so every holder counts.
-	current, _ := git.Exec(root, "symbolic-ref", "-q", "HEAD")
+	branch, err := git.CurrentBranch(root)
+	if err != nil {
+		return err
+	}
+	current := ""
+	if branch != "" {
+		current = "refs/heads/" + branch
+	}
 	var others []string
 	for _, ref := range holders {
 		if ref != current {
@@ -469,7 +476,10 @@ type Inference struct {
 // conventional commits since the last tag on the current branch, less
 // the excluded hashes. guard reads it to judge a --bump.
 func InferBump(root string, excludes []string) (Inference, error) {
-	branch, _ := git.Exec(root, "branch", "--show-current")
+	branch, err := git.CurrentBranch(root)
+	if err != nil {
+		return Inference{}, err
+	}
 	since, err := commitsSinceLastTag(root, branch)
 	if err != nil {
 		return Inference{}, err

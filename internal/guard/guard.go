@@ -84,7 +84,7 @@ func run(ctx *cli.Context) error {
 			return nil
 		}
 		for _, protected := range cfg.Guard.Branches {
-			if branch == protected {
+			if branch != "" && branch == protected {
 				protectedBranch = branch
 				if mode == "ask" {
 					branchAsk = true

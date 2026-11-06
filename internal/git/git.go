@@ -71,14 +71,18 @@ type Error struct {
 
 func (e *Error) Error() string { return fmt.Sprintf("git %s failed: %s", e.Command, e.Detail) }
 
-// CurrentBranch returns the checked-out branch name. An empty repository
-// (no commits) still reports its unborn branch via symbolic-ref.
+// CurrentBranch returns the checked-out branch, and "" when HEAD is
+// detached and so on no branch. An empty repository (no commits) still
+// names its unborn branch. It is the one answer to which branch is
+// checked out: git says a detached HEAD with its exit status, and no
+// caller reads a word like "HEAD" as a branch name.
 func CurrentBranch(dir string) (string, error) {
 	out, err := Exec(dir, "symbolic-ref", "--short", "-q", "HEAD")
-	if err == nil && out != "" {
-		return out, nil
+	onBranch, err := answer(err)
+	if err != nil || !onBranch {
+		return "", err
 	}
-	return Exec(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	return out, nil
 }
 
 // Clean reports whether the working tree has no uncommitted changes,

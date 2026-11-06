@@ -42,7 +42,7 @@ func run(ctx *cli.Context) error {
 	w := ctx.Stderr
 	dryRun := ctx.Bool("dry-run")
 
-	sourceBranch, err := git.Exec(root, "branch", "--show-current")
+	sourceBranch, err := git.CurrentBranch(root)
 	if err != nil {
 		return err
 	}

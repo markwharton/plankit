@@ -58,6 +58,10 @@ func runInit(ctx *cli.Context) error {
 	if err != nil {
 		return cli.Statef("cannot determine the current branch: %v", err)
 	}
+	if current == "" {
+		return cli.WithHint(cli.Statef("HEAD is detached; pk init configures the branch that is checked out"),
+			"check out the branch to guard and release into: git switch <branch>")
+	}
 	release := ctx.String("release")
 	if release == "" {
 		// The default is the branch checked out. When the clone recorded
@@ -386,7 +390,11 @@ func runStatus(ctx *cli.Context) error {
 	fmt.Fprintf(ctx.Stdout, "plankit status\n")
 	line := func(k, v string) { fmt.Fprintf(ctx.Stdout, "  %-10s %s\n", k+":", v) }
 	line("project", s.Root)
-	line("branch", fmt.Sprintf("%s (%s)", s.Branch, tree))
+	branch := s.Branch
+	if branch == "" {
+		branch = "detached HEAD"
+	}
+	line("branch", fmt.Sprintf("%s (%s)", branch, tree))
 	line("preserve", s.Preserve)
 	guarded := "; no protected branches"
 	if len(s.Guarded) > 0 {

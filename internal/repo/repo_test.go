@@ -943,3 +943,27 @@ func TestStatusPassesOverANonVersionTag(t *testing.T) {
 		t.Fatalf("tag line:\n%s", out)
 	}
 }
+
+// A detached HEAD is on no branch: status says so, and init, which
+// guards a branch, refuses.
+func TestADetachedHeadIsNotABranch(t *testing.T) {
+	dir := scratch(t, true)
+	mustGit(t, dir, "checkout", "-q", "--detach")
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitState || !strings.Contains(errw, "HEAD is detached") {
+		t.Fatalf("init: code=%d errw=%q", code, errw)
+	}
+	if _, err := os.Stat(config.Path(dir)); !os.IsNotExist(err) {
+		t.Fatal("init refused, yet the policy file was written")
+	}
+
+	mustGit(t, dir, "switch", "-q", "main")
+	if code, _, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init on a branch: %s", errw)
+	}
+	mustGit(t, dir, "checkout", "-q", "--detach")
+	_, out, _ := run(t, "status", "--project-dir", dir)
+	if !strings.Contains(out, "branch:    detached HEAD (clean)\n") {
+		t.Fatalf("status:\n%s", out)
+	}
+}

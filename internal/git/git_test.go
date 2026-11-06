@@ -145,3 +145,13 @@ func TestParseRepoURL(t *testing.T) {
 		}
 	}
 }
+
+// A detached HEAD is on no branch, and the answer says so with an
+// empty name, never a word that could be taken for a branch.
+func TestCurrentBranchOnADetachedHead(t *testing.T) {
+	dir := scratch(t)
+	mustGit(t, dir, "checkout", "-q", "--detach")
+	if b, err := CurrentBranch(dir); err != nil || b != "" {
+		t.Fatalf("branch=%q err=%v, want no branch", b, err)
+	}
+}
