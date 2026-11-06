@@ -41,7 +41,9 @@ jobs:
           fi
       - name: Deploy to Cloudflare Pages
         if: env.CLOUDFLARE_API_TOKEN != ''
-        run: npx --yes wrangler@3 pages deploy site/dist --project-name plankit-com --branch main
+        # An exact version: this runs with the deploy token, so it never
+        # follows a new release on its own. Bumped by hand.
+        run: npx --yes wrangler@3.114.17 pages deploy site/dist --project-name plankit-com --branch main
       - name: Skipped deploy
         if: env.CLOUDFLARE_API_TOKEN == ''
         run: echo "CLOUDFLARE_API_TOKEN not set; built site/dist without deploying"

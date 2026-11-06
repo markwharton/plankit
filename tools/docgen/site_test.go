@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -99,6 +100,13 @@ func TestBuildSite(t *testing.T) {
 	design, _ := os.ReadFile(filepath.Join(out, "architecture.html"))
 	if !strings.Contains(string(design), "mermaid.esm.min.mjs") || !strings.Contains(string(design), "language-mermaid") {
 		t.Error("how-it-works page must carry the mermaid script and the fence for it to draw")
+	}
+	// The script is third-party code run in the reader's browser: it is
+	// named at one exact version, never a range that follows new releases.
+	_, after, found := strings.Cut(string(design), "/npm/mermaid@")
+	pinned, _, _ := strings.Cut(after, "/")
+	if sv, ok := version.ParseSemver(pinned); !found || !ok || sv.String() != "v"+pinned {
+		t.Errorf("the layout must import mermaid at an exact version, got %q", pinned)
 	}
 	if _, err := os.Stat(filepath.Join(out, "design.html")); err == nil {
 		t.Error("design.md is a contributor document and must not be published")

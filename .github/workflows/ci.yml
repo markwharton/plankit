@@ -30,6 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Left on the latest version on purpose: the newest CLI is what
+      # shows a change in plugin validation the day it lands, and this
+      # job has a read-only token and no secrets.
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
       - name: Validate marketplace and plugin (strict)
