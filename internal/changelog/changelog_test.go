@@ -715,3 +715,23 @@ func TestANonVersionTagIsNotARelease(t *testing.T) {
 		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
 	}
 }
+
+// A release commit belongs on a branch: a detached HEAD is refused by
+// name, and nothing is committed. A dry run writes nothing, so it still
+// prints the section.
+func TestDetachedHeadIsRefused(t *testing.T) {
+	fixedNow(t)
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	mustGit(t, dir, "checkout", "-q", "--detach")
+	code, _, errw := runCL(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "HEAD is detached") || !strings.Contains(errw, "git switch") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if headSubject(t, dir) != "feat: x" {
+		t.Fatal("refused, yet a release commit was made")
+	}
+	if code, out, errw := runCL(t, dir, "--dry-run"); code != cli.ExitOK || !strings.HasPrefix(out, "## [v0.1.0] - 2026-09-05") {
+		t.Fatalf("dry run: code=%d out=%q errw=%q", code, out, errw)
+	}
+}

@@ -387,3 +387,17 @@ func TestTagOutsideHistoryStopsRelease(t *testing.T) {
 		t.Fatal("main moved: the merge ran")
 	}
 }
+
+// A release is published from a branch: a detached HEAD is refused by
+// name before any check that needs one.
+func TestDetachedHeadIsRefused(t *testing.T) {
+	dir, _ := repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "checkout", "-q", "--detach")
+	for _, args := range [][]string{{}, {"--dry-run"}} {
+		code, errw := runRel(t, dir, args...)
+		if code != cli.ExitState || !strings.Contains(errw, "HEAD is detached") || !strings.Contains(errw, "git switch") {
+			t.Fatalf("%v: code=%d errw=%q", args, code, errw)
+		}
+	}
+}

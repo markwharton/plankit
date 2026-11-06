@@ -38,9 +38,9 @@ on a guarded branch.
 
 ## Pre-flight
 
-Clean tree; branch on origin and not behind it; release branch
-resolvable and not diverged from the working branch; the last version
-tag in the working branch's history. A failure after
+Clean tree; a branch checked out, on origin and not behind it; release
+branch resolvable and not diverged from the working branch; the last
+version tag in the working branch's history. A failure after
 tagging rolls back: the local tag is deleted, the merge is reset, and
 the working branch is checked out.
 

@@ -79,7 +79,8 @@ is spliced in place, formatting preserved. `postVersion` and
 file or a hook fails, nothing is committed and the tree goes back to
 how the run found it, a hook's own changes included.
 
-Run it from the working branch. A protected branch is refused. The
+Run it from the working branch. A protected branch is refused, and so
+is a detached HEAD, except by `--dry-run`. The
 last version tag must be in the branch's history: a branch rewritten
 after a release is refused, naming the tag, because the entry measured
 from it would list that release's work again. Move the tag to the

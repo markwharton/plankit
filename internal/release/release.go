@@ -46,6 +46,9 @@ func run(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("git branch failed: %v", err)
 	}
+	if sourceBranch == "" {
+		return changelog.DetachedHead()
+	}
 
 	pk, err := config.Load(root)
 	if errors.Is(err, config.ErrNotConfigured) {
@@ -106,10 +109,10 @@ func run(ctx *cli.Context) error {
 
 	// Trunk flow only: releases publish from origin's default branch, so
 	// refuse any other. Re-checks what pk changelog already refused, like
-	// the branch-on-origin check below. Skipped on detached HEAD and when
-	// origin advertises no HEAD symref.
+	// the branch-on-origin check below. Skipped when origin advertises
+	// no HEAD symref.
 	defaultVerified := false
-	if flow == config.TrunkFlow && sourceBranch != "" {
+	if flow == config.TrunkFlow {
 		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok {
 			if sourceBranch != def {
 				return cli.WithHint(

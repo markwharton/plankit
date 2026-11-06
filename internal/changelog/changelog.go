@@ -95,7 +95,14 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
-	branch, _ := git.Exec(root, "branch", "--show-current")
+	branch, err := git.Exec(root, "branch", "--show-current")
+	if err != nil {
+		return fmt.Errorf("git branch failed: %v", err)
+	}
+	// A dry run writes nothing, so it may read the commits from anywhere.
+	if branch == "" && !dryRun {
+		return DetachedHead()
+	}
 
 	// Guarded branch: the release commit belongs on the working branch.
 	for _, protected := range cfg.Guard.Branches {
@@ -318,6 +325,15 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		return fmt.Errorf("git commit failed: %v", err)
 	}
 	return nil
+}
+
+// DetachedHead is the refusal pk changelog and pk release share: a
+// release commit is made on a branch and published from it, and a
+// detached HEAD has none to check against origin, to merge, or to push.
+func DetachedHead() error {
+	return cli.WithHint(
+		cli.Statef("HEAD is detached; a release is made on a branch and published from it"),
+		"switch to the branch that holds the work: git switch <branch>")
 }
 
 // undo unwinds a pk changelog commit that nothing else holds: HEAD must
