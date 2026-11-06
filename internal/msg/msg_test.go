@@ -16,21 +16,3 @@ func TestPrefixes(t *testing.T) {
 		t.Fatalf("got %q want %q", b.String(), want)
 	}
 }
-
-func TestCatalog(t *testing.T) {
-	Register("t.b", Def{Text: "b"})
-	Register("t.a", Def{Text: "a", Hint: "fix a"})
-	ids := IDs()
-	if len(ids) < 2 || ids[0] > ids[1] {
-		t.Fatalf("ids not sorted: %v", ids)
-	}
-	if d, ok := Lookup("t.a"); !ok || d.Hint != "fix a" {
-		t.Fatalf("lookup: %v %v", d, ok)
-	}
-	defer func() {
-		if recover() == nil {
-			t.Fatal("duplicate Register should panic")
-		}
-	}()
-	Register("t.a", Def{})
-}

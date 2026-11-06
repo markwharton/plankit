@@ -263,14 +263,8 @@ func run(ctx *cli.Context) error {
 	// preRelease runs before the tag exists: rehearsable in --dry-run,
 	// and a hook that commits produces a commit the tag then covers. A
 	// hook that needs the tag ref wants prePush.
-	if h := pk.Release.Hooks.PreRelease; h != "" {
-		fmt.Fprintln(w, "")
-		msg.Section(w, "Pre-release hook")
-		msg.Itemf(w, "%s", h)
-		if err := hookio.RunScript(w, root, h, hookEnv); err != nil {
-			return cli.Statef("pre-release hook failed: %v", err)
-		}
-		msg.Itemf(w, "Hook passed")
+	if err := hookio.RunHook(w, root, "preRelease", pk.Release.Hooks.PreRelease, hookEnv); err != nil {
+		return err
 	}
 
 	// The push publishes the release branch in merge flow, the source
@@ -302,14 +296,8 @@ func run(ctx *cli.Context) error {
 	// builds keyed on the tag). A failure aborts before any push; the
 	// defer removes the tag and rolls back the merge. Never runs in
 	// --dry-run, which returned above: preRelease is the rehearsable slot.
-	if h := pk.Release.Hooks.PrePush; h != "" {
-		fmt.Fprintln(w, "")
-		msg.Section(w, "Pre-push hook")
-		msg.Itemf(w, "%s", h)
-		if err := hookio.RunScript(w, root, h, hookEnv); err != nil {
-			return cli.Statef("pre-push hook failed: %v", err)
-		}
-		msg.Itemf(w, "Hook passed")
+	if err := hookio.RunHook(w, root, "prePush", pk.Release.Hooks.PrePush, hookEnv); err != nil {
+		return err
 	}
 
 	fmt.Fprintln(w, "")

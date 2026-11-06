@@ -219,8 +219,8 @@ func TestFailedReleaseUndoesTheChangelogCommit(t *testing.T) {
 		reject  bool // origin rejects the push
 		failure string
 	}{
-		{"pre-release hook", func(c *config.PkConfig) { c.Release.Hooks.PreRelease = "exit 3" }, false, "pre-release hook failed"},
-		{"pre-push hook, with the tag made", func(c *config.PkConfig) { c.Release.Hooks.PrePush = "exit 4" }, false, "pre-push hook failed"},
+		{"pre-release hook", func(c *config.PkConfig) { c.Release.Hooks.PreRelease = "exit 3" }, false, "preRelease hook failed"},
+		{"pre-push hook, with the tag made", func(c *config.PkConfig) { c.Release.Hooks.PrePush = "exit 4" }, false, "prePush hook failed"},
 		{"rejected push", nil, true, "git push failed"},
 	}
 	for _, tc := range cases {
@@ -261,7 +261,7 @@ func TestTrunkFlowFailedReleaseUndoesTheChangelogCommit(t *testing.T) {
 	workHead, _ := git.Exec(dir, "rev-parse", "HEAD")
 
 	code, _, errw := runShip(t, dir)
-	if code != cli.ExitState || !strings.Contains(errw, "pre-release hook failed") || !strings.Contains(errw, "Undid release commit v0.1.0") {
+	if code != cli.ExitState || !strings.Contains(errw, "preRelease hook failed") || !strings.Contains(errw, "Undid release commit v0.1.0") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 	if h, _ := git.Exec(dir, "rev-parse", "HEAD"); h != workHead {
@@ -315,7 +315,7 @@ func TestFailedReleaseLeavesAnEarlierChangelogCommit(t *testing.T) {
 	staged, _ := git.Exec(dir, "rev-parse", "HEAD")
 
 	code, _, shipErr := runShip(t, dir)
-	if code != cli.ExitState || !strings.Contains(shipErr, "pre-release hook failed") {
+	if code != cli.ExitState || !strings.Contains(shipErr, "preRelease hook failed") {
 		t.Fatalf("code=%d errw=%q", code, shipErr)
 	}
 	if strings.Contains(shipErr, "Undid release commit") || strings.Contains(shipErr, "cannot undo") {
@@ -340,7 +340,7 @@ func TestRefusedUndoKeepsTheChangelogCommit(t *testing.T) {
 	if code != cli.ExitState {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
-	for _, want := range []string{"pre-release hook failed", "cannot undo: working tree is not clean"} {
+	for _, want := range []string{"preRelease hook failed", "cannot undo: working tree is not clean"} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q in:\n%s", want, errw)
 		}

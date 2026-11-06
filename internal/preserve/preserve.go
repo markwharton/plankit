@@ -91,8 +91,7 @@ func run(ctx *cli.Context) error {
 	// parse is neither, and nothing is preserved on its word.
 	input, hookInvocation, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
+		return hookio.Report(ctx.Stderr, "preserve", err) // shown, not blocking; nothing preserved
 	}
 
 	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
@@ -115,8 +114,7 @@ func run(ctx *cli.Context) error {
 			if errors.Is(err, config.ErrNotConfigured) {
 				return nil // plankit is off here; the hook fires everywhere
 			}
-			msg.Hookf(ctx.Stderr, "preserve", "%v", err)
-			return cli.Silent(hookio.ExitReport) // shown, not blocking; nothing preserved
+			return hookio.Report(ctx.Stderr, "preserve", err) // shown, not blocking; nothing preserved
 		}
 	}
 
@@ -173,10 +171,9 @@ func run(ctx *cli.Context) error {
 		return nil
 	case "manual":
 		writePointer(ctx, root, planPath)
-		writeResponse(ctx,
+		return outcome(ctx, hookInvocation, writeResponse(ctx,
 			fmt.Sprintf("Plan '%s' ready. Type /plankit:preserve to save it.", title),
-			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /plankit:preserve to save it to %s/.", title, cfg.Preserve.ResolvedDir()))
-		return nil
+			fmt.Sprintf("The user's plan '%s' has been approved. Inform the user that they can type /plankit:preserve to save it to %s/.", title, cfg.Preserve.ResolvedDir())))
 	}
 
 	// auto, or explicit invocation: commit.
@@ -206,8 +203,7 @@ func outcome(ctx *cli.Context, hook bool, err error) error {
 	if err == nil || !hook {
 		return err
 	}
-	msg.Hookf(ctx.Stderr, "preserve", "%v", err)
-	return cli.Silent(hookio.ExitReport)
+	return hookio.Report(ctx.Stderr, "preserve", err)
 }
 
 // runNamed is the --plan path: a person names the plan, so stdin is not
@@ -327,8 +323,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		}
 		if clean {
 			removePointer(root)
-			writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", relPath), "")
-			return nil
+			return writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", relPath), "")
 		}
 	}
 
@@ -385,20 +380,18 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 
 	if ctx.Bool("push") {
 		if _, err := git.Exec(root, "push", "origin", "HEAD"); err != nil {
-			writeResponse(ctx, fmt.Sprintf("Plan committed locally but push failed: %s%s", relPath, why), "")
-		} else {
-			writeResponse(ctx, fmt.Sprintf("Approved plan committed and pushed: %s%s", relPath, why), "")
+			return writeResponse(ctx, fmt.Sprintf("Plan committed locally but push failed: %s%s", relPath, why), "")
 		}
-	} else {
-		writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s%s", relPath, why), "")
+		return writeResponse(ctx, fmt.Sprintf("Approved plan committed and pushed: %s%s", relPath, why), "")
 	}
-	return nil
+	return writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s%s", relPath, why), "")
 }
 
-func writeResponse(ctx *cli.Context, message, context string) {
-	if err := hookio.WritePostToolUse(ctx.Stdout, message, context); err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "write error: %v", err)
-	}
+// writeResponse writes the response envelope. A write that fails is
+// returned like any other failure of a preserve, and outcome gives it
+// the exit its caller is owed.
+func writeResponse(ctx *cli.Context, message, context string) error {
+	return hookio.WritePostToolUse(ctx.Stdout, message, context)
 }
 
 // pointerPath returns the pending-plan pointer path for a repo.

@@ -22,6 +22,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/markwharton/plankit/internal/cli"
+	"github.com/markwharton/plankit/internal/msg"
 )
 
 // Input is the JSON payload Claude Code writes to a hook's stdin.
@@ -206,6 +209,25 @@ func RunScript(w io.Writer, dir, command string, env map[string]string) error {
 	return cmd.Run()
 }
 
+// RunHook runs one lifecycle hook from the policy file. name is the
+// hook's key there (postVersion, preCommit, preRelease, prePush), the
+// word a person searches .pk.json for. It narrates the hook under that
+// name, runs the command with RunScript, and returns the one refusal
+// for a hook that fails. A hook that is not set runs nothing.
+func RunHook(w io.Writer, dir, name, command string, env map[string]string) error {
+	if command == "" {
+		return nil
+	}
+	fmt.Fprintln(w, "")
+	msg.Section(w, name+" hook")
+	msg.Itemf(w, "%s", command)
+	if err := RunScript(w, dir, command, env); err != nil {
+		return cli.Statef("%s hook failed: %v", name, err)
+	}
+	msg.Itemf(w, "Hook passed")
+	return nil
+}
+
 // expand substitutes $NAME and ${NAME} in command for the names env
 // holds, and copies every other byte as it was written. A variable that
 // is not pk's, and every other form the shell reads after a dollar sign
@@ -279,6 +301,15 @@ func WriteSessionStart(w io.Writer, additionalContext string) error {
 	resp.HookSpecificOutput.HookEventName = "SessionStart"
 	resp.HookSpecificOutput.AdditionalContext = additionalContext
 	return json.NewEncoder(w).Encode(resp)
+}
+
+// Report writes a problem a hook cannot act on, under the hook's name,
+// and returns the exit that makes Claude Code show it. It is the one
+// way a hook says something went wrong: the line on stderr and
+// ExitReport always travel together.
+func Report(w io.Writer, hook string, err error) error {
+	msg.Hookf(w, hook, "%v", err)
+	return cli.Silent(ExitReport)
 }
 
 // ExitReport is the exit code a hook uses to report a problem it

@@ -267,11 +267,9 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		}
 		fmt.Fprintf(ctx.Stderr, "Updated %s\n", vf.Path)
 	}
-	if h := cfg.Changelog.Hooks.PostVersion; h != "" {
-		fmt.Fprintln(ctx.Stderr, "Running postVersion hook...")
-		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return cli.Statef("postVersion hook failed: %v", err)
-		}
+	hookEnv := map[string]string{"VERSION": ver}
+	if err := hookio.RunHook(ctx.Stderr, root, "postVersion", cfg.Changelog.Hooks.PostVersion, hookEnv); err != nil {
+		return err
 	}
 
 	repoURL := ""
@@ -293,11 +291,8 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		return fmt.Errorf("failed to write CHANGELOG.md: %v", err)
 	}
 
-	if h := cfg.Changelog.Hooks.PreCommit; h != "" {
-		fmt.Fprintln(ctx.Stderr, "Running preCommit hook...")
-		if err := hookio.RunScript(ctx.Stderr, root, h, map[string]string{"VERSION": ver}); err != nil {
-			return cli.Statef("preCommit hook failed: %v", err)
-		}
+	if err := hookio.RunHook(ctx.Stderr, root, "preCommit", cfg.Changelog.Hooks.PreCommit, hookEnv); err != nil {
+		return err
 	}
 
 	// Commit. The body carries the Release-Tag trailer pk release reads;
@@ -387,12 +382,23 @@ func parseCommit(hash, subject, body string) (Commit, bool) {
 	}
 	c := Commit{Hash: hash, Type: m[1], Scope: m[2], Breaking: m[3] == "!", Message: m[4]}
 	if !c.Breaking {
-		c.Breaking = hasBreakingTrailer(body)
+		c.Breaking = BreakingFooter(body)
 	}
 	return c, true
 }
 
-func hasBreakingTrailer(body string) bool {
+// BreakingSubject reports whether a subject is a conventional one that
+// carries the breaking marker: type(scope)!: message. guard asks this
+// about a commit before it is made, so it asks about exactly the
+// commits this parser will count as breaking.
+func BreakingSubject(subject string) bool {
+	c, ok := parseCommit("", strings.TrimSpace(subject), "")
+	return ok && c.Breaking
+}
+
+// BreakingFooter reports whether a commit message carries a BREAKING
+// CHANGE or BREAKING-CHANGE footer line.
+func BreakingFooter(body string) bool {
 	for _, line := range strings.Split(body, "\n") {
 		t := strings.TrimSpace(line)
 		if strings.HasPrefix(t, "BREAKING CHANGE:") || strings.HasPrefix(t, "BREAKING-CHANGE:") {

@@ -283,10 +283,16 @@ func spanRoff(spans []Span) (string, error) {
 			}
 			sb.WriteString(t)
 		default:
-			return "", fmt.Errorf("roff: unknown span type %q", s.Type)
+			return "", unknownSpan(s)
 		}
 	}
 	return sb.String(), nil
+}
+
+// unknownSpan is the error both span walkers end in, so a span type
+// added to the IR fails the suite instead of vanishing from the page.
+func unknownSpan(s Span) error {
+	return fmt.Errorf("roff: unknown span type %q", s.Type)
 }
 
 // spanText renders spans as plain text, for headings.
@@ -299,7 +305,7 @@ func spanText(spans []Span) (string, error) {
 		case "code", "text":
 			sb.WriteString(escape(s.Text))
 		default:
-			return "", fmt.Errorf("roff: unknown span type %q", s.Type)
+			return "", unknownSpan(s)
 		}
 	}
 	return sb.String(), nil

@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
@@ -48,8 +47,7 @@ var Cmd = &cli.Command{
 func run(ctx *cli.Context) error {
 	input, ok, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "guard", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown, not blocking; guard takes no action
+		return hookio.Report(ctx.Stderr, "guard", err) // shown, not blocking; guard takes no action
 	}
 	if !ok || input.ToolInput == nil || input.ToolInput.Command == "" {
 		return nil
@@ -71,8 +69,7 @@ func run(ctx *cli.Context) error {
 		return nil // plankit is off here; the hook fires everywhere
 	}
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "guard", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown, not blocking; guard takes no action
+		return hookio.Report(ctx.Stderr, "guard", err) // shown, not blocking; guard takes no action
 	}
 
 	// Branch policy: a mutation while a protected branch is checked out.
@@ -138,17 +135,17 @@ func run(ctx *cli.Context) error {
 	const pushAskReason = "pk guard: the agent is about to git push. Pushing is the developer's call. Allow this push?"
 	switch {
 	case pushDeny:
-		writeDecision(ctx, hookio.PermissionDeny, pushDenyReason)
+		return writeDecision(ctx, hookio.PermissionDeny, pushDenyReason)
 	case branchDeny:
-		writeDecision(ctx, hookio.PermissionDeny, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", protectedBranch))
+		return writeDecision(ctx, hookio.PermissionDeny, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there.", protectedBranch))
 	case pushAsk:
-		writeDecision(ctx, hookio.PermissionAsk, pushAskReason)
+		return writeDecision(ctx, hookio.PermissionAsk, pushAskReason)
 	case branchAsk:
-		writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
+		return writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("Branch %q is protected by pk guard. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
 	case breakingAsk:
-		writeDecision(ctx, hookio.PermissionAsk, "pk guard: the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
+		return writeDecision(ctx, hookio.PermissionAsk, "pk guard: the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
 	case bumpAsk:
-		writeDecision(ctx, hookio.PermissionAsk, bumpReason)
+		return writeDecision(ctx, hookio.PermissionAsk, bumpReason)
 	}
 	return nil
 }
@@ -166,10 +163,11 @@ func bumpAskReason(requested string, inferred changelog.Inference) string {
 	return b.String()
 }
 
-func writeDecision(ctx *cli.Context, decision, reason string) {
+func writeDecision(ctx *cli.Context, decision, reason string) error {
 	if err := hookio.WritePermissionDecision(ctx.Stdout, decision, reason); err != nil {
-		msg.Hookf(ctx.Stderr, "guard", "write error: %v", err)
+		return hookio.Report(ctx.Stderr, "guard", err)
 	}
+	return nil
 }
 
 // gitMutations are the git subcommands that change the checked-out
@@ -431,27 +429,14 @@ func hasBreakingCommit(calls []invocation) bool {
 		if len(msgs) == 0 {
 			continue
 		}
-		if breakingSubjectRe.MatchString(msgs[0]) {
+		subject, _, _ := strings.Cut(msgs[0], "\n")
+		if changelog.BreakingSubject(subject) {
 			return true
 		}
 		for _, m := range msgs {
-			if hasBreakingLine(m) {
+			if changelog.BreakingFooter(m) {
 				return true
 			}
-		}
-	}
-	return false
-}
-
-// breakingSubjectRe matches a conventional subject whose type carries
-// the breaking !: type(scope)!: message.
-var breakingSubjectRe = regexp.MustCompile(`^\s*\w+(?:\([^)]*\))?!\s*:`)
-
-func hasBreakingLine(msg string) bool {
-	for _, line := range strings.Split(msg, "\n") {
-		t := strings.TrimSpace(line)
-		if strings.HasPrefix(t, "BREAKING CHANGE:") || strings.HasPrefix(t, "BREAKING-CHANGE:") {
-			return true
 		}
 	}
 	return false

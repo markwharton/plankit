@@ -295,7 +295,7 @@ func TestFailingPrePushCleansUp(t *testing.T) {
 	})
 	pending(t, dir)
 	code, errw := runRel(t, dir)
-	if code != cli.ExitState || !strings.Contains(errw, "pre-push hook failed") {
+	if code != cli.ExitState || !strings.Contains(errw, "prePush hook failed") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 	if tags, _ := git.Exec(dir, "tag", "--list", "v0.1.0"); tags != "" {

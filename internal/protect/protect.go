@@ -16,7 +16,6 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
-	"github.com/markwharton/plankit/internal/msg"
 )
 
 // Cmd is the protect hook command.
@@ -30,8 +29,7 @@ var Cmd = &cli.Command{
 func run(ctx *cli.Context) error {
 	input, ok, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "protect", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown, not blocking; protect takes no action
+		return hookio.Report(ctx.Stderr, "protect", err) // shown, not blocking; protect takes no action
 	}
 	if !ok || input.ToolInput == nil || input.ToolInput.FilePath == "" {
 		return nil
@@ -47,15 +45,14 @@ func run(ctx *cli.Context) error {
 		if errors.Is(err, config.ErrNotConfigured) {
 			return nil // off here; the hook fires everywhere
 		}
-		msg.Hookf(ctx.Stderr, "protect", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown, not blocking; protect takes no action
+		return hookio.Report(ctx.Stderr, "protect", err) // shown, not blocking; protect takes no action
 	}
 
 	if isUnderPlansDir(input.ToolInput.FilePath, root, cfg.Preserve.DirPath(root)) {
 		err := hookio.WritePermissionDecision(ctx.Stdout, hookio.PermissionDeny,
 			cfg.Preserve.ResolvedDir()+"/ files are immutable historical records. They must not be edited or overwritten after creation.")
 		if err != nil {
-			msg.Hookf(ctx.Stderr, "protect", "write error: %v", err)
+			return hookio.Report(ctx.Stderr, "protect", err)
 		}
 	}
 	return nil

@@ -21,7 +21,6 @@ import (
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/hookio"
-	"github.com/markwharton/plankit/internal/msg"
 )
 
 // Cmd is the brief command: hook-driven and explicitly invocable.
@@ -38,8 +37,7 @@ func run(ctx *cli.Context) error {
 	// terminal. A payload that does not parse is neither.
 	input, hookInvocation, err := hookio.ReadInput(ctx.Stdin)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "brief", "%v", err)
-		return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
+		return hookio.Report(ctx.Stderr, "brief", err) // shown at session start, not blocking
 	}
 	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
 
@@ -57,11 +55,10 @@ func run(ctx *cli.Context) error {
 			text, err = render(cfg)
 		}
 		if err != nil {
-			msg.Hookf(ctx.Stderr, "brief", "%v", err)
-			return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
+			return hookio.Report(ctx.Stderr, "brief", err) // shown at session start, not blocking
 		}
 		if err := hookio.WriteSessionStart(ctx.Stdout, text); err != nil {
-			msg.Hookf(ctx.Stderr, "brief", "%v", err)
+			return hookio.Report(ctx.Stderr, "brief", err)
 		}
 		return nil
 	}
