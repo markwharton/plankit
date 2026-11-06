@@ -270,10 +270,7 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		return err
 	}
 
-	repoURL := ""
-	if remoteURL, err := git.Exec(root, "remote", "get-url", "origin"); err == nil {
-		repoURL = git.ParseRepoURL(remoteURL)
-	}
+	repoURL := git.RepoURL(root)
 	changelogPath := filepath.Join(root, "CHANGELOG.md")
 	// Only a missing file starts a new changelog: one that is there and
 	// cannot be read is never treated as empty and written over.

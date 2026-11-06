@@ -40,7 +40,7 @@ func load() error {
 				loadErr = err
 				return
 			}
-			d.Meta.Command = isCommandDoc(d)
+			d.Meta.Command = IsCommandDoc(d)
 			docs[d.Meta.Name] = d
 			raw, err := dataFS.ReadFile("data/raw/" + d.Meta.Name + ".md")
 			if err != nil {
@@ -55,7 +55,7 @@ func load() error {
 		// heading; the overview is the one page named here, because it
 		// is the page a reader meets first.
 		sort.Slice(order, func(i, j int) bool {
-			return rank(docs[order[i]].Meta) < rank(docs[order[j]].Meta)
+			return Rank(docs[order[i]].Meta) < Rank(docs[order[j]].Meta)
 		})
 	})
 	return loadErr
@@ -85,10 +85,13 @@ func Topic(name string) (*Doc, []byte, bool) {
 	return d, raws[name], true
 }
 
-// isCommandDoc reports whether a page's opening heading is "pk <name>",
+// IsCommandDoc reports whether a page's opening heading is "pk <name>",
 // the declaration that it documents a command rather than being a
-// document such as the overview.
-func isCommandDoc(d *Doc) bool {
+// document such as the overview. The heading is the one declaration of
+// that fact, and this is the one reader of it: the index, the compiler,
+// the site, and the test that holds commands and skills one to one all
+// ask here.
+func IsCommandDoc(d *Doc) bool {
 	if len(d.Blocks) == 0 || d.Blocks[0].Type != "heading" {
 		return false
 	}
@@ -103,9 +106,9 @@ func isCommandDoc(d *Doc) bool {
 // every index. The site's sidebar reads the same constant.
 const Overview = "overview"
 
-// rank orders the index: the overview, then documents by name, then
-// commands by name.
-func rank(m Meta) string {
+// Rank orders the index: the overview, then documents by name, then
+// commands by name. pk help and the site's sidebar sort by it.
+func Rank(m Meta) string {
 	switch {
 	case m.Name == Overview:
 		return "0"

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/help"
 	"github.com/markwharton/plankit/internal/registry"
 )
 
@@ -73,12 +74,16 @@ func TestCommandsAndSkillsAreOneToOne(t *testing.T) {
 		}
 	}
 	for dir := range skillDirs {
-		md, _ := os.ReadFile(filepath.Join(root, "skills", dir, "SKILL.md"))
 		// The opening heading declares the page's kind: "pk <name>" is a
 		// command page and must have its command; "<name>" alone is a
-		// document (the overview, craft) and is exempt.
-		isCommand := regexp.MustCompile(`(?m)^# pk ` + regexp.QuoteMeta(dir) + `\s*$`).Match(md)
-		if !isCommand {
+		// document (the overview, craft) and is exempt. The help package
+		// reads the heading; this test asks it.
+		d, _, ok := help.Topic(dir)
+		if !ok {
+			t.Errorf("skills/%s is not embedded in pk help; run make docs", dir)
+			continue
+		}
+		if !d.Meta.Command {
 			if registered[dir] {
 				t.Errorf("skills/%s is a command page but its heading does not read \"# pk %s\"", dir, dir)
 			}

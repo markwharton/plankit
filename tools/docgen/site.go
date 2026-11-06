@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/config"
+	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/help"
 	"github.com/yuin/goldmark"
 )
@@ -26,6 +27,11 @@ type topic struct {
 	name, desc string
 	body       []byte
 	command    bool // opening heading is "pk <name>"; documents open with the name alone
+}
+
+// meta is the topic as the help index knows it, for ordering.
+func (t topic) meta() help.Meta {
+	return help.Meta{Name: t.name, Description: t.desc, Command: t.command}
 }
 
 type navItem struct {
@@ -90,7 +96,6 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	sort.Strings(names)
 
 	var topics []topic
-	var topicNav []navItem
 	for _, name := range names {
 		raw, err := os.ReadFile(filepath.Join(skillsDir, name, "SKILL.md"))
 		if err != nil {
@@ -100,8 +105,11 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
-		topics = append(topics, topic{name, fm["description"], body, bytes.HasPrefix(bytes.TrimSpace(body), []byte("# pk "+name+"\n")) || bytes.Equal(bytes.TrimSpace(body), []byte("# pk "+name))})
-		topicNav = append(topicNav, navItem{Href: "/" + helpDir + "/" + name + linkExt, Label: name, Desc: fm["description"]})
+		d, err := compile(name, raw)
+		if err != nil {
+			return fmt.Errorf("%s: %w", name, err)
+		}
+		topics = append(topics, topic{name, fm["description"], body, help.IsCommandDoc(d)})
 	}
 
 	notes, err := readNotes(root, notesAll)
@@ -111,9 +119,9 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	// The same order as pk help: the overview, then documents, then
 	// commands, each alphabetical.
 	sort.SliceStable(topics, func(i, j int) bool {
-		return rank(topics[i]) < rank(topics[j])
+		return help.Rank(topics[i].meta()) < help.Rank(topics[j].meta())
 	})
-	topicNav = topicNav[:0]
+	var topicNav []navItem
 	for _, t := range topics {
 		topicNav = append(topicNav, navItem{Href: "/" + helpDir + "/" + t.name + linkExt, Label: t.name, Desc: t.desc, Command: t.command})
 	}
@@ -180,7 +188,11 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 		}
 	}
 	if len(notes) > 0 {
-		if err := writeHTML("notes.html", "Release notes", notesHTML(notes, repoWebURL(root), gitTags(root)), false); err != nil {
+		tags, err := git.Tags(root)
+		if err != nil {
+			return err
+		}
+		if err := writeHTML("notes.html", "Release notes", notesHTML(notes, repoLink(root), tags), false); err != nil {
 			return err
 		}
 	}
@@ -258,7 +270,9 @@ func frontPage(root, pk string, topics []topic) (template.HTML, error) {
 		b.WriteString(`<a class="card" href="/` + helpDir + `/` + t.name + linkExt + `"><code>pk ` + template.HTMLEscapeString(t.name) + `</code><span>` + template.HTMLEscapeString(t.desc) + `</span></a>`)
 	}
 	b.WriteString(`</div></section>`)
-	if tag := latestTag(root); tag != "" {
+	// The latest release is the highest semver tag, as pk measures it. A
+	// tree that is not a repository, or has no tag yet, gets no line.
+	if tag, _, err := changelog.LatestTag(root); err == nil && tag != "" {
 		b.WriteString(`<p class="muted release">Latest release: <a href="https://github.com/markwharton/plankit/releases/latest">` + template.HTMLEscapeString(tag) + `</a> · six platforms · <a href="/marketplace.json">marketplace.json</a></p>`)
 	}
 	return template.HTML(b.String()), nil
@@ -277,25 +291,4 @@ func readmeSections(readme string) (intro, install string) {
 		}
 	}
 	return intro, install
-}
-
-func latestTag(root string) string {
-	out, err := exec.Command("git", "-C", root, "describe", "--tags", "--abbrev=0").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
-// rank mirrors the help index's order: the overview first, then
-// documents by name, then commands by name.
-func rank(t topic) string {
-	switch {
-	case t.name == help.Overview:
-		return "0"
-	case !t.command:
-		return "1" + t.name
-	default:
-		return "2" + t.name
-	}
 }

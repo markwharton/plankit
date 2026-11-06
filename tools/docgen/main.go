@@ -20,51 +20,11 @@ import (
 	"strings"
 
 	"errors"
+	"github.com/markwharton/plankit/internal/help"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 )
-
-// The IR types mirror internal/help exactly. docgen is a separate module
-// (it carries goldmark; the runtime carries nothing), so the schema is
-// declared on both sides and the help package's strict loader keeps the
-// two honest: drift fails the embed tests.
-type doc struct {
-	Schema int     `json:"schema"`
-	Meta   meta    `json:"meta"`
-	Blocks []block `json:"blocks"`
-}
-
-type meta struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type block struct {
-	Type    string    `json:"type"`
-	Level   int       `json:"level,omitempty"`
-	ID      string    `json:"id,omitempty"`
-	Inlines []span    `json:"inlines,omitempty"`
-	Lang    string    `json:"lang,omitempty"`
-	Text    string    `json:"text,omitempty"`
-	Runs    []run     `json:"runs,omitempty"`
-	Ordered bool      `json:"ordered,omitempty"`
-	Items   [][]block `json:"items,omitempty"`
-	Blocks  []block   `json:"blocks,omitempty"`
-}
-
-type span struct {
-	Type   string `json:"type"`
-	Text   string `json:"text,omitempty"`
-	Strong bool   `json:"strong,omitempty"`
-	Em     bool   `json:"em,omitempty"`
-	URL    string `json:"url,omitempty"`
-}
-
-type run struct {
-	Kind string `json:"kind,omitempty"`
-	Text string `json:"text"`
-}
 
 func main() {
 	skillsDir := flag.String("skills", "", "Directory of <topic>/SKILL.md sources (required)")
@@ -169,7 +129,7 @@ See docs/architecture.md, "One source, three consumers".
 	return nil
 }
 
-func compile(topic string, source []byte) (*doc, error) {
+func compile(topic string, source []byte) (*help.Doc, error) {
 	fm, body, err := splitFrontmatter(source)
 	if err != nil {
 		return nil, err
@@ -190,48 +150,30 @@ func compile(topic string, source []byte) (*doc, error) {
 	if len(blocks) == 0 || blocks[0].Type != "heading" || blocks[0].Level != 1 {
 		return nil, fmt.Errorf("document must open with a level-1 heading")
 	}
-	if h := plain(blocks[0].Inlines); !isCommandTitle(h, topic) && h != topic {
+	d := &help.Doc{
+		Schema: help.SchemaVersion,
+		Meta:   help.Meta{Name: fm["name"], Description: fm["description"]},
+		Blocks: blocks,
+	}
+	if h := plain(blocks[0].Inlines); !help.IsCommandDoc(d) && h != topic {
 		return nil, fmt.Errorf("opening heading %q must be %q for a command page or %q for a document", h, "pk "+topic, topic)
 	}
-	return &doc{
-		Schema: 1,
-		Meta:   meta{Name: fm["name"], Description: fm["description"]},
-		Blocks: blocks,
-	}, nil
+	return d, nil
 }
 
-// splitFrontmatter parses the leading "---" block as flat "key: value"
-// lines. The frontmatter is deliberately not YAML: two required keys
-// need no dependency, and anything fancier should fail here.
+// splitFrontmatter reads a skill's frontmatter and body through the
+// one frontmatter reader, and refuses a key a skill does not carry.
 func splitFrontmatter(source []byte) (map[string]string, []byte, error) {
-	const fence = "---\n"
-	s := string(source)
-	if !strings.HasPrefix(s, fence) {
-		return nil, nil, fmt.Errorf("missing frontmatter (file must start with ---)")
-	}
-	rest := s[len(fence):]
-	end := strings.Index(rest, "\n"+fence)
-	if end < 0 {
-		return nil, nil, fmt.Errorf("unterminated frontmatter")
-	}
-	fm := map[string]string{}
-	for _, line := range strings.Split(rest[:end], "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		key, value, ok := strings.Cut(line, ":")
-		if !ok {
-			return nil, nil, fmt.Errorf("frontmatter line %q is not key: value", line)
-		}
-		fm[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	fm, body, err := help.SplitFrontmatter(source)
+	if err != nil {
+		return nil, nil, err
 	}
 	for k := range fm {
 		if k != "name" && k != "description" && k != "argument-hint" {
 			return nil, nil, fmt.Errorf("unknown frontmatter key %q (allowed: name, description, argument-hint)", k)
 		}
 	}
-	body := rest[end+1+len(fence):]
-	return fm, []byte(body), nil
+	return fm, body, nil
 }
 
 type compiler struct {
@@ -243,8 +185,8 @@ type compiler struct {
 // marker comment.
 var errSkipBlock = errors.New("skip")
 
-func (c *compiler) blocks(parent ast.Node) ([]block, error) {
-	out := []block{}
+func (c *compiler) blocks(parent ast.Node) ([]help.Block, error) {
+	out := []help.Block{}
 	for n := parent.FirstChild(); n != nil; n = n.NextSibling() {
 		b, err := c.block(n)
 		if errors.Is(err, errSkipBlock) {
@@ -258,23 +200,23 @@ func (c *compiler) blocks(parent ast.Node) ([]block, error) {
 	return out, nil
 }
 
-func (c *compiler) block(n ast.Node) (block, error) {
+func (c *compiler) block(n ast.Node) (help.Block, error) {
 	switch v := n.(type) {
 	case *ast.Heading:
 		if v.Level > 3 {
-			return block{}, fmt.Errorf("heading level %d: the subset allows 1..3", v.Level)
+			return help.Block{}, fmt.Errorf("heading level %d: the subset allows 1..3", v.Level)
 		}
-		inl, err := c.spans(n, span{})
+		inl, err := c.spans(n, help.Span{})
 		if err != nil {
-			return block{}, err
+			return help.Block{}, err
 		}
-		return block{Type: "heading", Level: v.Level, ID: c.slug(plain(inl)), Inlines: inl}, nil
+		return help.Block{Type: "heading", Level: v.Level, ID: c.slug(plain(inl)), Inlines: inl}, nil
 	case *ast.Paragraph, *ast.TextBlock:
-		inl, err := c.spans(n, span{})
+		inl, err := c.spans(n, help.Span{})
 		if err != nil {
-			return block{}, err
+			return help.Block{}, err
 		}
-		return block{Type: "para", Inlines: inl}, nil
+		return help.Block{Type: "para", Inlines: inl}, nil
 	case *ast.FencedCodeBlock:
 		var sb strings.Builder
 		lines := v.Lines()
@@ -282,27 +224,27 @@ func (c *compiler) block(n ast.Node) (block, error) {
 			seg := lines.At(i)
 			sb.Write(seg.Value(c.source))
 		}
-		return block{Type: "codeblock", Lang: string(v.Language(c.source)), Text: sb.String()}, nil
+		return help.Block{Type: "codeblock", Lang: string(v.Language(c.source)), Text: sb.String()}, nil
 	case *ast.CodeBlock:
-		return block{}, fmt.Errorf("indented code block: use a fenced block")
+		return help.Block{}, fmt.Errorf("indented code block: use a fenced block")
 	case *ast.List:
-		items := [][]block{}
+		items := [][]help.Block{}
 		for li := n.FirstChild(); li != nil; li = li.NextSibling() {
 			item, err := c.blocks(li)
 			if err != nil {
-				return block{}, err
+				return help.Block{}, err
 			}
 			items = append(items, item)
 		}
-		return block{Type: "list", Ordered: v.IsOrdered(), Items: items}, nil
+		return help.Block{Type: "list", Ordered: v.IsOrdered(), Items: items}, nil
 	case *ast.Blockquote:
 		inner, err := c.blocks(n)
 		if err != nil {
-			return block{}, err
+			return help.Block{}, err
 		}
-		return block{Type: "quote", Blocks: inner}, nil
+		return help.Block{Type: "quote", Blocks: inner}, nil
 	case *ast.ThematicBreak:
-		return block{Type: "rule"}, nil
+		return help.Block{Type: "rule"}, nil
 	case *ast.HTMLBlock:
 		// Only region markers, which are comments; nothing else renders.
 		var raw bytes.Buffer
@@ -311,18 +253,18 @@ func (c *compiler) block(n ast.Node) (block, error) {
 			raw.Write(seg.Value(c.source))
 		}
 		if text := strings.TrimSpace(raw.String()); strings.HasPrefix(text, "<!--") && strings.HasSuffix(text, "-->") {
-			return block{}, errSkipBlock
+			return help.Block{}, errSkipBlock
 		}
-		return block{}, fmt.Errorf("HTML block: outside the subset")
+		return help.Block{}, fmt.Errorf("HTML block: outside the subset")
 	default:
-		return block{}, fmt.Errorf("unsupported block %s: outside the subset", n.Kind())
+		return help.Block{}, fmt.Errorf("unsupported block %s: outside the subset", n.Kind())
 	}
 }
 
 // spans flattens the inline tree onto flag-carrying spans: nesting
 // resolves at compile time so the runtime walker is a single loop.
-func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
-	out := []span{}
+func (c *compiler) spans(parent ast.Node, state help.Span) ([]help.Span, error) {
+	out := []help.Span{}
 	for n := parent.FirstChild(); n != nil; n = n.NextSibling() {
 		switch v := n.(type) {
 		case *ast.Text:
@@ -332,7 +274,7 @@ func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
 			}
 			out = appendText(out, state, t)
 			if v.HardLineBreak() {
-				out = append(out, span{Type: "br"})
+				out = append(out, help.Span{Type: "br"})
 			}
 		case *ast.String:
 			out = appendText(out, state, string(v.Value))
@@ -351,7 +293,7 @@ func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
 		case *ast.CodeSpan:
 			// A code span may cross a source line; CommonMark treats the
 			// line ending as a space, and so does the terminal.
-			out = append(out, span{Type: "code", Text: strings.ReplaceAll(nodeText(n, c.source), "\n", " "), URL: state.URL})
+			out = append(out, help.Span{Type: "code", Text: strings.ReplaceAll(nodeText(n, c.source), "\n", " "), URL: state.URL})
 		case *ast.Link:
 			sub := state
 			sub.URL = string(v.Destination)
@@ -362,7 +304,7 @@ func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
 			out = append(out, inner...)
 		case *ast.AutoLink:
 			u := string(v.URL(c.source))
-			out = append(out, span{Type: "text", Text: u, Strong: state.Strong, Em: state.Em, URL: u})
+			out = append(out, help.Span{Type: "text", Text: u, Strong: state.Strong, Em: state.Em, URL: u})
 		case *ast.RawHTML:
 			return nil, fmt.Errorf("inline HTML: outside the subset")
 		case *ast.Image:
@@ -375,7 +317,7 @@ func (c *compiler) spans(parent ast.Node, state span) ([]span, error) {
 }
 
 // appendText merges consecutive same-styled text into one span.
-func appendText(out []span, state span, t string) []span {
+func appendText(out []help.Span, state help.Span, t string) []help.Span {
 	if t == "" {
 		return out
 	}
@@ -386,7 +328,7 @@ func appendText(out []span, state span, t string) []span {
 			return out
 		}
 	}
-	return append(out, span{Type: "text", Text: t, Strong: state.Strong, Em: state.Em, URL: state.URL})
+	return append(out, help.Span{Type: "text", Text: t, Strong: state.Strong, Em: state.Em, URL: state.URL})
 }
 
 func nodeText(n ast.Node, source []byte) string {
@@ -402,7 +344,7 @@ func nodeText(n ast.Node, source []byte) string {
 	return sb.String()
 }
 
-func plain(spans []span) string {
+func plain(spans []help.Span) string {
 	var sb strings.Builder
 	for _, s := range spans {
 		sb.WriteString(s.Text)
@@ -475,12 +417,4 @@ func scanHidden(raw []byte) []string {
 		}
 	}
 	return bad
-}
-
-// isCommandTitle reports whether a topic's opening heading declares it
-// a command page ("pk <topic>") rather than a document ("<topic>").
-// The heading is the one declaration of that fact: the 1:1 invariant
-// test and the site both read it, and no frontmatter key is needed.
-func isCommandTitle(heading, topic string) bool {
-	return heading == "pk "+topic
 }

@@ -1,6 +1,7 @@
 package help
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -120,15 +121,11 @@ func document(ctx *cli.Context) error {
 // stripFrontmatter removes a leading --- block. A page without one is
 // returned unchanged.
 func stripFrontmatter(raw []byte) []byte {
-	s := string(raw)
-	if !strings.HasPrefix(s, "---\n") {
+	_, body, err := SplitFrontmatter(raw)
+	if err != nil {
 		return raw
 	}
-	i := strings.Index(s[4:], "\n---\n")
-	if i < 0 {
-		return raw
-	}
-	return []byte(strings.TrimLeft(s[4+i+len("\n---\n"):], "\n"))
+	return bytes.TrimLeft(body, "\n")
 }
 
 func toc(ctx *cli.Context) error {

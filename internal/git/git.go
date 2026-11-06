@@ -274,6 +274,16 @@ func HasOtherLocalBranch(dir, branch string) bool {
 	return false
 }
 
+// RepoURL returns the web address of the repository origin points at,
+// origin's URL through ParseRepoURL, and "" when there is no origin.
+func RepoURL(dir string) string {
+	remote, err := Exec(dir, "remote", "get-url", "origin")
+	if err != nil {
+		return ""
+	}
+	return ParseRepoURL(remote)
+}
+
 // ParseRepoURL turns a remote's URL into the repository's web address,
 // for compare links. What the remote uses to sign in never comes
 // through: the user and password of a URL are dropped, and the ssh

@@ -61,7 +61,7 @@ func runDemo(pk string) ([]demoStep, error) {
 		}
 		return git("commit", "-q", "-m", msg)
 	}
-	run := func(title, shown string, stdin string, args ...string) (demoStep, error) {
+	run := func(title, shown string, stdin string, args ...string) demoStep {
 		cmd := exec.Command(pk, append([]string{}, args...)...)
 		cmd.Dir = work
 		cmd.Env = append(append(os.Environ(), gitEnv...), "NO_COLOR=1", "CLAUDE_PROJECT_DIR=")
@@ -70,7 +70,7 @@ func runDemo(pk string) ([]demoStep, error) {
 		}
 		out, _ := cmd.CombinedOutput() // demo commands are allowed to exit non-zero
 		text := strings.ReplaceAll(string(out), work, "~/acme-app")
-		return demoStep{Title: title, Command: shown, Output: strings.TrimRight(text, "\n")}, nil
+		return demoStep{Title: title, Command: shown, Output: strings.TrimRight(text, "\n")}
 	}
 
 	if err := os.MkdirAll(work, 0o755); err != nil {
@@ -94,7 +94,7 @@ func runDemo(pk string) ([]demoStep, error) {
 	var steps []demoStep
 	// init commits the policy and leaves the tree on develop; the demo
 	// publishes main as a developer would.
-	s, _ := run("Configure a repository", "pk init", "", "init")
+	s := run("Configure a repository", "pk init", "", "init")
 	steps = append(steps, s)
 	if err := git("push", "-q", "-u", "origin", "main", "--tags"); err != nil {
 		return nil, err
@@ -112,18 +112,18 @@ func runDemo(pk string) ([]demoStep, error) {
 		return nil, err
 	}
 
-	s, _ = run("See the state", "pk status", "", "status")
+	s = run("See the state", "pk status", "", "status")
 	steps = append(steps, s)
-	s, _ = run("What every session is told at start", "pk brief", "", "brief")
+	s = run("What every session is told at start", "pk brief", "", "brief")
 	steps = append(steps, s)
-	s, _ = run("Preview the release", "pk changelog --dry-run", "", "changelog", "--dry-run")
+	s = run("Preview the release", "pk changelog --dry-run", "", "changelog", "--dry-run")
 	steps = append(steps, s)
 
 	payload, _ := json.Marshal(map[string]any{
 		"cwd":        work,
 		"tool_input": map[string]string{"command": `git commit -m "feat!: drop the legacy session cookie"`},
 	})
-	s, _ = run("Guard asks before a breaking marker is committed",
+	s = run("Guard asks before a breaking marker is committed",
 		`Claude Code runs: git commit -m "feat!: drop the legacy session cookie"`, string(payload), "guard")
 	// The hook answers in JSON; show it readable.
 	var pretty bytes.Buffer
