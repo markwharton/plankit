@@ -23,6 +23,16 @@ func DetachedHead() error {
 		"switch to the branch that holds the work: git switch <branch>")
 }
 
+// OriginUnreachable is the refusal for a git command that had to ask
+// origin and got no answer. It is a precondition, not a failure of pk:
+// the repository cannot be released from until origin can be reached,
+// and the hint says where to look.
+func OriginUnreachable(err error) error {
+	return cli.WithHint(
+		cli.Statef("origin did not answer: %v", err),
+		"check the network, your access, and the remote's URL (git remote -v), then run again")
+}
+
 // CheckTrunkBranch is the trunk-flow check: releases publish from
 // origin's default branch, so any other branch is refused. The bool
 // reports that origin named its default branch and branch is it; it is
@@ -47,7 +57,7 @@ func CheckTrunkBranch(root, branch string) (bool, error) {
 func CheckOnOrigin(root, branch string) error {
 	onOrigin, err := git.RemoteBranchExists(root, branch)
 	if err != nil {
-		return err
+		return OriginUnreachable(err)
 	}
 	if !onOrigin {
 		return cli.WithHint(

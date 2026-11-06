@@ -211,8 +211,10 @@ func runInit(ctx *cli.Context) error {
 		case current != release:
 			pushed = append(pushed, current)
 		}
+		// A push origin refuses or never answers is the repository's
+		// state, with git's own account of it, as in pk release.
 		if err := do("push origin "+strings.Join(pushed, " "), func() error { return git.PushRefs(root, pushed...) }); err != nil {
-			return err
+			return cli.Statef("%v", err)
 		}
 	}
 

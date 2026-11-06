@@ -735,3 +735,18 @@ func TestDetachedHeadIsRefused(t *testing.T) {
 		t.Fatalf("dry run: code=%d out=%q errw=%q", code, out, errw)
 	}
 }
+
+// An origin that cannot be asked is the repository not being ready to
+// release from: a precondition, with the way to look into it.
+func TestAnOriginThatDoesNotAnswerIsAPrecondition(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	mustGit(t, dir, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "gone.git"))
+	code, _, errw := runCL(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "origin did not answer") || !strings.Contains(errw, "git remote -v") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if headSubject(t, dir) != "feat: x" {
+		t.Fatal("refused, yet a release commit was made")
+	}
+}

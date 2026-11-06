@@ -401,3 +401,18 @@ func TestDetachedHeadIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// An origin that cannot be asked is a precondition, not a failure of
+// pk: exit 2, with the way to look into it, and nothing tagged.
+func TestAnOriginThatDoesNotAnswerIsAPrecondition(t *testing.T) {
+	dir, _ := repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "gone.git"))
+	code, errw := runRel(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "origin did not answer") || !strings.Contains(errw, "git remote -v") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if tags, _ := git.Tags(dir); len(tags) != 1 {
+		t.Fatalf("refused, yet the tags are %v", tags)
+	}
+}

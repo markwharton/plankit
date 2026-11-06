@@ -123,7 +123,7 @@ func run(ctx *cli.Context) error {
 
 	// Source must not be behind origin.
 	if _, err := git.Exec(root, "fetch", "origin", sourceBranch, "--quiet"); err != nil {
-		return err
+		return changelog.OriginUnreachable(err)
 	}
 	upToDate, err := git.IsAncestor(root, "origin/"+sourceBranch, "HEAD")
 	if err != nil {
@@ -142,12 +142,12 @@ func run(ctx *cli.Context) error {
 	if needsMerge {
 		onOrigin, err := git.RemoteBranchExists(root, releaseBranch)
 		if err != nil {
-			return err
+			return changelog.OriginUnreachable(err)
 		}
 		switch {
 		case onOrigin:
 			if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
-				return err
+				return changelog.OriginUnreachable(err)
 			}
 			contained, err := git.IsAncestor(root, "origin/"+releaseBranch, "HEAD")
 			if err != nil {
