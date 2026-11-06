@@ -279,6 +279,14 @@
         },
         {
           "type": "code",
+          "text": "||"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
           "text": ";"
         },
         {
@@ -291,7 +299,31 @@
         },
         {
           "type": "text",
-          "text": "), environment prefixes, absolute paths, "
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "\u0026"
+        },
+        {
+          "type": "text",
+          "text": "), subshells and command substitution, shell keywords such as "
+        },
+        {
+          "type": "code",
+          "text": "then"
+        },
+        {
+          "type": "text",
+          "text": " and "
+        },
+        {
+          "type": "code",
+          "text": "do"
+        },
+        {
+          "type": "text",
+          "text": ", quoted words, environment prefixes, absolute paths, "
         },
         {
           "type": "code",
@@ -327,7 +359,31 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A guardrail against an agent following its defaults, not a security boundary. An internal error fails open with a note on stderr. An unconfigured repository (no "
+          "text": "A guardrail against an agent following its defaults, not a security boundary. A command run through "
+        },
+        {
+          "type": "code",
+          "text": "sudo"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "sh -c"
+        },
+        {
+          "type": "text",
+          "text": ", or "
+        },
+        {
+          "type": "code",
+          "text": "eval"
+        },
+        {
+          "type": "text",
+          "text": " is not read. An internal error fails open with a note on stderr. An unconfigured repository (no "
         },
         {
           "type": "code",

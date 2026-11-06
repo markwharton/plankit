@@ -15,6 +15,17 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 )
 
+// subcommand is the git subcommand of the first git command in a line,
+// "" when the line runs no git subcommand.
+func subcommand(cmd string) string {
+	for _, call := range invocations(cmd) {
+		if sub, _, ok := gitCall(call); ok {
+			return sub
+		}
+	}
+	return ""
+}
+
 func TestGitSubcommand(t *testing.T) {
 	cases := []struct{ cmd, want string }{
 		{"git commit -m x", "commit"},
@@ -25,6 +36,9 @@ func TestGitSubcommand(t *testing.T) {
 		{"command git merge dev", "merge"},
 		{"git -C /tmp push", "push"},
 		{"git -c user.name=x commit", "commit"},
+		{`git -C "/tmp/my dir" push`, "push"},
+		{"git --git-dir /tmp/x/.git --work-tree /tmp/x push", "push"},
+		{`"C:\Program Files\Git\bin\git.exe" push`, "push"},
 		{"git --git-dir=.git reset --hard", "reset"},
 		{"git.exe push", "push"},
 		{"C:/Program/git.exe push", "push"},
@@ -36,8 +50,8 @@ func TestGitSubcommand(t *testing.T) {
 		{"1FOO=x git push", ""}, // not a valid env assignment: not git
 	}
 	for _, tc := range cases {
-		if got := gitSubcommand(tc.cmd); got != tc.want {
-			t.Errorf("gitSubcommand(%q) = %q, want %q", tc.cmd, got, tc.want)
+		if got := subcommand(tc.cmd); got != tc.want {
+			t.Errorf("subcommand(%q) = %q, want %q", tc.cmd, got, tc.want)
 		}
 	}
 }
@@ -60,12 +74,12 @@ func TestIsGitMutationAcrossChains(t *testing.T) {
 		"ls | grep git",
 	}
 	for _, c := range yes {
-		if !isGitMutation(c) {
+		if !isGitMutation(invocations(c)) {
 			t.Errorf("isGitMutation(%q) = false, want true", c)
 		}
 	}
 	for _, c := range no {
-		if isGitMutation(c) {
+		if isGitMutation(invocations(c)) {
 			t.Errorf("isGitMutation(%q) = true, want false", c)
 		}
 	}
@@ -366,6 +380,48 @@ func TestShellWords(t *testing.T) {
 			if got[i] != tc.want[i] {
 				t.Errorf("shellWords(%q)[%d] = %q, want %q", tc.in, i, got[i], tc.want[i])
 			}
+		}
+	}
+}
+
+// Every policy is given one reading of the command line, so a push is
+// a push through quoted words, a background &, a subshell, a shell
+// keyword, and a global option that takes its value as the next word.
+func TestPushIsReadThroughShellForms(t *testing.T) {
+	dir := scratch(t, "off", "block")
+	for _, c := range []string{
+		`git -C "/tmp/my dir" push`,
+		`"git" push`,
+		`(git push)`,
+		`x=$(git push)`,
+		`git add . & git push`,
+		`if true; then git push; fi`,
+		`while true; do git push; done`,
+		`{ git push; }`,
+		`! git push`,
+		`git --git-dir /tmp/x/.git push`,
+		`git --work-tree /tmp/x push`,
+		`git commit -m "x" 2>&1 && git push`,
+		`case $x in a) git push;; esac`,
+	} {
+		if out, _ := runGuard(t, dir, c); !strings.Contains(out, `"deny"`) || !strings.Contains(out, "push blocked") {
+			t.Errorf("%q should be denied as a push, got %q", c, out)
+		}
+	}
+	// What is not a push stays silent: text inside quotes, a redirection
+	// that carries an ampersand, and the forms guard does not read.
+	for _, c := range []string{
+		`git status`,
+		`echo "git push"`,
+		`echo '(git push) & git push'`,
+		`git commit -m "feat(scope): push & pull"`,
+		`git log 2>&1`,
+		`git log &> log.txt`,
+		`sudo git push`,
+		`sh -c "git push"`,
+	} {
+		if out, _ := runGuard(t, dir, c); out != "" {
+			t.Errorf("%q should get no decision, got %q", c, out)
 		}
 	}
 }

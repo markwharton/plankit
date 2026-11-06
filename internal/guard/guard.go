@@ -1,9 +1,10 @@
 // Package guard implements the guard PreToolUse hook: it blocks or
 // questions git mutations on protected branches, pushes generally, and
 // the release claims that are the developer's (a breaking marker, a
-// --bump below what the commits infer), according to .pk.json policy. The command-recognition logic is ported
-// from v1 unchanged; the v2 addition is the not-configured short-circuit,
-// because the plugin's hooks fire in every repository.
+// --bump below what the commits infer), according to .pk.json policy.
+// The command line is read once, by invocations, and every policy is
+// given that reading. An unconfigured repository is a no-op, because
+// the plugin's hooks fire in every repository.
 package guard
 
 import (
@@ -51,9 +52,9 @@ func run(ctx *cli.Context) error {
 	if input.ToolInput == nil || input.ToolInput.Command == "" {
 		return nil
 	}
-	command := input.ToolInput.Command
-	mutation := isGitMutation(command)
-	level, excludes, override := bumpOverride(command)
+	calls := invocations(input.ToolInput.Command)
+	mutation := isGitMutation(calls)
+	level, excludes, override := bumpOverride(calls)
 	if !mutation && !override {
 		return nil
 	}
@@ -97,13 +98,13 @@ func run(ctx *cli.Context) error {
 	// on any branch. The marker is a user-approved claim, so the agent
 	// writing one gets an ask.
 	breakingAsk := false
-	if cfg.Guard.ResolvedBreaking() == "ask" && hasBreakingCommit(command) {
+	if cfg.Guard.ResolvedBreaking() == "ask" && hasBreakingCommit(calls) {
 		breakingAsk = true
 	}
 
 	// Push policy: any git push, regardless of branch.
 	pushDeny, pushAsk := false, false
-	if isGitPush(command) {
+	if isGitPush(calls) {
 		switch cfg.Guard.ResolvedPush() {
 		case "block":
 			pushDeny = true
@@ -169,39 +170,36 @@ func writeDecision(ctx *cli.Context, decision, reason string) {
 	}
 }
 
-// isGitMutation reports whether any subcommand in a (possibly compound)
-// command is a git operation that mutates the branch.
-func isGitMutation(command string) bool {
-	for _, sub := range splitShellCommands(command) {
-		switch gitSubcommand(sub) {
-		case "commit", "merge", "push", "rebase", "reset":
-			return true
+// isGitMutation reports whether any command is a git operation that
+// mutates the branch.
+func isGitMutation(calls []invocation) bool {
+	for _, call := range calls {
+		if sub, _, ok := gitCall(call); ok {
+			switch sub {
+			case "commit", "merge", "push", "rebase", "reset":
+				return true
+			}
 		}
 	}
 	return false
 }
 
 // bumpOverride finds a pk ship or pk changelog invocation carrying
-// --bump in a (possibly compound) command and returns the level asked
-// for with the --exclude hashes beside it, which change what the commits
-// infer. A --dry-run invocation is not reported: a rehearsal writes
-// nothing. pk is matched by path basename, so the plugin's shim form
-// is recognized too.
-func bumpOverride(command string) (level string, excludes []string, ok bool) {
-	for _, cmd := range splitShellCommands(command) {
-		words := shellWords(cmd)
-		i := 0
-		for i < len(words) && (isEnvAssignment(words[i]) || words[i] == "command") {
-			i++
-		}
-		if i+1 >= len(words) || baseName(words[i]) != "pk" {
+// --bump and returns the level asked for with the --exclude hashes
+// beside it, which change what the commits infer. A --dry-run
+// invocation is not reported: a rehearsal writes nothing. pk is matched
+// by path basename, so the plugin's shim form is recognized too.
+func bumpOverride(calls []invocation) (level string, excludes []string, ok bool) {
+	for _, call := range calls {
+		if call.program != "pk" || len(call.args) == 0 {
 			continue
 		}
-		if sub := words[i+1]; sub != "ship" && sub != "changelog" {
+		if sub := call.args[0]; sub != "ship" && sub != "changelog" {
 			continue
 		}
 		level, excludes, dryRun := "", []string(nil), false
-		for j := i + 2; j < len(words); j++ {
+		words := call.args[1:]
+		for j := 0; j < len(words); j++ {
 			w := words[j]
 			switch {
 			case w == "--bump":
@@ -229,19 +227,23 @@ func bumpOverride(command string) (level string, excludes []string, ok bool) {
 	return "", nil, false
 }
 
-// isGitPush reports whether any subcommand is a git push.
-func isGitPush(command string) bool {
-	for _, sub := range splitShellCommands(command) {
-		if gitSubcommand(sub) == "push" {
+// isGitPush reports whether any command is a git push.
+func isGitPush(calls []invocation) bool {
+	for _, call := range calls {
+		if sub, _, ok := gitCall(call); ok && sub == "push" {
 			return true
 		}
 	}
 	return false
 }
 
-// splitShellCommands splits a command string on shell operators (&&, ||,
-// |&, ;, |, and newlines), respecting single and double quotes so that
-// operators inside quoted strings are not treated as delimiters.
+// splitShellCommands splits a command string into its simple commands,
+// on the shell's operators (&&, ||, |&, ;, |, a background &, and
+// newlines) and on parentheses, so a subshell and a command
+// substitution are read as the commands inside them. Single and double
+// quotes are respected: an operator inside a quoted string is not a
+// delimiter. An & that belongs to a redirection (2>&1, &>) is not one
+// either.
 func splitShellCommands(command string) []string {
 	var result []string
 	var current strings.Builder
@@ -266,7 +268,9 @@ func splitShellCommands(command string) []string {
 			if i+1 < len(command) && (command[i:i+2] == "&&" || command[i:i+2] == "||" || command[i:i+2] == "|&") {
 				flush()
 				i++
-			} else if c == ';' || c == '|' || c == '\n' {
+			} else if c == ';' || c == '|' || c == '\n' || c == '(' || c == ')' {
+				flush()
+			} else if c == '&' && !isRedirection(command, i) {
 				flush()
 			} else {
 				current.WriteByte(c)
@@ -279,32 +283,87 @@ func splitShellCommands(command string) []string {
 	return result
 }
 
-// gitSubcommand returns the git subcommand for a single command, skipping
-// leading VAR=value environment assignments and a leading "command" word,
-// matching git by path basename, and skipping git's global options, so
-// forms like "GIT_DIR=. git push", "command git push", "/usr/bin/git
-// push", "git -C dir push", and "git -c k=v commit" are recognized.
-// Returns "" when the command is not a git invocation. -C and -c take a
-// separate-word value; other global options are self-contained.
-func gitSubcommand(cmd string) string {
-	fields := strings.Fields(cmd)
-	start := 0
-	for start < len(fields) && (isEnvAssignment(fields[start]) || fields[start] == "command") {
-		start++
+// isRedirection reports whether the & at command[i] belongs to a
+// redirection: it follows > or < (2>&1, <&3) or leads one (&>, &>>).
+func isRedirection(command string, i int) bool {
+	if i > 0 && (command[i-1] == '>' || command[i-1] == '<') {
+		return true
 	}
-	if start >= len(fields) || baseName(fields[start]) != "git" {
-		return ""
-	}
-	for i := start + 1; i < len(fields); i++ {
-		f := fields[i]
-		if !strings.HasPrefix(f, "-") {
-			return f
+	return i+1 < len(command) && command[i+1] == '>'
+}
+
+// invocation is one simple command as the shell would run it: the
+// program's base name and the words after it.
+type invocation struct {
+	program string
+	args    []string
+}
+
+// invocations reads a (possibly compound) command line into the simple
+// commands it holds. It is the one reading of the command line: every
+// policy is given its result, so they cannot disagree about what a
+// command runs. The words before the program are dropped: forms like
+// "GIT_DIR=. git push", "command git push", and "then git push" all
+// run git.
+//
+// A command run through sudo, sh -c, or eval is not read: guard is a
+// guardrail against an agent following its defaults, and those are not
+// its defaults.
+func invocations(command string) []invocation {
+	var calls []invocation
+	for _, cmd := range splitShellCommands(command) {
+		words := shellWords(cmd)
+		i := 0
+		for i < len(words) && precedesProgram(words[i]) {
+			i++
 		}
-		if f == "-C" || f == "-c" {
+		if i < len(words) {
+			calls = append(calls, invocation{program: baseName(words[i]), args: words[i+1:]})
+		}
+	}
+	return calls
+}
+
+// precedesProgram reports a word the shell allows before the program a
+// simple command runs: an environment assignment, "command", or one of
+// the shell's own words that open or continue a compound command.
+func precedesProgram(word string) bool {
+	switch word {
+	case "!", "command", "do", "elif", "else", "if", "then", "until", "while", "{":
+		return true
+	}
+	return isEnvAssignment(word)
+}
+
+// gitValueOptions are git's global options that take their value as
+// the next word; every other global option is self-contained.
+var gitValueOptions = map[string]bool{
+	"-C":           true,
+	"-c":           true,
+	"--config-env": true,
+	"--git-dir":    true,
+	"--namespace":  true,
+	"--work-tree":  true,
+}
+
+// gitCall returns the git subcommand an invocation runs and the words
+// after it, skipping git's global options, so "git -C dir push" and
+// "git -c k=v commit" are read as push and commit. The bool is false
+// when the invocation is not git or names no subcommand.
+func gitCall(call invocation) (string, []string, bool) {
+	if call.program != "git" {
+		return "", nil, false
+	}
+	for i := 0; i < len(call.args); i++ {
+		word := call.args[i]
+		if !strings.HasPrefix(word, "-") {
+			return word, call.args[i+1:], true
+		}
+		if gitValueOptions[word] {
 			i++ // skip its value
 		}
 	}
-	return ""
+	return "", nil, false
 }
 
 // baseName is filepath.Base for both separators, with a case-insensitive
@@ -351,12 +410,13 @@ func isEnvAssignment(word string) bool {
 // editor commits pass through, as does anything hidden behind command
 // substitution. That covers the authored path this check exists for:
 // agent commits are -m commits.
-func hasBreakingCommit(command string) bool {
-	for _, cmd := range splitShellCommands(command) {
-		if gitSubcommand(cmd) != "commit" {
+func hasBreakingCommit(calls []invocation) bool {
+	for _, call := range calls {
+		sub, args, ok := gitCall(call)
+		if !ok || sub != "commit" {
 			continue
 		}
-		msgs := commitMessages(shellWords(cmd))
+		msgs := commitMessages(args)
 		if len(msgs) == 0 {
 			continue
 		}
@@ -386,38 +446,18 @@ func hasBreakingLine(msg string) bool {
 	return false
 }
 
-// commitMessages extracts the -m/--message values from a tokenized git
-// commit invocation, in order (the first is the subject). Handled
-// forms: -m msg, -mmsg, --message msg, --message=msg, and short
-// clusters ending in m (-am msg), where git gives the trailing option
-// the next argument.
-func commitMessages(words []string) []string {
-	// Find the git word, skipping env assignments and "command".
-	i := 0
-	for i < len(words) && (isEnvAssignment(words[i]) || words[i] == "command") {
-		i++
-	}
-	if i >= len(words) || baseName(words[i]) != "git" {
-		return nil
-	}
-	// Advance past global options to the commit subcommand.
-	i++
-	for i < len(words) && words[i] != "commit" {
-		if words[i] == "-C" || words[i] == "-c" {
-			i++
-		}
-		i++
-	}
-	if i >= len(words) {
-		return nil
-	}
+// commitMessages extracts the -m/--message values from the words after
+// git commit, in order (the first is the subject). Handled forms: -m
+// msg, -mmsg, --message msg, --message=msg, and short clusters ending
+// in m (-am msg), where git gives the trailing option the next argument.
+func commitMessages(args []string) []string {
 	var msgs []string
-	for j := i + 1; j < len(words); j++ {
-		w := words[j]
+	for j := 0; j < len(args); j++ {
+		w := args[j]
 		switch {
 		case w == "-m" || w == "--message":
-			if j+1 < len(words) {
-				msgs = append(msgs, words[j+1])
+			if j+1 < len(args) {
+				msgs = append(msgs, args[j+1])
 				j++
 			}
 		case strings.HasPrefix(w, "--message="):
@@ -425,8 +465,8 @@ func commitMessages(words []string) []string {
 		case strings.HasPrefix(w, "-m") && len(w) > 2 && w[2] != '-':
 			msgs = append(msgs, w[2:])
 		case isShortCluster(w) && strings.HasSuffix(w, "m"):
-			if j+1 < len(words) {
-				msgs = append(msgs, words[j+1])
+			if j+1 < len(args) {
+				msgs = append(msgs, args[j+1])
 				j++
 			}
 		}
@@ -450,8 +490,11 @@ func isShortCluster(w string) bool {
 
 // shellWords splits one shell command into words, honoring single and
 // double quotes and backslash escapes, and stripping the quotes. It is
-// deliberately small: enough to read a -m argument the way the shell
-// hands it to git.
+// deliberately small: enough to read a program and a -m argument the
+// way the shell hands them over. One departure: outside quotes, a
+// backslash before a letter or a digit is kept, because the hook reads
+// PowerShell commands too and there it is a path separator
+// (C:\tools\git.exe), which nobody writes as an escape.
 func shellWords(cmd string) []string {
 	var words []string
 	var b strings.Builder
@@ -486,6 +529,9 @@ func shellWords(cmd string) []string {
 			quote = c
 			inWord = true
 		case c == '\\' && i+1 < len(cmd):
+			if isAlnum(cmd[i+1]) {
+				b.WriteByte(c)
+			}
 			b.WriteByte(cmd[i+1])
 			i++
 			inWord = true
@@ -498,4 +544,8 @@ func shellWords(cmd string) []string {
 	}
 	flush()
 	return words
+}
+
+func isAlnum(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
 }
