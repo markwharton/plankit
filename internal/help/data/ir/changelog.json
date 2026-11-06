@@ -266,7 +266,7 @@
         },
         {
           "type": "text",
-          "text": " unwinds an unpushed release commit, restoring "
+          "text": " unwinds the release commit, restoring "
         },
         {
           "type": "code",
@@ -274,7 +274,7 @@
         },
         {
           "type": "text",
-          "text": " and version files."
+          "text": " and version files. It refuses unless the tree is clean and the commit is only on the current branch: not pushed, not tagged, not merged."
         }
       ]
     },

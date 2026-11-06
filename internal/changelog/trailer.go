@@ -17,7 +17,7 @@ const TrailerKey = "Release-Tag"
 
 // ErrNoTrailer reports that HEAD has no Release-Tag trailer. The message
 // is deliberately neutral: pk release wraps it with "run pk changelog
-// first", while --undo prints it as-is.
+// first", and --undo with "cannot undo".
 var ErrNoTrailer = errors.New("no Release-Tag trailer on HEAD")
 
 // ErrInvalidTrailer reports a trailer value that does not round-trip

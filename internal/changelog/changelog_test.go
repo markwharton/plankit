@@ -454,15 +454,66 @@ func TestUndo(t *testing.T) {
 	}
 
 	// Nothing to undo now.
-	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitState || !strings.Contains(errw, "no Release-Tag trailer") {
+	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitState || !strings.Contains(errw, "cannot undo: no Release-Tag trailer on HEAD") {
 		t.Fatalf("second undo: code=%d errw=%q", code, errw)
 	}
 
 	// A pushed release commit refuses to undo.
 	runCL(t, dir)
 	mustGit(t, dir, "push", "-q", "origin", "develop")
-	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitState || !strings.Contains(errw, "already on the remote") {
+	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitState || !strings.Contains(errw, "cannot undo: the release commit is also on remotes/origin/develop") {
 		t.Fatalf("pushed undo: code=%d errw=%q", code, errw)
+	}
+}
+
+// TestUndoRefusesACommitSomethingElseHolds: undo removes the release
+// commit from the current branch, so it refuses when a tag or another
+// branch would keep a copy, and names what holds it.
+func TestUndoRefusesACommitSomethingElseHolds(t *testing.T) {
+	cases := []struct {
+		name    string
+		hold    []string
+		refusal string
+	}{
+		{"a tag", []string{"tag", "v0.1.0"}, "cannot undo: the release commit is also on tags/v0.1.0"},
+		{"another branch", []string{"branch", "-f", "main"}, "cannot undo: the release commit is also on heads/main"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := repo(t, nil)
+			commit(t, dir, "feat: x")
+			runCL(t, dir)
+			mustGit(t, dir, tc.hold...)
+
+			code, _, errw := runCL(t, dir, "--undo")
+			if code != cli.ExitState || !strings.Contains(errw, tc.refusal) {
+				t.Fatalf("code=%d errw=%q", code, errw)
+			}
+			if headSubject(t, dir) != "chore: release v0.1.0" {
+				t.Fatal("the release commit was undone")
+			}
+		})
+	}
+}
+
+// TestUndoRefusesADirtyTreeAndAllowsAStash: the dirty-tree refusal
+// says to stash, so a stash made on the release commit must not count
+// as something that holds it.
+func TestUndoRefusesADirtyTreeAndAllowsAStash(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	runCL(t, dir)
+	writeF(t, dir, "a.txt", "edited\n")
+
+	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitState || !strings.Contains(errw, "cannot undo: working tree is not clean") {
+		t.Fatalf("dirty undo: code=%d errw=%q", code, errw)
+	}
+	mustGit(t, dir, "stash", "-q")
+	if code, _, errw := runCL(t, dir, "--undo"); code != cli.ExitOK {
+		t.Fatalf("undo after stash: exit %d: %s", code, errw)
+	}
+	if headSubject(t, dir) != "feat: x" {
+		t.Fatal("undo did not reset")
 	}
 }
 

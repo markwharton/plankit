@@ -148,6 +148,17 @@ func Ahead(dir string) (int, bool, error) {
 	return n, true, nil
 }
 
+// Holders lists the branches, tags, and remote-tracking branches that
+// contain rev, as full ref names. A commit that only one branch holds
+// can be removed from it without a copy surviving anywhere else.
+func Holders(dir, rev string) ([]string, error) {
+	out, err := Exec(dir, "for-each-ref", "--contains", rev, "--format=%(refname)", "refs/heads", "refs/tags", "refs/remotes")
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(out), nil
+}
+
 // IsAncestor reports whether ancestor is reachable from rev. Exit 1
 // from git is false; any other failure is the error.
 func IsAncestor(dir, ancestor, rev string) (bool, error) {

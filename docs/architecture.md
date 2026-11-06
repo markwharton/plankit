@@ -92,7 +92,8 @@ is patch. `--bump` overrides the inference, and the run says so next to
 the version it generates. It writes the section into CHANGELOG.md, stamps the version
 into the files the policy names, and commits with a `Release-Tag`
 trailer. No tag exists yet; the commit is there to review, and
-`pk changelog --undo` unwinds it while it is unpushed.
+`pk changelog --undo` unwinds it while it is only on the working
+branch.
 
 `pk release` reads the trailer. It checks the tree is clean, the
 branch is on origin, and nothing has diverged. It fast-forwards the

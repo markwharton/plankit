@@ -69,8 +69,9 @@ pk changelog --undo
 
 `--dry-run` prints the section to stdout and runs on a dirty tree.
 `--exclude` drops commits by short hash before bump inference.
-`--undo` unwinds an unpushed release commit, restoring `CHANGELOG.md`
-and version files.
+`--undo` unwinds the release commit, restoring `CHANGELOG.md` and
+version files. It refuses unless the tree is clean and the commit is
+only on the current branch: not pushed, not tagged, not merged.
 
 `changelog.versionFiles` names JSON files whose root `version` field
 is spliced in place, formatting preserved. `postVersion` and

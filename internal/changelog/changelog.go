@@ -1,8 +1,8 @@
 // Package changelog implements pk changelog: it generates CHANGELOG.md
 // from conventional commits since the last tag and commits the result.
 // The commit body carries a Release-Tag trailer so pk release can create
-// the git tag at the right moment; pk changelog --undo unwinds an
-// unpushed release commit.
+// the git tag at the right moment; pk changelog --undo unwinds a
+// release commit that is only on the current branch.
 //
 // Ported from v1. The v2 deltas: an unconfigured repository is refused
 // (state exit, hint pk init) rather than defaulted; the dry-run section
@@ -315,25 +315,34 @@ func run(ctx *cli.Context) error {
 	return nil
 }
 
-// undo unwinds an unpushed pk changelog commit: HEAD must carry a valid
-// Release-Tag trailer, the tree must be clean, and HEAD must not be on
-// the remote. git reset --hard HEAD~1 restores CHANGELOG.md and version
-// files.
+// undo unwinds a pk changelog commit that nothing else holds: HEAD must
+// carry a valid Release-Tag trailer, the tree must be clean, and the
+// current branch must be the only branch, tag, or remote-tracking
+// branch that contains the commit. That one question refuses a pushed
+// commit, a tagged release, and a merge that was not rolled back alike.
+// git reset --hard HEAD~1 restores CHANGELOG.md and version files.
 func undo(ctx *cli.Context, root string) error {
 	_, trailerValue, err := ReadReleaseTagTrailer(root)
 	if err != nil {
-		return cli.Statef("%v", err)
+		return cli.Statef("cannot undo: %v", err)
 	}
 	if err := git.CheckCleanTree(root); err != nil {
-		return cli.Statef("%v", err)
+		return cli.Statef("cannot undo: %v", err)
 	}
-	// No upstream means the commit cannot be on the remote: undo is safe.
-	ahead, known, err := git.Ahead(root)
+	holders, err := git.Holders(root, "HEAD")
 	if err != nil {
-		return fmt.Errorf("git rev-list @{u}..HEAD failed: %v", err)
+		return fmt.Errorf("git for-each-ref failed: %v", err)
 	}
-	if known && ahead == 0 {
-		return cli.Statef("HEAD is already on the remote; cannot undo a pushed commit")
+	// A detached HEAD has no branch of its own, so every holder counts.
+	current, _ := git.Exec(root, "symbolic-ref", "-q", "HEAD")
+	var others []string
+	for _, ref := range holders {
+		if ref != current {
+			others = append(others, strings.TrimPrefix(ref, "refs/"))
+		}
+	}
+	if len(others) > 0 {
+		return cli.Statef("cannot undo: the release commit is also on %s", strings.Join(others, ", "))
 	}
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
 		return fmt.Errorf("git reset failed: %v", err)
