@@ -141,3 +141,30 @@ func TestSymlinkedRootStillDenied(t *testing.T) {
 		t.Fatalf("symlinked root bypassed protect: %q", out.String())
 	}
 }
+
+// The plans directory is one directory however its path is spelled. On
+// a filesystem that ignores case another spelling reaches it, and is
+// denied like the first.
+func TestAnotherSpellingOfThePlansDirectoryIsDenied(t *testing.T) {
+	dir := scratch(t, true)
+	plans := filepath.Join(dir, "docs", "plans")
+	if err := os.MkdirAll(plans, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(dir, "DOCS", "PLANS")
+	a, errA := os.Stat(plans)
+	b, errB := os.Stat(other)
+	if errA != nil || errB != nil || !os.SameFile(a, b) {
+		t.Skip("this filesystem tells docs/plans from DOCS/PLANS")
+	}
+	for _, p := range []string{
+		filepath.Join(other, "2026-01-01-001-x.md"),
+		"DOCS/PLANS/sub/y.md",
+		"Docs/plans/2026-01-01-001-x.md",
+	} {
+		out := runProtect(t, dir, p)
+		if !strings.Contains(out, `"permissionDecision":"deny"`) {
+			t.Errorf("path %q should be denied, got %q", p, out)
+		}
+	}
+}

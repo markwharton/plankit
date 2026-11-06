@@ -72,6 +72,11 @@ func run(ctx *cli.Context) error {
 // edge: /var is a symlink to /private/var, so a payload cwd under
 // /var/folders (every TMPDIR) resolves to /private on the existing
 // side and stays /var on the missing side. v1 had this asymmetry too.
+//
+// Spellings cannot say whether two paths are one directory, so a plans
+// directory that exists is also recognised by identity (isInside). The
+// comparison of paths stays for the directory that does not exist yet:
+// it has no identity, and its first file is refused all the same.
 func isUnderPlansDir(filePath, root, plansDir string) bool {
 	if !filepath.IsAbs(filePath) {
 		filePath = filepath.Join(root, filePath)
@@ -82,7 +87,33 @@ func isUnderPlansDir(filePath, root, plansDir string) bool {
 		cleanFile = strings.ToLower(cleanFile)
 		cleanPlans = strings.ToLower(cleanPlans)
 	}
-	return strings.HasPrefix(cleanFile, cleanPlans+string(filepath.Separator))
+	if strings.HasPrefix(cleanFile, cleanPlans+string(filepath.Separator)) {
+		return true
+	}
+	return isInside(filePath, plansDir)
+}
+
+// isInside reports whether a directory above file is dir itself, the
+// same directory on disk, whatever either path is spelled like. The
+// filesystem answers, so a spelling that differs only by case matches
+// exactly where the filesystem ignores case. A dir that does not exist
+// has no identity and nothing is inside it.
+func isInside(file, dir string) bool {
+	target, err := os.Stat(dir)
+	if err != nil {
+		return false
+	}
+	p := filepath.Dir(filepath.Clean(file))
+	for {
+		if info, err := os.Stat(p); err == nil && os.SameFile(info, target) {
+			return true
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return false
+		}
+		p = parent
+	}
 }
 
 // resolveExisting resolves symlinks through the nearest existing

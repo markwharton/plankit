@@ -50,7 +50,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "The check resolves symlinks and compares case-insensitively on Windows, so the directory cannot be reached through an alias."
+          "text": "The check resolves symlinks and recognizes the directory by its identity on disk, so it cannot be reached through an alias or, where the filesystem ignores case, through another spelling."
         }
       ]
     },

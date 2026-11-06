@@ -10,8 +10,9 @@ under the plans directory, `preserve.dir` in `.pk.json`, because a
 preserved plan is a record of what was approved, and a record that can
 be edited is not one.
 
-The check resolves symlinks and compares case-insensitively on
-Windows, so the directory cannot be reached through an alias.
+The check resolves symlinks and recognizes the directory by its
+identity on disk, so it cannot be reached through an alias or, where
+the filesystem ignores case, through another spelling.
 
 ## Amending a plan
 
