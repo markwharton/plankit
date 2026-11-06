@@ -77,6 +77,8 @@ func TestInvalidModeFailsWithKey(t *testing.T) {
 		{`{"preserve": {"mode": "always"}}`, "preserve.mode"},
 		{`{"changelog": {"types": [{"type": ""}]}}`, "changelog.types[0]"},
 		{`{"changelog": {"types": [{"type": "feat"}]}}`, "section is required"},
+		{`{"changelog": {"versionFiles": [{"path": "a.json", "type": "json"}, {"path": "b.yaml", "type": "yaml"}]}}`, "changelog.versionFiles[1] (b.yaml)"},
+		{`{"release": {"branch": "-main"}}`, "release.branch"},
 	}
 	for _, tc := range cases {
 		dir := t.TempDir()
@@ -85,6 +87,16 @@ func TestInvalidModeFailsWithKey(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), tc.key) {
 			t.Errorf("%s: err = %v, want %q named", tc.body, err, tc.key)
 		}
+	}
+}
+
+// What the two checks accept: a json version file, one that leaves
+// its type out, and an ordinary release branch.
+func TestVersionFilesAndReleaseBranchThatLoad(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, `{"changelog": {"versionFiles": [{"path": "a.json", "type": "json"}, {"path": "b.json", "type": ""}]}, "release": {"branch": "main"}}`)
+	if _, err := Load(dir); err != nil {
+		t.Fatalf("a valid file must load: %v", err)
 	}
 }
 

@@ -259,9 +259,6 @@ func run(ctx *cli.Context) error {
 func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nextTag, section string) error {
 	ver := strings.TrimPrefix(nextTag, "v")
 	for _, vf := range cfg.Changelog.VersionFiles {
-		if vf.Type != "" && vf.Type != "json" {
-			return cli.Usagef("unsupported versionFile type %q for %s (only \"json\" is supported)", vf.Type, vf.Path)
-		}
 		if err := updateVersionFile(filepath.Join(root, vf.Path), ver); err != nil {
 			return cli.Statef("failed to update %s: %v", vf.Path, err)
 		}

@@ -136,6 +136,11 @@ type TypeConfig struct {
 	Type    string `json:"type"`
 }
 
+// VersionFileJSON is the one kind of version file: a JSON document
+// whose root "version" field is stamped. An entry that leaves its type
+// out is one of these.
+const VersionFileJSON = "json"
+
 // VersionFile describes a file carrying a version string to update.
 type VersionFile struct {
 	Path string `json:"path"`
@@ -234,7 +239,8 @@ func Load(root string) (*PkConfig, error) {
 	return &cfg, nil
 }
 
-// Validate checks mode enums and the changelog type table. Policy typos
+// Validate checks mode enums, the changelog type table, the version
+// files, the release branch, and the plans directory. Policy typos
 // should fail here, at load, not silently change behavior at hook time.
 func (c *PkConfig) Validate() error {
 	for _, s := range Settings() {
@@ -252,6 +258,16 @@ func (c *PkConfig) Validate() error {
 		if t.Section == "" && !t.Hidden {
 			return fmt.Errorf("changelog.types[%d] (%s): section is required unless hidden", i, t.Type)
 		}
+	}
+	for i, vf := range c.Changelog.VersionFiles {
+		if vf.Type != "" && vf.Type != VersionFileJSON {
+			return fmt.Errorf("changelog.versionFiles[%d] (%s): type %q is not supported; the one type is %q", i, vf.Path, vf.Type, VersionFileJSON)
+		}
+	}
+	// A branch name never begins with -, and one that did would be read
+	// by git as an option.
+	if b := c.Release.Branch; strings.HasPrefix(b, "-") {
+		return fmt.Errorf("release.branch: %q cannot begin with -", b)
 	}
 	if d := c.Preserve.Dir; d != "" && !isRepoRelativeDir(d) {
 		return fmt.Errorf("preserve.dir: %q must be a clean relative path with forward slashes inside the repository", d)

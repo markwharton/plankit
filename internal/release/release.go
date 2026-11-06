@@ -55,11 +55,6 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 	releaseBranch := pk.Release.Branch
-	// A branch name can never start with -; refuse before it reaches git
-	// argv, where it would parse as an option.
-	if strings.HasPrefix(releaseBranch, "-") {
-		return cli.Statef("invalid release.branch %q in .pk.json; branch names cannot start with -", releaseBranch)
-	}
 	flow := pk.Release.Flow()
 	needsMerge := flow == config.MergeFlow && sourceBranch != releaseBranch
 
