@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/markwharton/plankit v0.0.0
-	github.com/yuin/goldmark v1.7.8
+	github.com/yuin/goldmark v1.8.7
 )
 
 replace github.com/markwharton/plankit => ../..
