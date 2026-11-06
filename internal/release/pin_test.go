@@ -87,3 +87,21 @@ func TestUsageErrors(t *testing.T) {
 		t.Fatal("version argument is required")
 	}
 }
+
+// A target that exists and cannot be read is an error naming it. Only
+// an absent target is the no-op a release hook relies on.
+func TestUnreadableTargetIsAnError(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "adir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"--file", "adir", "1.0.0"},
+		{"--file", "adir", "--name", "pk-version", "1.0.0"},
+	} {
+		code, errw := runPinCmd(t, dir, args...)
+		if code != cli.ExitState || !strings.Contains(errw, "adir") || strings.Contains(errw, "does not exist") {
+			t.Fatalf("%v: code=%d errw=%q", args, code, errw)
+		}
+	}
+}

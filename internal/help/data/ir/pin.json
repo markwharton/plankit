@@ -138,7 +138,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "A missing file is a no-op and a file without a matching pin is a warning, never a failure, so a renamed target cannot abort a release from inside a hook."
+          "text": "A missing file is a no-op and a file without a matching pin is a warning, never a failure, so a renamed target cannot abort a release from inside a hook. A target that is there and cannot be read is an error."
         }
       ]
     },

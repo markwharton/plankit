@@ -1,6 +1,7 @@
 package release
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -68,8 +69,25 @@ func runPin(ctx *cli.Context) error {
 			msg.Warnf(ctx.Stderr, "%v", err)
 			return nil
 		}
-		return err
+		// The target is there and could not be read or written: that is
+		// the repository's state, and the error names the path.
+		return cli.Statef("%v", err)
 	}
+}
+
+// readPinTarget returns the target's lines. The bool is false when the
+// file does not exist, the one case pin treats as nothing to do; any
+// other read error is returned, so a target that is there and cannot
+// be read is never mistaken for one that is missing.
+func readPinTarget(path string) ([]string, bool, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return strings.Split(string(data), "\n"), true, nil
 }
 
 // pinVersion updates the first SOMETHING_VERSION="vX.Y.Z" line (any
@@ -77,11 +95,10 @@ func runPin(ctx *cli.Context) error {
 // means the file does not exist; a file without a pin returns
 // *noPinError.
 func pinVersion(path, ver string) (bool, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false, nil
+	lines, exists, err := readPinTarget(path)
+	if err != nil || !exists {
+		return false, err
 	}
-	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
 		name, ok := versionPinName(line)
 		if !ok {
@@ -119,11 +136,10 @@ func versionPinName(line string) (string, bool) {
 // the named identifier (=, :=, or a bare colon for YAML). The v prefix
 // is inferred from the existing value.
 func pinVersionNamed(path, name, ver string) (bool, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false, nil
+	lines, exists, err := readPinTarget(path)
+	if err != nil || !exists {
+		return false, err
 	}
-	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
 		m, ok := matchNamedPin(line, name)
 		if !ok {

@@ -24,7 +24,8 @@ pk pin --file .github/workflows/ci.yml --name pk-version $VERSION
 
 A missing file is a no-op and a file without a matching pin is a
 warning, never a failure, so a renamed target cannot abort a release
-from inside a hook.
+from inside a hook. A target that is there and cannot be read is an
+error.
 
 ## Flags
 
