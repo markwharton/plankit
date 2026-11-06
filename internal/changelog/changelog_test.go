@@ -355,8 +355,33 @@ func TestSubjectEscaping(t *testing.T) {
 	commit(t, dir, "feat: use <T> & `a<b` safely")
 	runCL(t, dir)
 	cl, _ := os.ReadFile(filepath.Join(dir, "CHANGELOG.md"))
-	if !strings.Contains(string(cl), "use &lt;T> &amp; `a<b` safely") {
+	if !strings.Contains(string(cl), "use &lt;T> & `a<b` safely") {
 		t.Fatalf("escaping wrong:\n%s", cl)
+	}
+}
+
+// An & is escaped only where GFM would decode it as a character
+// reference; anywhere else it is left as the author wrote it.
+func TestAmpersandIsEscapedOnlyWhereItOpensAReference(t *testing.T) {
+	cases := map[string]string{
+		"quotes & subshells":      "quotes & subshells",
+		"R&D and a && b":          "R&D and a && b",
+		"trailing &":              "trailing &",
+		"show &copy; literally":   "show &amp;copy; literally",
+		"show &#38; and &#x26;":   "show &amp;#38; and &amp;#x26;",
+		"already &amp; escaped":   "already &amp;amp; escaped",
+		"not an entity &foo;":     "not an entity &foo;",
+		"&MadeUpEntity; stays":    "&MadeUpEntity; stays",
+		"no semicolon &copy":      "no semicolon &copy",
+		"a &semi colon; apart":    "a &semi colon; apart",
+		"in `a & b` code, & out":  "in `a & b` code, & out",
+		"in `&copy;` code":        "in `&copy;` code",
+		"both <T> and &lt; there": "both &lt;T> and &amp;lt; there",
+	}
+	for in, want := range cases {
+		if got := escapeSubject(in); got != want {
+			t.Errorf("escapeSubject(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

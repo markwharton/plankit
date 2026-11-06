@@ -13,6 +13,7 @@ package changelog
 import (
 	"errors"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -630,11 +631,25 @@ func groupCommits(commits []Commit, types []config.TypeConfig) []CommitGroup {
 // backtick renders literally in GFM, so its surroundings get escaped.
 var codeSpanRe = regexp.MustCompile("`[^`]*`")
 
-// escapeText escapes the two characters that change meaning in GFM
-// text, & first so nothing double-escapes. Everything else renders the
-// same escaped or not, so the raw CHANGELOG stays readable as text.
+// charRefRe matches the shapes a character reference can take in GFM
+// text: named, decimal (1 to 7 digits), or hexadecimal (1 to 6 digits),
+// each ending in a semicolon.
+var charRefRe = regexp.MustCompile(`&(#[0-9]{1,7};|#[xX][0-9a-fA-F]{1,6};|[A-Za-z][A-Za-z0-9]*;)`)
+
+// escapeText escapes the two characters where they change meaning in
+// GFM text: an & that opens a character reference GFM would decode,
+// and every <. A named reference counts only when the name is an HTML5
+// entity, decided by the standard library's copy of the same WHATWG
+// table GFM uses, so &copy; is escaped and &foo; and a bare & are left
+// as written. Everything left alone renders the same escaped or not,
+// so the raw CHANGELOG stays readable as text.
 func escapeText(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = charRefRe.ReplaceAllStringFunc(s, func(ref string) string {
+		if html.UnescapeString(ref) == ref {
+			return ref // not a name GFM knows: literal text already
+		}
+		return "&amp;" + ref[1:]
+	})
 	return strings.ReplaceAll(s, "<", "&lt;")
 }
 
