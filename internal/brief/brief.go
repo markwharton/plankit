@@ -116,14 +116,14 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 	fmt.Fprintf(&b, "Commits follow Conventional Commits, type(scope): subject. Types: %s (from .pk.json changelog.types).\n\n", strings.Join(types, ", "))
 
 	switch cfg.Guard.ResolvedBreaking() {
-	case "ask":
+	case config.ModeAsk:
 		b.WriteString("Never add a breaking marker (! or BREAKING CHANGE) on your own judgment; only on explicit user direction. guard asks before one is committed.\n\n")
 	default:
 		b.WriteString("Add a breaking marker (! or BREAKING CHANGE) only on explicit user direction.\n\n")
 	}
 
 	switch cfg.Guard.ResolvedBump() {
-	case "ask":
+	case config.ModeAsk:
 		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given. guard asks before a --bump lower than the commits infer.\n\n")
 	default:
 		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given.\n\n")
@@ -134,23 +134,23 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 	// applies on every branch and the flow exists whatever is guarded,
 	// so neither sentence depends on the one before it.
 	var policy []string
-	if mode := cfg.Guard.ResolvedMode(); mode != "off" && len(cfg.Guard.Branches) > 0 {
+	if mode := cfg.Guard.ResolvedMode(); mode != config.ModeOff && len(cfg.Guard.Branches) > 0 {
 		branches := strings.Join(cfg.Guard.Branches, ", ")
 		verb := "is"
 		if len(cfg.Guard.Branches) > 1 {
 			verb = "are"
 		}
 		switch mode {
-		case "block":
+		case config.ModeBlock:
 			policy = append(policy, fmt.Sprintf("%s %s protected: commits and pushes there are blocked.", branches, verb))
-		case "ask":
+		case config.ModeAsk:
 			policy = append(policy, fmt.Sprintf("%s %s protected: commits and pushes there prompt for confirmation.", branches, verb))
 		}
 	}
 	switch cfg.Guard.ResolvedPush() {
-	case "block":
+	case config.ModeBlock:
 		policy = append(policy, "Pushing is the developer's action; do not push.")
-	case "ask":
+	case config.ModeAsk:
 		policy = append(policy, "Pushing prompts for confirmation.")
 	}
 	if cfg.Release.Flow() == config.MergeFlow {
@@ -162,9 +162,9 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 
 	plans := cfg.Preserve.ResolvedDir() + "/"
 	switch cfg.Preserve.ResolvedMode() {
-	case "auto":
+	case config.ModeAuto:
 		b.WriteString(plans + " is immutable. Approved plans are preserved and committed there automatically.\n\n")
-	case "manual":
+	case config.ModeManual:
 		b.WriteString(plans + " is immutable. Approved plans are preserved there; preserve mode is manual, so run /plankit:preserve to commit a pending plan.\n\n")
 	default:
 		b.WriteString(plans + " is immutable.\n\n")

@@ -117,16 +117,7 @@ func universalPointer() string {
 		}
 		names[i] = "`" + name + "`"
 	}
-	var list string
-	switch len(names) {
-	case 1:
-		list = names[0]
-	case 2:
-		list = names[0] + " and " + names[1]
-	default:
-		list = strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
-	}
-	return "Every command also accepts " + list + "; see `pk help help`."
+	return "Every command also accepts " + cli.JoinList(names, "and") + "; see `pk help help`."
 }
 
 // setRegion replaces the named region's content, appends the section
@@ -225,19 +216,12 @@ func settingsList(settings []config.Setting) string {
 	var b strings.Builder
 	for _, s := range settings {
 		b.WriteString("- `" + s.Key + "`: ")
-		if n := len(s.Values); n > 0 {
+		if len(s.Values) > 0 {
+			quoted := make([]string, len(s.Values))
 			for i, v := range s.Values {
-				switch {
-				case n == 2 && i == 1:
-					b.WriteString(" or `" + v + "`")
-				case n > 2 && i == n-1:
-					b.WriteString(", or `" + v + "`")
-				case i > 0:
-					b.WriteString(", `" + v + "`")
-				default:
-					b.WriteString("`" + v + "`")
-				}
+				quoted[i] = "`" + v + "`"
 			}
+			b.WriteString(cli.JoinList(quoted, "or"))
 		} else {
 			b.WriteString(s.Kind)
 		}

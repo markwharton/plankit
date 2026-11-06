@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/markwharton/plankit/internal/git"
 )
@@ -72,7 +73,7 @@ func (c *Context) resolve(projectDir, format string, formats []string, plain boo
 		formats = defaultFormats
 	}
 	if !accepts(formats, format) {
-		return Usagef("invalid --format %q (must be %s)", format, formatList(formats))
+		return Usagef("invalid --format %q (must be %s)", format, JoinList(formats, "or"))
 	}
 	c.Format = format
 
@@ -115,23 +116,20 @@ func accepts(formats []string, format string) bool {
 	return false
 }
 
-// formatList renders the accepted values for the usage error: "text or
-// json" for two, "text, json or man" for more.
-func formatList(formats []string) string {
-	switch len(formats) {
+// JoinList joins items into the list a sentence carries: "a", "a and
+// b", "a, b, and c", with conjunction as the word before the last item.
+// It is the one joiner: a usage error and the generated pages both read
+// their lists through it, so they punctuate alike.
+func JoinList(items []string, conjunction string) string {
+	switch len(items) {
 	case 0:
 		return ""
 	case 1:
-		return formats[0]
+		return items[0]
+	case 2:
+		return items[0] + " " + conjunction + " " + items[1]
 	}
-	out := ""
-	for i, f := range formats[:len(formats)-1] {
-		if i > 0 {
-			out += ", "
-		}
-		out += f
-	}
-	return out + " or " + formats[len(formats)-1]
+	return strings.Join(items[:len(items)-1], ", ") + ", " + conjunction + " " + items[len(items)-1]
 }
 
 // presentation decides style and width for a writer.

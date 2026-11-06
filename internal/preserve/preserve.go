@@ -160,16 +160,16 @@ func run(ctx *cli.Context) error {
 
 	// The automatic hook honors policy; the explicit invocation is the
 	// person acting, which is consent enough.
-	mode := "auto"
+	mode := config.ModeAuto
 	if hookInvocation {
 		mode = cfg.Preserve.ResolvedMode()
 	}
 
 	title := extractTitle(string(content))
 	switch mode {
-	case "off":
+	case config.ModeOff:
 		return nil
-	case "manual":
+	case config.ModeManual:
 		writePointer(ctx, root, planPath)
 		return outcome(ctx, hookInvocation, writeResponse(ctx,
 			fmt.Sprintf("Plan '%s' ready. Type /plankit:preserve to save it.", title),

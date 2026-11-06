@@ -139,17 +139,14 @@ func toc(ctx *cli.Context) error {
 			width = len(m.Name)
 		}
 	}
-	strong, reset := "", ""
-	if ctx.Style == cli.StyleANSI {
-		strong, reset = "\x1b[1m", "\x1b[0m"
-	}
+	c := stylesFor(ctx.Style)
 	fmt.Fprintf(ctx.Stdout, "Documentation topics:\n\n")
 	for i, m := range metas {
 		if i > 0 && m.Command && !metas[i-1].Command {
 			fmt.Fprintln(ctx.Stdout) // documents above, commands below
 		}
 		pad := strings.Repeat(" ", width-len(m.Name))
-		fmt.Fprintf(ctx.Stdout, "  %s%s%s%s  %s\n", strong, m.Name, reset, pad, m.Description)
+		fmt.Fprintf(ctx.Stdout, "  %s%s  %s\n", styled(sgr(c.strong), m.Name, c.reset), pad, m.Description)
 	}
 	fmt.Fprintf(ctx.Stdout, "\nRun 'pk help <topic>', or 'pk help %s' for every page in order. The same pages ship as /plankit: skills in Claude Code.\n", Document)
 	return nil

@@ -46,12 +46,23 @@ var ErrNotConfigured = errors.New("not configured (no " + FileName + ")")
 const PlanType = "plan"
 
 const (
-	DefaultGuardMode     = "block"      // guard.mode
-	DefaultGuardPush     = "block"      // guard.push
-	DefaultGuardBreaking = "ask"        // guard.breaking
-	DefaultGuardBump     = "ask"        // guard.bump
+	DefaultGuardMode     = ModeBlock    // guard.mode
+	DefaultGuardPush     = ModeBlock    // guard.push
+	DefaultGuardBreaking = ModeAsk      // guard.breaking
+	DefaultGuardBump     = ModeAsk      // guard.bump
 	DefaultPreserveDir   = "docs/plans" // preserve.dir
-	DefaultPreserveMode  = "manual"     // preserve.mode
+	DefaultPreserveMode  = ModeManual   // preserve.mode
+)
+
+// The values a mode setting takes. Each setting allows some of them
+// (the settings table says which); every reader of a mode compares
+// against these names, so a value is spelled once.
+const (
+	ModeAsk    = "ask"    // question the action
+	ModeAuto   = "auto"   // act at once
+	ModeBlock  = "block"  // deny the action
+	ModeManual = "manual" // record it and wait to be asked
+	ModeOff    = "off"    // do nothing
 )
 
 // GuardConfig holds the guard section.

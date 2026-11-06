@@ -75,7 +75,7 @@ func run(ctx *cli.Context) error {
 	// Branch policy: a mutation while a protected branch is checked out.
 	branchDeny, branchAsk := false, false
 	var protectedBranch string
-	if mode := cfg.Guard.ResolvedMode(); mutation && mode != "off" && len(cfg.Guard.Branches) > 0 {
+	if mode := cfg.Guard.ResolvedMode(); mutation && mode != config.ModeOff && len(cfg.Guard.Branches) > 0 {
 		branch, err := git.CurrentBranch(root)
 		if err != nil {
 			return hookio.Report(ctx.Stderr, "guard", err) // shown, not blocking; guard takes no action
@@ -83,7 +83,7 @@ func run(ctx *cli.Context) error {
 		for _, protected := range cfg.Guard.Branches {
 			if branch != "" && branch == protected {
 				protectedBranch = branch
-				if mode == "ask" {
+				if mode == config.ModeAsk {
 					branchAsk = true
 				} else {
 					branchDeny = true
@@ -97,7 +97,7 @@ func run(ctx *cli.Context) error {
 	// on any branch. The marker is a user-approved claim, so the agent
 	// writing one gets an ask.
 	breakingAsk := false
-	if cfg.Guard.ResolvedBreaking() == "ask" && hasBreakingCommit(calls) {
+	if cfg.Guard.ResolvedBreaking() == config.ModeAsk && hasBreakingCommit(calls) {
 		breakingAsk = true
 	}
 
@@ -105,9 +105,9 @@ func run(ctx *cli.Context) error {
 	pushDeny, pushAsk := false, false
 	if isGitPush(calls) {
 		switch cfg.Guard.ResolvedPush() {
-		case "block":
+		case config.ModeBlock:
 			pushDeny = true
-		case "ask":
+		case config.ModeAsk:
 			pushAsk = true
 		}
 	}
@@ -118,7 +118,7 @@ func run(ctx *cli.Context) error {
 	// A rehearsal (--dry-run) writes nothing and passes; a value changelog
 	// will reject passes to changelog's own usage error.
 	bumpAsk, bumpReason := false, ""
-	if override && cfg.Guard.ResolvedBump() == "ask" {
+	if override && cfg.Guard.ResolvedBump() == config.ModeAsk {
 		if requested, ok := version.ParseBump(level); ok {
 			inferred, err := changelog.InferBump(root, excludes)
 			switch {

@@ -48,13 +48,19 @@ func ansiCodes() codes {
 // Render walks the document and produces terminal output. width 0 means
 // no wrapping (each paragraph on one line); style selects the table.
 func Render(d *Doc, style cli.Style, width int) string {
-	c := codes{}
-	if style == cli.StyleANSI {
-		c = ansiCodes()
-	}
 	var sb strings.Builder
-	renderBlocks(&sb, d.Blocks, c, width, "", "")
+	renderBlocks(&sb, d.Blocks, stylesFor(style), width, "", "")
 	return sb.String()
+}
+
+// stylesFor returns the style table for a presentation style: the ANSI
+// table, or the zero table, which renders plain text. Everything pk
+// help styles, a page or the index, takes its codes from here.
+func stylesFor(style cli.Style) codes {
+	if style == cli.StyleANSI {
+		return ansiCodes()
+	}
+	return codes{}
 }
 
 // renderBlocks writes blocks separated by blank lines. firstPrefix and
