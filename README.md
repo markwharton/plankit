@@ -84,7 +84,8 @@ pk release      # tag from the trailer, merge or trunk flow, push
 ```
 
 or as one command: `pk ship` runs both, resuming at release if a
-Release-Tag commit is already pending.
+Release-Tag commit is already pending. If the release fails, ship
+undoes the changelog commit it made, so nothing is left half done.
 
 `pk help` lists every topic; `pk status` reports the repository's
 configuration and state.

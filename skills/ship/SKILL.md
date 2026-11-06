@@ -7,8 +7,9 @@ description: Cut the pending work as one release - changelog then release in a s
 
 Runs `pk changelog` then `pk release` as one invocation. `pk ship`
 carries no state of its own: what remains is the `Release-Tag` trailer
-on HEAD and whether its tag exists. A run interrupted between the
-halves resumes at release on rerun.
+on HEAD and whether its tag exists. A Release-Tag commit already
+pending when ship starts, from `pk changelog` run on its own, sends
+ship straight to release.
 
 ## Usage
 
@@ -21,8 +22,11 @@ pk ship
 the release when a Release-Tag commit exists; the release half cannot
 be rehearsed before its changelog commit exists.
 
-If the release half fails, the changelog commit stands. Rerun
-`pk ship` to retry, or `pk changelog --undo` to unwind.
+If the release half fails, ship undoes the changelog commit it made
+in the same run, so the repository is as it was before `pk ship`.
+Fix the cause and run the same command again. A commit that cannot be
+undone stays, and the undo says why; see `pk help changelog`. A
+changelog commit that was pending before ship ran is left alone.
 
 ## Deciding the version
 

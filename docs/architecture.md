@@ -103,10 +103,12 @@ tag exists rolls back: the tag is deleted, the merge is reset, and the
 working branch is checked out again.
 
 `pk ship` runs changelog then release. Its only state is the trailer
-and whether its tag exists, so a ship interrupted between the halves
-resumes at release on rerun, and a ship with nothing left to do says
-so rather than reporting a pending release. Every release command
-accepts `--dry-run`.
+and whether its tag exists, so a pending Release-Tag commit sends it
+straight to release, and a ship with nothing left to do says so rather
+than reporting a pending release. When the release half fails, ship
+runs `pk changelog --undo` on the commit the same run made, so a
+failed ship leaves the repository as it found it. Every release
+command accepts `--dry-run`.
 
 The pushed tag hands off to CI. CI builds the platform binaries,
 assembles the plugin archive, and publishes a GitHub release carrying

@@ -326,4 +326,5 @@ does.
 `cli.RunIO` with their own argv. Pass their already-reported failures
 through with `cli.Silent`. Keep no state; read what the halves already
 share. `pk ship` is the example: the trailer tells it whether
-changelog already ran.
+changelog already ran. When a later half fails, undo the earlier one
+through its own command, which owns whether that is safe.

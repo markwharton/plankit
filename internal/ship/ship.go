@@ -6,8 +6,15 @@
 // trailer and whether its tag exists, the same source of truth the two
 // halves already use. A pending release, a trailer whose tag has not
 // been made, means changelog is done, so ship skips to release;
-// anything else means run both. That makes ship resumable: a run
-// interrupted between the halves completes on rerun.
+// anything else means run both.
+//
+// A ship either completes or leaves the repository as it found it. The
+// release half rolls itself back when it fails, which leaves only the
+// changelog commit, so ship runs pk changelog --undo on the commit this
+// run made. undo owns whether that commit is safe to remove and says
+// what it did; ship checks nothing and adds nothing. A changelog commit
+// that was pending before ship ran is not this run's to undo: it stays,
+// and a rerun resumes at release.
 package ship
 
 import (
@@ -68,6 +75,10 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
+	// made says this run created the changelog commit: the one thing a
+	// failed release leaves behind, and so the one thing ship undoes.
+	made := false
+
 	if isPending {
 		if ctx.String("bump") != "" || ctx.String("exclude") != "" {
 			msg.Warnf(ctx.Stderr, "--bump and --exclude apply to changelog, which already ran (Release-Tag: %s); ignoring", pending)
@@ -107,6 +118,7 @@ func run(ctx *cli.Context) error {
 		} else if !isPending {
 			return nil // changelog said why: no commits, or none visible
 		}
+		made = true
 	}
 
 	args := []string{"pk", "release", "--project-dir", root}
@@ -117,9 +129,14 @@ func run(ctx *cli.Context) error {
 		args = append(args, "--quiet")
 	}
 	if code := cli.RunIO(args, []*cli.Command{release.Cmd}, nil, ctx.Stdout, ctx.Stderr); code != cli.ExitOK {
-		if !ctx.Quiet && !dryRun {
-			// The changelog commit stands; rerunning ship resumes here.
-			msg.Hintf(ctx.Stderr, "the release commit remains pending; rerun pk ship to retry, or pk changelog --undo to unwind")
+		if made {
+			// The child reports what it did: the commit undone, or why
+			// it stays. The exit code remains the release half's.
+			undo := []string{"pk", "changelog", "--undo", "--project-dir", root}
+			if ctx.Quiet {
+				undo = append(undo, "--quiet")
+			}
+			cli.RunIO(undo, []*cli.Command{changelog.Cmd}, nil, ctx.Stdout, ctx.Stderr)
 		}
 		return cli.Silent(code)
 	}
