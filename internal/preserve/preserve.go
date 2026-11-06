@@ -96,17 +96,22 @@ func run(ctx *cli.Context) error {
 	}
 
 	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
-	root, rootOK := git.FindRoot(dir)
 
-	// Both shapes read the policy file, for the mode and the plans
-	// directory. The hook declines without one; the person is told.
+	// Both shapes need the repository and its policy file, for the mode
+	// and the plans directory. A person who typed the command is told
+	// what is missing; the hook declines without either.
+	root, rootErr := cli.Root(dir)
 	var cfg *config.PkConfig
-	if rootOK {
-		var err error
+	switch {
+	case !hookInvocation:
+		if rootErr != nil {
+			return rootErr
+		}
+		if cfg, err = cli.Policy(root); err != nil {
+			return err
+		}
+	case rootErr == nil:
 		if cfg, err = config.Load(root); err != nil {
-			if !hookInvocation {
-				return notConfigured(err)
-			}
 			if errors.Is(err, config.ErrNotConfigured) {
 				return nil // plankit is off here; the hook fires everywhere
 			}
@@ -122,10 +127,8 @@ func run(ctx *cli.Context) error {
 				planPath = "" // the payload named a plan that is gone
 			}
 		}
-	} else if rootOK {
-		if p, ok := readPointer(root); ok {
-			planPath = p
-		}
+	} else if p, ok := readPointer(root); ok {
+		planPath = p
 	}
 
 	if planPath == "" {
@@ -134,19 +137,14 @@ func run(ctx *cli.Context) error {
 		// person who typed the command hears the outcome instead, the
 		// way the other commands narrate one.
 		if !hookInvocation {
-			if rootOK {
-				fmt.Fprintln(ctx.Stderr, "No pending plan to preserve.")
-			} else {
-				fmt.Fprintf(ctx.Stderr, "Not a git repository: %s\n", dir)
-			}
+			fmt.Fprintln(ctx.Stderr, "No pending plan to preserve.")
 		}
 		return nil
 	}
 
 	content, err := os.ReadFile(planPath)
 	if err != nil {
-		return outcome(ctx, hookInvocation, cli.WithHint(
-			cli.Statef("failed to read plan %s: %v", planPath, err), "%s", discardHint))
+		return outcome(ctx, hookInvocation, cli.WithHint(unreadable(planPath, err), "%s", discardHint))
 	}
 	if len(content) < minPlanSize {
 		// The hook declines a draft in silence. A person who typed the
@@ -157,8 +155,8 @@ func run(ctx *cli.Context) error {
 		return cli.WithHint(tooSmall(planPath, len(content)), "%s", discardHint)
 	}
 
-	if !rootOK {
-		msg.Hookf(ctx.Stderr, "preserve", "not a git repository: %s", dir)
+	if rootErr != nil {
+		msg.Hookf(ctx.Stderr, "preserve", "%v", rootErr)
 		return nil
 	}
 
@@ -189,6 +187,11 @@ func run(ctx *cli.Context) error {
 // preserved.
 const discardHint = "to drop the pending plan: pk preserve --discard"
 
+// unreadable is the refusal for a plan file that could not be read.
+func unreadable(planPath string, err error) error {
+	return cli.Statef("failed to read plan %s: %v", planPath, err)
+}
+
 // tooSmall is the refusal for a plan under minPlanSize.
 func tooSmall(planPath string, size int) error {
 	return cli.Statef("plan %s is %d bytes, below the minimum of %d", planPath, size, minPlanSize)
@@ -207,16 +210,6 @@ func outcome(ctx *cli.Context, hook bool, err error) error {
 	return cli.Silent(hookio.ExitReport)
 }
 
-// notConfigured turns a policy-file load error into the exit a typed
-// run reports: the missing file names its fix, a bad file names its
-// problem.
-func notConfigured(err error) error {
-	if errors.Is(err, config.ErrNotConfigured) {
-		return cli.WithHint(cli.Statef("%v", err), "run pk init to write %s", config.FileName)
-	}
-	return cli.Statef("%v", err)
-}
-
 // runNamed is the --plan path: a person names the plan, so stdin is not
 // read, the pointer is not consulted except to refuse a conflict, and
 // every reason not to act is an error naming it. A pointer naming the
@@ -233,19 +226,19 @@ func runNamed(ctx *cli.Context, typed string) error {
 	}
 	content, err := os.ReadFile(planPath)
 	if err != nil {
-		return cli.Statef("failed to read plan %s: %v", planPath, err)
+		return unreadable(planPath, err)
 	}
 	if len(content) < minPlanSize {
 		return tooSmall(planPath, len(content))
 	}
 	dir := hookio.ResolveDir(os.Getenv, "", ctx.ProjectDir, ctx.ProjectDirExplicit)
-	root, ok := git.FindRoot(dir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", dir)
-	}
-	cfg, err := config.Load(root)
+	root, err := cli.Root(dir)
 	if err != nil {
-		return notConfigured(err)
+		return err
+	}
+	cfg, err := cli.Policy(root)
+	if err != nil {
+		return err
 	}
 	if pending, ok := readPointer(root); ok && pending != planPath {
 		return cli.WithHint(
@@ -265,9 +258,9 @@ func runDiscard(ctx *cli.Context) error {
 		return cli.Usagef("--discard removes the pending plan pointer and takes no --plan or --push")
 	}
 	dir := hookio.ResolveDir(os.Getenv, "", ctx.ProjectDir, ctx.ProjectDirExplicit)
-	root, ok := git.FindRoot(dir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", dir)
+	root, err := cli.Root(dir)
+	if err != nil {
+		return err
 	}
 	planPath, present, stale := peekPointer(root)
 	if !present {
@@ -319,7 +312,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	// it ignores, so an ignored target is refused before any write.
 	ignored, err := git.Ignored(root, relPath)
 	if err != nil {
-		return fmt.Errorf("git check-ignore failed: %v", err)
+		return err
 	}
 	if ignored {
 		return cli.Statef("%s is ignored by git, so a plan cannot be committed there: change preserve.dir in %s, or the ignore rule", relPath, config.FileName)
@@ -330,7 +323,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		// behind, and this run commits it as it stands.
 		clean, err := git.Clean(root, relPath)
 		if err != nil {
-			return fmt.Errorf("git status failed: %v", err)
+			return err
 		}
 		if clean {
 			removePointer(root)
@@ -345,7 +338,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	// to compare with, leave the marker off and the output says why.
 	ahead, known, err := git.Ahead(root)
 	if err != nil {
-		return fmt.Errorf("git rev-list failed: %v", err)
+		return err
 	}
 	subject := fmt.Sprintf("%s: %s", config.PlanType, title)
 	reason := ""
@@ -386,7 +379,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	}
 	// The commit holds the plan alone; other staged work stays staged.
 	if err := git.CommitPaths(root, subject, relPath); err != nil {
-		return fmt.Errorf("git commit failed: %v", err)
+		return err
 	}
 	removePointer(root)
 

@@ -35,27 +35,24 @@ var Cmd = &cli.Command{
 }
 
 func run(ctx *cli.Context) error {
-	root, ok := git.FindRoot(ctx.ProjectDir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", ctx.ProjectDir)
+	root, err := cli.Root(ctx.ProjectDir)
+	if err != nil {
+		return err
 	}
 	w := ctx.Stderr
 	dryRun := ctx.Bool("dry-run")
 
 	sourceBranch, err := git.Exec(root, "branch", "--show-current")
 	if err != nil {
-		return fmt.Errorf("git branch failed: %v", err)
+		return err
 	}
 	if sourceBranch == "" {
 		return changelog.DetachedHead()
 	}
 
-	pk, err := config.Load(root)
-	if errors.Is(err, config.ErrNotConfigured) {
-		return cli.WithHint(cli.Statef("%v", err), "run pk init to configure this repository")
-	}
+	pk, err := cli.Policy(root)
 	if err != nil {
-		return cli.Statef("%v", err)
+		return err
 	}
 	releaseBranch := pk.Release.Branch
 	// A branch name can never start with -; refuse before it reaches git
@@ -72,7 +69,7 @@ func run(ctx *cli.Context) error {
 	if flow == config.MergeFlow && sourceBranch == releaseBranch {
 		err := cli.Statef("you're on the release branch %q; switch to your working branch first", releaseBranch)
 		if !git.HasOtherLocalBranch(root, releaseBranch) {
-			err = cli.WithHint(err, "to start one: git switch -c develop && git push -u origin develop, then pk changelog && pk release")
+			err = cli.WithHint(err, "%s", changelog.StartBranchHint)
 		}
 		return err
 	}
@@ -113,35 +110,24 @@ func run(ctx *cli.Context) error {
 	// no HEAD symref.
 	defaultVerified := false
 	if flow == config.TrunkFlow {
-		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok {
-			if sourceBranch != def {
-				return cli.WithHint(
-					cli.Statef("you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", sourceBranch, def),
-					"land %s on %s first (a pull request, or a merge you have decided on), then on an up-to-date %s: pk changelog && pk release", sourceBranch, def, def)
-			}
-			defaultVerified = true
+		if defaultVerified, err = changelog.CheckTrunkBranch(root, sourceBranch); err != nil {
+			return err
 		}
 	}
 
-	// Source must exist on origin: a clear error beats the cryptic fetch
-	// failure a local-only branch would produce later.
-	sourceOnOrigin, err := git.RemoteBranchExists(root, sourceBranch)
-	if err != nil {
-		return fmt.Errorf("git ls-remote failed: %v", err)
-	}
-	if !sourceOnOrigin {
-		return cli.WithHint(cli.Statef("%s does not exist on origin", sourceBranch),
-			"to push it: git push -u origin %s", sourceBranch)
+	// Source must exist on origin.
+	if err := changelog.CheckOnOrigin(root, sourceBranch); err != nil {
+		return err
 	}
 	msg.Itemf(w, "%s exists on origin", sourceBranch)
 
 	// Source must not be behind origin.
 	if _, err := git.Exec(root, "fetch", "origin", sourceBranch, "--quiet"); err != nil {
-		return fmt.Errorf("git fetch failed: %v", err)
+		return err
 	}
 	upToDate, err := git.IsAncestor(root, "origin/"+sourceBranch, "HEAD")
 	if err != nil {
-		return fmt.Errorf("git merge-base failed: %v", err)
+		return err
 	}
 	if !upToDate {
 		return cli.Statef("local %s is behind origin/%s; pull first", sourceBranch, sourceBranch)
@@ -156,16 +142,16 @@ func run(ctx *cli.Context) error {
 	if needsMerge {
 		onOrigin, err := git.RemoteBranchExists(root, releaseBranch)
 		if err != nil {
-			return fmt.Errorf("git ls-remote failed: %v", err)
+			return err
 		}
 		switch {
 		case onOrigin:
 			if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
-				return fmt.Errorf("git fetch failed: %v", err)
+				return err
 			}
 			contained, err := git.IsAncestor(root, "origin/"+releaseBranch, "HEAD")
 			if err != nil {
-				return fmt.Errorf("git merge-base failed: %v", err)
+				return err
 			}
 			if !contained {
 				return cli.WithHint(
@@ -201,6 +187,11 @@ func run(ctx *cli.Context) error {
 	// tag is deleted, a merged release branch is reset, and the checkout
 	// returns to the source branch, so an aborted release leaves the
 	// repository as it found it.
+	switchBack := func() {
+		if _, err := git.Exec(root, "switch", sourceBranch); err != nil {
+			msg.Warnf(w, "failed to switch back to %s: %v", sourceBranch, err)
+		}
+	}
 	tagCreated := false
 	released := false
 	switchedBack := true
@@ -221,9 +212,7 @@ func run(ctx *cli.Context) error {
 			}
 		}
 		if !switchedBack {
-			if _, err := git.Exec(root, "switch", sourceBranch); err != nil {
-				msg.Warnf(w, "failed to switch back to %s: %v", sourceBranch, err)
-			}
+			switchBack()
 		}
 	}()
 
@@ -231,7 +220,7 @@ func run(ctx *cli.Context) error {
 		if dryRun {
 			ff, err := git.IsAncestor(root, releaseBranch, sourceBranch)
 			if err != nil {
-				return fmt.Errorf("git merge-base failed: %v", err)
+				return err
 			}
 			if !ff {
 				return cli.Statef("merge would not be fast-forward; %s has diverged from %s. Resolve on %s manually, then try again.", releaseBranch, sourceBranch, releaseBranch)
@@ -304,7 +293,7 @@ func run(ctx *cli.Context) error {
 	// Tag HEAD: source HEAD in trunk flow, release-branch HEAD after the
 	// fast-forward in merge flow; the same commit either way.
 	if err := git.CreateTag(root, tag); err != nil {
-		return fmt.Errorf("git tag failed: %v", err)
+		return err
 	}
 	tagCreated = true
 	fmt.Fprintf(w, "\nCreated local tag %s\n", tag)
@@ -326,15 +315,13 @@ func run(ctx *cli.Context) error {
 	fmt.Fprintln(w, "")
 	msg.Section(w, "Pushing to origin")
 	if _, err := git.Exec(root, "push", "--atomic", "origin", pushBranch, tag); err != nil {
-		return cli.Statef("git push failed: %v", err)
+		return cli.Statef("%v", err)
 	}
 	released = true
 	msg.Itemf(w, "Pushed %s and %s", pushBranch, tag)
 
 	if needsMerge {
-		if _, err := git.Exec(root, "switch", sourceBranch); err != nil {
-			msg.Warnf(w, "failed to switch back to %s: %v", sourceBranch, err)
-		}
+		switchBack()
 		switchedBack = true
 		if _, err := git.Exec(root, "push", "origin", sourceBranch); err != nil {
 			msg.Warnf(w, "failed to push %s: %v", sourceBranch, err)

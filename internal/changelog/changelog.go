@@ -74,9 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 `
 
 func run(ctx *cli.Context) error {
-	root, ok := git.FindRoot(ctx.ProjectDir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", ctx.ProjectDir)
+	root, err := cli.Root(ctx.ProjectDir)
+	if err != nil {
+		return err
 	}
 	cfg, err := loadConfig(root)
 	if err != nil {
@@ -97,7 +97,7 @@ func run(ctx *cli.Context) error {
 
 	branch, err := git.Exec(root, "branch", "--show-current")
 	if err != nil {
-		return fmt.Errorf("git branch failed: %v", err)
+		return err
 	}
 	// A dry run writes nothing, so it may read the commits from anywhere.
 	if branch == "" && !dryRun {
@@ -109,7 +109,7 @@ func run(ctx *cli.Context) error {
 		if branch == protected {
 			err := cli.Statef("you're on %q which is a protected branch; switch to your development branch first", branch)
 			if !git.HasOtherLocalBranch(root, branch) {
-				err = cli.WithHint(err, "to start one: git switch -c develop && git push -u origin develop")
+				err = cli.WithHint(err, "%s", StartBranchHint)
 			}
 			return err
 		}
@@ -121,24 +121,16 @@ func run(ctx *cli.Context) error {
 	// the user straight into this refusal. Skipped on detached HEAD and
 	// when origin advertises no HEAD symref.
 	if cfg.Release.Flow() == config.TrunkFlow && branch != "" {
-		if def, ok, derr := git.DefaultBranch(root); derr == nil && ok && branch != def {
-			return cli.WithHint(
-				cli.Statef("you're on %q but the default branch on origin is %q; trunk flow releases from the default branch", branch, def),
-				"land %s on %s first (a pull request, or a merge you have decided on), then on an up-to-date %s: pk changelog && pk release", branch, def, def)
+		if _, err := CheckTrunkBranch(root, branch); err != nil {
+			return err
 		}
 	}
 
 	// The branch must exist on origin, or pk changelog succeeds and pk
 	// release fails, stranding a Release-Tag commit behind a manual push.
 	if branch != "" {
-		onOrigin, err := git.RemoteBranchExists(root, branch)
-		if err != nil {
-			return fmt.Errorf("git ls-remote failed: %v", err)
-		}
-		if !onOrigin {
-			return cli.WithHint(
-				cli.Statef("%s does not exist on origin", branch),
-				"to push it: git push -u origin %s", branch)
+		if err := CheckOnOrigin(root, branch); err != nil {
+			return err
 		}
 	}
 
@@ -163,7 +155,7 @@ func run(ctx *cli.Context) error {
 				fmt.Fprintf(ctx.Stderr, "fetched tags from origin: latest is %s\n", since.LatestTag)
 			}
 		} else if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
-			return cli.WithHint(cli.Statef("no version tags found locally and git fetch failed: %v", ferr),
+			return cli.WithHint(cli.Statef("no version tags found locally: %v", ferr),
 				"origin has tags; fetch them: git fetch --tags")
 		}
 	}
@@ -171,7 +163,7 @@ func run(ctx *cli.Context) error {
 	if latestTag == "" {
 		total, err := git.CountCommits(root, "HEAD")
 		if err != nil {
-			return fmt.Errorf("failed to count commits: %v", err)
+			return err
 		}
 		fmt.Fprintf(ctx.Stderr, "no release yet: the first release covers all %d commits\n", total)
 	}
@@ -182,7 +174,7 @@ func run(ctx *cli.Context) error {
 		// themselves.
 		total, err := git.CountCommits(root, logRange)
 		if err != nil {
-			return fmt.Errorf("failed to count commits: %v", err)
+			return err
 		}
 		since := ""
 		if latestTag != "" {
@@ -315,25 +307,16 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 		addFiles = append(addFiles, filepath.Join(root, vf.Path))
 	}
 	if _, err := git.Exec(root, addFiles...); err != nil {
-		return fmt.Errorf("git add failed: %v", err)
+		return err
 	}
 	// Also stage tracked files a hook modified.
 	if _, err := git.Exec(root, "add", "-u"); err != nil {
-		return fmt.Errorf("git add failed: %v", err)
+		return err
 	}
 	if _, err := git.Exec(root, "commit", "-m", "chore: release "+nextTag, "--trailer", "Release-Tag: "+nextTag); err != nil {
-		return fmt.Errorf("git commit failed: %v", err)
+		return err
 	}
 	return nil
-}
-
-// DetachedHead is the refusal pk changelog and pk release share: a
-// release commit is made on a branch and published from it, and a
-// detached HEAD has none to check against origin, to merge, or to push.
-func DetachedHead() error {
-	return cli.WithHint(
-		cli.Statef("HEAD is detached; a release is made on a branch and published from it"),
-		"switch to the branch that holds the work: git switch <branch>")
 }
 
 // undo unwinds a pk changelog commit that nothing else holds: HEAD must
@@ -352,7 +335,7 @@ func undo(ctx *cli.Context, root string) error {
 	}
 	holders, err := git.Holders(root, "HEAD")
 	if err != nil {
-		return fmt.Errorf("git for-each-ref failed: %v", err)
+		return err
 	}
 	// A detached HEAD has no branch of its own, so every holder counts.
 	current, _ := git.Exec(root, "symbolic-ref", "-q", "HEAD")
@@ -366,7 +349,7 @@ func undo(ctx *cli.Context, root string) error {
 		return cli.Statef("cannot undo: the release commit is also on %s", strings.Join(others, ", "))
 	}
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
-		return fmt.Errorf("git reset failed: %v", err)
+		return err
 	}
 	fmt.Fprintf(ctx.Stderr, "Undid release commit %s; CHANGELOG.md and version files restored\n", trailerValue)
 	return nil
@@ -381,12 +364,9 @@ type fullConfig struct {
 }
 
 func loadConfig(root string) (*fullConfig, error) {
-	pk, err := config.Load(root)
-	if errors.Is(err, config.ErrNotConfigured) {
-		return nil, cli.WithHint(cli.Statef("%v", err), "run pk init to configure this repository")
-	}
+	pk, err := cli.Policy(root)
 	if err != nil {
-		return nil, cli.Statef("%v", err)
+		return nil, err
 	}
 	pk.Changelog.Types = pk.Changelog.ResolvedTypes()
 	return &fullConfig{Changelog: pk.Changelog, Guard: pk.Guard, Release: pk.Release}, nil
@@ -468,7 +448,7 @@ func commitsSinceLastTag(root, branch string) (sinceTag, error) {
 	}
 	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", logRange, "--reverse")
 	if err != nil {
-		return sinceTag{}, fmt.Errorf("failed to read git log: %v", err)
+		return sinceTag{}, err
 	}
 	return sinceTag{LatestTag: latestTag, Base: base, Range: logRange, Commits: parseLog(logOutput)}, nil
 }
@@ -717,7 +697,7 @@ func lastLine(s string) string {
 func LatestTag(root string) (string, version.Semver, error) {
 	tags, err := git.Tags(root)
 	if err != nil {
-		return "", version.Semver{}, fmt.Errorf("failed to list tags: %v", err)
+		return "", version.Semver{}, err
 	}
 	tag, sv, _ := version.Latest(tags)
 	return tag, sv, nil
@@ -735,7 +715,7 @@ func TagOutsideHistory(root, branch, tag string) (string, error) {
 	}
 	in, err := git.IsAncestor(root, tag, "HEAD")
 	if err != nil {
-		return "", fmt.Errorf("git merge-base failed: %v", err)
+		return "", err
 	}
 	if in {
 		return "", nil

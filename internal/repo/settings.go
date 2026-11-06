@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/jsonsplice"
 )
 
@@ -57,7 +58,10 @@ func readSettings(root string) ([]byte, error) {
 	if os.IsNotExist(err) {
 		return []byte("{}"), nil
 	}
-	return content, err
+	if err != nil {
+		return nil, cli.Statef("read %s: %v", settingsFile, err)
+	}
+	return content, nil
 }
 
 // pluginEntryState sorts the entries by what content holds: missing, or

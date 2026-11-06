@@ -22,7 +22,6 @@ import (
 
 	"github.com/markwharton/plankit/internal/changelog"
 	"github.com/markwharton/plankit/internal/cli"
-	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/msg"
 	"github.com/markwharton/plankit/internal/release"
 )
@@ -58,9 +57,9 @@ func pendingRelease(root string) (string, bool, error) {
 }
 
 func run(ctx *cli.Context) error {
-	root, ok := git.FindRoot(ctx.ProjectDir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", ctx.ProjectDir)
+	root, err := cli.Root(ctx.ProjectDir)
+	if err != nil {
+		return err
 	}
 	dryRun := ctx.Bool("dry-run")
 

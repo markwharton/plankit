@@ -42,15 +42,19 @@ func run(ctx *cli.Context) error {
 		return cli.Silent(hookio.ExitReport) // shown at session start, not blocking
 	}
 	dir := hookio.ResolveDir(os.Getenv, input.CWD, ctx.ProjectDir, ctx.ProjectDirExplicit)
-	root, ok := git.FindRoot(dir)
 
 	if hookInvocation {
+		root, ok := git.FindRoot(dir)
 		if !ok {
 			return nil
 		}
-		text, err := load(root)
+		cfg, err := config.Load(root)
 		if errors.Is(err, config.ErrNotConfigured) {
 			return nil // off here; the hook fires everywhere
+		}
+		var text string
+		if err == nil {
+			text, err = render(cfg)
 		}
 		if err != nil {
 			msg.Hookf(ctx.Stderr, "brief", "%v", err)
@@ -63,13 +67,15 @@ func run(ctx *cli.Context) error {
 	}
 
 	// A person at a terminal: show the text sessions receive.
-	if !ok {
-		return cli.Statef("not a git repository: %s", dir)
+	root, err := cli.Root(dir)
+	if err != nil {
+		return err
 	}
-	text, err := load(root)
-	if errors.Is(err, config.ErrNotConfigured) {
-		return cli.WithHint(cli.Statef("plankit is not configured in %s", root), "run pk init to configure it")
+	cfg, err := cli.Policy(root)
+	if err != nil {
+		return err
 	}
+	text, err := render(cfg)
 	if err != nil {
 		return cli.Statef("%v", err)
 	}
@@ -81,14 +87,11 @@ func run(ctx *cli.Context) error {
 	return nil
 }
 
-// load renders the brief for root: the policy file, and the plugin the
-// shim named, if any. Both shapes of the command call it once, so a
-// problem with either file is reported the same way in each.
-func load(root string) (string, error) {
-	cfg, err := config.Load(root)
-	if err != nil {
-		return "", err
-	}
+// render is the brief for a loaded policy: the policy in words, and
+// the plugin the shim named, if any. Both shapes of the command call
+// it once, so a problem with the plugin's manifest is reported the same
+// way in each.
+func render(cfg *config.PkConfig) (string, error) {
 	plugin, err := PluginVersion(os.Getenv)
 	if err != nil {
 		return "", err

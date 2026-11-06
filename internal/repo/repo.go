@@ -39,11 +39,9 @@ var InitCmd = &cli.Command{
 const configureSubject = "chore: configure plankit"
 
 func runInit(ctx *cli.Context) error {
-	root, ok := git.FindRoot(ctx.ProjectDir)
-	if !ok {
-		return cli.WithHint(
-			cli.Statef("not a git repository: %s", ctx.ProjectDir),
-			"run git init first; plankit configures existing repositories")
+	root, err := cli.Root(ctx.ProjectDir)
+	if err != nil {
+		return cli.WithHint(err, "run git init first; plankit configures existing repositories")
 	}
 	if _, err := os.Stat(config.Path(root)); err == nil {
 		// A v0.x repository is configured too, so it lands here when
@@ -97,7 +95,7 @@ func runInit(ctx *cli.Context) error {
 	settingsExists := statErr == nil
 	settings, err := readSettings(root)
 	if err != nil {
-		return cli.Statef("read %s: %v", settingsFile, err)
+		return err
 	}
 	missing, differing, err := pluginEntryState(settings)
 	if err != nil {
@@ -312,9 +310,9 @@ func originLatestTag(root string) string {
 }
 
 func runStatus(ctx *cli.Context) error {
-	root, ok := git.FindRoot(ctx.ProjectDir)
-	if !ok {
-		return cli.Statef("not a git repository: %s", ctx.ProjectDir)
+	root, err := cli.Root(ctx.ProjectDir)
+	if err != nil {
+		return err
 	}
 
 	s := state{Root: root}
@@ -337,7 +335,7 @@ func runStatus(ctx *cli.Context) error {
 		// not parse is a problem in every mode, before any report.
 		settings, err := readSettings(root)
 		if err != nil {
-			return cli.Statef("read %s: %v", settingsFile, err)
+			return err
 		}
 		if missingEntries, _, err = pluginEntryState(settings); err != nil {
 			return cli.Statef("%s: %v", settingsFile, err)
@@ -376,7 +374,7 @@ func runStatus(ctx *cli.Context) error {
 
 	if !s.Configured {
 		fmt.Fprintf(ctx.Stdout, "plankit: not configured in %s\n", root)
-		return cli.WithHint(silentState(), "run pk init to write %s", config.FileName)
+		return cli.WithHint(silentState(), "%s", cli.InitHint)
 	}
 
 	tree := "clean"
@@ -444,7 +442,7 @@ func runStatus(ctx *cli.Context) error {
 	// Readiness: a repository that stopped partway through the bootstrap
 	// names its own next step.
 	if s.Release != "" && !git.HasOtherLocalBranch(root, s.Release) {
-		msg.Notef(ctx.Stderr, "no working branch besides %s: to start one, git switch -c develop", s.Release)
+		msg.Notef(ctx.Stderr, "no working branch besides %s; %s", s.Release, changelog.StartBranchHint)
 	}
 	// The release branch, as git shows it: absent, or in merge flow
 	// moved past the last release. The command names the root commit,

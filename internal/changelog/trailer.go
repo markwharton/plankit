@@ -31,7 +31,7 @@ var ErrInvalidTrailer = errors.New("Release-Tag trailer value is not valid semve
 func ReadReleaseTagTrailer(dir string) (version.Semver, string, error) {
 	out, err := git.Exec(dir, "log", "-1", "--format=%(trailers:key="+TrailerKey+",valueonly)", "HEAD")
 	if err != nil {
-		return version.Semver{}, "", fmt.Errorf("git log failed: %w", err)
+		return version.Semver{}, "", err
 	}
 	value := strings.TrimSpace(out)
 	if value == "" {
@@ -61,18 +61,18 @@ const (
 func ReleaseTagState(dir, tag string) (TagState, error) {
 	existing, err := git.Exec(dir, "tag", "--list", tag)
 	if err != nil {
-		return TagAbsent, fmt.Errorf("git tag --list failed: %w", err)
+		return TagAbsent, err
 	}
 	if strings.TrimSpace(existing) == "" {
 		return TagAbsent, nil
 	}
 	tagged, err := git.Exec(dir, "rev-parse", "--verify", "--quiet", tag+"^{commit}")
 	if err != nil {
-		return TagAbsent, fmt.Errorf("git rev-parse %s failed: %w", tag, err)
+		return TagAbsent, fmt.Errorf("cannot resolve %s: %w", tag, err)
 	}
 	head, err := git.Exec(dir, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
 	if err != nil {
-		return TagAbsent, fmt.Errorf("git rev-parse HEAD failed: %w", err)
+		return TagAbsent, fmt.Errorf("cannot resolve HEAD: %w", err)
 	}
 	if strings.TrimSpace(tagged) == strings.TrimSpace(head) {
 		return TagOnHead, nil

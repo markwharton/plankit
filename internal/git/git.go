@@ -57,7 +57,9 @@ func Exec(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// Error is a failed git command: its message is git's own stderr, and
+// Error is a failed git command. Its message names the command and
+// carries git's own stderr, so a caller never needs to say which
+// command failed, only to add what the command does not know.
 // ExitCode lets a caller tell a "no" from a failure where git answers
 // with its exit status, as merge-base --is-ancestor does. -1 means git
 // did not run to an exit status.
@@ -67,7 +69,7 @@ type Error struct {
 	ExitCode int
 }
 
-func (e *Error) Error() string { return fmt.Sprintf("git %s: %s", e.Command, e.Detail) }
+func (e *Error) Error() string { return fmt.Sprintf("git %s failed: %s", e.Command, e.Detail) }
 
 // CurrentBranch returns the checked-out branch name. An empty repository
 // (no commits) still reports its unborn branch via symbolic-ref.
@@ -200,7 +202,7 @@ var ErrDirtyTree = errors.New("working tree is not clean; commit or stash change
 func CheckCleanTree(dir string) error {
 	clean, err := Clean(dir)
 	if err != nil {
-		return fmt.Errorf("git status failed: %w", err)
+		return err
 	}
 	if !clean {
 		return ErrDirtyTree
