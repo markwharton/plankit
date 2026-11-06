@@ -1,0 +1,9 @@
+# The hand-written part of the site's _redirects. docgen appends one
+# download line per platform in the Makefile's TRIPLES and writes the
+# whole file to site/dist/_redirects, which is what hosting reads.
+/plankit.zip        https://github.com/markwharton/plankit/releases/latest/download/plankit.zip 302
+# The old site's paths for plankit and its release notes.
+/pk                 / 301
+/pk/                / 301
+/pk/notes           /notes 301
+/pk/notes/          /notes 301

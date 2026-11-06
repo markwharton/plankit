@@ -34,6 +34,7 @@ func main() {
 	links := flag.String("links", "clean", "Internal link form: clean (/help/ship, for Cloudflare Pages) or html (/help/ship.html, for a local static server)")
 	rootDir := flag.String("root", "", "Repository root, for -site (README.md, docs/, CHANGELOG.md, site/)")
 	pkBin := flag.String("pk", "", "Built pk binary; when given, the site's front page runs it in a scratch repository")
+	platforms := flag.String("platforms", "", "The release platforms as os-arch names, space separated (the Makefile's TRIPLES); each gets a download redirect")
 	flag.Parse()
 	if *skillsDir == "" || *outDir == "" {
 		fmt.Fprintln(os.Stderr, "usage: docgen -skills <dir> -out <dir> [-site <dir> -root <dir>]")
@@ -57,7 +58,7 @@ func main() {
 		if *links == "html" {
 			linkExt = ".html"
 		}
-		if err := buildSite(*rootDir, *skillsDir, *siteDir, *pkBin, *notesAll == "all"); err != nil {
+		if err := buildSite(*rootDir, *skillsDir, *siteDir, *pkBin, *notesAll == "all", strings.Fields(*platforms)); err != nil {
 			fmt.Fprintf(os.Stderr, "docgen: site: %v\n", err)
 			os.Exit(1)
 		}

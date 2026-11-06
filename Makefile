@@ -17,12 +17,12 @@ docs:
 	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data
 
 site: build
-	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL)
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL) -platforms "$(TRIPLES)"
 
 # Local preview: links end in .html for a plain static server, and release
 # notes whose tag does not exist yet are rendered too.
 site-preview: build
-	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL) -notes all -links html
+	cd tools/docgen && go run . -skills ../../skills -out ../../internal/help/data -site ../../site/dist -root ../.. -pk ../../$(LOCAL) -platforms "$(TRIPLES)" -notes all -links html
 
 # Serve the preview on this machine. SITE_HOST=0.0.0.0 serves on every
 # interface, so a phone on the same network can open it.

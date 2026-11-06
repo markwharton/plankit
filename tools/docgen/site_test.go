@@ -22,7 +22,7 @@ func TestBuildSite(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
+	for _, f := range []string{"layout.html", "style.css", "redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
@@ -41,7 +41,19 @@ func TestBuildSite(t *testing.T) {
 	must(os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("# Changelog\n"), 0o644))
 
 	out := filepath.Join(root, "dist")
-	must(buildSite(root, skills, out, "", false))
+	must(buildSite(root, skills, out, "", false, []string{"linux-amd64", "windows-arm64"}))
+
+	// The hosted _redirects is the hand-written file plus one download
+	// line per platform, .exe on Windows; the platforms are named once,
+	// in the Makefile, and arrive here as an argument.
+	base, _ := os.ReadFile(filepath.Join(root, "site", "redirects"))
+	got, _ := os.ReadFile(filepath.Join(out, "_redirects"))
+	if !strings.HasPrefix(string(got), string(base)) ||
+		!strings.Contains(string(got), "/pk/linux-amd64     https://github.com/markwharton/plankit/releases/latest/download/pk-linux-amd64 302\n") ||
+		!strings.Contains(string(got), "/pk/windows-arm64   https://github.com/markwharton/plankit/releases/latest/download/pk-windows-arm64.exe 302\n") ||
+		strings.Contains(string(got), "darwin") {
+		t.Errorf("_redirects must be the hand-written lines plus one per given platform:\n%s", got)
+	}
 
 	for _, p := range []string{"index.html", "architecture.html", "privacy.html", "changelog.html", "favicon.svg", "favicon.ico", "apple-touch-icon.png",
 		"help/overview.html", "help/alpha.html", "help/zeta.html", "style.css", "_redirects"} {
@@ -90,7 +102,7 @@ func TestBuildSite(t *testing.T) {
 	// The preview form appends .html so a plain static server resolves it.
 	linkExt = ".html"
 	defer func() { linkExt = "" }()
-	must(buildSite(root, skills, out, "", false))
+	must(buildSite(root, skills, out, "", false, nil))
 	index, _ = os.ReadFile(filepath.Join(out, "index.html"))
 	if !strings.Contains(string(index), `href="/help/alpha.html"`) || !strings.Contains(string(index), `href="/architecture.html"`) {
 		t.Error("preview links must end in .html")
@@ -136,7 +148,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 		cmd.Dir = root
 		must(cmd.Run())
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
+	for _, f := range []string{"layout.html", "style.css", "redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
@@ -154,7 +166,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 	must(os.WriteFile(filepath.Join(root, "docs", "notes", "v0.2.0.md"), []byte("---\nversion: v0.2.0\ndate: 2026-02-01\ntitle: Not yet\n---\n\nPending.\n"), 0o644))
 
 	out := filepath.Join(root, "dist")
-	must(buildSite(root, skills, out, "", false))
+	must(buildSite(root, skills, out, "", false, nil))
 	page, err := os.ReadFile(filepath.Join(out, "notes.html"))
 	must(err)
 	if !strings.Contains(string(page), "First released") || strings.Contains(string(page), "Not yet") {
@@ -168,7 +180,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 	del := exec.Command("git", "tag", "-d", "v0.0.0")
 	del.Dir = root
 	must(del.Run())
-	must(buildSite(root, skills, out, "", false))
+	must(buildSite(root, skills, out, "", false, nil))
 	page, _ = os.ReadFile(filepath.Join(out, "notes.html"))
 	if !strings.Contains(string(page), `href="https://github.com/acme/widgets/commits/v0.1.0"`) {
 		t.Fatalf("a first release must link its commits:\n%s", page)
@@ -180,7 +192,7 @@ func TestNotesRenderOnlyReleasedVersions(t *testing.T) {
 
 	// A mismatched filename is refused.
 	must(os.WriteFile(filepath.Join(root, "docs", "notes", "v0.3.0.md"), []byte("---\nversion: v0.9.9\ndate: d\ntitle: t\n---\n\nx\n"), 0o644))
-	if err := buildSite(root, skills, out, "", false); err == nil || !strings.Contains(err.Error(), "does not match the filename") {
+	if err := buildSite(root, skills, out, "", false, nil); err == nil || !strings.Contains(err.Error(), "does not match the filename") {
 		t.Fatalf("mismatched version must fail the build, got %v", err)
 	}
 }
@@ -212,7 +224,7 @@ func TestFrontPageRequiresTheReadmeSections(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, f := range []string{"layout.html", "style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
+	for _, f := range []string{"layout.html", "style.css", "redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join("..", "..", "site", f))
 		must(err)
 		must(os.MkdirAll(filepath.Join(root, "site"), 0o755))
@@ -226,7 +238,7 @@ func TestFrontPageRequiresTheReadmeSections(t *testing.T) {
 	must(os.WriteFile(filepath.Join(root, "docs", "privacy.md"), []byte("# Privacy\n\nNothing leaves.\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("# Changelog\n"), 0o644))
 	must(os.WriteFile(filepath.Join(root, "README.md"), []byte("# plankit\n\nIntro.\n\n## Installing\n\nrenamed\n"), 0o644))
-	err := buildSite(root, skills, filepath.Join(root, "dist"), "", false)
+	err := buildSite(root, skills, filepath.Join(root, "dist"), "", false, nil)
 	if err == nil || !strings.Contains(err.Error(), "Install") {
 		t.Fatalf("a README without an Install section must fail the build, got %v", err)
 	}

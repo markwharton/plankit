@@ -55,7 +55,9 @@ type sitePage struct {
 }
 
 // buildSite renders every page into out. root is the repository root
-// (for README.md, docs/, CHANGELOG.md, and site/ templates).
+// (for README.md, docs/, CHANGELOG.md, and site/ templates). platforms
+// are the release platforms, os-arch, each of which gets a download
+// redirect.
 // linkExt is appended to every internal page link. Deployed, it is
 // empty: Cloudflare Pages serves ship.html at /help/ship and redirects
 // the .html form there. For a local preview under a plain static
@@ -70,7 +72,7 @@ const helpDir = "help"
 // design document, the latest release, and the footer all link from it.
 const repoURL = "https://github.com/markwharton/plankit"
 
-func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
+func buildSite(root, skillsDir, out, pk string, notesAll bool, platforms []string) error {
 	layout, err := template.ParseFiles(filepath.Join(root, "site", "layout.html"))
 	if err != nil {
 		return fmt.Errorf("site layout: %w", err)
@@ -213,7 +215,14 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	if err := os.WriteFile(filepath.Join(out, config.SchemaFile), schema, 0o644); err != nil {
 		return err
 	}
-	for _, static := range []string{"style.css", "_redirects", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
+	base, err := os.ReadFile(filepath.Join(root, "site", "redirects"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(out, "_redirects"), redirects(base, platforms), 0o644); err != nil {
+		return err
+	}
+	for _, static := range []string{"style.css", "favicon.svg", "favicon.ico", "apple-touch-icon.png"} {
 		b, err := os.ReadFile(filepath.Join(root, "site", static))
 		if err != nil {
 			return err
@@ -224,6 +233,25 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool) error {
 	}
 	fmt.Fprintf(os.Stderr, "docgen: site with %d topics -> %s\n", len(topics), out)
 	return nil
+}
+
+// redirects is the hosted _redirects: the hand-written lines of
+// site/redirects, then one download line per release platform, so the
+// Makefile's platform list is the only place the platforms are named.
+func redirects(base []byte, platforms []string) []byte {
+	var b bytes.Buffer
+	b.Write(base)
+	if len(base) > 0 && base[len(base)-1] != '\n' {
+		b.WriteByte('\n')
+	}
+	for _, p := range platforms {
+		ext := ""
+		if strings.HasPrefix(p, "windows-") {
+			ext = ".exe"
+		}
+		fmt.Fprintf(&b, "%-19s %s/releases/latest/download/pk-%s%s 302\n", "/pk/"+p, repoURL, p, ext)
+	}
+	return b.Bytes()
 }
 
 // renderHTML converts markdown to HTML with goldmark's own renderer,
