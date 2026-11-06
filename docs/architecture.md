@@ -59,9 +59,10 @@ of decisions, reversals included.
 
 The guard hook runs before every shell command the agent issues. It
 reads the policy file and answers with a decision. Four policies
-apply. On a protected branch, a git mutation (`commit`, `merge`,
-`push`, `rebase`, `reset`) is denied or questioned. A `git push` on
-any branch is denied or questioned. A commit whose message carries a
+apply. On a protected branch, a git mutation (`am`, `cherry-pick`,
+`commit`, `merge`, `pull`, `push`, `rebase`, `reset`, `revert`) is
+denied or questioned. A `git push` on any branch is denied or
+questioned. A commit whose message carries a
 breaking marker (`!` after the type, or a `BREAKING CHANGE:` footer)
 is questioned. A `pk ship` or `pk changelog` whose `--bump` is lower
 than the bump the commits infer is questioned. When policies overlap,

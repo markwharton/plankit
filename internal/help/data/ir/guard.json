@@ -29,6 +29,22 @@
         },
         {
           "type": "code",
+          "text": "am"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "cherry-pick"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
           "text": "commit"
         },
         {
@@ -38,6 +54,14 @@
         {
           "type": "code",
           "text": "merge"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "pull"
         },
         {
           "type": "text",
@@ -62,6 +86,14 @@
         {
           "type": "code",
           "text": "reset"
+        },
+        {
+          "type": "text",
+          "text": ", "
+        },
+        {
+          "type": "code",
+          "text": "revert"
         },
         {
           "type": "text",

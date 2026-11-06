@@ -170,13 +170,22 @@ func writeDecision(ctx *cli.Context, decision, reason string) {
 	}
 }
 
+// gitMutations are the git subcommands that change the checked-out
+// branch: each puts commits on it, moves it, or publishes it. The
+// guard page and docs/architecture.md list them, and a test holds both
+// to this list.
+var gitMutations = []string{"am", "cherry-pick", "commit", "merge", "pull", "push", "rebase", "reset", "revert"}
+
 // isGitMutation reports whether any command is a git operation that
 // mutates the branch.
 func isGitMutation(calls []invocation) bool {
 	for _, call := range calls {
-		if sub, _, ok := gitCall(call); ok {
-			switch sub {
-			case "commit", "merge", "push", "rebase", "reset":
+		sub, _, ok := gitCall(call)
+		if !ok {
+			continue
+		}
+		for _, m := range gitMutations {
+			if sub == m {
 				return true
 			}
 		}

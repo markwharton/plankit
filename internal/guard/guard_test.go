@@ -64,13 +64,14 @@ func TestIsGitMutationAcrossChains(t *testing.T) {
 		"true || git merge dev",
 		"git fetch | cat\ngit reset --hard",
 		"make build |& tee log && git push",
+		"git pull --rebase=false",
 	}
 	no := []string{
 		"git status && git log",
 		`echo "a && git push"`,
 		"echo 'git commit -m x'",
 		"git checkout -b feature",
-		"git pull --rebase=false",
+		"git fetch origin",
 		"ls | grep git",
 	}
 	for _, c := range yes {
@@ -422,6 +423,49 @@ func TestPushIsReadThroughShellForms(t *testing.T) {
 	} {
 		if out, _ := runGuard(t, dir, c); out != "" {
 			t.Errorf("%q should get no decision, got %q", c, out)
+		}
+	}
+}
+
+// Every git command that puts commits on the checked-out branch is a
+// mutation, so each is denied while a protected branch is checked out.
+func TestEveryMutationIsDeniedOnAProtectedBranch(t *testing.T) {
+	dir := scratch(t, "block", "off")
+	for _, c := range []string{
+		"git am fix.patch",
+		"git cherry-pick abc1234",
+		"git commit -m x",
+		"git merge develop",
+		"git pull origin develop",
+		"git rebase develop",
+		"git reset --hard HEAD~1",
+		"git revert HEAD",
+	} {
+		if out, _ := runGuard(t, dir, c); !strings.Contains(out, `"deny"`) || !strings.Contains(out, "is protected") {
+			t.Errorf("%q should be denied on a protected branch, got %q", c, out)
+		}
+	}
+}
+
+// The pages that list the mutations list every one, in the code's
+// order, so neither falls behind the list guard reads.
+func TestPagesListTheMutations(t *testing.T) {
+	quoted := make([]string, len(gitMutations))
+	for i, m := range gitMutations {
+		quoted[i] = "`" + m + "`"
+	}
+	list := strings.Join(quoted, ", ")
+	for _, path := range []string{
+		filepath.Join("..", "..", "skills", "guard", "SKILL.md"),
+		filepath.Join("..", "..", "docs", "architecture.md"),
+	} {
+		page, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// A list may wrap across lines in the page.
+		if !strings.Contains(strings.Join(strings.Fields(string(page)), " "), list) {
+			t.Errorf("%s does not list the mutations as %s", path, list)
 		}
 	}
 }
