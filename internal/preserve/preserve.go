@@ -144,11 +144,16 @@ func run(ctx *cli.Context) error {
 
 	content, err := os.ReadFile(planPath)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "failed to read plan: %v", err)
-		return nil
+		return outcome(ctx, hookInvocation, cli.WithHint(
+			cli.Statef("failed to read plan %s: %v", planPath, err), "%s", discardHint))
 	}
 	if len(content) < minPlanSize {
-		return nil
+		// The hook declines a draft in silence. A person who typed the
+		// command is told which plan it was and how to drop it.
+		if hookInvocation {
+			return nil
+		}
+		return cli.WithHint(tooSmall(planPath, len(content)), "%s", discardHint)
 	}
 
 	if !rootOK {
@@ -176,8 +181,29 @@ func run(ctx *cli.Context) error {
 	}
 
 	// auto, or explicit invocation: commit.
-	preserve(ctx, root, cfg.Preserve, content, title)
-	return nil
+	return outcome(ctx, hookInvocation, preserve(ctx, root, cfg.Preserve, content, title))
+}
+
+// discardHint names the way out for a pending plan that cannot be
+// preserved.
+const discardHint = "to drop the pending plan: pk preserve --discard"
+
+// tooSmall is the refusal for a plan under minPlanSize.
+func tooSmall(planPath string, size int) error {
+	return cli.Statef("plan %s is %d bytes, below the minimum of %d", planPath, size, minPlanSize)
+}
+
+// outcome turns a failed preserve into the exit its caller is owed. A
+// typed run gets the error back, and the frame prints it with its exit
+// code. The automatic hook reports it and exits with hookio.ExitReport:
+// Claude Code shows the message and continues, where exit 0 would hide
+// it and exit 2 would block.
+func outcome(ctx *cli.Context, hook bool, err error) error {
+	if err == nil || !hook {
+		return err
+	}
+	msg.Hookf(ctx.Stderr, "preserve", "%v", err)
+	return cli.Silent(hookio.ExitReport)
 }
 
 // notConfigured turns a policy-file load error into the exit a typed
@@ -209,7 +235,7 @@ func runNamed(ctx *cli.Context, typed string) error {
 		return cli.Statef("failed to read plan %s: %v", planPath, err)
 	}
 	if len(content) < minPlanSize {
-		return cli.Statef("plan %s is %d bytes, below the minimum of %d", planPath, len(content), minPlanSize)
+		return tooSmall(planPath, len(content))
 	}
 	dir := hookio.ResolveDir(os.Getenv, "", ctx.ProjectDir, ctx.ProjectDirExplicit)
 	root, ok := git.FindRoot(dir)
@@ -225,8 +251,7 @@ func runNamed(ctx *cli.Context, typed string) error {
 			cli.Statef("a pending plan is waiting: %s; --plan names %s", pending, planPath),
 			"run pk preserve to commit the pending plan first, then preserve the other with --plan")
 	}
-	preserve(ctx, root, cfg.Preserve, content, extractTitle(string(content)))
-	return nil
+	return preserve(ctx, root, cfg.Preserve, content, extractTitle(string(content)))
 }
 
 // runDiscard is the --discard path: the pointer is removed without
@@ -269,9 +294,10 @@ func runDiscard(ctx *cli.Context) error {
 // filename for the day and commits it, reporting through the response
 // envelope.
 // Identical bytes already committed report the existing file instead.
-// Failures are reported the hook's way, never as an exit code, because
-// the automatic hook shares this path.
-func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, content []byte, title string) {
+// A failure is returned: a refusal as a state error, a git command or
+// a write that failed as an internal one. The typed runs and the
+// automatic hook share this path, and outcome gives each its exit.
+func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, content []byte, title string) error {
 	datePrefix := now().Format("2006-01-02")
 	slug := slugify(title, 60)
 	if slug == "" {
@@ -292,12 +318,10 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	// it ignores, so an ignored target is refused before any write.
 	ignored, err := git.Ignored(root, relPath)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "git check-ignore failed: %v", err)
-		return
+		return fmt.Errorf("git check-ignore failed: %v", err)
 	}
 	if ignored {
-		msg.Hookf(ctx.Stderr, "preserve", "%s is ignored by git, so a plan cannot be committed there: change preserve.dir in %s, or the ignore rule", relPath, config.FileName)
-		return
+		return cli.Statef("%s is ignored by git, so a plan cannot be committed there: change preserve.dir in %s, or the ignore rule", relPath, config.FileName)
 	}
 	if leftover {
 		// The same bytes, committed, are the plan already preserved. Not
@@ -305,13 +329,12 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		// behind, and this run commits it as it stands.
 		clean, err := git.Clean(root, relPath)
 		if err != nil {
-			msg.Hookf(ctx.Stderr, "preserve", "git status failed: %v", err)
-			return
+			return fmt.Errorf("git status failed: %v", err)
 		}
 		if clean {
 			removePointer(root)
 			writeResponse(ctx, fmt.Sprintf("Plan already preserved as %s", relPath), "")
-			return
+			return nil
 		}
 	}
 
@@ -321,8 +344,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	// to compare with, leave the marker off and the output says why.
 	ahead, known, err := git.Ahead(root)
 	if err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "git rev-list failed: %v", err)
-		return
+		return fmt.Errorf("git rev-list failed: %v", err)
 	}
 	subject := fmt.Sprintf("%s: %s", config.PlanType, title)
 	reason := ""
@@ -350,23 +372,20 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 		if ctx.Bool("push") {
 			fmt.Fprintf(ctx.Stderr, "  Push:   git push origin HEAD\n")
 		}
-		return
+		return nil
 	}
 
 	if !leftover {
 		if err := os.MkdirAll(destDir, 0o755); err != nil {
-			msg.Hookf(ctx.Stderr, "preserve", "failed to create directory: %v", err)
-			return
+			return fmt.Errorf("failed to create directory: %v", err)
 		}
 		if err := os.WriteFile(filepath.Join(destDir, filename), content, 0o644); err != nil {
-			msg.Hookf(ctx.Stderr, "preserve", "failed to write plan: %v", err)
-			return
+			return fmt.Errorf("failed to write plan: %v", err)
 		}
 	}
 	// The commit holds the plan alone; other staged work stays staged.
 	if err := git.CommitPaths(root, subject, relPath); err != nil {
-		msg.Hookf(ctx.Stderr, "preserve", "git commit failed: %v", err)
-		return
+		return fmt.Errorf("git commit failed: %v", err)
 	}
 	removePointer(root)
 
@@ -379,6 +398,7 @@ func preserve(ctx *cli.Context, root string, policy config.PreserveConfig, conte
 	} else {
 		writeResponse(ctx, fmt.Sprintf("Approved plan committed: %s%s", relPath, why), "")
 	}
+	return nil
 }
 
 func writeResponse(ctx *cli.Context, message, context string) {

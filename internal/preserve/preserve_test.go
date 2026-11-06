@@ -14,6 +14,7 @@ import (
 	"github.com/markwharton/plankit/internal/cli"
 	"github.com/markwharton/plankit/internal/config"
 	"github.com/markwharton/plankit/internal/git"
+	"github.com/markwharton/plankit/internal/hookio"
 )
 
 const planBody = "# Ship The Widget\n\nContext: enough substance to clear the minimum plan size threshold.\n"
@@ -471,9 +472,23 @@ func TestUnconfiguredRepoIsSilent(t *testing.T) {
 
 func TestShortPlanIsSkipped(t *testing.T) {
 	dir, plan := scratch(t, "auto", "# Tiny\n")
-	out, _ := runPreserve(t, dir, plan)
-	if out != "" {
-		t.Fatalf("short plan preserved: %s", out)
+	out, errw := runPreserve(t, dir, plan)
+	if out != "" || errw != "" {
+		t.Fatalf("the hook declines a short plan in silence: out=%q errw=%q", out, errw)
+	}
+
+	// A typed run is a person asking: a pending plan under the minimum
+	// is named, with the way to drop it, and the pointer stays.
+	pointer := filepath.Join(dir, ".git", "pk-pending-plan")
+	if err := os.WriteFile(pointer, []byte(plan+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, errw, code := runPreserveIO(t, dir, "")
+	if code != cli.ExitState || out != "" || !strings.Contains(errw, "below the minimum") || !strings.Contains(errw, "pk preserve --discard") {
+		t.Fatalf("typed: code=%d out=%q errw=%q", code, out, errw)
+	}
+	if _, err := os.Stat(pointer); err != nil {
+		t.Fatal("the pointer must stay until the person drops it")
 	}
 }
 
@@ -554,8 +569,13 @@ func TestAPlanWhoseCommitFailedIsCommittedOnTheNextRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := commitCount(t, dir)
-	if _, errw := runPreserve(t, dir, plan); !strings.Contains(errw, "git commit failed") || commitCount(t, dir) != before {
-		t.Fatalf("the commit should have failed: commits=%d errw=%q", commitCount(t, dir), errw)
+	// The hook reports the failure with the exit Claude Code shows; a
+	// typed run exits non-zero through the frame.
+	if out, errw, code := runPreserveIO(t, dir, plan); code != hookio.ExitReport || out != "" || !strings.Contains(errw, "pk preserve: git commit failed") || commitCount(t, dir) != before {
+		t.Fatalf("hook: code=%d commits=%d out=%q errw=%q", code, commitCount(t, dir), out, errw)
+	}
+	if out, errw, code := runPreserveIO(t, dir, "", "--plan", plan); code != cli.ExitInternal || out != "" || !strings.Contains(errw, "Error: git commit failed") || commitCount(t, dir) != before {
+		t.Fatalf("typed: code=%d commits=%d out=%q errw=%q", code, commitCount(t, dir), out, errw)
 	}
 
 	if err := os.Remove(hook); err != nil {
@@ -590,9 +610,12 @@ func TestAnIgnoredPlansDirectoryIsRefused(t *testing.T) {
 	git.Exec(dir, "commit", "-q", "-m", "ignore")
 	before := commitCount(t, dir)
 
-	out, errw := runPreserve(t, dir, plan)
-	if out != "" || !strings.Contains(errw, "ignored by git") || !strings.Contains(errw, "preserve.dir") {
-		t.Fatalf("out=%q errw=%q", out, errw)
+	out, errw, code := runPreserveIO(t, dir, plan)
+	if code != hookio.ExitReport || out != "" || !strings.Contains(errw, "ignored by git") || !strings.Contains(errw, "preserve.dir") {
+		t.Fatalf("hook: code=%d out=%q errw=%q", code, out, errw)
+	}
+	if _, errw, code := runPreserveIO(t, dir, "", "--plan", plan); code != cli.ExitState || !strings.Contains(errw, "ignored by git") {
+		t.Fatalf("typed: code=%d errw=%q", code, errw)
 	}
 	if _, err := os.Stat(plansDir(dir)); !os.IsNotExist(err) {
 		t.Fatal("refused, yet the plans directory was written")

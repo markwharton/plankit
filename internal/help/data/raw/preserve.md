@@ -33,9 +33,12 @@ filename and commit message.
 Identical plan bytes are never preserved twice; a duplicate reports
 the existing file. A plan is preserved once it is committed: a file a
 failed commit left behind is committed by the next run, and a plans
-directory that git ignores is refused. A plan shorter than `minPlanSize` bytes is ignored (`grep minPlanSize internal/preserve/preserve.go`).
-A typed run with nothing pending says so; the hook declines in
-silence, because its stdout is the response envelope.
+directory that git ignores is refused. A plan shorter than `minPlanSize` bytes is not preserved (`grep minPlanSize internal/preserve/preserve.go`).
+With nothing pending, or a plan that short, a typed run says so and
+the hook declines in silence, because its stdout is the response
+envelope. A preserve that fails, a commit git refuses for example, is
+reported: a typed run exits non-zero, and the hook's message is shown
+without blocking the session.
 
 ## Preserving a plan revised after approval
 

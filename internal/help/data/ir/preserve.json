@@ -212,7 +212,7 @@
         },
         {
           "type": "text",
-          "text": " bytes is ignored ("
+          "text": " bytes is not preserved ("
         },
         {
           "type": "code",
@@ -220,7 +220,7 @@
         },
         {
           "type": "text",
-          "text": "). A typed run with nothing pending says so; the hook declines in silence, because its stdout is the response envelope."
+          "text": "). With nothing pending, or a plan that short, a typed run says so and the hook declines in silence, because its stdout is the response envelope. A preserve that fails, a commit git refuses for example, is reported: a typed run exits non-zero, and the hook's message is shown without blocking the session."
         }
       ]
     },
