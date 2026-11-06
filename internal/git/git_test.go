@@ -121,3 +121,27 @@ func TestIsAncestor(t *testing.T) {
 		t.Fatal("an unknown revision must be an error, not false")
 	}
 }
+
+// The web address of a remote never carries what the remote's URL
+// used to sign in.
+func TestParseRepoURL(t *testing.T) {
+	cases := map[string]string{
+		"https://github.com/o/r.git":                           "https://github.com/o/r",
+		"https://github.com/o/r":                               "https://github.com/o/r",
+		"  https://github.com/o/r.git\n":                       "https://github.com/o/r",
+		"https://x-access-token:ghs_SECRET@github.com/o/r.git": "https://github.com/o/r",
+		"https://user@github.com/o/r.git":                      "https://github.com/o/r",
+		"http://user:pw@git.example:8080/o/r.git":              "http://git.example:8080/o/r",
+		"ssh://git@github.com/o/r.git":                         "https://github.com/o/r",
+		"ssh://git@github.com:22/o/r.git":                      "https://github.com/o/r",
+		"git@github.com:o/r.git":                               "https://github.com/o/r",
+		"deploy@git.example:group/r.git":                       "https://git.example/group/r",
+		"/srv/git/r.git":                                       "/srv/git/r",
+		"https://user:pw@[bad/o/r.git":                         "",
+	}
+	for in, want := range cases {
+		if got := ParseRepoURL(in); got != want {
+			t.Errorf("ParseRepoURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -6,6 +6,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -267,15 +268,34 @@ func HasOtherLocalBranch(dir, branch string) bool {
 	return false
 }
 
-// ParseRepoURL normalizes a remote URL to https form for compare links.
+// ParseRepoURL turns a remote's URL into the repository's web address,
+// for compare links. What the remote uses to sign in never comes
+// through: the user and password of a URL are dropped, and the ssh
+// forms (ssh://user@host/path and the scp form user@host:path) become
+// https on the same host. A URL that cannot be parsed gives "", so it
+// gives no link; a local path is returned as it is.
 func ParseRepoURL(remoteURL string) string {
-	u := strings.TrimSpace(remoteURL)
-	if strings.HasPrefix(u, "git@") {
-		u = strings.TrimPrefix(u, "git@")
-		u = strings.Replace(u, ":", "/", 1)
-		u = "https://" + u
+	u := strings.TrimSuffix(strings.TrimSpace(remoteURL), ".git")
+	if strings.Contains(u, "://") {
+		parsed, err := url.Parse(u)
+		if err != nil {
+			return ""
+		}
+		parsed.User = nil
+		if parsed.Scheme == "ssh" {
+			parsed.Scheme = "https"
+			parsed.Host = parsed.Hostname() // the port is ssh's, not the web's
+		}
+		return parsed.String()
 	}
-	return strings.TrimSuffix(u, ".git")
+	// The scp form has a user before the host and no scheme; a slash
+	// before the @ means a local path that happens to contain one.
+	if at := strings.Index(u, "@"); at > 0 && !strings.Contains(u[:at], "/") {
+		if host, path, ok := strings.Cut(u[at+1:], ":"); ok && host != "" {
+			return "https://" + host + "/" + strings.TrimPrefix(path, "/")
+		}
+	}
+	return u
 }
 
 // CommitPaths stages the named paths and commits only them, so other
