@@ -6,10 +6,11 @@ description: How pk guard decides what an agent may do to git, and how to tune i
 # pk guard
 
 `pk guard` is a PreToolUse hook on shell commands. Before the agent
-runs a git mutation (`commit`, `merge`, `push`, `rebase`, `reset`) or a
-release command carrying `--bump`, guard reads `.pk.json` and answers
-with a permission decision. Four policies apply; the strongest decision
-wins, and deny beats ask.
+runs a git mutation (`am`, `cherry-pick`, `commit`, `merge`, `pull`,
+`push`, `rebase`, `reset`, `revert`) or a release command carrying
+`--bump`, guard reads `.pk.json` and answers with a permission
+decision. Four policies apply; the strongest decision wins, and deny
+beats ask.
 
 - branch policy (`guard.mode`): a mutation while a protected branch
   (`guard.branches`) is checked out is denied (`block`), questioned
@@ -23,14 +24,16 @@ wins, and deny beats ask.
   `--bump` is lower than the bump the commits infer is questioned
   (`ask`) or ignored (`off`)
 
-The hook recognizes git through chains (`&&`, `;`, `|`), environment
-prefixes, absolute paths, `git -C`, and `git.exe`. A compound command
-is judged by its parts.
+The hook recognizes git through chains (`&&`, `||`, `;`, `|`, `&`),
+subshells and command substitution, shell keywords such as `then` and
+`do`, quoted words, environment prefixes, absolute paths, `git -C`,
+and `git.exe`. A compound command is judged by its parts.
 
 ## What guard is
 
 A guardrail against an agent following its defaults, not a security
-boundary. An internal error fails open with a note on stderr.
+boundary. A command run through `sudo`, `sh -c`, or `eval` is not
+read. An internal error fails open with a note on stderr.
 An unconfigured repository (no `.pk.json`) is a no-op.
 
 ## Changing policy

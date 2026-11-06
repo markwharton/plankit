@@ -128,9 +128,8 @@ in the repository you want plankit to manage.
 ## Building from source
 
 ```
-make build      # docgen + go build -> ./pk
+make build      # docgen + go build -> the platform binary behind the bin/pk shim
 make test
-make bin-local  # build the platform binary behind the bin/pk shim
 ```
 
 The main module is standard-library Go; the markdown compiler

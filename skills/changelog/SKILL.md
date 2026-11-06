@@ -75,9 +75,12 @@ only on the current branch: not pushed, not tagged, not merged.
 
 `changelog.versionFiles` names JSON files whose root `version` field
 is spliced in place, formatting preserved. `postVersion` and
-`preCommit` hooks run with `$VERSION` (no v prefix).
+`preCommit` hooks run with `$VERSION` (no v prefix). When a version
+file or a hook fails, nothing is committed and the tree goes back to
+how the run found it, a hook's own changes included.
 
-Run it from the working branch. A protected branch is refused. The
+Run it from the working branch. A protected branch is refused, and so
+is a detached HEAD, except by `--dry-run`. The
 last version tag must be in the branch's history: a branch rewritten
 after a release is refused, naming the tag, because the entry measured
 from it would list that release's work again. Move the tag to the
@@ -89,7 +92,7 @@ meant, and update origin's copy.
 No version tag means nothing has been released. The first release
 covers the whole history from an implied `v0.0.0`, and its entry links
 to the tag's commits rather than a compare. The run says so first:
-`no release yet: the first release covers all N commits`. To keep
+`No release yet: the first release covers all N commits`. To keep
 earlier history out of it, tag `v0.0.0` at the last commit that is
 history before running `pk changelog`; everything after that tag is
 the first release.
@@ -97,7 +100,7 @@ the first release.
 A clone with no local tags is not a first release when origin has
 them: a fresh clone that fetched only the working branch, as a cloud
 sandbox does. `pk changelog` fetches origin's tags first and says so,
-`fetched tags from origin: latest is v1.2.0`, then measures from that
+`Fetched tags from origin: latest is v1.2.0`, then measures from that
 tag. Only when the fetch itself fails does it stop, with the error and
 the hint `git fetch --tags`.
 
