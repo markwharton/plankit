@@ -1,7 +1,7 @@
 {
   "name": "plankit",
   "displayName": "plankit",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Plan-driven development for Claude Code, with release management and versioning for small teams",
   "author": {
     "name": "Mark Wharton",

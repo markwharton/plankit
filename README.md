@@ -36,8 +36,10 @@ To update to a new release:
 /reload-plugins
 ```
 
-With auto-update enabled for the marketplace (`/plugin`, Marketplaces),
-Claude Code runs the first two at startup and prompts for the third.
+With auto-update enabled for the marketplace, Claude Code runs the
+first two during a session, and the new version loads in the next
+session or after `/reload-plugins`. `pk init` enables it in the
+repository it configures; `/plugin`, Marketplaces has the toggle.
 The brief at the start of every session names the plugin's version, so
 a plugin behind the latest release is visible without asking.
 
@@ -54,9 +56,9 @@ Then, in a repository you want plankit to manage:
 pk init
 ```
 
-One run writes `.pk.json`, the policy, adds the plankit marketplace
-and plugin to `.claude/settings.json` so a teammate who trusts the
-folder is one `/plugin install` away, commits both, and starts a
+One run writes `.pk.json`, the policy, adds the plankit marketplace,
+with auto-update on, and the plugin to `.claude/settings.json` so a
+teammate who trusts the folder is one `/plugin install` away, commits both, and starts a
 `develop` branch when the release branch was the only one. The plans directory, named in the policy, appears when
 the first plan is preserved; `pk help preserve` has the key and its
 default. No `.pk.json` means off: every hook exits immediately.

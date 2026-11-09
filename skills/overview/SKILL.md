@@ -23,10 +23,10 @@ A configured repository carries `.pk.json`, the committed policy:
 modes, protected branches, changelog sections, release hooks. Those
 commands run through `sh -c`, or `cmd /c` on Windows. Its
 `.claude/settings.json` carries the plankit marketplace under
-`extraKnownMarketplaces` and `plankit@plankit` under `enabledPlugins`,
-so a teammate who trusts the folder has the marketplace and is one
-`/plugin install` from the plugin; `pk status` spells out any entry
-that is missing. The plans directory appears when the first plan is
+`extraKnownMarketplaces`, with `autoUpdate` on, and `plankit@plankit`
+under `enabledPlugins`, so a teammate who trusts the folder has the
+marketplace and is one `/plugin install` from the plugin; `pk status`
+spells out any entry that is missing. The plans directory appears when the first plan is
 preserved. Without `.pk.json`, every hook exits without acting.
 
 ## Commit conventions
@@ -48,11 +48,30 @@ version.
 
 ## Updating
 
-`/plugin marketplace update plankit`, then `/plugin update
-plankit@plankit`, then `/reload-plugins`. A new release changes the
-plugin only; no repository changes. A pk installed with `go install` or
-Homebrew is updated separately, and the brief says when it is behind
-the plugin.
+A repository configured by `pk init` has `autoUpdate` on for the
+plankit marketplace. During a session there, Claude Code refreshes the
+marketplace and updates the plugin, and the new version loads in the
+next session or after `/reload-plugins`. `"autoUpdate": false` in
+`.claude/settings.json` turns it off, and pk leaves it as it is.
+
+To update by hand: `/plugin marketplace update plankit`, then
+`/plugin update plankit@plankit`, then `/reload-plugins`. A new
+release changes the plugin only; no repository changes. A pk installed
+with `go install` or Homebrew is updated separately, and the brief
+says when it is behind the plugin.
+
+The hooks run the pk bundled in the plugin. The pk on the PATH is a
+separate install, so `pk version` in a terminal does not give the
+hooks' version; the first sentence of the brief does. A hook that
+behaves like an older release means the plugin is older: run the
+three steps above.
+
+A repository that enables the plugin holds a project-scope install of
+its own, at the version the marketplace listed when the install was
+made. It is updated from inside that repository.
+`claude plugin uninstall plankit@plankit --scope project`, run inside
+the repository, removes it; without `--scope` the command removes the
+user-scope install.
 
 ## Cloud sessions
 

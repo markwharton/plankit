@@ -14,9 +14,12 @@ Configures a repository in one run:
   from the same table as each page's Settings section, so an editor
   validates the file as it is typed.
 - the plugin entries in `.claude/settings.json`: the plankit
-  marketplace under `extraKnownMarketplaces` and `plankit@plankit`
-  under `enabledPlugins`, so a teammate who trusts the folder has the
-  marketplace and is one `/plugin install` from the plugin. The file
+  marketplace under `extraKnownMarketplaces`, with `autoUpdate` on,
+  and `plankit@plankit` under `enabledPlugins`. A teammate who trusts
+  the folder has the marketplace and is one `/plugin install` from the
+  plugin. `autoUpdate` turns on Claude Code's auto-update for the
+  marketplace, which updates the repository's install of the plugin
+  during a session there; set it to `false` to turn that off. The file
   is the developer's: existing content keeps every byte, an entry
   already present under its key is left as it is, and a file with
   uncommitted changes or one that does not parse stops the run before

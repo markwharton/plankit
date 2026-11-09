@@ -38,7 +38,9 @@ With nothing pending, or a plan that short, a typed run says so and
 the hook declines in silence, because its stdout is the response
 envelope. A preserve that fails, a commit git refuses for example, is
 reported: a typed run exits non-zero, and the hook's message is shown
-without blocking the session.
+without blocking the session. The hook reports the same way when the
+approved plan's path is outside the session's plans directory, and
+names the path.
 
 ## Preserving a plan revised after approval
 
