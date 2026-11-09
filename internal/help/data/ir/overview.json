@@ -342,6 +342,48 @@
       ]
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "The hooks run the pk bundled in the plugin. The pk on the PATH is a separate install, so "
+        },
+        {
+          "type": "code",
+          "text": "pk version"
+        },
+        {
+          "type": "text",
+          "text": " in a terminal does not give the hooks' version; the first sentence of the brief does. A hook that behaves like an older release means the plugin is older: run the three steps above."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "A repository that enables the plugin holds a project-scope install of its own, at the version the marketplace listed when the install was made. It is updated from inside that repository. "
+        },
+        {
+          "type": "code",
+          "text": "claude plugin uninstall plankit@plankit --scope project"
+        },
+        {
+          "type": "text",
+          "text": ", run inside the repository, removes it; without "
+        },
+        {
+          "type": "code",
+          "text": "--scope"
+        },
+        {
+          "type": "text",
+          "text": " the command removes the user-scope install."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "cloud-sessions",

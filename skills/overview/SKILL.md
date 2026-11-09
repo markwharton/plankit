@@ -54,6 +54,19 @@ plugin only; no repository changes. A pk installed with `go install` or
 Homebrew is updated separately, and the brief says when it is behind
 the plugin.
 
+The hooks run the pk bundled in the plugin. The pk on the PATH is a
+separate install, so `pk version` in a terminal does not give the
+hooks' version; the first sentence of the brief does. A hook that
+behaves like an older release means the plugin is older: run the
+three steps above.
+
+A repository that enables the plugin holds a project-scope install of
+its own, at the version the marketplace listed when the install was
+made. It is updated from inside that repository.
+`claude plugin uninstall plankit@plankit --scope project`, run inside
+the repository, removes it; without `--scope` the command removes the
+user-scope install.
+
 ## Cloud sessions
 
 A cloud session at claude.ai/code starts from a fresh clone and never
