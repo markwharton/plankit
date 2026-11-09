@@ -4,7 +4,8 @@
       "source": {
         "source": "url",
         "url": "https://plankit.com/marketplace.json"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {

@@ -81,7 +81,15 @@
               },
               {
                 "type": "text",
-                "text": " and "
+                "text": ", with "
+              },
+              {
+                "type": "code",
+                "text": "autoUpdate"
+              },
+              {
+                "type": "text",
+                "text": " on, and "
               },
               {
                 "type": "code",
@@ -97,7 +105,7 @@
               },
               {
                 "type": "text",
-                "text": ", so a teammate who trusts the folder has the marketplace and is one "
+                "text": ". A teammate who trusts the folder has the marketplace and is one "
               },
               {
                 "type": "code",
@@ -105,7 +113,23 @@
               },
               {
                 "type": "text",
-                "text": " from the plugin. The file is the developer's: existing content keeps every byte, an entry already present under its key is left as it is, and a file with uncommitted changes or one that does not parse stops the run before anything is written."
+                "text": " from the plugin. "
+              },
+              {
+                "type": "code",
+                "text": "autoUpdate"
+              },
+              {
+                "type": "text",
+                "text": " turns on Claude Code's auto-update for the marketplace, which updates the repository's install of the plugin during a session there; set it to "
+              },
+              {
+                "type": "code",
+                "text": "false"
+              },
+              {
+                "type": "text",
+                "text": " to turn that off. The file is the developer's: existing content keeps every byte, an entry already present under its key is left as it is, and a file with uncommitted changes or one that does not parse stops the run before anything is written."
               }
             ]
           }

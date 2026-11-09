@@ -16,7 +16,7 @@ call being made.
 
 ## What pk writes
 
-Only into the repository: `.pk.json`, the two plugin entries in
+Only into the repository: `.pk.json`, the plugin entries in
 `.claude/settings.json`, preserved plans under the plans directory,
 `CHANGELOG.md`, the version fields the policy names, commits, and
 tags. Nothing is written anywhere else on the machine, and nothing is

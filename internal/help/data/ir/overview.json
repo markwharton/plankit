@@ -109,7 +109,15 @@
         },
         {
           "type": "text",
-          "text": " and "
+          "text": ", with "
+        },
+        {
+          "type": "code",
+          "text": "autoUpdate"
+        },
+        {
+          "type": "text",
+          "text": " on, and "
         },
         {
           "type": "code",
@@ -307,6 +315,59 @@
     {
       "type": "para",
       "inlines": [
+        {
+          "type": "text",
+          "text": "A repository configured by "
+        },
+        {
+          "type": "code",
+          "text": "pk init"
+        },
+        {
+          "type": "text",
+          "text": " has "
+        },
+        {
+          "type": "code",
+          "text": "autoUpdate"
+        },
+        {
+          "type": "text",
+          "text": " on for the plankit marketplace. During a session there, Claude Code refreshes the marketplace and updates the plugin, and the new version loads in the next session or after "
+        },
+        {
+          "type": "code",
+          "text": "/reload-plugins"
+        },
+        {
+          "type": "text",
+          "text": ". "
+        },
+        {
+          "type": "code",
+          "text": "\"autoUpdate\": false"
+        },
+        {
+          "type": "text",
+          "text": " in "
+        },
+        {
+          "type": "code",
+          "text": ".claude/settings.json"
+        },
+        {
+          "type": "text",
+          "text": " turns it off, and pk leaves it as it is."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "To update by hand: "
+        },
         {
           "type": "code",
           "text": "/plugin marketplace update plankit"

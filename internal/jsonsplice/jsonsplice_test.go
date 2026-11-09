@@ -111,6 +111,15 @@ func TestInsertCreatesMissingParents(t *testing.T) {
 	if string(got) != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
+	// Two levels missing: both are created around the value.
+	got, err = Insert([]byte("{}"), true, "extraKnownMarketplaces", "plankit", "autoUpdate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = "{\n  \"extraKnownMarketplaces\": {\n    \"plankit\": {\n      \"autoUpdate\": true\n    }\n  }\n}"
+	if string(got) != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
 }
 
 func TestInsertRefusesPresentKey(t *testing.T) {

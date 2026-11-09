@@ -415,7 +415,7 @@ func TestStatusReadinessNotes(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"no working branch besides main", "git switch -c develop", settingsFile + " lacks the entries", `"plankit@plankit": true`} {
+	for _, want := range []string{"no working branch besides main", "git switch -c develop", settingsFile + " lacks plugin entries that pk init writes", `"autoUpdate": true`, `"plankit@plankit": true`} {
 		if !strings.Contains(errw, want) {
 			t.Errorf("missing %q:\n%s", want, errw)
 		}
@@ -552,7 +552,7 @@ func TestDefaultProjectDirWalksToRoot(t *testing.T) {
 }
 
 // The developer's settings file, with spacing no encoder would produce,
-// hooks, and permissions. Init adds the two entries and nothing else
+// hooks, and permissions. Init adds the three entries and nothing else
 // changes, not a byte.
 const developerSettings = "{\n    \"permissions\": {\n        \"allow\": [\"Bash(pk:*)\"]\n    },\n    \"hooks\":  {\"Stop\": [{\"matcher\": \"\", \"hooks\": [{\"type\": \"command\", \"command\": \"say done && true\"}]}]},\n    \"enabledPlugins\": { \"other@other\": true }\n}\n"
 
@@ -580,7 +580,7 @@ func TestInitSplicesTheDeveloperSettings(t *testing.T) {
 	got, _ := os.ReadFile(filepath.Join(dir, settingsFile))
 	want := strings.Replace(developerSettings,
 		"\"enabledPlugins\": { \"other@other\": true }\n",
-		"\"enabledPlugins\": { \"other@other\": true, \"plankit@plankit\": true },\n    \"extraKnownMarketplaces\": {\n        \"plankit\": {\n            \"source\": {\n                \"source\": \"url\",\n                \"url\": \"https://plankit.com/marketplace.json\"\n            }\n        }\n    }\n", 1)
+		"\"enabledPlugins\": { \"other@other\": true, \"plankit@plankit\": true },\n    \"extraKnownMarketplaces\": {\n        \"plankit\": {\n            \"source\": {\n                \"source\": \"url\",\n                \"url\": \"https://plankit.com/marketplace.json\"\n            },\n            \"autoUpdate\": true\n        }\n    }\n", 1)
 	if string(got) != want {
 		t.Fatalf("settings after init:\n%s\nwant\n%s", got, want)
 	}
@@ -590,11 +590,12 @@ func TestInitSplicesTheDeveloperSettings(t *testing.T) {
 }
 
 func TestInitLeavesPresentEntriesAlone(t *testing.T) {
-	// Both entries present, the marketplace pointing elsewhere: that is
-	// the developer's choice. Nothing is written, the commit carries
-	// only the policy, and the difference is reported.
+	// Every entry present, the marketplace pointing elsewhere and
+	// auto-update turned off: those are the developer's choices. Nothing
+	// is written, the commit carries only the policy, and each
+	// difference is reported.
 	dir := scratch(t, true)
-	content := "{\"enabledPlugins\":{\"plankit@plankit\":true},\"extraKnownMarketplaces\":{\"plankit\":{\"source\":{\"source\":\"github\",\"repo\":\"me/plankit\"}}}}\n"
+	content := "{\"enabledPlugins\":{\"plankit@plankit\":true},\"extraKnownMarketplaces\":{\"plankit\":{\"source\":{\"source\":\"github\",\"repo\":\"me/plankit\"},\"autoUpdate\":false}}}\n"
 	writeSettings(t, dir, content, true)
 	code, _, errw := run(t, "init", "--project-dir", dir)
 	if code != cli.ExitOK {
@@ -606,11 +607,36 @@ func TestInitLeavesPresentEntriesAlone(t *testing.T) {
 	if changed, _ := git.Exec(dir, "diff", "--name-only", "HEAD~1", "HEAD"); changed != config.FileName {
 		t.Fatalf("commit touched %q", changed)
 	}
-	if !strings.Contains(errw, "extraKnownMarketplaces.plankit is present with another value; left as it is") {
-		t.Fatalf("difference not reported:\n%s", errw)
+	for _, entry := range []string{"extraKnownMarketplaces.plankit.source", "extraKnownMarketplaces.plankit.autoUpdate"} {
+		if !strings.Contains(errw, entry+" is present with another value; left as it is") {
+			t.Fatalf("difference in %s not reported:\n%s", entry, errw)
+		}
 	}
 	if strings.Contains(errw, "created: .pk.json, .claude") {
 		t.Fatalf("settings listed as created:\n%s", errw)
+	}
+}
+
+// A marketplace entry the developer pointed elsewhere, with nothing said
+// about auto-update: the source stays theirs and the missing key is
+// added beside it.
+func TestInitAddsAutoUpdateBesideTheDevelopersSource(t *testing.T) {
+	dir := scratch(t, true)
+	content := "{\"enabledPlugins\":{\"plankit@plankit\":true},\"extraKnownMarketplaces\":{\"plankit\":{\"source\":{\"source\":\"github\",\"repo\":\"me/plankit\"}}}}\n"
+	writeSettings(t, dir, content, true)
+	code, _, errw := run(t, "init", "--project-dir", dir)
+	if code != cli.ExitOK {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	want := strings.Replace(content, "\"repo\":\"me/plankit\"}", "\"repo\":\"me/plankit\"},\"autoUpdate\":true", 1)
+	if got, _ := os.ReadFile(filepath.Join(dir, settingsFile)); string(got) != want {
+		t.Fatalf("settings after init:\n%s\nwant\n%s", got, want)
+	}
+	if !strings.Contains(errw, "extraKnownMarketplaces.plankit.source is present with another value; left as it is") {
+		t.Fatalf("the developer's source not reported:\n%s", errw)
+	}
+	if strings.Contains(errw, "autoUpdate is present") {
+		t.Fatalf("the added key reported as the developer's:\n%s", errw)
 	}
 }
 
@@ -650,11 +676,11 @@ func TestStatusPluginEntriesNote(t *testing.T) {
 	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "Note:") {
 		t.Fatalf("init wrote the entries, so no note:\n%s", errw)
 	}
-	// One entry gone: the note shows only that one, as the exact JSON to
-	// merge, and --quiet drops it.
+	// The marketplace gone: the note shows its two entries, as the exact
+	// JSON to merge, and --quiet drops it.
 	writeSettings(t, dir, "{\n  \"enabledPlugins\": {\n    \"plankit@plankit\": true\n  }\n}\n", true)
 	_, _, errw := run(t, "status", "--project-dir", dir)
-	if !strings.Contains(errw, "Note: "+settingsFile+" lacks the entries") || !strings.Contains(errw, `"url": "https://plankit.com/marketplace.json"`) {
+	if !strings.Contains(errw, "Note: "+settingsFile+" lacks plugin entries that pk init writes") || !strings.Contains(errw, `"url": "https://plankit.com/marketplace.json"`) || !strings.Contains(errw, `"autoUpdate": true`) {
 		t.Fatalf("note missing:\n%s", errw)
 	}
 	if strings.Contains(errw, "enabledPlugins") {
@@ -662,6 +688,22 @@ func TestStatusPluginEntriesNote(t *testing.T) {
 	}
 	if _, _, quiet := run(t, "status", "--project-dir", dir, "--quiet"); strings.Contains(quiet, "Note:") {
 		t.Fatalf("--quiet still notes:\n%s", quiet)
+	}
+	// A repository configured before init wrote autoUpdate lacks only
+	// that key, and the note shows only that key.
+	const earlier = "{\n  \"extraKnownMarketplaces\": {\n    \"plankit\": {\n      \"source\": {\n        \"source\": \"url\",\n        \"url\": \"https://plankit.com/marketplace.json\"\n      }\n    }\n  },\n  \"enabledPlugins\": {\n    \"plankit@plankit\": true\n  }\n}\n"
+	writeSettings(t, dir, earlier, true)
+	_, _, errw = run(t, "status", "--project-dir", dir)
+	if !strings.Contains(errw, "{\n  \"extraKnownMarketplaces\": {\n    \"plankit\": {\n      \"autoUpdate\": true\n    }\n  }\n}") {
+		t.Fatalf("note for the missing key:\n%s", errw)
+	}
+	if strings.Contains(errw, "marketplace.json") || strings.Contains(errw, "enabledPlugins") {
+		t.Fatalf("present entries shown as missing:\n%s", errw)
+	}
+	// Auto-update turned off is the developer's choice: no note.
+	writeSettings(t, dir, strings.Replace(earlier, "      }\n    }\n  },", "      },\n      \"autoUpdate\": false\n    }\n  },", 1), true)
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "Note:") {
+		t.Fatalf("autoUpdate false noted:\n%s", errw)
 	}
 	// A file that does not parse is a problem, not a note: every mode
 	// says so and exits 2.

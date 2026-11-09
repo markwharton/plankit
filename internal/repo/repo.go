@@ -498,7 +498,7 @@ func runStatus(ctx *cli.Context) error {
 		if err != nil {
 			return cli.Statef("%s: %v", settingsFile, err)
 		}
-		msg.Notef(ctx.Stderr, "%s lacks the entries that load the plugin for a teammate who trusts the folder; merge in:\n%s", settingsFile, block)
+		msg.Notef(ctx.Stderr, "%s lacks plugin entries that pk init writes; merge in:\n%s", settingsFile, block)
 	}
 	return nil
 }

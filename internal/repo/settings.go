@@ -12,10 +12,12 @@ import (
 )
 
 // settingsFile is the repository's Claude Code settings, the developer's
-// file. A repository whose contributors use a plugin carries two entries
-// there: the marketplace, added when a teammate trusts the folder, and
-// the plugin enabled, which project settings apply over user settings.
-// pk splices them in and leaves every other byte alone.
+// file. A repository whose contributors use a plugin carries three
+// entries there: the marketplace's source, added when a teammate trusts
+// the folder; auto-update on for that marketplace, so the repository's
+// install of the plugin follows its releases; and the plugin enabled,
+// which project settings apply over user settings. pk splices them in
+// and leaves every other byte alone.
 const settingsFile = ".claude/settings.json"
 
 const (
@@ -35,17 +37,17 @@ type pluginEntry struct {
 func (e pluginEntry) String() string { return strings.Join(e.path, ".") }
 
 // pluginEntries are the entries a configured repository carries, in the
-// order they are written.
+// order they are written. No entry's value holds another entry's key, so
+// each is judged alone: autoUpdate set to false is the developer turning
+// it off, and says nothing about the source beside it.
 func pluginEntries() []pluginEntry {
 	type source struct {
 		Source string `json:"source"`
 		URL    string `json:"url"`
 	}
-	type marketplace struct {
-		Source source `json:"source"`
-	}
 	return []pluginEntry{
-		{[]string{"extraKnownMarketplaces", marketplaceName}, marketplace{source{"url", marketplaceURL}}},
+		{[]string{"extraKnownMarketplaces", marketplaceName, "source"}, source{"url", marketplaceURL}},
+		{[]string{"extraKnownMarketplaces", marketplaceName, "autoUpdate"}, true},
 		{[]string{"enabledPlugins", pluginID}, true},
 	}
 }
