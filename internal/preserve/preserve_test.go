@@ -708,16 +708,16 @@ func TestExtractPlanPathHandlesWindowsEscapes(t *testing.T) {
 	if dir != "C:/Users/m/.claude/plans" {
 		t.Fatalf("claudePlansDir = %q", dir)
 	}
-	if got := extractPlanPath(raw, dir, home); got != "C:/Users/m/.claude/plans/p.md" {
+	if got, _ := extractPlanPath(raw, dir, home); got != "C:/Users/m/.claude/plans/p.md" {
 		t.Fatalf("got %q", got)
 	}
 	unix := func() (string, error) { return "/home/m", nil }
 	legacy := json.RawMessage(`"Plan saved to /home/m/.claude/plans/x.md"`)
-	if got := extractPlanPath(legacy, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/x.md" {
+	if got, _ := extractPlanPath(legacy, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/x.md" {
 		t.Fatalf("legacy form: %q", got)
 	}
 	tilde := json.RawMessage(`{"filePath":"~/.claude/plans/t.md"}`)
-	if got := extractPlanPath(tilde, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/t.md" {
+	if got, _ := extractPlanPath(tilde, claudePlansDir("", unix), unix); got != "/home/m/.claude/plans/t.md" {
 		t.Fatalf("tilde form: %q", got)
 	}
 }
@@ -742,12 +742,52 @@ func TestClaudePlansDirFollowsClaudeConfigDir(t *testing.T) {
 	}
 	dir := claudePlansDir("/home/m/.claude-work", unix)
 	work := json.RawMessage(`{"filePath":"/home/m/.claude-work/plans/p.md"}`)
-	if got := extractPlanPath(work, dir, unix); got != "/home/m/.claude-work/plans/p.md" {
+	if got, _ := extractPlanPath(work, dir, unix); got != "/home/m/.claude-work/plans/p.md" {
 		t.Fatalf("work account plan: %q", got)
 	}
 	other := json.RawMessage(`{"filePath":"/home/m/.claude/plans/p.md"}`)
-	if got := extractPlanPath(other, dir, unix); got != "" {
+	if got, _ := extractPlanPath(other, dir, unix); got != "" {
 		t.Fatalf("the other account's plan matched: %q", got)
+	}
+}
+
+// TestHookReportsAPlanOutsideThePlansDirectory: a payload naming a file
+// that is not in the session's plans directory leaves the approved plan
+// unrecorded, so the hook says which path and which rule, on stderr
+// with the reporting exit. Where preserving is off or the repository
+// is not configured, it stays silent.
+func TestHookReportsAPlanOutsideThePlansDirectory(t *testing.T) {
+	dir, _ := scratch(t, "auto", planBody)
+	elsewhere := filepath.Join(t.TempDir(), ".claude-work", "plans", "widget.md")
+	os.MkdirAll(filepath.Dir(elsewhere), 0o755)
+	os.WriteFile(elsewhere, []byte(planBody), 0o644)
+	before := commitCount(t, dir)
+
+	out, errw, code := runPreserveIO(t, dir, elsewhere)
+	if code != hookio.ExitReport || out != "" {
+		t.Fatalf("code=%d out=%q errw=%q", code, out, errw)
+	}
+	for _, want := range []string{"pk preserve:", elsewhere, "was not preserved", ".claude/plans/", "CLAUDE_CONFIG_DIR"} {
+		if !strings.Contains(errw, want) {
+			t.Fatalf("stderr lacks %q: %s", want, errw)
+		}
+	}
+	if commitCount(t, dir) != before {
+		t.Fatal("a refused path was committed")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git", "pk-pending-plan")); err == nil {
+		t.Fatal("a refused path left a pointer")
+	}
+
+	off, _ := scratch(t, "off", planBody)
+	if out, errw := runPreserve(t, off, elsewhere); out != "" || errw != "" {
+		t.Fatalf("off mode broke silence: out=%q errw=%q", out, errw)
+	}
+
+	unconfigured, _ := scratch(t, "auto", planBody)
+	os.Remove(config.Path(unconfigured))
+	if out, errw := runPreserve(t, unconfigured, elsewhere); out != "" || errw != "" {
+		t.Fatalf("an unconfigured repository broke silence: out=%q errw=%q", out, errw)
 	}
 }
 

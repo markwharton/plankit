@@ -118,18 +118,27 @@ func run(ctx *cli.Context) error {
 		}
 	}
 
+	// refused is the hook's payload naming a file outside the plans
+	// directory. It waits for the gates below, which say whether the hook
+	// is on here, and is reported after them.
+	var refused error
 	if hookInvocation {
-		planPath = extractPlanPath(input.ToolResponse, sessionPlansDir(), os.UserHomeDir)
-		if planPath != "" {
+		plans := sessionPlansDir()
+		var named string
+		planPath, named = extractPlanPath(input.ToolResponse, plans, os.UserHomeDir)
+		switch {
+		case planPath != "":
 			if _, err := os.Stat(planPath); err != nil {
 				planPath = "" // the payload named a plan that is gone
 			}
+		case named != "":
+			refused = fmt.Errorf("the approved plan %s was not preserved: %s", named, plansRule(plans))
 		}
 	} else if p, ok := readPointer(root); ok {
 		planPath = p
 	}
 
-	if planPath == "" {
+	if planPath == "" && refused == nil {
 		// The hook says nothing when it takes no action: its stdout is
 		// the PostToolUse envelope, and silence is how it declines. A
 		// person who typed the command hears the outcome instead, the
@@ -140,17 +149,19 @@ func run(ctx *cli.Context) error {
 		return nil
 	}
 
-	content, err := os.ReadFile(planPath)
-	if err != nil {
-		return outcome(ctx, hookInvocation, cli.WithHint(unreadable(planPath, err), "%s", discardHint))
-	}
-	if len(content) < minPlanSize {
-		// The hook declines a draft in silence. A person who typed the
-		// command is told which plan it was and how to drop it.
-		if hookInvocation {
-			return nil
+	var content []byte
+	if planPath != "" {
+		if content, err = os.ReadFile(planPath); err != nil {
+			return outcome(ctx, hookInvocation, cli.WithHint(unreadable(planPath, err), "%s", discardHint))
 		}
-		return cli.WithHint(tooSmall(planPath, len(content)), "%s", discardHint)
+		if len(content) < minPlanSize {
+			// The hook declines a draft in silence. A person who typed the
+			// command is told which plan it was and how to drop it.
+			if hookInvocation {
+				return nil
+			}
+			return cli.WithHint(tooSmall(planPath, len(content)), "%s", discardHint)
+		}
 	}
 
 	if rootErr != nil {
@@ -164,12 +175,18 @@ func run(ctx *cli.Context) error {
 	if hookInvocation {
 		mode = cfg.Preserve.ResolvedMode()
 	}
+	if mode == config.ModeOff {
+		return nil
+	}
+
+	// Preserving is on here, so an approved plan that cannot be recorded
+	// is a problem the hook cannot act on.
+	if refused != nil {
+		return hookio.Report(ctx.Stderr, "preserve", refused)
+	}
 
 	title := extractTitle(string(content))
-	switch mode {
-	case config.ModeOff:
-		return nil
-	case config.ModeManual:
+	if mode == config.ModeManual {
 		writePointer(ctx, root, planPath)
 		return outcome(ctx, hookInvocation, writeResponse(ctx,
 			fmt.Sprintf("Plan '%s' ready. Type /plankit:preserve to save it.", title),
@@ -214,11 +231,7 @@ func runNamed(ctx *cli.Context, typed string) error {
 	plans := sessionPlansDir()
 	planPath := matchPlanPath(typed, plans, os.UserHomeDir)
 	if planPath == "" {
-		where := plans + "/"
-		if plans == "" {
-			where = "~/.claude/plans/"
-		}
-		return cli.Usagef("--plan %s is not a Claude Code plan: the path must be a .md file under %s (the session's plans directory: plans/ under %s when that is set, else ~/.claude/plans)", typed, where, configDirEnv)
+		return cli.Usagef("--plan %s is not a Claude Code plan: %s", typed, plansRule(plans))
 	}
 	content, err := os.ReadFile(planPath)
 	if err != nil {
@@ -479,29 +492,43 @@ func claudePlansDir(configDir string, homeDir func() (string, error)) string {
 	return home + "/.claude/plans"
 }
 
+// plansRule states what matchPlanPath accepts, for the refusals that
+// name it: --plan and the hook's payload. plans is claudePlansDir's
+// answer.
+func plansRule(plans string) string {
+	where := plans + "/"
+	if plans == "" {
+		where = "~/.claude/plans/"
+	}
+	return fmt.Sprintf("the path must be a .md file under %s (the session's plans directory: plans/ under %s when that is set, else ~/.claude/plans)", where, configDirEnv)
+}
+
 // extractPlanPath finds the plan file path in a PostToolUse
 // tool_response. The harness sends an object carrying the path in a
 // filePath field; older versions sent a plain string. Parsing the JSON
 // structurally lets encoding/json handle escaping, so a Windows path's
 // escaped backslashes decode to single separators before normalization;
 // matching raw bytes would turn each \\ into // and break the path.
-func extractPlanPath(toolResponse json.RawMessage, dir string, homeDir func() (string, error)) string {
+//
+// The first result is the plan's path, "" when the payload carries none
+// inside dir. The second is the filePath field as the payload gave it,
+// "" when the payload has none, so the caller can name a path that was
+// given and did not match.
+func extractPlanPath(toolResponse json.RawMessage, dir string, homeDir func() (string, error)) (string, string) {
 	if len(toolResponse) == 0 {
-		return ""
+		return "", ""
 	}
 	var obj struct {
 		FilePath string `json:"filePath"`
 	}
 	if json.Unmarshal(toolResponse, &obj) == nil && obj.FilePath != "" {
-		if p := matchPlanPath(obj.FilePath, dir, homeDir); p != "" {
-			return p
-		}
+		return matchPlanPath(obj.FilePath, dir, homeDir), obj.FilePath
 	}
 	var s string
 	if json.Unmarshal(toolResponse, &s) == nil {
-		return matchPlanPath(s, dir, homeDir)
+		return matchPlanPath(s, dir, homeDir), ""
 	}
-	return ""
+	return "", ""
 }
 
 // matchPlanPath normalizes backslashes to forward slashes so Windows

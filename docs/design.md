@@ -276,7 +276,8 @@ echo '{"cwd":"'"$PWD"'","tool_input":{"file_path":"'"$PWD"'/docs/plans/example.m
 
 # preserve: PostToolUse on ExitPlanMode. tool_response carries the
 # approved plan's path under ~/.claude/plans/ (plans/ under CLAUDE_CONFIG_DIR
-# when that is set; nothing else matches). With no readable plan of
+# when that is set; a path anywhere else is reported on stderr with
+# exit 1). With no readable plan of
 # at least minPlanSize bytes (grep minPlanSize internal/preserve/preserve.go)
 # at that path the hook is silent. --dry-run prints the reason to stderr.
 echo '{"cwd":"'"$PWD"'","tool_response":{"filePath":"~/.claude/plans/example.md"}}' | pk preserve --dry-run
