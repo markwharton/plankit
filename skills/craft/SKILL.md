@@ -42,6 +42,27 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
   default for an optional setting is not a fallback. Check: a test for
   the error path.
 
+### Agents
+
+- **Write shared code before briefing any agent.** Write the code that
+  more than one agent's work will use, and one finished example of the
+  work each agent will do. Agents cannot see each other's files. When
+  shared code is missing, each agent writes its own version, and the
+  versions differ. Check: the shared code and the example exist before
+  the first brief.
+- **Tell each agent to stop and report when it needs a change outside
+  its files.** An agent that is not told this writes its own copy
+  inside its files. That is a fault: the copy passes every check, and
+  the code then has two versions. Check: the brief states the rule.
+- **Ask each agent to list what it added.** The report names every
+  helper, table and constant the agent created, and every place its
+  work differs from the example. Without the list, a second copy of a
+  helper goes unnoticed. Check: the list is in the report.
+- **Read an agent's code before accepting it.** Read where it meets
+  the shared code and where it meets another agent's code. Search for
+  a second version of each thing the report lists. Passing checks do
+  not show duplication. Check: none automated; caught only in review.
+
 ### Git
 
 - **Git decisions are the developer's.** A request to commit is not a

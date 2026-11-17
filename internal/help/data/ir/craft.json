@@ -215,6 +215,86 @@
     {
       "type": "heading",
       "level": 3,
+      "id": "agents",
+      "inlines": [
+        {
+          "type": "text",
+          "text": "Agents"
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "items": [
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "Write shared code before briefing any agent.",
+                "strong": true
+              },
+              {
+                "type": "text",
+                "text": " Write the code that more than one agent's work will use, and one finished example of the work each agent will do. Agents cannot see each other's files. When shared code is missing, each agent writes its own version, and the versions differ. Check: the shared code and the example exist before the first brief."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "Tell each agent to stop and report when it needs a change outside its files.",
+                "strong": true
+              },
+              {
+                "type": "text",
+                "text": " An agent that is not told this writes its own copy inside its files. That is a fault: the copy passes every check, and the code then has two versions. Check: the brief states the rule."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "Ask each agent to list what it added.",
+                "strong": true
+              },
+              {
+                "type": "text",
+                "text": " The report names every helper, table and constant the agent created, and every place its work differs from the example. Without the list, a second copy of a helper goes unnoticed. Check: the list is in the report."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "Read an agent's code before accepting it.",
+                "strong": true
+              },
+              {
+                "type": "text",
+                "text": " Read where it meets the shared code and where it meets another agent's code. Search for a second version of each thing the report lists. Passing checks do not show duplication. Check: none automated; caught only in review."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
       "id": "git",
       "inlines": [
         {
