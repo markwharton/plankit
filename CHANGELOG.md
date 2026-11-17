@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.10.1] - 2026-11-18
+
+### Documentation
+
+- craft has standards for working with agents (5180b98)
+
+### Maintenance
+
+- pin Go toolchain to 1.27.3 (03bfd0f)
+
 ## [v1.10.0] - 2026-11-09
 
 ### Added
@@ -1491,3 +1501,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.8.3]: https://github.com/markwharton/plankit/compare/v1.8.2...v1.8.3
 [v1.9.0]: https://github.com/markwharton/plankit/compare/v1.8.3...v1.9.0
 [v1.10.0]: https://github.com/markwharton/plankit/compare/v1.9.0...v1.10.0
+[v1.10.1]: https://github.com/markwharton/plankit/compare/v1.10.0...v1.10.1
