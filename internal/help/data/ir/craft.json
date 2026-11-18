@@ -237,7 +237,7 @@
               },
               {
                 "type": "text",
-                "text": " Write the code that more than one agent's work will use, and one finished example of the work each agent will do. Agents cannot see each other's files. When shared code is missing, each agent writes its own version, and the versions differ. Check: the shared code and the example exist before the first brief."
+                "text": " Write the code that more than one agent's work will use, and one finished example of the work each agent will do. Agents working at the same time do not know what the others are writing. When shared code is missing, each agent writes its own version, and the versions differ. Check: the shared code and the example exist before the first brief."
               }
             ]
           }
