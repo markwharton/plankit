@@ -46,10 +46,10 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 
 - **Write shared code before briefing any agent.** Write the code that
   more than one agent's work will use, and one finished example of the
-  work each agent will do. Agents cannot see each other's files. When
-  shared code is missing, each agent writes its own version, and the
-  versions differ. Check: the shared code and the example exist before
-  the first brief.
+  work each agent will do. Agents working at the same time do not know
+  what the others are writing. When shared code is missing, each agent
+  writes its own version, and the versions differ. Check: the shared
+  code and the example exist before the first brief.
 - **Tell each agent to stop and report when it needs a change outside
   its files.** An agent that is not told this writes its own copy
   inside its files. That is a fault: the copy passes every check, and
