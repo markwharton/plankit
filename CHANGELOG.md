@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.10.2] - 2026-11-20
+
+### Fixed
+
+- report files left by a v0.x pk setup (76482a7)
+
+### Documentation
+
+- agents do not know what the others are writing (1b0cfce)
+
 ## [v1.10.1] - 2026-11-18
 
 ### Documentation
@@ -1502,3 +1512,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.9.0]: https://github.com/markwharton/plankit/compare/v1.8.3...v1.9.0
 [v1.10.0]: https://github.com/markwharton/plankit/compare/v1.9.0...v1.10.0
 [v1.10.1]: https://github.com/markwharton/plankit/compare/v1.10.0...v1.10.1
+[v1.10.2]: https://github.com/markwharton/plankit/compare/v1.10.1...v1.10.2
