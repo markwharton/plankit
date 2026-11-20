@@ -56,8 +56,12 @@ with the way out. A pending plan, recorded by the preserve hook and
 not yet committed, is shown with its path and noted with its two ways
 out, `/plankit:preserve` and `pk preserve --discard`; a pointer whose
 plan file is gone is marked missing. One whose `.claude/settings.json`
-lacks a plugin entry gets a note with the JSON to merge in. `--quiet`
-drops the notes.
+lacks a plugin entry gets a note with the JSON to merge in. One still
+carrying the files a v0.x `pk setup` copied in gets a note pointing at
+`pk help overview`. The same setup wrote hook entries into
+`.claude/settings.json`; while those remain, each hook fires twice,
+once from the entries and once from the plugin. `--quiet` drops the
+notes.
 
 ## Flags
 

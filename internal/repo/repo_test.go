@@ -83,6 +83,28 @@ func TestInitRefusalNamesLegacyWiring(t *testing.T) {
 	}
 }
 
+// A v0.x repository that enabled the plugin by hand never meets the init
+// refusal, so status notes the leftover files, and --quiet drops the note.
+func TestStatusNotesLegacyWiring(t *testing.T) {
+	dir := scratch(t, true)
+	if code, out, errw := run(t, "init", "--project-dir", dir); code != cli.ExitOK {
+		t.Fatalf("init exit %d: %s%s", code, out, errw)
+	}
+	if _, _, errw := run(t, "status", "--project-dir", dir); strings.Contains(errw, "v0.x") {
+		t.Fatalf("nothing left over, yet noted:\n%s", errw)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".claude", "install-pk.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	code, _, errw := run(t, "status", "--project-dir", dir)
+	if code != cli.ExitOK || !strings.Contains(errw, "Note: "+legacyHint) {
+		t.Fatalf("legacy note: code=%d errw=%q", code, errw)
+	}
+	if _, _, quiet := run(t, "status", "--project-dir", dir, "--quiet"); strings.Contains(quiet, "Note:") {
+		t.Fatalf("--quiet still notes:\n%s", quiet)
+	}
+}
+
 func TestInitThenStatusRoundTrips(t *testing.T) {
 	dir := scratch(t, true)
 	code, out, errw := run(t, "init", "--project-dir", dir)

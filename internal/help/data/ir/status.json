@@ -251,7 +251,31 @@
         },
         {
           "type": "text",
-          "text": " lacks a plugin entry gets a note with the JSON to merge in. "
+          "text": " lacks a plugin entry gets a note with the JSON to merge in. One still carrying the files a v0.x "
+        },
+        {
+          "type": "code",
+          "text": "pk setup"
+        },
+        {
+          "type": "text",
+          "text": " copied in gets a note pointing at "
+        },
+        {
+          "type": "code",
+          "text": "pk help overview"
+        },
+        {
+          "type": "text",
+          "text": ". The same setup wrote hook entries into "
+        },
+        {
+          "type": "code",
+          "text": ".claude/settings.json"
+        },
+        {
+          "type": "text",
+          "text": "; while those remain, each hook fires twice, once from the entries and once from the plugin. "
         },
         {
           "type": "code",

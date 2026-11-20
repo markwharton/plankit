@@ -49,7 +49,7 @@ func runInit(ctx *cli.Context) error {
 		// than a second .pk.json, so the hint names that one instead.
 		hint := fmt.Sprintf("edit %s directly, or run pk status to see the current policy", config.FileName)
 		if legacyWiring(root) {
-			hint = "v0.x files are still here; pk help overview says what to remove"
+			hint = legacyHint
 		}
 		return cli.WithHint(cli.Statef("already configured: %s exists", config.FileName), "%s", hint)
 	}
@@ -262,8 +262,8 @@ func runInit(ctx *cli.Context) error {
 
 // legacyWiring reports the files a v0.x pk setup copied into a
 // repository, which the plugin now ships itself. Each path is pk's own
-// and cannot be mistaken for a project's: while they are present, the
-// copied hooks and the plugin's both fire.
+// and cannot be mistaken for a project's, so it marks a repository that
+// the same setup also wrote hook entries into.
 func legacyWiring(root string) bool {
 	for _, p := range []string{
 		".claude/install-pk.sh",
@@ -276,6 +276,10 @@ func legacyWiring(root string) bool {
 	}
 	return false
 }
+
+// legacyHint names the leftover v0.x files and where the migration steps
+// are. The init refusal and the status note both say it.
+const legacyHint = "v0.x files are still here; pk help overview says what to remove"
 
 // StatusCmd reports configuration and repository state.
 var StatusCmd = &cli.Command{
@@ -499,6 +503,12 @@ func runStatus(ctx *cli.Context) error {
 			return cli.Statef("%s: %v", settingsFile, err)
 		}
 		msg.Notef(ctx.Stderr, "%s lacks plugin entries that pk init writes; merge in:\n%s", settingsFile, block)
+	}
+	// Files a v0.x pk setup copied in mark a repository whose settings
+	// may still carry that setup's hook entries, which fire alongside
+	// the plugin's.
+	if legacyWiring(root) {
+		msg.Notef(ctx.Stderr, "%s", legacyHint)
 	}
 	return nil
 }

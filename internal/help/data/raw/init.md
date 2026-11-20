@@ -88,8 +88,9 @@ start without one. `--dry-run` previews every step without writing.
 missing branch or plugin entry.
 
 In a repository still carrying the files a v0.x `pk setup` copied in,
-the refusal says so and points at `pk help overview`: those files wire
-the hooks the plugin already ships, so each one fires twice.
+the refusal says so and points at `pk help overview`. The same setup
+wrote hook entries into `.claude/settings.json`; while those remain,
+each hook fires twice, once from the entries and once from the plugin.
 
 ## Flags
 

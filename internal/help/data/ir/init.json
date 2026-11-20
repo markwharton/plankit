@@ -541,7 +541,15 @@
         },
         {
           "type": "text",
-          "text": ": those files wire the hooks the plugin already ships, so each one fires twice."
+          "text": ". The same setup wrote hook entries into "
+        },
+        {
+          "type": "code",
+          "text": ".claude/settings.json"
+        },
+        {
+          "type": "text",
+          "text": "; while those remain, each hook fires twice, once from the entries and once from the plugin."
         }
       ]
     },
