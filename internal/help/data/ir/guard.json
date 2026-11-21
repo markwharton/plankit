@@ -371,7 +371,7 @@
         },
         {
           "type": "text",
-          "text": ". A compound command is judged by its parts."
+          "text": ". A compound command is judged by its parts. A here-document's body is read as data, not as commands."
         }
       ]
     },
@@ -407,7 +407,7 @@
         },
         {
           "type": "text",
-          "text": ", or "
+          "text": ", "
         },
         {
           "type": "code",
@@ -415,7 +415,7 @@
         },
         {
           "type": "text",
-          "text": " is not read. An internal error fails open with a note on stderr. An unconfigured repository (no "
+          "text": ", or a shell reading a here-document is not read. An internal error fails open with a note on stderr. An unconfigured repository (no "
         },
         {
           "type": "code",

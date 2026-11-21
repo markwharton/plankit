@@ -268,8 +268,8 @@ type heredoc struct {
 // quotes are respected: an operator inside a quoted string is not a
 // delimiter. An & that belongs to a redirection (2>&1, &>) is not one
 // either. A here-document's body, the lines after its command up to the
-// delimiter, is recorded as that command's stdin. The body lines are
-// still split as commands too, as they were before stdin was recorded.
+// delimiter, is data: it is recorded as that command's stdin and is not
+// read for commands or quotes.
 func splitShellCommands(command string) []shellCommand {
 	var result []shellCommand
 	var current strings.Builder
@@ -302,7 +302,7 @@ func splitShellCommands(command string) []shellCommand {
 				i++
 			} else if c == '\n' {
 				flush()
-				readBodies(command[i+1:], waiting, result)
+				i += readBodies(command[i+1:], waiting, result)
 				waiting = nil
 			} else if c == '<' && strings.HasPrefix(command[i:], "<<") && !strings.HasPrefix(command[i:], "<<<") {
 				if h, ok := heredocOperator(command[i+2:]); ok {
@@ -357,15 +357,18 @@ func heredocOperator(rest string) (heredoc, bool) {
 // readBodies reads the here-document bodies that follow a line, in the
 // order their operators appeared, and records each as its command's
 // stdin. A body runs to the line that is its delimiter, or to the end
-// of the text when that line is missing.
-func readBodies(text string, waiting []heredoc, result []shellCommand) {
+// of the text when that line is missing. It returns the number of
+// bytes read, delimiter lines included, so the caller resumes after
+// them.
+func readBodies(text string, waiting []heredoc, result []shellCommand) int {
 	lines := strings.Split(text, "\n")
-	n := 0
+	n, read := 0, 0
 	for _, h := range waiting {
 		var body []string
 		for n < len(lines) {
 			line := lines[n]
 			n++
+			read += len(line) + 1
 			if h.strip {
 				line = strings.TrimLeft(line, "\t")
 			}
@@ -376,6 +379,7 @@ func readBodies(text string, waiting []heredoc, result []shellCommand) {
 		}
 		result[h.owner].stdin = strings.Join(body, "\n")
 	}
+	return min(read, len(text))
 }
 
 // isRedirection reports whether the & at command[i] belongs to a
@@ -403,9 +407,9 @@ type invocation struct {
 // "GIT_DIR=. git push", "command git push", and "then git push" all
 // run git.
 //
-// A command run through sudo, sh -c, or eval is not read: guard is a
-// guardrail against an agent following its defaults, and those are not
-// its defaults.
+// A command run through sudo, sh -c, eval, or a shell reading a
+// here-document is not read: guard is a guardrail against an agent
+// following its defaults, and those are not its defaults.
 func invocations(command string) []invocation {
 	var calls []invocation
 	for _, cmd := range splitShellCommands(command) {

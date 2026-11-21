@@ -424,6 +424,11 @@ func TestPushIsReadThroughShellForms(t *testing.T) {
 		`git --work-tree /tmp/x push`,
 		`git commit -m "x" 2>&1 && git push`,
 		`case $x in a) git push;; esac`,
+		// A here-document's body is data: a quote in it does not hide
+		// the command after it.
+		"git commit -F - <<'EOF'\nfix: don't x\nEOF\ngit push",
+		"cat <<'EOF' > notes.md\nsay \"hi\nEOF\ngit push",
+		"git commit -F - <<'EOF' && git push\nfix: don't x\nEOF",
 	} {
 		if out, _ := runGuard(t, dir, c); !strings.Contains(out, `"deny"`) || !strings.Contains(out, "push blocked") {
 			t.Errorf("%q should be denied as a push, got %q", c, out)
@@ -440,6 +445,11 @@ func TestPushIsReadThroughShellForms(t *testing.T) {
 		`git log &> log.txt`,
 		`sudo git push`,
 		`sh -c "git push"`,
+		// A here-document's body is data, not commands: text that names
+		// git is not run, and a shell reading the body is not read, like
+		// sh -c.
+		"cat <<'EOF' > notes.md\ngit push\nEOF",
+		"bash <<'EOF'\ngit push\nEOF",
 	} {
 		if out, _ := runGuard(t, dir, c); out != "" {
 			t.Errorf("%q should get no decision, got %q", c, out)
