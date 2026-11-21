@@ -500,7 +500,7 @@
         },
         {
           "type": "text",
-          "text": " whose inline message carries a marker. "
+          "text": " whose message carries a marker. "
         },
         {
           "type": "code",
@@ -517,7 +517,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "Only "
+          "text": "The message is read where the command line holds it: a "
         },
         {
           "type": "code",
@@ -525,7 +525,7 @@
         },
         {
           "type": "text",
-          "text": " and "
+          "text": " or "
         },
         {
           "type": "code",
@@ -533,7 +533,23 @@
         },
         {
           "type": "text",
-          "text": " arguments are inspected; "
+          "text": " argument, a here-document passed as "
+        },
+        {
+          "type": "code",
+          "text": "-m \"$(cat \u003c\u003c'EOF' … EOF)\""
+        },
+        {
+          "type": "text",
+          "text": ", and a here-document on stdin with "
+        },
+        {
+          "type": "code",
+          "text": "-F -"
+        },
+        {
+          "type": "text",
+          "text": ". A "
         },
         {
           "type": "code",
@@ -541,15 +557,7 @@
         },
         {
           "type": "text",
-          "text": " files and editor commits pass through. That covers the case the rule exists for, since agent commits are "
-        },
-        {
-          "type": "code",
-          "text": "-m"
-        },
-        {
-          "type": "text",
-          "text": " commits."
+          "text": " file and an editor commit pass through, because their text is not in the command line."
         }
       ]
     },

@@ -56,12 +56,14 @@ defaults are under Settings below.
 A breaking marker (`!` after the type, or a `BREAKING CHANGE:` footer)
 drives the next major version. The marker is the developer's claim,
 and an agent never adds one on its own judgment.
-The hook asks before a `git commit` whose inline message carries a
-marker. `guard.breaking: "off"` disables the ask, not the rule.
+The hook asks before a `git commit` whose message carries a marker.
+`guard.breaking: "off"` disables the ask, not the rule.
 
-Only `-m` and `--message` arguments are inspected; `-F` files and
-editor commits pass through. That covers the case the rule exists
-for, since agent commits are `-m` commits.
+The message is read where the command line holds it: a `-m` or
+`--message` argument, a here-document passed as
+`-m "$(cat <<'EOF' … EOF)"`, and a here-document on stdin with
+`-F -`. A `-F` file and an editor commit pass through, because their
+text is not in the command line.
 
 ## Version bumps
 

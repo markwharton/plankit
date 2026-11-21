@@ -261,6 +261,17 @@ func TestBreakingMarkerAsks(t *testing.T) {
 		{"breaking words mid-line", `git commit -m "docs: explain the BREAKING CHANGE: footer"`, false},
 		{"no inline message", `git commit -F msg.txt`, false},
 		{"chained after safe command", `go test ./... && git commit -m "chore!: retire it"`, true},
+		{"heredoc in substitution", "git commit -m \"$(cat <<'EOF'\nfeat!: drop the old flag\n\nThe flag is gone.\nEOF\n)\"", true},
+		{"heredoc in substitution, footer", "git commit -m \"$(cat <<'EOF'\nfix: z\n\nBREAKING CHANGE: q is gone\nEOF\n)\"", true},
+		{"heredoc in substitution, unquoted delimiter", "git commit -m \"$(cat <<EOF\nfeat!: x\nEOF\n)\"", true},
+		{"heredoc in substitution, spaced operator", "git commit -m \"$(cat << 'EOF'\nfeat!: x\nEOF\n)\"", true},
+		{"substitution of cat with a file", "git commit -m \"$(cat notes.txt <<'EOF'\nfeat!: x\nEOF\n)\"", false},
+		{"heredoc in substitution, plain", "git commit -m \"$(cat <<'EOF'\nfeat: add x\n\nNothing breaks.\nEOF\n)\"", false},
+		{"heredoc on stdin", "git commit -F - <<'EOF'\nfeat!: drop the old flag\nEOF", true},
+		{"heredoc on stdin, long form", "git commit --file=- <<'EOF'\nfeat!: x\nEOF", true},
+		{"heredoc on stdin, tab-stripped", "git commit -F - <<-EOF\n\tfeat!: x\n\tEOF", true},
+		{"heredoc on stdin, plain", "git commit -F - <<'EOF'\nfeat: add x\nEOF", false},
+		{"heredoc on stdin, chained after add", "git add . && git commit -F - <<'EOF'\nfeat!: x\nEOF", true},
 	}
 	for _, tc := range cases {
 		dir := scratchOn(t, "develop", nil)

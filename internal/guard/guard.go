@@ -246,22 +246,45 @@ func isGitPush(calls []invocation) bool {
 	return false
 }
 
+// shellCommand is one simple command's text, and the body of the
+// here-document it reads on stdin, if it has one.
+type shellCommand struct {
+	text  string
+	stdin string
+}
+
+// heredoc is a here-document operator (<<DELIM or <<-DELIM) waiting for
+// its body: owner is the index of the command it belongs to.
+type heredoc struct {
+	delim string
+	strip bool // <<- strips leading tabs from the body and the delimiter line
+	owner int
+}
+
 // splitShellCommands splits a command string into its simple commands,
 // on the shell's operators (&&, ||, |&, ;, |, a background &, and
 // newlines) and on parentheses, so a subshell and a command
 // substitution are read as the commands inside them. Single and double
 // quotes are respected: an operator inside a quoted string is not a
 // delimiter. An & that belongs to a redirection (2>&1, &>) is not one
-// either.
-func splitShellCommands(command string) []string {
-	var result []string
+// either. A here-document's body, the lines after its command up to the
+// delimiter, is recorded as that command's stdin. The body lines are
+// still split as commands too, as they were before stdin was recorded.
+func splitShellCommands(command string) []shellCommand {
+	var result []shellCommand
 	var current strings.Builder
+	var opened, waiting []heredoc
 	inSingle, inDouble := false, false
 
 	flush := func() {
 		if trimmed := strings.TrimSpace(current.String()); trimmed != "" {
-			result = append(result, trimmed)
+			result = append(result, shellCommand{text: trimmed})
+			for _, h := range opened {
+				h.owner = len(result) - 1
+				waiting = append(waiting, h)
+			}
 		}
+		opened = nil
 		current.Reset()
 	}
 	for i := 0; i < len(command); i++ {
@@ -277,7 +300,17 @@ func splitShellCommands(command string) []string {
 			if i+1 < len(command) && (command[i:i+2] == "&&" || command[i:i+2] == "||" || command[i:i+2] == "|&") {
 				flush()
 				i++
-			} else if c == ';' || c == '|' || c == '\n' || c == '(' || c == ')' {
+			} else if c == '\n' {
+				flush()
+				readBodies(command[i+1:], waiting, result)
+				waiting = nil
+			} else if c == '<' && strings.HasPrefix(command[i:], "<<") && !strings.HasPrefix(command[i:], "<<<") {
+				if h, ok := heredocOperator(command[i+2:]); ok {
+					opened = append(opened, h)
+				}
+				current.WriteString("<<")
+				i++
+			} else if c == ';' || c == '|' || c == '(' || c == ')' {
 				flush()
 			} else if c == '&' && !isRedirection(command, i) {
 				flush()
@@ -292,6 +325,59 @@ func splitShellCommands(command string) []string {
 	return result
 }
 
+// heredocOperator reads the delimiter after a << operator: an optional
+// "-", optional blanks, then the delimiter word, bare or quoted. The
+// bool is false when no delimiter follows.
+func heredocOperator(rest string) (heredoc, bool) {
+	var h heredoc
+	if strings.HasPrefix(rest, "-") {
+		h.strip = true
+		rest = rest[1:]
+	}
+	rest = strings.TrimLeft(rest, " \t")
+	if rest == "" {
+		return h, false
+	}
+	if q := rest[0]; q == '\'' || q == '"' {
+		end := strings.IndexByte(rest[1:], q)
+		if end < 0 {
+			return h, false
+		}
+		h.delim = rest[1 : end+1]
+	} else {
+		end := strings.IndexAny(rest, " \t\n;&|()<>")
+		if end < 0 {
+			end = len(rest)
+		}
+		h.delim = rest[:end]
+	}
+	return h, h.delim != ""
+}
+
+// readBodies reads the here-document bodies that follow a line, in the
+// order their operators appeared, and records each as its command's
+// stdin. A body runs to the line that is its delimiter, or to the end
+// of the text when that line is missing.
+func readBodies(text string, waiting []heredoc, result []shellCommand) {
+	lines := strings.Split(text, "\n")
+	n := 0
+	for _, h := range waiting {
+		var body []string
+		for n < len(lines) {
+			line := lines[n]
+			n++
+			if h.strip {
+				line = strings.TrimLeft(line, "\t")
+			}
+			if line == h.delim {
+				break
+			}
+			body = append(body, line)
+		}
+		result[h.owner].stdin = strings.Join(body, "\n")
+	}
+}
+
 // isRedirection reports whether the & at command[i] belongs to a
 // redirection: it follows > or < (2>&1, <&3) or leads one (&>, &>>).
 func isRedirection(command string, i int) bool {
@@ -302,10 +388,12 @@ func isRedirection(command string, i int) bool {
 }
 
 // invocation is one simple command as the shell would run it: the
-// program's base name and the words after it.
+// program's base name, the words after it, and the here-document it
+// reads on stdin.
 type invocation struct {
 	program string
 	args    []string
+	stdin   string
 }
 
 // invocations reads a (possibly compound) command line into the simple
@@ -321,13 +409,13 @@ type invocation struct {
 func invocations(command string) []invocation {
 	var calls []invocation
 	for _, cmd := range splitShellCommands(command) {
-		words := shellWords(cmd)
+		words := shellWords(cmd.text)
 		i := 0
 		for i < len(words) && precedesProgram(words[i]) {
 			i++
 		}
 		if i < len(words) {
-			calls = append(calls, invocation{program: baseName(words[i]), args: words[i+1:]})
+			calls = append(calls, invocation{program: baseName(words[i]), args: words[i+1:], stdin: cmd.stdin})
 		}
 	}
 	return calls
@@ -413,19 +501,19 @@ func isEnvAssignment(word string) bool {
 }
 
 // hasBreakingCommit reports whether any git commit in the command line
-// carries a breaking-change marker in a -m/--message argument: ! before
-// the colon in the subject, or a BREAKING CHANGE / BREAKING-CHANGE line
-// in any message. Only inline messages are inspectable; -F files and
-// editor commits pass through, as does anything hidden behind command
-// substitution. That covers the authored path this check exists for:
-// agent commits are -m commits.
+// carries a breaking-change marker in its message: ! before the colon
+// in the subject, or a BREAKING CHANGE / BREAKING-CHANGE line in any
+// message. The message is read where the command line holds it: a
+// -m/--message argument, a here-document passed as -m "$(cat <<EOF
+// ...)", and a here-document on stdin with -F -. A -F file and an
+// editor commit pass through: their text is not in the command line.
 func hasBreakingCommit(calls []invocation) bool {
 	for _, call := range calls {
 		sub, args, ok := gitCall(call)
 		if !ok || sub != "commit" {
 			continue
 		}
-		msgs := commitMessages(args)
+		msgs := commitMessages(args, call.stdin)
 		if len(msgs) == 0 {
 			continue
 		}
@@ -442,32 +530,69 @@ func hasBreakingCommit(calls []invocation) bool {
 	return false
 }
 
-// commitMessages extracts the -m/--message values from the words after
-// git commit, in order (the first is the subject). Handled forms: -m
-// msg, -mmsg, --message msg, --message=msg, and short clusters ending
-// in m (-am msg), where git gives the trailing option the next argument.
-func commitMessages(args []string) []string {
+// commitMessages extracts the messages from the words after git commit,
+// in order (the first is the subject). Handled forms: -m msg, -mmsg,
+// --message msg, --message=msg, and short clusters ending in m (-am
+// msg), where git gives the trailing option the next argument; and -F
+// -, -F-, --file -, --file=-, which read stdin, the commit's
+// here-document. A message that is a here-document substitution is
+// read as its body (see substitutedHeredoc).
+func commitMessages(args []string, stdin string) []string {
 	var msgs []string
+	add := func(m string) { msgs = append(msgs, substitutedHeredoc(m)) }
 	for j := 0; j < len(args); j++ {
 		w := args[j]
 		switch {
 		case w == "-m" || w == "--message":
 			if j+1 < len(args) {
-				msgs = append(msgs, args[j+1])
+				add(args[j+1])
 				j++
 			}
 		case strings.HasPrefix(w, "--message="):
-			msgs = append(msgs, strings.TrimPrefix(w, "--message="))
+			add(strings.TrimPrefix(w, "--message="))
 		case strings.HasPrefix(w, "-m") && len(w) > 2 && w[2] != '-':
-			msgs = append(msgs, w[2:])
+			add(w[2:])
 		case isShortCluster(w) && strings.HasSuffix(w, "m"):
 			if j+1 < len(args) {
-				msgs = append(msgs, args[j+1])
+				add(args[j+1])
 				j++
 			}
+		case w == "-F" || w == "--file":
+			if j+1 < len(args) && args[j+1] == "-" {
+				msgs = append(msgs, stdin)
+			}
+			j++
+		case w == "-F-" || w == "--file=-":
+			msgs = append(msgs, stdin)
 		}
 	}
 	return msgs
+}
+
+// substitutedHeredoc returns the text a message argument stands for
+// when it is a command substitution of cat reading a here-document,
+// "$(cat <<'EOF' ... EOF)", the form agents use for a multi-line
+// message. The substitution is read with the same parser as the
+// command line. Any other value is returned as it is.
+func substitutedHeredoc(m string) string {
+	if !strings.HasPrefix(m, "$(") || !strings.HasSuffix(m, ")") {
+		return m
+	}
+	calls := invocations(m[2 : len(m)-1])
+	if len(calls) == 0 || calls[0].program != "cat" || calls[0].stdin == "" {
+		return m
+	}
+	args := calls[0].args
+	for k := 0; k < len(args); k++ {
+		switch {
+		case args[k] == "<<" || args[k] == "<<-":
+			k++ // the delimiter is the next word
+		case strings.HasPrefix(args[k], "<<"):
+		default:
+			return m // cat also reads a file: the message is not the body alone
+		}
+	}
+	return calls[0].stdin
 }
 
 // isShortCluster reports a bundled short-option word like -am or -sm:
