@@ -15,6 +15,11 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 
 ### Working
 
+- **Build an approved plan through, and report once.** The plan
+  carries the decisions. Stop only for a decision the plan does not
+  cover, a failure that cannot be resolved without changing a
+  decision, or a change beyond the plan. Check: the report names every
+  stop and why.
 - **Test at the start of a session and report the status; test before
   and after each change.** A failure is then attributable to the
   change. Check: the suite output before and after appears in the
@@ -51,9 +56,11 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
   writes its own version, and the versions differ. Check: the shared
   code and the example exist before the first brief.
 - **Tell each agent to stop and report when it needs a change outside
-  its files.** An agent that is not told this writes its own copy
-  inside its files. That is a fault: the copy passes every check, and
-  the code then has two versions. Check: the brief states the rule.
+  its files, or a decision its brief does not cover.** An agent that
+  is not told this writes its own copy inside its files, or makes the
+  decision itself. Both are faults: the copy passes every check and
+  leaves the code with two versions, and the decision is made where
+  the lead does not see it. Check: the brief states the rule.
 - **Ask each agent to list what it added.** The report names every
   helper, table and constant the agent created, and every place its
   work differs from the example. Without the list, a second copy of a
@@ -74,8 +81,11 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 - **Surface partial failures at once.** Say what happened, what state
   changed, and the remedy. Check: none automated; caught only in review.
 - **Rewrite only unpushed commits.** `git log --oneline @{push}..HEAD`
-  must list the target; if it errors or the target is absent, make a
-  new commit. Check: the command's output appears before the rewrite.
+  must list the target. On a branch with no upstream that command
+  errors, and `git branch -r --contains <target>` must then print
+  nothing. If the target is absent from the first, or the second prints
+  a branch, make a new commit. Check: the command's output appears
+  before the rewrite.
 - **Never mark a change breaking on your own judgment.** `!`,
   `BREAKING CHANGE`, `--bump`, and `--exclude` are the developer's.
   Check: guard asks before a marked commit and before a `--bump` lower

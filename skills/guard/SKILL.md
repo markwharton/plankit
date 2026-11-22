@@ -27,13 +27,14 @@ beats ask.
 The hook recognizes git through chains (`&&`, `||`, `;`, `|`, `&`),
 subshells and command substitution, shell keywords such as `then` and
 `do`, quoted words, environment prefixes, absolute paths, `git -C`,
-and `git.exe`. A compound command is judged by its parts.
+and `git.exe`. A compound command is judged by its parts. A
+here-document's body is read as data, not as commands.
 
 ## What guard is
 
 A guardrail against an agent following its defaults, not a security
-boundary. A command run through `sudo`, `sh -c`, or `eval` is not
-read. An internal error fails open with a note on stderr.
+boundary. A command run through `sudo`, `sh -c`, `eval`, or a shell
+reading a here-document is not read. An internal error fails open with a note on stderr.
 An unconfigured repository (no `.pk.json`) is a no-op.
 
 ## Changing policy
@@ -56,12 +57,14 @@ defaults are under Settings below.
 A breaking marker (`!` after the type, or a `BREAKING CHANGE:` footer)
 drives the next major version. The marker is the developer's claim,
 and an agent never adds one on its own judgment.
-The hook asks before a `git commit` whose inline message carries a
-marker. `guard.breaking: "off"` disables the ask, not the rule.
+The hook asks before a `git commit` whose message carries a marker.
+`guard.breaking: "off"` disables the ask, not the rule.
 
-Only `-m` and `--message` arguments are inspected; `-F` files and
-editor commits pass through. That covers the case the rule exists
-for, since agent commits are `-m` commits.
+The message is read where the command line holds it: a `-m` or
+`--message` argument, a here-document passed as
+`-m "$(cat <<'EOF' … EOF)"`, and a here-document on stdin with
+`-F -`. A `-F` file and an editor commit pass through, because their
+text is not in the command line.
 
 ## Version bumps
 
