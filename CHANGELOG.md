@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.10.3] - 2026-11-22
+
+### Fixed
+
+- read here-document commit messages for the breaking check (39b9f3c)
+- read a here-document's body as data, not commands (b91e45c)
+
+### Documentation
+
+- build an approved plan through and report once (c307dcc)
+- check for unpushed commits on a branch with no upstream (b31b172)
+
 ## [v1.10.2] - 2026-11-20
 
 ### Fixed
@@ -1513,3 +1525,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.10.0]: https://github.com/markwharton/plankit/compare/v1.9.0...v1.10.0
 [v1.10.1]: https://github.com/markwharton/plankit/compare/v1.10.0...v1.10.1
 [v1.10.2]: https://github.com/markwharton/plankit/compare/v1.10.1...v1.10.2
+[v1.10.3]: https://github.com/markwharton/plankit/compare/v1.10.2...v1.10.3
