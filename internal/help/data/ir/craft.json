@@ -405,7 +405,15 @@
               },
               {
                 "type": "text",
-                "text": " must list the target; if it errors or the target is absent, make a new commit. Check: the command's output appears before the rewrite."
+                "text": " must list the target. On a branch with no upstream that command errors, and "
+              },
+              {
+                "type": "code",
+                "text": "git branch -r --contains \u003ctarget\u003e"
+              },
+              {
+                "type": "text",
+                "text": " must then print nothing. If the target is absent from the first, or the second prints a branch, make a new commit. Check: the command's output appears before the rewrite."
               }
             ]
           }

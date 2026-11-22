@@ -160,8 +160,10 @@ the change.
   major whose note is missing, naming the file, and the tree is left
   clean.
 - **Rewrite only unpushed commits.** Confirm the target appears in
-  `git log --oneline @{push}..HEAD`; if the command errors or the
-  target is absent, it has been pushed: make a new commit instead.
+  `git log --oneline @{push}..HEAD`. On a branch with no upstream that
+  command errors; confirm then that `git branch -r --contains <target>`
+  prints nothing. If the target is absent from the first, or the second
+  prints a branch, it has been pushed: make a new commit instead.
 
 ### This Repository's Shape
 

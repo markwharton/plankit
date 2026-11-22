@@ -81,8 +81,11 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
 - **Surface partial failures at once.** Say what happened, what state
   changed, and the remedy. Check: none automated; caught only in review.
 - **Rewrite only unpushed commits.** `git log --oneline @{push}..HEAD`
-  must list the target; if it errors or the target is absent, make a
-  new commit. Check: the command's output appears before the rewrite.
+  must list the target. On a branch with no upstream that command
+  errors, and `git branch -r --contains <target>` must then print
+  nothing. If the target is absent from the first, or the second prints
+  a branch, make a new commit. Check: the command's output appears
+  before the rewrite.
 - **Never mark a change breaking on your own judgment.** `!`,
   `BREAKING CHANGE`, `--bump`, and `--exclude` are the developer's.
   Check: guard asks before a marked commit and before a `--bump` lower
