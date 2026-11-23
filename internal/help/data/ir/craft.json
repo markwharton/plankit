@@ -96,6 +96,22 @@
             "inlines": [
               {
                 "type": "text",
+                "text": "Leave the reference behind.",
+                "strong": true
+              },
+              {
+                "type": "text",
+                "text": " Before work is called done, its invariants become tests, what must stay fixed goes in reference files the tests read, and its decisions and reasons go in the plan. A plan records intent and is superseded as the work changes, so no test reads one. Check: the report lists each decision with its test."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
                 "text": "Test at the start of a session and report the status; test before and after each change.",
                 "strong": true
               },

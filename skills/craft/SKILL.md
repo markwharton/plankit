@@ -20,6 +20,11 @@ its argument, and the session runs that prompt. `pk help craft` prints this page
   cover, a failure that cannot be resolved without changing a
   decision, or a change beyond the plan. Check: the report names every
   stop and why.
+- **Leave the reference behind.** Before work is called done, its
+  invariants become tests, what must stay fixed goes in reference files
+  the tests read, and its decisions and reasons go in the plan. A plan
+  records intent and is superseded as the work changes, so no test
+  reads one. Check: the report lists each decision with its test.
 - **Test at the start of a session and report the status; test before
   and after each change.** A failure is then attributable to the
   change. Check: the suite output before and after appears in the
