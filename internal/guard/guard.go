@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
+	"sort"
 	"strings"
 
 	"github.com/markwharton/plankit/internal/changelog"
@@ -30,11 +32,12 @@ var Cmd = &cli.Command{
 	Run:     run,
 }
 
-// run enforces four policies: a branch policy (git mutations on
+// run enforces five policies: a branch policy (git mutations on
 // protected branches), a push policy (any git push, regardless of
 // branch), a breaking policy (a commit message carrying a breaking
-// marker), and a bump policy (a release command whose --bump is lower
-// than the commits infer). The strongest applicable decision wins
+// marker), a bump policy (a release command whose --bump is lower than
+// the commits infer), and a reference policy (a commit while a file in
+// guard.references has changes). The strongest applicable decision wins
 // (deny > ask), so a push to a protected branch is never downgraded.
 //
 // A problem guard cannot act on (a payload that does not parse, a
@@ -101,6 +104,17 @@ func run(ctx *cli.Context) error {
 		breakingAsk = true
 	}
 
+	// Reference policy: a commit while a reference file has changes. A
+	// reference holds what must stay fixed, so changing one is the
+	// developer's decision.
+	var references []string
+	if len(cfg.Guard.References) > 0 && isGitCommit(calls) {
+		references, err = changedReferences(root, cfg.Guard.References)
+		if err != nil {
+			return hookio.Report(ctx.Stderr, "guard", err) // shown, not blocking; guard takes no action
+		}
+	}
+
 	// Push policy: any git push, regardless of branch.
 	pushDeny, pushAsk := false, false
 	if isGitPush(calls) {
@@ -142,12 +156,74 @@ func run(ctx *cli.Context) error {
 		return writeDecision(ctx, hookio.PermissionAsk, pushAskReason)
 	case branchAsk:
 		return writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("branch %q is protected. Switch to your development branch and use pk release from there. Only proceed here for emergency hotfix or manual recovery.", protectedBranch))
+	case len(references) > 0:
+		return writeDecision(ctx, hookio.PermissionAsk, fmt.Sprintf("this commit may change reference files: %s. A reference holds what must stay fixed, and changing one is the developer's decision. Allow this commit?", strings.Join(references, ", ")))
 	case breakingAsk:
 		return writeDecision(ctx, hookio.PermissionAsk, "the commit message marks a breaking change (! or BREAKING CHANGE). That marker drives the next major version, and it is the developer's claim to make, not the agent's. Confirm the change is breaking, or reword the message without the marker.")
 	case bumpAsk:
 		return writeDecision(ctx, hookio.PermissionAsk, bumpReason)
 	}
 	return nil
+}
+
+// isGitCommit reports whether the command line runs a git commit.
+func isGitCommit(calls []invocation) bool {
+	for _, call := range calls {
+		if sub, _, ok := gitCall(call); ok && sub == "commit" {
+			return true
+		}
+	}
+	return false
+}
+
+// changedReferences returns the changed files that match a reference
+// pattern: every file that differs from HEAD, staged or not, listed by
+// both names when it is renamed, and every untracked file, so a file
+// added in the same command line as the commit is seen. It errs towards
+// asking: a changed reference the commit leaves out is named too.
+func changedReferences(root string, patterns []string) ([]string, error) {
+	// -z gives each name raw and NUL-separated: git otherwise quotes a
+	// name with unusual characters, and a quoted name matches nothing.
+	diff, err := git.Exec(root, "diff", "HEAD", "--name-only", "--no-renames", "-z")
+	if err != nil {
+		// No commit yet: what is staged is all there is to compare.
+		if diff, err = git.Exec(root, "diff", "--cached", "--name-only", "--no-renames", "-z"); err != nil {
+			return nil, err
+		}
+	}
+	untracked, err := git.Exec(root, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	var found []string
+	for _, f := range strings.Split(diff+"\x00"+untracked, "\x00") {
+		if f == "" || seen[f] {
+			continue
+		}
+		seen[f] = true
+		for _, p := range patterns {
+			if isReference(p, f) {
+				found = append(found, f)
+				break
+			}
+		}
+	}
+	sort.Strings(found)
+	return found, nil
+}
+
+// isReference reports whether a file, by its path from the repository
+// root, matches a reference pattern. A pattern with no slash matches the
+// file's name in any directory; one with a slash matches the whole path.
+// A * stays within one segment.
+func isReference(pattern, file string) bool {
+	if !strings.Contains(pattern, "/") {
+		ok, _ := path.Match(pattern, path.Base(file))
+		return ok
+	}
+	ok, _ := path.Match(pattern, file)
+	return ok
 }
 
 // bumpAskReason names the gap and the commits that call for the higher

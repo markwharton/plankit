@@ -26,12 +26,14 @@ func TestTextFollowsTheDials(t *testing.T) {
 	}{
 		{"default", func(*config.PkConfig) {},
 			[]string{"Types: feat, fix, deprecate", "guard asks before one is committed", "main is protected: commits and pushes there are blocked.", "do not push", "releases merge into main with pk ship", "preserve mode is manual", "pk help lists every command."},
-			[]string{"style, plan", "automatically"}}, // hidden plan type never listed
+			[]string{"style, plan", "automatically", "reference files"}}, // hidden plan type never listed; no references by default
 		{"empty types resolve to defaults", func(c *config.PkConfig) { c.Changelog.Types = nil },
 			[]string{"Types: feat, fix, deprecate"}, nil},
 		{"custom types", func(c *config.PkConfig) {
 			c.Changelog.Types = []config.TypeConfig{{Type: "feat", Section: "New"}, {Type: "wip", Section: "x", Hidden: true}}
 		}, []string{"Types: feat (from"}, []string{"wip"}},
+		{"references are named", func(c *config.PkConfig) { c.Guard.References = []string{"control/axioms.md", "*.accepted.json"} },
+			[]string{"The reference files (control/axioms.md, *.accepted.json) hold what must stay fixed", "guard asks before a commit while any has changes."}, nil},
 		{"breaking off keeps the rule, drops the ask", func(c *config.PkConfig) { c.Guard.Breaking = "off" },
 			[]string{"only on explicit user direction."}, []string{"guard asks before one is committed"}},
 		{"bump ask", func(*config.PkConfig) {},

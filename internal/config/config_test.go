@@ -134,6 +134,25 @@ func TestPreserveDirIsValidated(t *testing.T) {
 	}
 }
 
+func TestGuardReferencesAreValidated(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, `{"guard": {"references": ["control/axioms.md", "*.accepted.json", "titles/*/*.json"]}}`)
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Guard.References) != 3 {
+		t.Fatalf("references: %q", cfg.Guard.References)
+	}
+	for _, bad := range []string{"", "/abs", "C:/abs", "../out", "docs/../x", "./x", "a\\b", "[", "docs//x"} {
+		write(t, dir, `{"guard": {"references": ["`+strings.ReplaceAll(bad, `\`, `\\`)+`"]}}`)
+		_, err := Load(dir)
+		if err == nil || !strings.Contains(err.Error(), "guard.references") {
+			t.Errorf("%q: err = %v, want guard.references named", bad, err)
+		}
+	}
+}
+
 // TestWrittenConfigIsSorted holds the file pk init writes to sorted
 // keys at every level. Struct field order is what json.Marshal
 // follows, so a field appended out of order fails here.

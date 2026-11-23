@@ -78,6 +78,11 @@ type GuardConfig struct {
 	Bump string `json:"bump,omitempty"` // ask | off
 	Mode string `json:"mode,omitempty"` // block | ask | off
 	Push string `json:"push,omitempty"` // block | ask | off
+	// References are the files that hold what must stay fixed, as paths
+	// or patterns from the repository root. A change to one is the
+	// developer's decision, so guard asks before a commit while any has
+	// changes.
+	References []string `json:"references,omitempty"`
 }
 
 // ResolvedMode returns guard.mode with the default applied.
@@ -279,6 +284,11 @@ func (c *PkConfig) Validate() error {
 	// by git as an option.
 	if b := c.Release.Branch; strings.HasPrefix(b, "-") {
 		return fmt.Errorf("release.branch: %q cannot begin with -", b)
+	}
+	for _, r := range c.Guard.References {
+		if _, err := path.Match(r, ""); err != nil || !isRepoRelativeDir(r) {
+			return fmt.Errorf("guard.references: %q must be a clean relative path or pattern with forward slashes inside the repository", r)
+		}
 	}
 	if d := c.Preserve.Dir; d != "" && !isRepoRelativeDir(d) {
 		return fmt.Errorf("preserve.dir: %q must be a clean relative path with forward slashes inside the repository", d)

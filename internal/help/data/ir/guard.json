@@ -113,7 +113,7 @@
         },
         {
           "type": "text",
-          "text": " and answers with a permission decision. Four policies apply; the strongest decision wins, and deny beats ask."
+          "text": " and answers with a permission decision. Five policies apply; the strongest decision wins, and deny beats ask."
         }
       ]
     },
@@ -288,6 +288,25 @@
               {
                 "type": "text",
                 "text": ")"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "text",
+                "text": "reference policy ("
+              },
+              {
+                "type": "code",
+                "text": "guard.references"
+              },
+              {
+                "type": "text",
+                "text": "): a commit while a file the list names has changes is questioned, naming the files, because a reference holds what must stay fixed and changing one is the developer's decision. guard compares the working tree with the last commit and counts untracked files, so a file added in the same command line is seen, and a changed reference the commit leaves out still asks"
               }
             ]
           }
@@ -715,7 +734,7 @@
     },
     {
       "type": "codeblock",
-      "text": "\"guard\": {\n  \"branches\": [\"\u003cbranch\u003e\", ...],\n  \"breaking\": \"ask\" | \"off\",\n  \"bump\": \"ask\" | \"off\",\n  \"mode\": \"block\" | \"ask\" | \"off\",\n  \"push\": \"block\" | \"ask\" | \"off\"\n}\n"
+      "text": "\"guard\": {\n  \"branches\": [\"\u003cbranch\u003e\", ...],\n  \"breaking\": \"ask\" | \"off\",\n  \"bump\": \"ask\" | \"off\",\n  \"mode\": \"block\" | \"ask\" | \"off\",\n  \"push\": \"block\" | \"ask\" | \"off\",\n  \"references\": [\"\u003cpath\u003e\", ...]\n}\n"
     },
     {
       "type": "list",
@@ -959,6 +978,21 @@
               {
                 "type": "text",
                 "text": ", on any branch, is denied, questioned, or ignored."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "para",
+            "inlines": [
+              {
+                "type": "code",
+                "text": "guard.references"
+              },
+              {
+                "type": "text",
+                "text": ": a list of paths or patterns, relative to the repository root; default none. Files that hold what must stay fixed: an agent's commit while any has changes is questioned, naming them. A pattern without a slash matches a file's name in any directory."
               }
             ]
           }

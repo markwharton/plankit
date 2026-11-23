@@ -129,6 +129,10 @@ func Text(cfg *config.PkConfig, pluginVersion string) string {
 		b.WriteString("The commits decide the release version. Pass --bump or --exclude to pk ship or pk changelog only when the developer asks, with the value given.\n\n")
 	}
 
+	if refs := cfg.Guard.References; len(refs) > 0 {
+		fmt.Fprintf(&b, "The reference files (%s) hold what must stay fixed; change one only on the developer's word. guard asks before a commit while any has changes.\n\n", strings.Join(refs, ", "))
+	}
+
 	// One paragraph of up to three sentences, each from its own dial:
 	// the protected branches, pushing, and the release flow. guard.push
 	// applies on every branch and the flow exists whatever is guarded,

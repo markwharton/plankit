@@ -9,7 +9,7 @@ description: How pk guard decides what an agent may do to git, and how to tune i
 runs a git mutation (`am`, `cherry-pick`, `commit`, `merge`, `pull`,
 `push`, `rebase`, `reset`, `revert`) or a release command carrying
 `--bump`, guard reads `.pk.json` and answers with a permission
-decision. Four policies apply; the strongest decision wins, and deny
+decision. Five policies apply; the strongest decision wins, and deny
 beats ask.
 
 - branch policy (`guard.mode`): a mutation while a protected branch
@@ -23,6 +23,13 @@ beats ask.
 - bump policy (`guard.bump`): a `pk ship` or `pk changelog` whose
   `--bump` is lower than the bump the commits infer is questioned
   (`ask`) or ignored (`off`)
+- reference policy (`guard.references`): a commit while a file the
+  list names has changes is questioned, naming the files, because a
+  reference holds what must stay fixed and changing one is the
+  developer's decision. guard compares the working tree with the last
+  commit and counts untracked files, so a file added in the same
+  command line is seen, and a changed reference the commit leaves out
+  still asks
 
 The hook recognizes git through chains (`&&`, `||`, `;`, `|`, `&`),
 subshells and command substitution, shell keywords such as `then` and
@@ -90,7 +97,8 @@ The `guard` section of `.pk.json`:
   "breaking": "ask" | "off",
   "bump": "ask" | "off",
   "mode": "block" | "ask" | "off",
-  "push": "block" | "ask" | "off"
+  "push": "block" | "ask" | "off",
+  "references": ["<path>", ...]
 }
 ```
 
@@ -99,6 +107,7 @@ The `guard` section of `.pk.json`:
 - `guard.bump`: `ask` or `off`; default `ask`. A `--bump` on `pk ship` or `pk changelog` lower than the bump the commits infer is questioned, or not.
 - `guard.mode`: `block`, `ask`, or `off`; default `block`. A git mutation while a protected branch is checked out is denied, questioned, or ignored.
 - `guard.push`: `block`, `ask`, or `off`; default `block`. Any `git push`, on any branch, is denied, questioned, or ignored.
+- `guard.references`: a list of paths or patterns, relative to the repository root; default none. Files that hold what must stay fixed: an agent's commit while any has changes is questioned, naming them. A pattern without a slash matches a file's name in any directory.
 
 An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: `pk` commands exit 2, and each hook reports the message and takes no action until it is fixed. An absent key means its default. `pk status` reads the file back and reports the first problem.
 <!-- /generated: settings -->

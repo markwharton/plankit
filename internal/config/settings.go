@@ -45,6 +45,8 @@ func Settings() []Setting {
 		{Key: "guard.push", Values: []string{ModeBlock, ModeAsk, ModeOff}, Default: DefaultGuardPush,
 			Doc:   "Any `git push`, on any branch, is denied, questioned, or ignored.",
 			value: func(c *PkConfig) string { return c.Guard.Push }},
+		{Key: "guard.references", Kind: "a list of paths or patterns, relative to the repository root", Shape: `["<path>", ...]`, Default: "none",
+			Doc: "Files that hold what must stay fixed: an agent's commit while any has changes is questioned, naming them. A pattern without a slash matches a file's name in any directory."},
 		{Key: "preserve.dir", Kind: "a directory, relative to the repository root", Shape: `"<dir>"`, Default: "`" + DefaultPreserveDir + "`",
 			Doc: "Where preserved plans are written and kept immutable; forward slashes, inside the repository."},
 		{Key: "preserve.mode", Values: []string{ModeAuto, ModeManual, ModeOff}, Default: DefaultPreserveMode,

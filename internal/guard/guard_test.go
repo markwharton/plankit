@@ -515,3 +515,77 @@ func TestABranchThatCannotBeReadIsReported(t *testing.T) {
 		t.Fatalf("code=%d out=%q errw=%q", code, out.String(), errw.String())
 	}
 }
+
+// referenceRepo is a scratch repository on a development branch whose
+// .pk.json lists references, with one reference file committed.
+func referenceRepo(t *testing.T, refs ...string) string {
+	t.Helper()
+	dir := scratchOn(t, "develop", func(c *config.PkConfig) { c.Guard.References = refs })
+	if err := os.MkdirAll(filepath.Join(dir, "control"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "control", "axioms.md"), []byte("the table\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "."}, {"commit", "-q", "-m", "chore: references"}} {
+		if _, err := git.Exec(dir, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func TestReferenceChangesAsk(t *testing.T) {
+	dir := referenceRepo(t, "control/axioms.md", "*.accepted.json")
+	if out, _ := runGuard(t, dir, `git commit -am "docs: x"`); out != "" {
+		t.Fatalf("no reference changed: want silence, got %q", out)
+	}
+	os.WriteFile(filepath.Join(dir, "control", "axioms.md"), []byte("a new table\n"), 0o644)
+	if out, _ := runGuard(t, dir, `git commit -am "docs: x"`); !strings.Contains(out, `"ask"`) || !strings.Contains(out, "control/axioms.md") {
+		t.Errorf("a changed reference: want ask naming control/axioms.md, got %q", out)
+	}
+	git.Exec(dir, "checkout", "--", "control/axioms.md")
+	os.WriteFile(filepath.Join(dir, "save.accepted.json"), []byte("{}\n"), 0o644)
+	if out, _ := runGuard(t, dir, `git add . && git commit -m "docs: x"`); !strings.Contains(out, `"ask"`) || !strings.Contains(out, "save.accepted.json") {
+		t.Errorf("a new reference added in the same command line: want ask naming it, got %q", out)
+	}
+	os.Remove(filepath.Join(dir, "save.accepted.json"))
+	git.Exec(dir, "mv", "control/axioms.md", "control/old.md")
+	if out, _ := runGuard(t, dir, `git commit -m "docs: x"`); !strings.Contains(out, `"ask"`) || !strings.Contains(out, "control/axioms.md") {
+		t.Errorf("a reference renamed away: want ask naming its old path, got %q", out)
+	}
+	git.Exec(dir, "mv", "control/old.md", "control/axioms.md")
+	os.WriteFile(filepath.Join(dir, "control", "axioms.md"), []byte("changed again\n"), 0o644)
+	if out, _ := runGuard(t, dir, `git status`); out != "" {
+		t.Errorf("not a commit: want silence, got %q", out)
+	}
+	git.Exec(dir, "checkout", "--", "control/axioms.md")
+	os.WriteFile(filepath.Join(dir, "café.accepted.json"), []byte("{}\n"), 0o644)
+	if out, _ := runGuard(t, dir, `git add . && git commit -m "docs: x"`); !strings.Contains(out, `"ask"`) || !strings.Contains(out, "café.accepted.json") {
+		t.Errorf("a reference with a name git would quote: want ask naming it, got %q", out)
+	}
+	none := referenceRepo(t)
+	os.WriteFile(filepath.Join(none, "control", "axioms.md"), []byte("a new table\n"), 0o644)
+	if out, _ := runGuard(t, none, `git commit -am "docs: x"`); out != "" {
+		t.Errorf("no references configured: want silence, got %q", out)
+	}
+}
+
+func TestReferencePatterns(t *testing.T) {
+	for _, tc := range []struct {
+		pattern, file string
+		want          bool
+	}{
+		{"control/axioms.md", "control/axioms.md", true},
+		{"control/axioms.md", "other/control/axioms.md", false},
+		{"axioms.md", "control/axioms.md", true},
+		{"*.accepted.json", "titles/aztlan/save.accepted.json", true},
+		{"*.accepted.json", "save.accepted.json.bak", false},
+		{"titles/*/*.json", "titles/aztlan/save.json", true},
+		{"titles/*/*.json", "titles/aztlan/deep/save.json", false},
+	} {
+		if got := isReference(tc.pattern, tc.file); got != tc.want {
+			t.Errorf("isReference(%q, %q) = %v, want %v", tc.pattern, tc.file, got, tc.want)
+		}
+	}
+}

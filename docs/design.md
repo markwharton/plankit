@@ -135,6 +135,11 @@ type GuardConfig struct {
 	Bump string `json:"bump,omitempty"` // ask | off
 	Mode string `json:"mode,omitempty"` // block | ask | off
 	Push string `json:"push,omitempty"` // block | ask | off
+	// References are the files that hold what must stay fixed, as paths
+	// or patterns from the repository root. A change to one is the
+	// developer's decision, so guard asks before a commit while any has
+	// changes.
+	References []string `json:"references,omitempty"`
 }
 ```
 
