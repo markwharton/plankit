@@ -20,7 +20,7 @@ jobs:
           go-version-file: go.mod
       - run: make test
       - name: gofmt drift
-        run: test -z "$(gofmt -l cmd internal tools)"
+        run: test -z "$(gofmt -l cmd internal tools control)"
       - name: docgen drift
         run: make docs && git diff --exit-code internal/help/data skills
       - name: site builds

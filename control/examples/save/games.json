@@ -1,0 +1,207 @@
+{
+  "system": "games",
+  "places": [
+    {
+      "name": "typed name",
+      "outside": true,
+      "invalid": "an empty name"
+    },
+    {
+      "name": "game",
+      "belongsTo": "engine",
+      "invalid": "a game that cannot be loaded"
+    },
+    {
+      "name": "disk",
+      "belongsTo": "store",
+      "keyed": true,
+      "onExisting": "replace",
+      "invalid": "a file that is not a saved game"
+    },
+    {
+      "name": "game name",
+      "belongsTo": "save as",
+      "invalid": "an empty name"
+    },
+    {
+      "name": "saved text",
+      "belongsTo": "mark saved",
+      "invalid": "text that is not a game"
+    },
+    {
+      "name": "message",
+      "belongsTo": "say full",
+      "invalid": "a message with no text"
+    }
+  ],
+  "elements": [
+    {
+      "name": "games",
+      "steps": [
+        "save",
+        "engine"
+      ]
+    },
+    {
+      "name": "engine",
+      "writes": [
+        {
+          "place": "game",
+          "mode": "write"
+        }
+      ]
+    },
+    {
+      "name": "save",
+      "or": [
+        {
+          "when": "the disk is full",
+          "do": "say full"
+        }
+      ],
+      "otherwise": "saving",
+      "rejects": {
+        "reason": "the game was not saved",
+        "to": "message",
+        "hold": {
+          "file": "games/save.test.ts",
+          "test": "reports a save that failed"
+        }
+      }
+    },
+    {
+      "name": "say full",
+      "writes": [
+        {
+          "place": "message",
+          "mode": "write"
+        }
+      ]
+    },
+    {
+      "name": "saving",
+      "join": [
+        "mark saved",
+        "store"
+      ],
+      "rejects": {
+        "reason": "the game was not stored",
+        "to": "parent",
+        "hold": {
+          "file": "games/save.test.ts",
+          "test": "passes a failed store up"
+        }
+      }
+    },
+    {
+      "name": "store",
+      "or": [
+        {
+          "when": "Save As was chosen, or the game has no name",
+          "do": "save as"
+        }
+      ],
+      "otherwise": "save in place",
+      "rejects": {
+        "reason": "the file was not written",
+        "to": "parent"
+      }
+    },
+    {
+      "name": "save as",
+      "reads": [
+        {
+          "place": "typed name"
+        },
+        {
+          "place": "disk"
+        },
+        {
+          "place": "game"
+        }
+      ],
+      "writes": [
+        {
+          "place": "game name",
+          "mode": "write"
+        },
+        {
+          "place": "disk",
+          "mode": "create",
+          "key": "content",
+          "records": "one",
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "hold": {
+                "file": "games/save.test.ts",
+                "test": "asks before overwriting"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "no name was given",
+        "to": "parent",
+        "hold": {
+          "file": "games/save.test.ts",
+          "test": "refuses an empty name"
+        }
+      }
+    },
+    {
+      "name": "save in place",
+      "reads": [
+        {
+          "place": "game name"
+        },
+        {
+          "place": "game"
+        },
+        {
+          "place": "disk"
+        }
+      ],
+      "writes": [
+        {
+          "place": "disk",
+          "mode": "replace",
+          "key": "content",
+          "records": "one"
+        }
+      ],
+      "rejects": {
+        "reason": "the game cannot be written",
+        "to": "parent",
+        "hold": {
+          "file": "games/save.test.ts",
+          "test": "refuses a game that cannot be written"
+        }
+      }
+    },
+    {
+      "name": "mark saved",
+      "reads": [
+        {
+          "place": "game name"
+        },
+        {
+          "place": "game"
+        }
+      ],
+      "writes": [
+        {
+          "place": "saved text",
+          "mode": "write"
+        }
+      ]
+    }
+  ],
+  "unsaid": [
+    {
+      "what": "a name of only spaces is refused"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "describes": "manual-file",
+  "places": [
+    {
+      "name": "manual-inbox",
+      "source": {
+        "file": "docs/manual.ts",
+        "function": "readManual"
+      }
+    },
+    {
+      "name": "files",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "docs/files.ts",
+        "function": "openFiles"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "manual-file",
+      "source": {
+        "file": "docs/manual.ts",
+        "function": "manualFile"
+      },
+      "reads": [
+        {
+          "place": "manual-inbox",
+          "source": {
+            "file": "docs/manual.ts",
+            "function": "readManual"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "files",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "docs/manual.ts",
+            "function": "manualFile"
+          }
+        }
+      ]
+    }
+  ],
+  "unsaid": []
+}

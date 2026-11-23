@@ -1,0 +1,91 @@
+{
+  "describes": "import",
+  "places": [
+    {
+      "name": "image",
+      "source": {
+        "file": "site/import.ts",
+        "function": "readImage"
+      }
+    },
+    {
+      "name": "volume",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "play/disk.ts",
+        "function": "write"
+      }
+    },
+    {
+      "name": "message",
+      "source": {
+        "file": "site/import.ts",
+        "function": "tell"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "import",
+      "source": {
+        "file": "site/import.ts",
+        "function": "importImage"
+      },
+      "reads": [
+        {
+          "place": "image",
+          "source": {
+            "file": "site/import.ts",
+            "function": "readImage"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "volume",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "site/import.ts",
+            "function": "importImage"
+          },
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "source": {
+                "file": "site/import.ts",
+                "function": "confirmImport"
+              }
+            }
+          ]
+        },
+        {
+          "place": "message",
+          "mode": "write",
+          "source": {
+            "file": "site/import.ts",
+            "function": "tell"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the file is not a disk image",
+        "to": "message",
+        "source": {
+          "file": "site/import.ts",
+          "function": "readImage"
+        }
+      },
+      "declines": {
+        "reason": "the person chose not to import",
+        "source": {
+          "file": "site/import.ts",
+          "function": "confirmImport"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

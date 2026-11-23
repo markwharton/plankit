@@ -25,7 +25,7 @@ It is not plugin content: the plugin ships context through skills/.
 
 ```bash
 make build          # docgen + go build -> bin/pk-<os>-<arch>, run as ./bin/pk
-make test           # go vet + go test ./... (repo and tools/docgen)
+make test           # go vet + go test ./... (repo, tools/docgen and control)
 make docs           # compile skills/ into internal/help/data (committed)
 make fmt            # gofmt the tree
 make dist           # cross-compile all shim targets into bin/

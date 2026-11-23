@@ -1,0 +1,351 @@
+{
+  "describes": "intake",
+  "places": [
+    {
+      "name": "request",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_request"
+      }
+    },
+    {
+      "name": "parsed",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_parsed"
+      }
+    },
+    {
+      "name": "shelf",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_shelf"
+      }
+    },
+    {
+      "name": "journal",
+      "keyed": true,
+      "onExisting": "refuse",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_journal"
+      }
+    },
+    {
+      "name": "outbox",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_outbox"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "intake",
+      "source": {
+        "file": "lib/intake.code",
+        "function": "intake"
+      },
+      "join": [
+        "read",
+        "shelve",
+        "notify"
+      ],
+      "rejects": {
+        "reason": "the request was not taken in",
+        "to": "parsed",
+        "source": {
+          "file": "lib/intake.code",
+          "function": "rejects_intake"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "source": {
+          "file": "lib/intake.code",
+          "function": "declines_intake"
+        }
+      }
+    },
+    {
+      "name": "read",
+      "source": {
+        "file": "lib/read.code",
+        "function": "read"
+      },
+      "reads": [
+        {
+          "place": "request",
+          "source": {
+            "file": "lib/read.code",
+            "function": "read_request"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "parsed",
+          "mode": "write",
+          "source": {
+            "file": "lib/read.code",
+            "function": "write_parsed"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the request cannot be read",
+        "to": "parsed",
+        "source": {
+          "file": "lib/read.code",
+          "function": "rejects_read"
+        }
+      }
+    },
+    {
+      "name": "shelve",
+      "source": {
+        "file": "lib/shelve.code",
+        "function": "shelve"
+      },
+      "or": [
+        {
+          "when": "the book is new",
+          "do": "add",
+          "source": {
+            "file": "lib/shelve.code",
+            "function": "choose_add"
+          }
+        }
+      ],
+      "otherwise": "update",
+      "rejects": {
+        "reason": "the book was not shelved",
+        "to": "parent",
+        "source": {
+          "file": "lib/shelve.code",
+          "function": "rejects_shelve"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "to": "parent",
+        "source": {
+          "file": "lib/shelve.code",
+          "function": "declines_shelve"
+        }
+      }
+    },
+    {
+      "name": "add",
+      "source": {
+        "file": "lib/add.code",
+        "function": "add"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "lib/add.code",
+            "function": "read_parsed"
+          }
+        },
+        {
+          "place": "shelf",
+          "source": {
+            "file": "lib/add.code",
+            "function": "read_shelf"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "shelf",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "lib/add.code",
+            "function": "write_shelf"
+          },
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "source": {
+                "file": "lib/add.code",
+                "function": "check_exists"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "source": {
+                "file": "lib/add.code",
+                "function": "check_repeated"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the book cannot be added",
+        "to": "parent",
+        "source": {
+          "file": "lib/add.code",
+          "function": "rejects_add"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "to": "parent",
+        "source": {
+          "file": "lib/add.code",
+          "function": "declines_add"
+        }
+      }
+    },
+    {
+      "name": "update",
+      "source": {
+        "file": "lib/update.code",
+        "function": "update"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "lib/update.code",
+            "function": "read_parsed"
+          }
+        },
+        {
+          "place": "shelf",
+          "source": {
+            "file": "lib/update.code",
+            "function": "read_shelf"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "shelf",
+          "mode": "replace",
+          "key": "content",
+          "records": "one",
+          "source": {
+            "file": "lib/update.code",
+            "function": "write_shelf"
+          },
+          "before": [
+            {
+              "check": "belongs",
+              "then": "refuse",
+              "source": {
+                "file": "lib/update.code",
+                "function": "check_belongs"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the book cannot be updated",
+        "to": "parent",
+        "source": {
+          "file": "lib/update.code",
+          "function": "rejects_update"
+        }
+      }
+    },
+    {
+      "name": "notify",
+      "source": {
+        "file": "lib/notify.code",
+        "function": "notify"
+      },
+      "include": [
+        "log",
+        "mail"
+      ],
+      "rejects": {
+        "reason": "the notice failed",
+        "to": "parent",
+        "source": {
+          "file": "lib/notify.code",
+          "function": "rejects_notify"
+        }
+      }
+    },
+    {
+      "name": "log",
+      "source": {
+        "file": "lib/log.code",
+        "function": "log"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "lib/log.code",
+            "function": "read_parsed"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "journal",
+          "mode": "create",
+          "key": "assigned",
+          "source": {
+            "file": "lib/log.code",
+            "function": "write_journal"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the entry cannot be written",
+        "to": "parent",
+        "source": {
+          "file": "lib/log.code",
+          "function": "rejects_log"
+        }
+      }
+    },
+    {
+      "name": "mail",
+      "source": {
+        "file": "lib/mail.code",
+        "function": "mail"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "lib/mail.code",
+            "function": "read_parsed"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "outbox",
+          "mode": "write",
+          "source": {
+            "file": "lib/mail.code",
+            "function": "write_outbox"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the letter cannot be sent",
+        "to": "parent",
+        "source": {
+          "file": "lib/mail.code",
+          "function": "rejects_mail"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

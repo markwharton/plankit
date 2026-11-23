@@ -1,0 +1,320 @@
+{
+  "describes": "save",
+  "places": [
+    {
+      "name": "typed name",
+      "source": {
+        "file": "games/dialogs.ts",
+        "function": "saveAs"
+      }
+    },
+    {
+      "name": "game",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      }
+    },
+    {
+      "name": "disk",
+      "keyed": true,
+      "onExisting": "refuse",
+      "source": {
+        "file": "games/disk.ts",
+        "function": "openDisk"
+      }
+    },
+    {
+      "name": "game name",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      }
+    },
+    {
+      "name": "saved text",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      }
+    },
+    {
+      "name": "message",
+      "source": {
+        "file": "games/save.ts",
+        "function": "tell"
+      }
+    },
+    {
+      "name": "window title",
+      "source": {
+        "file": "games/save.ts",
+        "function": "setTitle"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "save",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "or": [
+        {
+          "when": "the disk is full",
+          "do": "say full"
+        }
+      ],
+      "otherwise": "saving",
+      "rejects": {
+        "reason": "the game was not saved",
+        "to": "message",
+        "source": {
+          "file": "games/save.ts",
+          "function": "save"
+        }
+      }
+    },
+    {
+      "name": "say full",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "writes": [
+        {
+          "place": "message",
+          "mode": "write",
+          "source": {
+            "file": "games/save.ts",
+            "function": "tell"
+          }
+        }
+      ]
+    },
+    {
+      "name": "saving",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "join": [
+        "mark saved",
+        "store",
+        "retitle"
+      ]
+    },
+    {
+      "name": "store",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "or": [
+        {
+          "when": "Save As, or no name yet",
+          "do": "save as",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ],
+      "otherwise": "save in place",
+      "rejects": {
+        "reason": "the file was not written",
+        "to": "parent",
+        "source": {
+          "file": "games/save.ts",
+          "function": "save"
+        }
+      }
+    },
+    {
+      "name": "save as",
+      "source": {
+        "file": "games/dialogs.ts",
+        "function": "saveAs"
+      },
+      "reads": [
+        {
+          "place": "typed name",
+          "source": {
+            "file": "games/dialogs.ts",
+            "function": "saveAs"
+          }
+        },
+        {
+          "place": "disk",
+          "source": {
+            "file": "games/dialogs.ts",
+            "function": "saveAs"
+          }
+        },
+        {
+          "place": "game",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "game name",
+          "mode": "write",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        },
+        {
+          "place": "disk",
+          "mode": "create",
+          "key": "content",
+          "records": "one",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          },
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "source": {
+                "file": "games/dialogs.ts",
+                "function": "saveAs"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "no name was given",
+        "to": "parent",
+        "source": {
+          "file": "games/dialogs.ts",
+          "function": "saveAs"
+        }
+      },
+      "declines": {
+        "reason": "the person chose not to overwrite",
+        "source": {
+          "file": "games/dialogs.ts",
+          "function": "saveAs"
+        }
+      }
+    },
+    {
+      "name": "save in place",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "reads": [
+        {
+          "place": "game name",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        },
+        {
+          "place": "game",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        },
+        {
+          "place": "disk",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "disk",
+          "mode": "create",
+          "key": "content",
+          "records": "one",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the game cannot be written",
+        "to": "parent",
+        "source": {
+          "file": "games/save.ts",
+          "function": "save"
+        }
+      }
+    },
+    {
+      "name": "mark saved",
+      "source": {
+        "file": "games/save.ts",
+        "function": "save"
+      },
+      "reads": [
+        {
+          "place": "game name",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        },
+        {
+          "place": "game",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "saved text",
+          "mode": "write",
+          "source": {
+            "file": "games/save.ts",
+            "function": "save"
+          }
+        }
+      ]
+    },
+    {
+      "name": "retitle",
+      "source": {
+        "file": "games/save.ts",
+        "function": "setTitle"
+      },
+      "reads": [
+        {
+          "place": "game name",
+          "source": {
+            "file": "games/save.ts",
+            "function": "setTitle"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "window title",
+          "mode": "write",
+          "source": {
+            "file": "games/save.ts",
+            "function": "setTitle"
+          }
+        }
+      ]
+    }
+  ],
+  "unsaid": []
+}

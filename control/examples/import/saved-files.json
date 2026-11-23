@@ -1,0 +1,86 @@
+{
+  "system": "saved files",
+  "places": [
+    {
+      "name": "image",
+      "outside": true,
+      "invalid": "a file that is not a disk image"
+    },
+    {
+      "name": "volume",
+      "belongsTo": "import",
+      "keyed": true,
+      "onExisting": "replace",
+      "invalid": "a file the title cannot load"
+    },
+    {
+      "name": "message",
+      "belongsTo": "import",
+      "invalid": "a message with no text"
+    }
+  ],
+  "elements": [
+    {
+      "name": "saved files",
+      "steps": [
+        "import"
+      ]
+    },
+    {
+      "name": "import",
+      "reads": [
+        {
+          "place": "image"
+        },
+        {
+          "place": "volume"
+        }
+      ],
+      "writes": [
+        {
+          "place": "volume",
+          "mode": "create",
+          "key": "content",
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "hold": {
+                "file": "site/import.test.ts",
+                "test": "asks before replacing a file"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "hold": {
+                "file": "site/import.test.ts",
+                "test": "refuses a name given twice"
+              }
+            }
+          ]
+        },
+        {
+          "place": "message",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the file is not a disk image",
+        "to": "message",
+        "hold": {
+          "file": "site/import.test.ts",
+          "test": "refuses a file that is not an image"
+        }
+      },
+      "declines": {
+        "reason": "the person chose not to import",
+        "hold": {
+          "file": "site/import.test.ts",
+          "test": "changes nothing when the person says no"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

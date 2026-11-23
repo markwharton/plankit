@@ -1,0 +1,202 @@
+{
+  "describes": "upload",
+  "places": [
+    {
+      "name": "inbox",
+      "source": {
+        "file": "docs/parse.ts",
+        "function": "readInbox"
+      }
+    },
+    {
+      "name": "parsed",
+      "source": {
+        "file": "docs/parse.ts",
+        "function": "parse"
+      }
+    },
+    {
+      "name": "files",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "docs/files.ts",
+        "function": "openFiles"
+      }
+    },
+    {
+      "name": "register",
+      "keyed": true,
+      "onExisting": "refuse",
+      "source": {
+        "file": "docs/register.ts",
+        "function": "openRegister"
+      }
+    },
+    {
+      "name": "status",
+      "source": {
+        "file": "docs/report.ts",
+        "function": "setStatus"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "upload",
+      "source": {
+        "file": "docs/upload.ts",
+        "function": "upload"
+      },
+      "join": [
+        "parse",
+        "file",
+        "record",
+        "report"
+      ],
+      "rejects": {
+        "reason": "a step failed",
+        "to": "status",
+        "source": {
+          "file": "docs/upload.ts",
+          "function": "upload"
+        }
+      }
+    },
+    {
+      "name": "parse",
+      "source": {
+        "file": "docs/parse.ts",
+        "function": "parse"
+      },
+      "reads": [
+        {
+          "place": "inbox",
+          "source": {
+            "file": "docs/parse.ts",
+            "function": "readInbox"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "parsed",
+          "mode": "write",
+          "source": {
+            "file": "docs/parse.ts",
+            "function": "parse"
+          }
+        }
+      ]
+    },
+    {
+      "name": "file",
+      "source": {
+        "file": "docs/file.ts",
+        "function": "store"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "docs/file.ts",
+            "function": "store"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "files",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "docs/file.ts",
+            "function": "store"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the file cannot be saved",
+        "to": "parent",
+        "source": {
+          "file": "docs/file.ts",
+          "function": "store"
+        }
+      }
+    },
+    {
+      "name": "record",
+      "source": {
+        "file": "docs/record.ts",
+        "function": "record"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "docs/record.ts",
+            "function": "record"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "register",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "docs/record.ts",
+            "function": "record"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the record cannot be written",
+        "to": "parent",
+        "source": {
+          "file": "docs/record.ts",
+          "function": "record"
+        }
+      }
+    },
+    {
+      "name": "report",
+      "source": {
+        "file": "docs/report.ts",
+        "function": "report"
+      },
+      "reads": [
+        {
+          "place": "parsed",
+          "source": {
+            "file": "docs/report.ts",
+            "function": "report"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "status",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the status cannot be written",
+        "to": "parent",
+        "source": {
+          "file": "docs/report.ts",
+          "function": "report"
+        }
+      }
+    }
+  ],
+  "unsaid": [
+    {
+      "what": "a document with no pages is filed as an empty file",
+      "source": {
+        "file": "docs/file.ts",
+        "function": "store"
+      }
+    }
+  ]
+}

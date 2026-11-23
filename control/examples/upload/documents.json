@@ -1,0 +1,187 @@
+{
+  "system": "documents",
+  "places": [
+    {
+      "name": "inbox",
+      "outside": true,
+      "invalid": "a file that is not a certificate"
+    },
+    {
+      "name": "parsed",
+      "belongsTo": "parse",
+      "invalid": "a certificate with no form number"
+    },
+    {
+      "name": "files",
+      "belongsTo": "file",
+      "keyed": true,
+      "onExisting": "replace",
+      "invalid": "a file that is not a PDF"
+    },
+    {
+      "name": "register",
+      "belongsTo": "record",
+      "keyed": true,
+      "onExisting": "refuse",
+      "hold": {
+        "file": "docs/register.test.ts",
+        "test": "refuses a second record"
+      },
+      "invalid": "a record with no certificate number"
+    },
+    {
+      "name": "status",
+      "belongsTo": "report",
+      "invalid": "a status that is not one of the known ones"
+    }
+  ],
+  "elements": [
+    {
+      "name": "documents",
+      "steps": [
+        "upload"
+      ]
+    },
+    {
+      "name": "upload",
+      "join": [
+        "parse",
+        "file",
+        "record",
+        "report"
+      ],
+      "rejects": {
+        "reason": "a step failed",
+        "to": "status",
+        "hold": {
+          "file": "docs/upload.test.ts",
+          "test": "marks the upload failed"
+        }
+      }
+    },
+    {
+      "name": "parse",
+      "reads": [
+        {
+          "place": "inbox"
+        }
+      ],
+      "writes": [
+        {
+          "place": "parsed",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "not recognised as a certificate",
+        "to": "parsed",
+        "hold": {
+          "file": "docs/parse.test.ts",
+          "test": "refuses an unrecognised document"
+        }
+      }
+    },
+    {
+      "name": "file",
+      "reads": [
+        {
+          "place": "parsed"
+        },
+        {
+          "place": "files"
+        }
+      ],
+      "writes": [
+        {
+          "place": "files",
+          "mode": "create",
+          "key": "content",
+          "before": [
+            {
+              "check": "exists",
+              "then": "refuse",
+              "hold": {
+                "file": "docs/file.test.ts",
+                "test": "refuses an existing name"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "hold": {
+                "file": "docs/file.test.ts",
+                "test": "refuses a name given twice"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the file cannot be saved",
+        "to": "parent",
+        "hold": {
+          "file": "docs/file.test.ts",
+          "test": "passes a failure up"
+        }
+      }
+    },
+    {
+      "name": "record",
+      "reads": [
+        {
+          "place": "parsed"
+        }
+      ],
+      "writes": [
+        {
+          "place": "register",
+          "mode": "create",
+          "key": "content"
+        }
+      ],
+      "rejects": {
+        "reason": "the record cannot be written",
+        "to": "parent"
+      }
+    },
+    {
+      "name": "report",
+      "reads": [
+        {
+          "place": "parsed"
+        }
+      ],
+      "writes": [
+        {
+          "place": "status",
+          "mode": "write"
+        },
+        {
+          "place": "register",
+          "mode": "replace",
+          "key": "assigned",
+          "records": "one",
+          "before": [
+            {
+              "check": "belongs",
+              "then": "refuse",
+              "hold": {
+                "file": "docs/report.test.ts",
+                "test": "refuses a record of another upload"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the status cannot be written",
+        "to": "parent",
+        "hold": {
+          "file": "docs/report.test.ts",
+          "test": "passes a failure up"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

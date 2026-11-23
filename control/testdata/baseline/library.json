@@ -1,0 +1,307 @@
+{
+  "system": "library",
+  "places": [
+    {
+      "name": "request",
+      "outside": true,
+      "invalid": "a request with no title"
+    },
+    {
+      "name": "parsed",
+      "belongsTo": "read",
+      "invalid": "a request that could not be read"
+    },
+    {
+      "name": "shelf",
+      "belongsTo": "shelve",
+      "keyed": true,
+      "lasting": true,
+      "onExisting": "replace",
+      "invalid": "a book with no title"
+    },
+    {
+      "name": "journal",
+      "belongsTo": "log",
+      "keyed": true,
+      "onExisting": "refuse",
+      "hold": {
+        "file": "lib/library.test",
+        "test": "the journal refuses a second entry"
+      },
+      "invalid": "an entry with no date"
+    },
+    {
+      "name": "outbox",
+      "belongsTo": "mail",
+      "invalid": "a letter with no address"
+    },
+    {
+      "name": "summary",
+      "belongsTo": "audit",
+      "invalid": "a summary with no count"
+    }
+  ],
+  "elements": [
+    {
+      "name": "library",
+      "steps": [
+        "intake",
+        "audit"
+      ]
+    },
+    {
+      "name": "intake",
+      "join": [
+        "read",
+        "shelve",
+        "notify"
+      ],
+      "rejects": {
+        "reason": "the request was not taken in",
+        "to": "parsed",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "reports a request not taken in"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "leaves the shelf as it was"
+        }
+      }
+    },
+    {
+      "name": "read",
+      "reads": [
+        {
+          "place": "request"
+        }
+      ],
+      "writes": [
+        {
+          "place": "parsed",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the request cannot be read",
+        "to": "parsed",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "refuses a request it cannot read"
+        }
+      }
+    },
+    {
+      "name": "shelve",
+      "or": [
+        {
+          "when": "the book is new",
+          "do": "add"
+        }
+      ],
+      "otherwise": "update",
+      "rejects": {
+        "reason": "the book was not shelved",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "passes a failed shelving up"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "passes the answer up"
+        }
+      }
+    },
+    {
+      "name": "add",
+      "reads": [
+        {
+          "place": "parsed"
+        },
+        {
+          "place": "shelf"
+        }
+      ],
+      "writes": [
+        {
+          "place": "shelf",
+          "mode": "create",
+          "key": "content",
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "hold": {
+                "file": "lib/library.test",
+                "test": "asks before replacing a book"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "hold": {
+                "file": "lib/library.test",
+                "test": "refuses a title given twice"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the book cannot be added",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "refuses a book it cannot add"
+        }
+      },
+      "declines": {
+        "reason": "the person kept the book already there",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "writes only on a yes"
+        }
+      }
+    },
+    {
+      "name": "update",
+      "reads": [
+        {
+          "place": "parsed"
+        },
+        {
+          "place": "shelf"
+        }
+      ],
+      "writes": [
+        {
+          "place": "shelf",
+          "mode": "replace",
+          "key": "content",
+          "records": "one",
+          "before": [
+            {
+              "check": "belongs",
+              "then": "refuse",
+              "hold": {
+                "file": "lib/library.test",
+                "test": "refuses a book of another reader"
+              }
+            }
+          ]
+        }
+      ],
+      "rejects": {
+        "reason": "the book cannot be updated",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "refuses a book it cannot update"
+        }
+      }
+    },
+    {
+      "name": "notify",
+      "include": [
+        "log",
+        "mail"
+      ],
+      "rejects": {
+        "reason": "the notice failed",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "passes a failed notice up"
+        }
+      }
+    },
+    {
+      "name": "log",
+      "reads": [
+        {
+          "place": "parsed"
+        }
+      ],
+      "writes": [
+        {
+          "place": "journal",
+          "mode": "create",
+          "key": "assigned"
+        }
+      ],
+      "rejects": {
+        "reason": "the entry cannot be written",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "refuses an entry it cannot write"
+        }
+      }
+    },
+    {
+      "name": "mail",
+      "reads": [
+        {
+          "place": "parsed"
+        }
+      ],
+      "writes": [
+        {
+          "place": "outbox",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the letter cannot be sent",
+        "to": "parent",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "refuses a letter it cannot send"
+        }
+      }
+    },
+    {
+      "name": "audit",
+      "reads": [
+        {
+          "place": "shelf"
+        },
+        {
+          "place": "journal"
+        }
+      ],
+      "writes": [
+        {
+          "place": "summary",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the shelf cannot be counted",
+        "to": "summary",
+        "hold": {
+          "file": "lib/library.test",
+          "test": "reports a shelf it cannot count"
+        }
+      }
+    }
+  ],
+  "unsaid": [
+    {
+      "what": "a book is lent to one reader at a time",
+      "hold": {
+        "file": "lib/library.test",
+        "test": "lends a book once"
+      }
+    }
+  ]
+}

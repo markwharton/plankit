@@ -1,0 +1,74 @@
+{
+  "describes": "audit",
+  "places": [
+    {
+      "name": "shelf",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_shelf"
+      }
+    },
+    {
+      "name": "journal",
+      "keyed": true,
+      "onExisting": "refuse",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_journal"
+      }
+    },
+    {
+      "name": "summary",
+      "source": {
+        "file": "lib/places.code",
+        "function": "open_summary"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "audit",
+      "source": {
+        "file": "lib/audit.code",
+        "function": "audit"
+      },
+      "reads": [
+        {
+          "place": "shelf",
+          "source": {
+            "file": "lib/audit.code",
+            "function": "read_shelf"
+          }
+        },
+        {
+          "place": "journal",
+          "source": {
+            "file": "lib/audit.code",
+            "function": "read_journal"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "summary",
+          "mode": "write",
+          "source": {
+            "file": "lib/audit.code",
+            "function": "write_summary"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the shelf cannot be counted",
+        "to": "summary",
+        "source": {
+          "file": "lib/audit.code",
+          "function": "rejects_audit"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

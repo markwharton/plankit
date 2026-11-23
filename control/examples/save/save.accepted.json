@@ -1,0 +1,8 @@
+{
+  "accepted": [
+    {
+      "finding": "follows  place disk",
+      "reason": "the browser's store refuses; the test store replaces"
+    }
+  ]
+}

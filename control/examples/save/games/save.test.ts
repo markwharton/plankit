@@ -1,0 +1,5 @@
+test("asks before overwriting", () => {})
+test("passes a failed store up", () => {})
+test("refuses a game that cannot be written", () => {})
+test("refuses an empty name", () => {})
+test("reports a save that failed", () => {})
