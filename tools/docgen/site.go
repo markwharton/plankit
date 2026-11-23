@@ -15,6 +15,7 @@ import (
 	"github.com/markwharton/plankit/internal/git"
 	"github.com/markwharton/plankit/internal/help"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 // The site is the third consumer of the one authored source: the
@@ -134,6 +135,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool, platforms []strin
 	}
 	nav := []navItem{
 		{Href: "/architecture" + linkExt, Label: "How it works"},
+		{Href: "/control" + linkExt, Label: "Control"},
 	}
 	if len(notes) > 0 {
 		nav = append(nav, navItem{Href: "/notes" + linkExt, Label: "Notes"})
@@ -183,6 +185,7 @@ func buildSite(root, skillsDir, out, pk string, notesAll bool, platforms []strin
 	}
 	for _, src := range []struct{ file, path, title string }{
 		{filepath.Join("docs", "architecture.md"), "architecture.html", "How it works"},
+		{filepath.Join("docs", "control.md"), "control.html", "Control"},
 		{filepath.Join("docs", "privacy.md"), "privacy.html", "Privacy"},
 		{"CHANGELOG.md", "changelog.html", "Changelog"},
 	} {
@@ -254,13 +257,15 @@ func redirects(base []byte, platforms []string) []byte {
 	return b.Bytes()
 }
 
-// renderHTML converts markdown to HTML with goldmark's own renderer,
-// the same parser the IR compiler validates with. Mermaid fences
+// renderHTML converts markdown to HTML with goldmark's own renderer and
+// its table extension. The IR compiler parses without that extension,
+// because pk help has no table, so tables belong only in docs/ pages;
+// TestNoSkillHoldsATable fails if a skill gains one. Mermaid fences
 // arrive as <pre><code class="language-mermaid"> and the layout's
 // script draws them client-side.
 func renderHTML(md []byte) (template.HTML, bool) {
 	var buf bytes.Buffer
-	if err := goldmark.New().Convert(md, &buf); err != nil {
+	if err := goldmark.New(goldmark.WithExtensions(extension.Table)).Convert(md, &buf); err != nil {
 		return template.HTML("<p>render error: " + template.HTMLEscapeString(err.Error()) + "</p>"), false
 	}
 	return template.HTML(buf.String()), strings.Contains(string(md), "```mermaid")
