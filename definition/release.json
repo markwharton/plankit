@@ -1,0 +1,240 @@
+{
+  "describes": "release",
+  "places": [
+    { "name": "release commit",
+      "source": { "file": "internal/changelog/trailer.go", "function": "ReadReleaseTagTrailer" } },
+    { "name": "settings",
+      "source": { "file": "internal/cli/repo.go", "function": "Policy" } },
+    { "name": "working tree",
+      "source": { "file": "internal/git/git.go", "function": "CheckCleanTree" } },
+    { "name": "working branch",
+      "source": { "file": "internal/git/git.go", "function": "CurrentBranch" } },
+    { "name": "release branch",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "name": "tags", "keyed": true, "onExisting": "refuse",
+      "source": { "file": "internal/git/git.go", "function": "CreateTag" } },
+    { "name": "origin",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "name": "remote-tracking branches",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "name": "message",
+      "source": { "file": "internal/msg/msg.go", "function": "Itemf" } }
+  ],
+  "elements": [
+    { "name": "release",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "join": [
+        "pre-flight",
+        "merge",
+        "preRelease hook",
+        "tag",
+        "prePush hook",
+        "push",
+        "switch back",
+        "push working branch"
+      ],
+      "rejects": {
+        "reason": "a child refused: the refusal is returned to the caller as an error, and release does not print it itself",
+        "to": "parent",
+        "source": { "file": "internal/release/release.go", "function": "run" } }
+    },
+    { "name": "pre-flight",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "reads": [
+        { "place": "working branch",
+          "source": { "file": "internal/git/git.go", "function": "CurrentBranch" } },
+        { "place": "settings",
+          "source": { "file": "internal/cli/repo.go", "function": "Policy" } },
+        { "place": "release commit",
+          "source": { "file": "internal/changelog/trailer.go", "function": "ReadReleaseTagTrailer" } },
+        { "place": "working tree",
+          "source": { "file": "internal/git/git.go", "function": "CheckCleanTree" } },
+        { "place": "origin",
+          "source": { "file": "internal/changelog/preflight.go", "function": "CheckOnOrigin" } },
+        { "place": "remote-tracking branches",
+          "source": { "file": "internal/git/git.go", "function": "IsAncestor" } },
+        { "place": "release branch",
+          "source": { "file": "internal/git/git.go", "function": "BranchExists" } },
+        { "place": "tags",
+          "source": { "file": "internal/changelog/changelog.go", "function": "LatestTag" } }
+      ],
+      "writes": [
+        { "place": "remote-tracking branches", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "the directory is not in a git repository; HEAD is detached; .pk.json is missing or does not load; the checked-out branch is the release branch; HEAD has no Release-Tag trailer, or its value is not a semver tag; the working tree has uncommitted changes; origin does not have the working branch; origin does not answer; the working branch is behind origin's copy of it; the release branch is neither local nor on origin; origin's release branch is not an ancestor of HEAD; the latest semver tag is not in HEAD's history",
+        "to": "parent",
+        "source": { "file": "internal/release/release.go", "function": "run" } }
+    },
+    { "name": "merge",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "reads": [
+        { "place": "working branch",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "release branch",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "remote-tracking branches",
+          "source": { "file": "internal/git/git.go", "function": "IsAncestor" } }
+      ],
+      "writes": [
+        { "place": "working tree", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "release branch", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "git cannot switch to the release branch or read its HEAD, or the release branch cannot be fast-forwarded to the working branch",
+        "to": "parent",
+        "source": { "file": "internal/release/release.go", "function": "run" } }
+    },
+    { "name": "preRelease hook",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "release commit",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+      ],
+      "rejects": {
+        "reason": "the release.hooks.preRelease command ends with a failure",
+        "to": "parent",
+        "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+    },
+    { "name": "tag",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "reads": [
+        { "place": "release commit",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "tags",
+          "source": { "file": "internal/changelog/trailer.go", "function": "ReleaseTagState" } }
+      ],
+      "writes": [
+        { "place": "tags", "mode": "create", "key": "content", "records": "one",
+          "source": { "file": "internal/git/git.go", "function": "CreateTag" },
+          "before": [
+            { "check": "exists", "then": "refuse",
+              "source": { "file": "internal/changelog/trailer.go", "function": "ReleaseTagState" } }
+          ] },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "a local tag of the trailer's name already exists, on HEAD or on another commit; or git fails to create the tag",
+        "to": "parent",
+        "source": { "file": "internal/release/release.go", "function": "run" } }
+    },
+    { "name": "prePush hook",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "release commit",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+      ],
+      "rejects": {
+        "reason": "the release.hooks.prePush command ends with a failure",
+        "to": "parent",
+        "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+    },
+    { "name": "push",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "reads": [
+        { "place": "release branch",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "tags",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "origin", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "git push of the release branch and the tag fails: origin refuses either one or does not answer",
+        "to": "parent",
+        "source": { "file": "internal/release/release.go", "function": "run" } }
+    },
+    { "name": "switch back",
+      "source": { "file": "internal/release/release.go", "function": "switchBack" },
+      "reads": [
+        { "place": "working branch",
+          "source": { "file": "internal/release/release.go", "function": "switchBack" } }
+      ],
+      "writes": [
+        { "place": "working tree", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "switchBack" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "switchBack" } }
+      ]
+    },
+    { "name": "push working branch",
+      "source": { "file": "internal/release/release.go", "function": "run" },
+      "reads": [
+        { "place": "working branch",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "origin", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/release/release.go", "function": "run" } }
+      ]
+    }
+  ],
+  "unsaid": [
+    { "what": "a failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "a failure after the switch to the release branch and before tagging rolls back the same way, with no tag to delete; the merge is reset by git reset --hard to the commit the release branch was at before the merge",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "a rollback step that fails prints a warning, the other rollback steps still run, and the error returned is the one that stopped release",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "a release ends on the working branch, with the tag, the release branch and the working branch all on origin",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "the release branch and the tag are pushed together",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "the push of the release branch and the tag uses git push --atomic and no force; the working branch goes in a second, separate push after the switch back",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is a warning",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "after a failed switch back or a failed push of the working branch, release still prints that it is complete and returns no error",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "preRelease runs before the tag exists, and prePush runs with the tag in existence",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "the check that no local tag of the trailer's name exists is made at the start, before the working tree check, the fetches, the merge and the preRelease hook; nothing checks again at the moment of tagging except git itself",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "a preRelease hook that commits produces a commit the tag then covers",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "the tag is put on whatever commit is at HEAD when tagging happens",
+      "source": { "file": "internal/git/git.go", "function": "CreateTag" } },
+    { "what": "a hook is a command line from settings run through the shell in the repository's root, with VERSION (the tag without its v) and TAG set in its environment and replaced in the command text; what the command changes is not known to release; a hook that is not set runs nothing",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunScript" } },
+    { "what": "release with --dry-run merges nothing, tags nothing and pushes nothing",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "with --dry-run, release still makes the pre-flight checks and their fetches, in merge flow checks that the local release branch, when there is one, is an ancestor of the working branch and prints that it would merge, runs the preRelease hook for real on the working branch's checkout, and prints what it would tag and push; it does not run the prePush hook",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "a release dry run rehearses the merge against origin's release branch when there is no local one",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "in trunk flow, when release.branch is not set, there is no merge and no switching: the tag goes on the working branch's HEAD, and one atomic push sends the working branch and the tag, with no second push",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "trunk flow refuses a working branch that is not origin's default branch only when origin names its default branch; when origin names none, or cannot be asked for it, the check is skipped and the release goes ahead on the working branch",
+      "source": { "file": "internal/changelog/preflight.go", "function": "CheckTrunkBranch" } },
+    { "what": "a refusal for a condition the person can fix is returned as a state error, some with a hint naming the fix; a failure of git in switch, rev-parse, merge-base, tag --list or tag is returned as a plain error, which the caller reports with a different exit code",
+      "source": { "file": "internal/release/release.go", "function": "run" } },
+    { "what": "everything release prints, the hooks' output included, goes to standard error; it writes nothing to standard output",
+      "source": { "file": "internal/release/release.go", "function": "run" } }
+  ]
+}

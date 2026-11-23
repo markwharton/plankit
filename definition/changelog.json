@@ -1,0 +1,294 @@
+{
+  "describes": "changelog",
+  "places": [
+    { "name": "settings",
+      "source": { "file": "internal/cli/repo.go", "function": "Policy" } },
+    { "name": "working tree",
+      "source": { "file": "internal/git/git.go", "function": "CheckCleanTree" } },
+    { "name": "working branch",
+      "source": { "file": "internal/git/git.go", "function": "CurrentBranch" } },
+    { "name": "origin",
+      "source": { "file": "internal/git/git.go", "function": "RemoteBranchExists" } },
+    { "name": "tags", "keyed": true, "onExisting": "refuse",
+      "source": { "file": "internal/git/git.go", "function": "Exec" } },
+    { "name": "message",
+      "source": { "file": "internal/msg/msg.go", "function": "Sayf" } },
+    { "name": "commits since tag",
+      "source": { "file": "internal/changelog/changelog.go", "function": "commitsSinceLastTag" } },
+    { "name": "next version",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "name": "release commit",
+      "source": { "file": "internal/git/git.go", "function": "Exec" } },
+    { "name": "section",
+      "source": { "file": "internal/changelog/changelog.go", "function": "formatSection" } },
+    { "name": "version files",
+      "source": { "file": "internal/changelog/versionfile.go", "function": "updateVersionFile" } },
+    { "name": "changelog file",
+      "source": { "file": "internal/changelog/trailer.go", "function": "readFile" } },
+    { "name": "origin address",
+      "source": { "file": "internal/git/git.go", "function": "RepoURL" } }
+  ],
+  "elements": [
+    { "name": "changelog",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" },
+      "join": [
+        "branch checks",
+        "infer version",
+        "pending release check",
+        "build section",
+        "stamp versions",
+        "postVersion hook",
+        "write section",
+        "preCommit hook",
+        "commit"
+      ],
+      "rejects": {
+        "reason": "a part of the run refused or failed",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+    },
+    { "name": "branch checks",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "loadConfig" } },
+        { "place": "working tree",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+        { "place": "working branch",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+        { "place": "origin",
+          "source": { "file": "internal/changelog/preflight.go", "function": "CheckOnOrigin" } }
+      ],
+      "rejects": {
+        "reason": "the directory is not in a git repository, .pk.json is missing or does not load, the tree is not clean, HEAD is detached, the branch is a protected branch, in trunk flow the branch is not origin's default branch, the branch is not on origin, or origin did not answer",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+    },
+    { "name": "infer version",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" },
+      "reads": [
+        { "place": "tags",
+          "source": { "file": "internal/changelog/changelog.go", "function": "LatestTag" } },
+        { "place": "working branch",
+          "source": { "file": "internal/changelog/changelog.go", "function": "commitsSinceLastTag" } },
+        { "place": "origin",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "tags", "mode": "create", "key": "content",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+        { "place": "commits since tag", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "commitsSinceLastTag" } },
+        { "place": "next version", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "the last version tag is not in the branch's history, origin has tags and they could not be fetched, or --bump is not major, minor or patch",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+    },
+    { "name": "pending release check",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" },
+      "reads": [
+        { "place": "release commit",
+          "source": { "file": "internal/changelog/trailer.go", "function": "ReadReleaseTagTrailer" } }
+      ],
+      "rejects": {
+        "reason": "the last commit on the branch already has a valid Release-Tag trailer",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+    },
+    { "name": "build section",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+        { "place": "commits since tag",
+          "source": { "file": "internal/changelog/changelog.go", "function": "groupCommits" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+      ],
+      "writes": [
+        { "place": "section", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "formatSection" } }
+      ]
+    },
+    { "name": "stamp versions",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "version files",
+          "source": { "file": "internal/changelog/versionfile.go", "function": "updateVersionFile" } }
+      ],
+      "writes": [
+        { "place": "version files", "mode": "write",
+          "source": { "file": "internal/changelog/versionfile.go", "function": "updateVersionFile" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "rejects": {
+        "reason": "a version file cannot be read, is not a JSON object, has no version field at its root, or cannot be written",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+    },
+    { "name": "postVersion hook",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "writes": [
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+      ],
+      "rejects": {
+        "reason": "the postVersion command ends with an error",
+        "to": "parent",
+        "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+    },
+    { "name": "write section",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" },
+      "reads": [
+        { "place": "section",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "changelog file",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "commits since tag",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "origin address",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "writes": [
+        { "place": "changelog file", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "rejects": {
+        "reason": "the changelog file is there and cannot be read, or it cannot be written",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+    },
+    { "name": "preCommit hook",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "writes": [
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+      ],
+      "rejects": {
+        "reason": "the preCommit command ends with an error",
+        "to": "parent",
+        "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } }
+    },
+    { "name": "commit",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" },
+      "reads": [
+        { "place": "settings",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "next version",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "changelog file",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "version files",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "working tree",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+      ],
+      "writes": [
+        { "place": "release commit", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+        { "place": "message", "mode": "write",
+          "source": { "file": "internal/changelog/changelog.go", "function": "run" } }
+      ],
+      "rejects": {
+        "reason": "git does not stage the files or does not make the commit",
+        "to": "parent",
+        "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } }
+    }
+  ],
+  "unsaid": [
+    { "what": "a breaking change bumps major, a feat bumps minor, and anything else bumps patch",
+      "source": { "file": "internal/changelog/changelog.go", "function": "detectBump" } },
+    { "what": "--bump overrides the inferred version, and the run names the override",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "--exclude drops commits before the version is inferred",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "with no version tag, the first release covers the whole history",
+      "source": { "file": "internal/changelog/changelog.go", "function": "commitsSinceLastTag" } },
+    { "what": "with no local tags, changelog fetches origin's tags first and measures from the latest",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "when a version file or a hook fails, nothing is committed and the tree goes back to how the run found it",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "--undo unwinds the release commit and restores the changelog file and the version files",
+      "source": { "file": "internal/changelog/changelog.go", "function": "undo" } },
+    { "what": "--undo refuses a commit that is pushed, tagged or merged",
+      "source": { "file": "internal/changelog/changelog.go", "function": "undo" } },
+    { "what": "changelog with --dry-run prints the section to standard output, changes no file and makes no commit, and still fetches origin's tags when the clone has no version tag",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "--dry-run skips the clean tree check, the detached HEAD refusal and the pending release check",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "--undo with --dry-run makes the same checks and changes nothing",
+      "source": { "file": "internal/changelog/changelog.go", "function": "undo" } },
+    { "what": "--undo with --dry-run prints no section: it says on standard error which release commit it would undo, and ends without an error",
+      "source": { "file": "internal/changelog/changelog.go", "function": "undo" } },
+    { "what": "--undo is also refused when the last commit has no valid Release-Tag trailer or the tree is not clean",
+      "source": { "file": "internal/changelog/changelog.go", "function": "undo" } },
+    { "what": "with no conventional commit since the last version tag, none left after --exclude, or none of a visible type, the run says so, writes no file, makes no commit and ends without an error",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "a clone that has tags but no version tag also fetches origin's tags",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "when the fetch of tags fails and origin has no tags or cannot be asked, the run goes on as a first release",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "the last version tag is the highest version among the local tags written as v and a semantic version; tags of any other form are passed over",
+      "source": { "file": "internal/changelog/changelog.go", "function": "LatestTag" } },
+    { "what": "with no version tag, the next version is worked out from v0.0.0",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "only commits with a conventional subject are counted; a ! in the subject, or a BREAKING CHANGE or BREAKING-CHANGE footer line, makes a commit breaking",
+      "source": { "file": "internal/changelog/changelog.go", "function": "parseCommit" } },
+    { "what": "an --exclude entry must equal a commit's short hash; an entry that matches no commit is warned about and the run goes on",
+      "source": { "file": "internal/changelog/changelog.go", "function": "applyExclude" } },
+    { "what": "commits of hidden types and of types the type table does not list are left out of the section and still count toward the version",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "settings with no type table get the default type table",
+      "source": { "file": "internal/changelog/changelog.go", "function": "loadConfig" } },
+    { "what": "the section is a heading with the version and the day's date, then one group for each section of the type table in the table's order, each commit as its message and short hash, marked when breaking, with its scope when showScope is set",
+      "source": { "file": "internal/changelog/changelog.go", "function": "formatSection" } },
+    { "what": "in a commit's message and scope, outside backtick code spans, each < and each & that opens a character reference is escaped",
+      "source": { "file": "internal/changelog/changelog.go", "function": "escapeSubject" } },
+    { "what": "the new section goes above the first section already in the changelog file; a missing or empty file starts with the standard header",
+      "source": { "file": "internal/changelog/changelog.go", "function": "insertSection" } },
+    { "what": "the changelog file gets a link line for the version, built from origin's address: a compare link from the last version tag, or a commits link for a first release; with no origin it gets none",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+    { "what": "the version is stamped without its v prefix into the version field at the root of each version file, and every other byte of the file is kept",
+      "source": { "file": "internal/changelog/versionfile.go", "function": "updateVersionFile" } },
+    { "what": "a hook's command runs through the shell in the repository's root with VERSION set to the version without its v prefix, and its output goes to standard error; a hook that is not set runs nothing",
+      "source": { "file": "internal/hookio/hookio.go", "function": "RunHook" } },
+    { "what": "the release commit takes the changelog file, the version files and every tracked file a hook changed; a new file a hook made is not committed and stays in the tree",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+    { "what": "the release commit's subject is chore: release and the version",
+      "source": { "file": "internal/changelog/changelog.go", "function": "writeRelease" } },
+    { "what": "a failure to read or write the changelog file, to stage the files or to make the commit also puts the tree back",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "putting the tree back resets tracked files and removes untracked ones; files git ignores are left as they are",
+      "source": { "file": "internal/git/git.go", "function": "RestoreTree" } },
+    { "what": "when the tree cannot be put back, the run warns that it was not",
+      "source": { "file": "internal/changelog/changelog.go", "function": "run" } },
+    { "what": "a refusal exits 2, a --bump value that is not major, minor or patch exits 1, and a failure of git itself or of reading or writing the changelog file exits 3; a failure of git inside the clean tree check, the check that the branch is on origin or --undo's reading of the trailer is reported as that refusal and exits 2",
+      "source": { "file": "internal/cli/cli.go", "function": "report" } },
+    { "what": "in trunk flow, when origin names no default branch, the default branch check is skipped",
+      "source": { "file": "internal/changelog/preflight.go", "function": "CheckTrunkBranch" } }
+  ]
+}
