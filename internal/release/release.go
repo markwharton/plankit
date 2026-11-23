@@ -212,7 +212,14 @@ func run(ctx *cli.Context) error {
 
 	if needsMerge {
 		if dryRun {
-			ff, err := git.IsAncestor(root, releaseBranch, sourceBranch)
+			// A real run switches to the release branch, and git makes
+			// the local one from origin's when there is none. The
+			// rehearsal asks the same question of the same commit.
+			from := releaseBranch
+			if !git.BranchExists(root, releaseBranch) {
+				from = "origin/" + releaseBranch
+			}
+			ff, err := git.IsAncestor(root, from, sourceBranch)
 			if err != nil {
 				return err
 			}

@@ -163,6 +163,26 @@ func TestDryRunTouchesNothing(t *testing.T) {
 	}
 }
 
+// A clone that checked out only the working branch has the release
+// branch on origin and no local one. A real run creates it on the
+// switch, so a dry run rehearses against origin's.
+func TestDryRunRehearsesAReleaseBranchThatIsOnlyOnOrigin(t *testing.T) {
+	dir, bare := repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "branch", "-D", "main")
+
+	code, errw := runRel(t, dir, "--dry-run")
+	if code != cli.ExitOK || !strings.Contains(errw, "Would merge develop into main (fast-forward)") {
+		t.Fatalf("dry run: exit %d:\n%s", code, errw)
+	}
+	if git.BranchExists(dir, "main") || bareRef(t, bare, "refs/tags/v0.1.0") != "" {
+		t.Fatal("a dry run made a branch or pushed a tag")
+	}
+	if code, errw := runRel(t, dir); code != cli.ExitOK {
+		t.Fatalf("the real run: exit %d:\n%s", code, errw)
+	}
+}
+
 func TestRefusals(t *testing.T) {
 	// No trailer.
 	dir, _ := repo(t, nil)
