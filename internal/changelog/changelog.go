@@ -38,7 +38,7 @@ var Cmd = &cli.Command{
 	Summary: "Generate CHANGELOG.md from conventional commits and commit it with a Release-Tag trailer",
 	Flags: []cli.FlagSpec{
 		{Name: "bump", Type: cli.StringFlag, Usage: "Override the inferred bump: major, minor, or patch (the developer's call)"},
-		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Print the section to stdout without writing or committing"},
+		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Print the section to stdout without writing or committing; with --undo, say what would be unwound"},
 		{Name: "exclude", Type: cli.StringFlag, Usage: "Comma-separated commit SHAs to drop from the section (the developer's call)"},
 		{Name: "undo", Type: cli.BoolFlag, Usage: "Unwind the last pk changelog commit (must be unpushed)"},
 	},
@@ -319,7 +319,8 @@ func writeRelease(ctx *cli.Context, root string, cfg *fullConfig, latestTag, nex
 // current branch must be the only branch, tag, or remote-tracking
 // branch that contains the commit. That one question refuses a pushed
 // commit, a tagged release, and a merge that was not rolled back alike.
-// git reset --hard HEAD~1 restores CHANGELOG.md and version files.
+// git reset --hard HEAD~1 restores CHANGELOG.md and version files. With
+// --dry-run the checks are made and nothing is reset.
 func undo(ctx *cli.Context, root string) error {
 	// Every reason not to undo is the one refusal, with its reason.
 	refuse := func(format string, a ...any) error {
@@ -353,6 +354,10 @@ func undo(ctx *cli.Context, root string) error {
 	}
 	if len(others) > 0 {
 		return refuse("the release commit is also on %s", strings.Join(others, ", "))
+	}
+	if ctx.Bool("dry-run") {
+		msg.Sayf(ctx.Stderr, "Would undo release commit %s; CHANGELOG.md and version files would be restored", trailerValue)
+		return nil
 	}
 	if _, err := git.Exec(root, "reset", "--hard", "HEAD~1"); err != nil {
 		return err

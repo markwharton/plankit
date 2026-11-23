@@ -525,6 +525,27 @@ func TestUndo(t *testing.T) {
 	}
 }
 
+// --undo with --dry-run makes the same checks and changes nothing.
+func TestUndoWithDryRunChangesNothing(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	runCL(t, dir)
+
+	code, _, errw := runCL(t, dir, "--undo", "--dry-run")
+	if code != cli.ExitOK || !strings.Contains(errw, "Would undo release commit v0.1.0") {
+		t.Fatalf("exit %d: %s", code, errw)
+	}
+	if headSubject(t, dir) != "chore: release v0.1.0" {
+		t.Fatalf("a dry run moved HEAD to %q", headSubject(t, dir))
+	}
+
+	// What a real undo refuses, the rehearsal refuses too.
+	mustGit(t, dir, "push", "-q", "origin", "develop")
+	if code, _, errw := runCL(t, dir, "--undo", "--dry-run"); code != cli.ExitState || !strings.Contains(errw, "cannot undo: the release commit is also on remotes/origin/develop") {
+		t.Fatalf("pushed: code=%d errw=%q", code, errw)
+	}
+}
+
 // TestUndoRefusesACommitSomethingElseHolds: undo removes the release
 // commit from the current branch, so it refuses when a tag or another
 // branch would keep a copy, and names what holds it.

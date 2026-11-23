@@ -274,7 +274,15 @@
         },
         {
           "type": "text",
-          "text": " and version files. It refuses unless the tree is clean and the commit is only on the current branch: not pushed, not tagged, not merged."
+          "text": " and version files. It refuses unless the tree is clean and the commit is only on the current branch: not pushed, not tagged, not merged. With "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " it makes the same checks, says what it would unwind, and changes nothing."
         }
       ]
     },
@@ -438,7 +446,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --bump \u003cvalue\u003e\n        Override the inferred bump: major, minor, or patch (the developer's call)\n  --dry-run\n        Print the section to stdout without writing or committing\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (the developer's call)\n  --undo\n        Unwind the last pk changelog commit (must be unpushed)\n"
+      "text": "  --bump \u003cvalue\u003e\n        Override the inferred bump: major, minor, or patch (the developer's call)\n  --dry-run\n        Print the section to stdout without writing or committing; with --undo, say what would be unwound\n  --exclude \u003cvalue\u003e\n        Comma-separated commit SHAs to drop from the section (the developer's call)\n  --undo\n        Unwind the last pk changelog commit (must be unpushed)\n"
     },
     {
       "type": "para",
