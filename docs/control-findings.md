@@ -86,6 +86,36 @@ November 2026.
   checker's `held` check asks the same question of each rule in a
   definition file.
 
+From the session that built `control view`, on 24 November 2026.
+
+- **A design is checked before it is built.** The table "When an error
+  is caught", in "How this differs from USL", has a step missing
+  between its first two rows. The checker, run on a definition file
+  with no description files, makes the checks taken from Hamilton's
+  axioms and plays each place of the design broken, before any code
+  exists. The error can be written, because a definition can give a
+  place two writers, and it is caught in the definition, where fixing it
+  is one edit to a file and no code depends on it yet. The table, with
+  the step in its place:
+
+  | When an error is caught | By what | Example |
+  |---|---|---|
+  | At definition | Nothing needs to; it cannot be written | USL |
+  | At design, before it is built | The checker on the definition file | `one-owner` on a design where two steps write one place |
+  | At each change, before it lands | Control | The previous tests run against the change |
+  | After it lands | People noticing | A user finds an upload missing; an audit |
+
+  The standard's argument starts from Hamilton's finding that 75% of
+  errors were interface errors. The design check finds the data-flow
+  part of those: who writes a place, who reads it, and where a refusal
+  goes. Priority and timing are outside it. The new row adds to the
+  row for each change and does not replace it: that row covers all code
+  and every property, and the design check covers the structural part.
+  The row holds only where the checker runs at a chokepoint; run by
+  hand, it holds only when someone runs it. Candidate principles:
+  Reference, through "where none exists, write the definition first and
+  compare with that", and Chokepoints.
+
 ## The checker
 
 - **The description is the work, and nothing holds it to the code.** The
@@ -124,3 +154,41 @@ November 2026.
   cannot say, and folds nothing into another field. Candidate
   principles: Separation, through "every worker has a defined refusal",
   and Reference, through "a claim names its hold".
+
+From the session that ran the checker on `definition/pk.json` with no
+description files and drew the definition as a map, on 24 November
+2026.
+
+- **A run on a definition alone fails on its missing description
+  files.** Questions 1 and 2 need no code, so a design can be checked
+  before it is built. The same run also reports one `follows` finding
+  for each step of the top element, because no description file was
+  given, and those findings fail the run. A run that checks only the
+  design cannot pass. Candidate principle: Reference, through "where
+  none exists, write the definition first and compare with that".
+- **The format cannot state a failure that warns and does not refuse.**
+  In pk.json, once the release branch and the tag are on origin, a
+  failure to switch back or to push the working branch is a warning,
+  and the release stands. `switch back` and `push working branch` read a
+  place and declare no `rejects`, so `rejects-declared` reports both.
+  The behavior is in `unsaid`, where no check reads it. Candidate
+  principles: Separation, through "every worker has a defined refusal",
+  and Chokepoints, through the rule that input outside the domain is
+  refused with its reason.
+- **A refusal cannot name what it refuses.** A `rejects` has a reason
+  in words, and a place's `invalid` is words, so nothing can check that
+  a refusal covers an invalid value that reaches it. Breaking each place
+  of pk.json in turn, every invalid value met a refusal, and several of
+  those refusals were about something else: a `next version` that is
+  not higher than the last tag first meets "a version file cannot be
+  stamped". A `rejects` that names the places it refuses would make this
+  a check. Candidate principles: Proof, through "a hold fails on its
+  break", and Reference, through "a claim names its hold".
+- **Priority and timing are not checked.** Hamilton's interface errors
+  were "data flow, priority and timing errors". The checker and the
+  sweep cover data flow. `control/design.md` names TLA+ and Quint for
+  behavior over time. Whatever explores priority and timing reads the
+  same definition file beside the checker, and adds to what the checker
+  finds without changing it. What a definition would need to state for
+  them is open. Candidate principle: Reference, through "a need is met
+  in one place".
