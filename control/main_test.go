@@ -152,6 +152,12 @@ func TestThePagesExamplePrintsTheLineThePageShows(t *testing.T) {
 // source in place, after change has altered it, and runs check on it.
 func baselineRun(t *testing.T, change func(def, intake, audit obj), accepted map[string]string, extra ...string) (int, string, string) {
 	t.Helper()
+	return baselineCommand(t, "check", change, accepted, extra...)
+}
+
+// baselineCommand is baselineRun for any command that reads the files.
+func baselineCommand(t *testing.T, command string, change func(def, intake, audit obj), accepted map[string]string, extra ...string) (int, string, string) {
+	t.Helper()
 	def, intake, audit := loadBaseline(t, "library.json"), loadBaseline(t, "intake.json"), loadBaseline(t, "audit.json")
 	dir := t.TempDir()
 	evidence(t, dir, def, intake, audit)
@@ -164,7 +170,7 @@ func baselineRun(t *testing.T, change func(def, intake, audit obj), accepted map
 			t.Fatal(err)
 		}
 	}
-	args := append([]string{"check"}, extra...)
+	args := append([]string{command}, extra...)
 	args = append(args, "--root", dir, filepath.Join(dir, "library.json"), filepath.Join(dir, "intake.json"), filepath.Join(dir, "audit.json"))
 	return runCLI(args...)
 }
@@ -270,6 +276,13 @@ func TestARefusedFileStopsTheRun(t *testing.T) {
 	if code != 2 || !strings.Contains(stderr, "missing.json: the file cannot be read") {
 		t.Errorf("a file that is not there: exit %d, stderr %q", code, stderr)
 	}
+
+	// view reads the files the same way, and draws no page from a
+	// refused one.
+	code, stdout, stderr = baselineCommand(t, "view", func(def, _, _ obj) { place(def, "shelf")["colour"] = "red" }, nil)
+	if code != 2 || stdout != "" || !strings.Contains(stderr, `library.json: place "shelf" has the key "colour"`) {
+		t.Errorf("view of a refused file: exit %d, stdout %d bytes, stderr %q", code, len(stdout), stderr)
+	}
 }
 
 func TestADescriptionFileGivenFirstIsRefused(t *testing.T) {
@@ -282,7 +295,7 @@ func TestADescriptionFileGivenFirstIsRefused(t *testing.T) {
 }
 
 func TestACommandGivenWronglyExitsOne(t *testing.T) {
-	for _, args := range [][]string{{}, {"check"}, {"check", "--format", "xml", "a.json"}, {"check", "--nonsense"}, {"frobnicate"}, {"axioms", "extra"}, {"checks", "extra"}} {
+	for _, args := range [][]string{{}, {"check"}, {"check", "--format", "xml", "a.json"}, {"check", "--nonsense"}, {"view"}, {"view", "--nonsense"}, {"frobnicate"}, {"axioms", "extra"}, {"checks", "extra"}} {
 		if code, _, _ := runCLI(args...); code != 1 {
 			t.Errorf("control %s: exit %d, want 1", strings.Join(args, " "), code)
 		}

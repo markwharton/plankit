@@ -61,6 +61,7 @@ Each finding traces back to a line in one of the two files.
 | [checks.md](checks.md) | How the checker is run, the form of a finding, each check, and accepted findings. |
 | [axioms.md](axioms.md) | The owner's table of Hamilton's axioms and the check for each. |
 | [design.md](design.md) | Why it is built this way, what it does not do, and what is designed and not built. |
+| [view.md](view.md) | The page `control view` writes: how it plays the design with one place broken, what the sweep reports, and the tests it lists for the rules that name no hold. |
 
 The first three are the reference the checker is built from. The code
 is held to them:
@@ -84,6 +85,7 @@ is held to them:
 ```
 cd control
 go run . check --root examples/import examples/import/saved-files.json examples/import/import.json
+go run . view --root examples/import examples/import/saved-files.json examples/import/import.json > view.html
 go run . checks
 go run . axioms
 ```
@@ -99,6 +101,16 @@ file was refused, and 1 when the command was given wrongly. Held by
 `control/main_test.go`, "TestACleanRunExitsZeroWithNothingOnStdout",
 "TestFindingsGoToStdoutAndTheSummaryToStderr",
 "TestARefusedFileStopsTheRun" and "TestACommandGivenWronglyExitsOne".
+
+`view` reads the same files and prints one HTML page on standard output,
+with a summary on standard error: the design as its tree, the sweep of
+its faults, the tests its rules lack, and the findings `check` prints.
+It needs no description file, so a design can be drawn before its code
+exists. It exits 0 whatever the findings, 2 when a file was refused,
+and 1 when the command was given wrongly. Held by
+`control/view_test.go`, "TestTheViewExitsZeroWithFindings", and
+`control/main_test.go`, "TestARefusedFileStopsTheRun" and
+"TestACommandGivenWronglyExitsOne".
 
 ## How the checks are proven
 

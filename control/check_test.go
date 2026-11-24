@@ -177,12 +177,12 @@ func TestBaselinePassesEveryCheck(t *testing.T) {
 	dir := t.TempDir()
 	writeFiles(t, dir, map[string]obj{"library.json": def, "intake.json": intake, "audit.json": audit})
 	evidence(t, dir, def, intake, audit)
-	findings, refused := checkFiles(filepath.Join(dir, "library.json"),
+	run, refused := checkFiles(filepath.Join(dir, "library.json"),
 		[]string{filepath.Join(dir, "intake.json"), filepath.Join(dir, "audit.json")}, dir)
 	if len(refused) > 0 {
 		t.Fatalf("the baseline is refused:\n  %s", strings.Join(refused, "\n  "))
 	}
-	for _, f := range findings {
+	for _, f := range run.findings {
 		t.Errorf("the baseline has a finding: %s  %s: %s", f.Check, f.Subject, f.Message)
 	}
 }

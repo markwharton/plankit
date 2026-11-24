@@ -109,7 +109,7 @@ func sound(m *model, c *collector) {
 			switch {
 			case p.Outside:
 				add("one-owner", sWrite(e.Name, p.Name), "%s is from outside the system, and no element writes it", p.Name)
-			case p.BelongsTo != e.Name && !m.below(e.Name, p.BelongsTo):
+			case !m.ownedBy(e.Name, p):
 				add("one-owner", sWrite(e.Name, p.Name), "%s belongs to %s, and %s is not below %s", p.Name, p.BelongsTo, e.Name, p.BelongsTo)
 			}
 		}
@@ -247,31 +247,10 @@ func sound(m *model, c *collector) {
 // held makes the second question's check on every rule of a definition
 // file: each names a test, in a file that exists and contains its name.
 func held(m *model, root string, c *collector) {
-	rule := func(subject Subject, ev *Evidence) {
-		if why := missing(root, ev, "hold", "test", false); why != "" {
-			c.add("held", -1, 0, subject, "%s", why)
+	for _, r := range rules(m) {
+		if why := missing(root, r.Ev, "hold", "test", false); why != "" {
+			c.add("held", -1, 0, r.Subject, "%s", why)
 		}
-	}
-	for _, p := range m.f.Places {
-		if p.OnExisting == "refuse" {
-			rule(sPlace(p.Name), p.Ev)
-		}
-	}
-	for _, e := range m.f.Elements {
-		for _, w := range e.Writes {
-			for _, ch := range w.Before {
-				rule(sCheck(e.Name, w.Place, ch.Kind), ch.Ev)
-			}
-		}
-		if e.Rejects != nil {
-			rule(sRejects(e.Name), e.Rejects.Ev)
-		}
-		if e.Declines != nil {
-			rule(sDeclines(e.Name), e.Declines.Ev)
-		}
-	}
-	for _, u := range m.f.Unsaid {
-		rule(sUnsaid(u.What), u.Ev)
 	}
 }
 

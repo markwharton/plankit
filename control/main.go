@@ -1,10 +1,12 @@
 // Command control checks a definition file and its description files:
 // whether the design is sound, whether each of its rules names a hold,
 // and whether the code, as the description files state it, follows the
-// design. format.md, fields.md and checks.md are its reference.
+// design. format.md, fields.md and checks.md are its reference. view
+// draws the same run as one page, and view.md is its reference.
 //
-// Exit codes: 0 no finding, or every finding accepted; 1 the command was
-// given wrongly; 2 a finding is not accepted, or a file was refused.
+// Exit codes: 0 no finding, or every finding accepted, and for view
+// whatever the findings; 1 the command was given wrongly; 2 a finding
+// is not accepted, or a file was refused.
 package main
 
 import (
@@ -19,12 +21,15 @@ import (
 
 const usage = `usage:
   control check [--format text|json] [--root <directory>] <definition file> [<description file> ...]
+  control view [--root <directory>] <definition file> [<description file> ...]
   control checks
   control axioms
 
 check reads a definition file and any description files, with the
 acceptances file beside each, and prints one line for each finding on
-standard output. checks lists the checks of the first question with the
+standard output. view reads the same files and prints one HTML page:
+the design as its tree, the sweep of its faults, the tests its rules
+lack, and the findings of check. checks lists the checks of the first question with the
 sources of Hamilton's each comes from. axioms prints her axioms, theorem,
 type map and control structures, with the check for each.`
 
@@ -40,6 +45,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "check":
 		return runCheck(args[1:], stdout, stderr)
+	case "view":
+		return runView(args[1:], stdout, stderr)
 	case "checks":
 		if len(args) > 1 {
 			fmt.Fprintln(stderr, "control checks takes no arguments")
@@ -80,7 +87,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "control check: name a definition file, then any description files")
 		return 1
 	}
-	findings, refused := checkFiles(fs.Arg(0), fs.Args()[1:], *root)
+	run, refused := checkFiles(fs.Arg(0), fs.Args()[1:], *root)
 	if len(refused) > 0 {
 		for _, line := range refused {
 			fmt.Fprintln(stderr, line)
@@ -88,6 +95,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	findings := run.findings
 	open, accepted := 0, 0
 	for _, f := range findings {
 		if f.Accepted {
@@ -138,11 +146,18 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// checked is a run of the checker: the models of the files it read and
+// its findings, in the order they are printed.
+type checked struct {
+	def      *model
+	descs    []*model
+	findings []*Finding
+}
+
 // checkFiles makes a run: it reads every file, makes every check, and
-// marks the accepted findings. The findings come back in the order they
-// are printed. When any file is refused, it returns the reasons, one
-// line each as "<file>: <reason>", and no findings.
-func checkFiles(definition string, descriptions []string, root string) ([]*Finding, []string) {
+// marks the accepted findings. When any file is refused, it returns the
+// reasons, one line each as "<file>: <reason>", and no run.
+func checkFiles(definition string, descriptions []string, root string) (*checked, []string) {
 	var refused []string
 	refuse := func(path string, reasons []string) {
 		for _, r := range reasons {
@@ -240,7 +255,7 @@ func checkFiles(definition string, descriptions []string, root string) ([]*Findi
 		}
 		return a.Subject < b.Subject
 	})
-	return c.list, nil
+	return &checked{def: def, descs: descs, findings: c.list}, nil
 }
 
 func plural(n int, word string) string {

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>control view</title>
+<style>
+/* The page control view writes. It draws the data below and decides
+   nothing: the tree, the places, the sweep, the tests and the findings
+   all come computed from the checker. control/view.md says what each is. */
+:root {
+  --bg: #f4f5f8; --panel: #ffffff; --ink: #191c2b; --muted: #5d6275; --line: #d8dbe4;
+  --accent: #3949ab; --accent-soft: #e3e6f6;
+  --ok: #2c7a4b; --ok-soft: #dff0e5;
+  --bad: #b3402d; --bad-soft: #f7e2dd;
+  --warn: #946210; --warn-soft: #f6ecd5;
+  --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #11131c; --panel: #191c28; --ink: #e4e6ef; --muted: #9a9fb3; --line: #2c3042;
+  --accent: #8f9cf0; --accent-soft: #252b4d; --ok: #63c48e; --ok-soft: #17301f;
+  --bad: #f0826d; --bad-soft: #3b1f1a; --warn: #e3b35c; --warn-soft: #362a13; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.5; padding: 22px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
+h1 { font-size: 26px; font-family: var(--mono); letter-spacing: -.01em; }
+h2 { font-size: 17px; }
+h3 { font-size: 14px; font-family: var(--mono); }
+p { margin: 0; }
+code { font-family: var(--mono); font-size: 12.5px; }
+.muted { color: var(--muted); }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+header { display: grid; gap: 6px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.note { border-left: 3px solid var(--warn); padding-left: 10px; color: var(--muted); }
+button { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+.grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.stat { display: grid; }
+.stat b { font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.ok b { color: var(--ok); } .stat.warn b { color: var(--warn); } .stat.bad b { color: var(--bad); }
+
+.pl { font-family: var(--mono); font-size: 12px; padding: 0 6px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: inherit; line-height: 1.6; }
+.pl:hover { border-color: var(--line); }
+.pl.focus { background: var(--accent); color: var(--panel); }
+.pl.faulty { background: var(--bad); color: var(--panel); }
+.placelist { display: flex; flex-wrap: wrap; gap: 4px; }
+.placelist .pl { border-color: var(--line); }
+.lens dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+.lens dt { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; padding-top: 2px; }
+.lens dd { margin: 0; min-width: 0; }
+
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { margin-left: 18px; padding-left: 18px; border-left: 1px solid var(--line); display: grid; gap: 8px; padding-top: 8px; }
+.tree li { position: relative; }
+.tree ul > li::before { content: ""; position: absolute; left: -18px; top: 22px; width: 14px; border-top: 1px solid var(--line); }
+.node { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; display: grid; gap: 4px; background: var(--panel); }
+.node.parent { background: var(--bg); }
+.nhead { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.ord { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.nname { font-family: var(--mono); font-weight: 600; font-size: 13.5px; }
+.shape { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 600; }
+.when { font-size: 12px; color: var(--muted); }
+.toggle { font-size: 11px; padding: 0 7px; margin-left: auto; }
+.fmap { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; overflow-wrap: anywhere; }
+.fmap .eq { color: var(--muted); padding: 0 4px; }
+.fmap .fn { font-weight: 600; }
+.line2 { font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.line2 .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; min-width: 64px; }
+.held { color: var(--ok); } .nohold { color: var(--bad); }
+.fcount { font-size: 11px; font-family: var(--mono); padding: 0 6px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); background: var(--warn-soft); }
+.flist { display: grid; gap: 2px; font-size: 12px; color: var(--muted); padding-left: 10px; border-left: 2px solid var(--warn); }
+.flist code { color: var(--warn); }
+.role { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); }
+.role.out { border-color: var(--bad); color: var(--bad); }
+.node.r-owns { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.node.r-touch { border-color: var(--accent); }
+.node.dim { opacity: .45; }
+.node.f-refused { border-color: var(--bad); background: var(--bad-soft); box-shadow: inset 3px 0 0 var(--bad); }
+.node.f-through { border-color: var(--bad); border-style: dashed; }
+.node.f-lost { border-color: var(--bad); border-width: 2px; border-style: dashed; }
+.node.f-passed { border-color: var(--warn); background: var(--warn-soft); box-shadow: inset 3px 0 0 var(--warn); }
+.verdict { font-size: 12.5px; font-weight: 600; }
+.verdict.bad { color: var(--bad); } .verdict.warn { color: var(--warn); }
+
+.tscroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr.sel td { background: var(--accent-soft); }
+td:first-child, th:first-child { padding-left: 6px; }
+.rowbtn { border: 0; background: transparent; padding: 0; text-align: left; font-family: var(--mono); font-size: 12.5px; font-weight: 500; }
+.rowbtn:hover { text-decoration: underline; }
+.res { font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 9px; white-space: nowrap; }
+.res.held { color: var(--ok); background: var(--ok-soft); }
+.res.nohold { color: var(--warn); background: var(--warn-soft); }
+.res.bad { color: var(--bad); background: var(--bad-soft); }
+.res.plain { color: var(--muted); border: 1px solid var(--line); }
+
+.entry { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.entry.unwritten { border-style: dashed; }
+.ehead { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.kind { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
+.proof { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; }
+.proof dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; padding-top: 2px; }
+.proof dd { margin: 0; min-width: 0; display: grid; gap: 2px; }
+@media (max-width: 560px) { .proof, .lens dl { grid-template-columns: minmax(0, 1fr); } }
+.snippet { font-family: var(--mono); font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: pre; }
+.finding { display: grid; gap: 1px; border-left: 3px solid var(--warn); padding: 3px 0 3px 9px; text-align: left; background: transparent; border-top: 0; border-right: 0; border-bottom: 0; border-radius: 0; width: 100%; }
+.finding.accepted { border-left-color: var(--ok); }
+.finding .ck { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--warn); }
+.finding.accepted .ck { color: var(--ok); }
+.finding .sj { font-family: var(--mono); font-size: 12px; }
+.finding .ms { font-size: 12.5px; color: var(--muted); }
+.fgroup { display: grid; gap: 6px; }
+.empty { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="label">Control · map of a definition</span>
+    <h1 id="title"></h1>
+    <p id="files" class="muted"></p>
+    <p id="asked" class="note" hidden></p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section class="panel lens" id="lens" aria-live="polite"></section>
+
+  <section class="panel" aria-labelledby="t-h">
+    <div class="controls">
+      <h2 id="t-h">The control tree</h2>
+      <div class="grp" role="group" aria-label="Show on each element">
+        <span class="label">Show</span>
+        <button id="show-data" aria-pressed="true">data</button>
+        <button id="show-owns" aria-pressed="true">ownership</button>
+        <button id="show-refusals" aria-pressed="true">refusals</button>
+        <button id="show-findings" aria-pressed="true">findings</button>
+      </div>
+    </div>
+    <p class="muted">Each leaf is written as outputs = leaf(inputs). Click a place to trace it through the tree.</p>
+    <ul class="tree" id="tree"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="s-h">
+    <h2 id="s-h">The sweep</h2>
+    <p class="muted">Each place a step reads or writes is broken in turn, on each path, and the step is played. Click a row to show that fault on the tree.</p>
+    <div class="stats" id="sweep-stats"></div>
+    <div class="tscroll"><table id="sweep"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="g-h">
+    <h2 id="g-h">Tests to write</h2>
+    <p class="muted">One for each rule that names no hold: what the test gives, what it asserts, the break that must make it fail, and the baseline on which it must pass.</p>
+    <div id="tests" style="display:grid;gap:10px"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="f-h">
+    <h2 id="f-h">Findings</h2>
+    <p class="muted">The lines control check prints for the same files. Click one to find it on the tree.</p>
+    <div id="findings" class="fgroup"></div>
+  </section>
+</div>
+
+<script type="application/json" id="view-data">/*view-data*/</script>
+<script>
+(function () {
+  "use strict";
+  var V = JSON.parse(document.getElementById("view-data").textContent);
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var NODE = {}, PLACE = {};
+  V.nodes.forEach(function (n) { NODE[n.name] = n; });
+  V.places.forEach(function (p) { PLACE[p.name] = p; });
+  var S = { focus: null, fault: null, collapsed: {}, show: { data: true, owns: true, refusals: true, findings: true } };
+
+  document.title = V.system + " · control view";
+  $("title").textContent = V.system;
+  $("files").innerHTML = "From <code>" + esc(V.definition) + "</code>" +
+    (V.descriptions.length ? " and " + V.descriptions.map(function (d) { return "<code>" + esc(d) + "</code>"; }).join(", ") : "");
+  if (!V.descriptions.length) {
+    $("asked").hidden = false;
+    $("asked").textContent = "No description files were given, so whether the code follows the design was not asked. The follows findings say so for each step.";
+  }
+
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+  function allFaults() { var out = []; V.runs.forEach(function (rv, ri) { rv.faults.forEach(function (f, fi) { out.push({ rv: rv, ri: ri, f: f, fi: fi }); }); }); return out; }
+  function faultClass(f) { return f.verdict === "refused" ? (f.held ? "held" : "nohold") : (f.verdict === "lost" || f.verdict === "passed") ? "bad" : "plain"; }
+
+  function stats() {
+    var open = V.findings.filter(function (f) { return !f.accepted; }).length;
+    $("stats").innerHTML = [
+      [open, "findings", open ? "warn" : "ok"],
+      [V.findings.length - open, "accepted", ""],
+      [allFaults().length, "faults played", ""],
+      [V.tests.length, "tests to write", V.tests.length ? "warn" : "ok"],
+    ].map(function (s) { return '<div class="stat ' + s[2] + '"><b>' + s[0] + "</b><span>" + s[1] + "</span></div>"; }).join("");
+    var count = {};
+    allFaults().forEach(function (x) { var k = x.f.verdict === "refused" ? (x.f.held ? "refused, held" : "refused, no hold") : x.f.verdict; count[k] = (count[k] || 0) + 1; });
+    var order = [["refused, held", "ok"], ["refused, no hold", "warn"], ["lost", "bad"], ["passed", "bad"], ["output", ""], ["unread", ""]];
+    $("sweep-stats").innerHTML = order.filter(function (o) { return count[o[0]]; }).map(function (o) {
+      return '<div class="stat ' + o[1] + '"><b>' + count[o[0]] + "</b><span>" + esc(o[0]) + "</span></div>";
+    }).join("");
+  }
+
+  function chip(p) {
+    var faulty = S.fault && S.fault.f.place === p;
+    return '<button class="pl' + (S.focus === p ? " focus" : "") + (faulty ? " faulty" : "") + '" data-place="' + esc(p) + '">' + esc(p) + "</button>";
+  }
+  function holdText(held, test) { return held ? '<span class="held">held by <code>' + esc(test) + "</code></span>" : '<span class="nohold">no hold</span>'; }
+
+  // The trace of the selected fault, read for drawing only.
+  function faultView() {
+    if (!S.fault) return null;
+    var t = S.fault.rv.traces[S.fault.f.trace];
+    var c = t.refusals[0] || null;
+    var outcome = {};
+    t.steps.forEach(function (s) { outcome[s.element] = s.outcome; });
+    return { t: t, climb: c, outcome: outcome, run: S.fault.rv.run };
+  }
+  function under(name, top) { for (var at = name; at; at = NODE[at].parent) { if (at === top) return true; } return false; }
+
+  function nodeClass(n, fv) {
+    var cls = [];
+    if (S.focus) {
+      var p = PLACE[S.focus];
+      var touches = n.reads.indexOf(S.focus) >= 0 || n.writes.some(function (w) { return w.place === S.focus; });
+      if (p.owner === n.name) cls.push("r-owns");
+      else if (touches) cls.push("r-touch");
+      else if (!n.children.length) cls.push("dim");
+    }
+    if (fv && under(n.name, fv.run)) {
+      var c = fv.climb;
+      if (c && c.from === n.name) cls.push("f-refused");
+      else if (c && c.lostAt === n.name) cls.push("f-lost");
+      else if (c && c.through.indexOf(n.name) >= 0) cls.push("f-through");
+      else if (fv.outcome[n.name] === "passed-on") cls.push("f-passed");
+      else if (!n.children.length && (fv.outcome[n.name] === undefined || fv.outcome[n.name] === "not-run")) cls.push("dim");
+    }
+    return cls.join(" ");
+  }
+
+  function roles(n) {
+    if (!S.focus) return "";
+    var p = PLACE[S.focus], out = [];
+    if (p.owner === n.name) out.push('<span class="role">owns</span>');
+    if (p.writers.indexOf(n.name) >= 0) out.push(p.writesFromOutside.indexOf(n.name) >= 0 ? '<span class="role out">writes, not its owner\'s</span>' : '<span class="role">writes</span>');
+    if (p.readers.indexOf(n.name) >= 0) out.push('<span class="role">reads</span>');
+    return out.join(" ");
+  }
+
+  function renderNode(name, ord, when, fv) {
+    var n = NODE[name], kids = n.children, h = "";
+    var collapsed = !!S.collapsed[name];
+    h += '<li><div class="node ' + (kids.length ? "parent " : "") + nodeClass(n, fv) + '">';
+    h += '<div class="nhead">' + (ord ? '<span class="ord">' + ord + "</span>" : "") + '<span class="nname">' + esc(name) + "</span>";
+    if (kids.length) h += '<span class="shape">' + esc(n.shape) + "</span>";
+    if (when) h += '<span class="when">when ' + esc(when) + "</span>";
+    h += roles(n);
+    if (S.show.findings && n.findings.length) h += '<span class="fcount">' + plural(n.findings.length, "finding") + "</span>";
+    if (kids.length && n.parent) h += '<button class="toggle" data-toggle="' + esc(name) + '" aria-expanded="' + !collapsed + '">' + (collapsed ? "expand" : "collapse") + "</button>";
+    h += "</div>";
+    if (S.show.data && !kids.length) {
+      var outs = n.writes.map(function (w) { return chip(w.place); }).join(", ") || '<span class="muted">nothing</span>';
+      var ins = n.reads.map(chip).join(", ") || '<span class="muted">nothing</span>';
+      h += '<div class="fmap" aria-label="' + esc(n.label) + '">' + outs + '<span class="eq">=</span><span class="fn">' + esc(name) + "</span>(" + ins + ")</div>";
+      n.writes.forEach(function (w) {
+        w.before.forEach(function (b) {
+          h += '<div class="line2"><span class="k">checks</span><span>before writing ' + chip(w.place) + ": <code>" + esc(b.check) + "</code> then <code>" + esc(b.then) + "</code></span> " + holdText(b.held, b.test) + "</div>";
+        });
+      });
+    }
+    if (S.show.owns && n.owns.length) h += '<div class="line2"><span class="k">owns</span><span>' + n.owns.map(chip).join(" ") + "</span></div>";
+    if (S.show.refusals) {
+      n.refusals.forEach(function (r) {
+        h += '<div class="line2"><span class="k">' + esc(r.kind) + "</span><span>" + esc(r.reason) + ' <span class="muted">→ ' + esc(r.to || "not reported") + "</span></span> " + holdText(r.held, r.test) + "</div>";
+      });
+    }
+    if (S.show.findings && n.findings.length) h += '<div class="flist">' + n.findings.map(function (i) { var f = V.findings[i]; return "<span><code>" + esc(f.check) + "</code> " + esc(f.message || f.reason || "") + "</span>"; }).join("") + "</div>";
+    if (fv && under(name, fv.run)) {
+      var c = fv.climb;
+      if (c && c.from === name) h += '<div class="verdict bad">Refuses the broken ' + esc(S.fault.f.place) + " here</div>";
+      if (c && c.lostAt === name) h += '<div class="verdict bad">The refusal stops here: no refusal of its own to pass it on</div>';
+      if (fv.outcome[name] === "passed-on") h += '<div class="verdict warn">Reads the invalid value and passes it on</div>';
+    }
+    h += "</div>";
+    if (kids.length && !collapsed) {
+      var whenOf = {};
+      n.branches.forEach(function (b) { whenOf[b.child] = b.when; });
+      if (n.otherwise) whenOf[n.otherwise] = "nothing else is true";
+      h += "<ul>" + kids.map(function (k, i) { return renderNode(k, n.shape === "join" ? String(i + 1) : "", n.shape === "or" ? whenOf[k] : "", fv); }).join("") + "</ul>";
+    }
+    return h + "</li>";
+  }
+
+  function renderLens() {
+    var h = '<div class="controls"><h2>Places</h2><span class="muted">' + V.places.length + ' in the definition. Pick one to trace it through the tree.</span></div><div class="placelist">' + V.places.map(function (p) { return chip(p.name); }).join("") + "</div>";
+    if (S.focus) {
+      var p = PLACE[S.focus];
+      var list = function (xs) { return xs.length ? xs.map(function (x) { return "<code>" + esc(x) + "</code>"; }).join(", ") : '<span class="muted">none</span>'; };
+      h += "<dl><dt>Place</dt><dd><code>" + esc(p.name) + '</code> <button data-place="" style="margin-left:8px;font-size:11px;padding:0 7px">clear</button></dd>' +
+        "<dt>Kind</dt><dd>" + esc(p.kind) + (p.keyed ? ", keyed" : "") + (p.onExisting ? "; on an existing key: " + esc(p.onExisting) : "") + "</dd>" +
+        "<dt>Owner</dt><dd>" + (p.owner ? "<code>" + esc(p.owner) + "</code>" : '<span class="muted">none: it comes from outside</span>') + "</dd>" +
+        "<dt>Written by</dt><dd>" + list(p.writers) + (p.writesFromOutside.length ? ' <span class="nohold">' + esc(p.writesFromOutside.join(", ")) + " not under its owner</span>" : "") + "</dd>" +
+        "<dt>Read by</dt><dd>" + list(p.readers) + "</dd>" +
+        "<dt>Invalid</dt><dd>" + esc(p.invalid) + "</dd>" +
+        (p.findings.length ? "<dt>Findings</dt><dd>" + p.findings.map(function (i) { return "<code>" + esc(V.findings[i].check) + "</code> " + esc(V.findings[i].subject); }).join("<br>") + "</dd>" : "") +
+        "</dl>";
+    }
+    $("lens").innerHTML = h;
+  }
+
+  function pathText(rv, i) { return rv.paths[i].map(function (p) { return p.or + " → " + p.child; }).join(", "); }
+
+  function renderSweep() {
+    var h = "<thead><tr><th>Broken place</th><th>Step</th><th>Path</th><th>Verdict</th><th>What happens</th></tr></thead><tbody>";
+    allFaults().forEach(function (x) {
+      var f = x.f, t = x.rv.traces[f.trace], c = t.refusals[0], what;
+      if (c && !c.lostAt) what = "<code>" + esc(c.from) + "</code> refuses it" + (c.through.length ? ", through " + c.through.map(function (e) { return "<code>" + esc(e) + "</code>"; }).join(", ") : "") + "; it reaches <code>" + esc(c.to) + "</code>";
+      else if (c) what = "<code>" + esc(c.from) + "</code> refuses it, and the refusal stops at <code>" + esc(c.lostAt) + "</code>";
+      else if (f.verdict === "output") what = "No leaf of this step reads it.";
+      else if (f.verdict === "passed") what = t.steps.filter(function (s) { return s.outcome === "passed-on"; }).map(function (s) { return "<code>" + esc(s.element) + "</code>"; }).join(", ") + " read it and refused nothing.";
+      else what = "No leaf read it while it held its invalid value.";
+      var passed = c ? t.steps.filter(function (s) { return s.outcome === "passed-on"; }).map(function (s) { return s.element; }) : [];
+      if (passed.length) what = passed.map(function (e) { return "<code>" + esc(e) + "</code>"; }).join(", ") + " passed it on. " + what;
+      var label = f.verdict === "refused" ? (f.held ? "refused, held" : "refused, no hold") : f.verdict;
+      var sel = S.fault && S.fault.ri === x.ri && S.fault.fi === x.fi;
+      h += '<tr class="' + (sel ? "sel" : "") + '"><td><button class="rowbtn" data-fault="' + x.ri + ":" + x.fi + '">' + esc(f.place) + "</button></td><td><code>" + esc(x.rv.run) + '</code></td><td class="muted">' + esc(pathText(x.rv, f.path)) + '</td><td><span class="res ' + faultClass(f) + '">' + esc(label) + "</span></td><td>" + what + "</td></tr>";
+    });
+    $("sweep").innerHTML = h + "</tbody>";
+  }
+
+  function renderTests() {
+    if (!V.tests.length) { $("tests").innerHTML = '<p class="empty">Every rule names a hold.</p>'; return; }
+    $("tests").innerHTML = V.tests.map(function (e) {
+      var h = '<article class="entry' + (e.unwritten ? " unwritten" : "") + '"><div class="ehead"><span class="kind">' + esc(e.kind) + "</span><h3>" + esc(e.subject) + "</h3>" + (e.run ? '<span class="muted">in <code>' + esc(e.run) + "</code></span>" : "") + "</div>";
+      h += "<p>" + esc(e.words) + "</p>";
+      if (e.unwritten) return h + '<p class="muted">The rule is in words, so the test, its break and its file are for the session that writes it.</p></article>';
+      var input = e.inputs.map(function (i) { return "<span>" + chip(i.place) + " holds its invalid value: " + esc(PLACE[i.place].invalid) + ' <button class="rowbtn" data-fault="' + i.run + ":" + i.fault + '">show</button></span>'; });
+      if (e.input) input.push("<span>" + esc(e.input) + "</span>");
+      if (e.firstRefusers.length) input.push('<span class="muted">No fault reaches it: ' + e.firstRefusers.map(function (r) { return "<code>" + esc(r.by) + "</code> refuses " + chip(r.place) + " first"; }).join(", ") + ".</span>");
+      h += '<dl class="proof"><dt>Gives</dt><dd>' + input.join("") + "</dd>";
+      h += "<dt>Asserts</dt><dd>" + esc(e.asserts || "") + "</dd>";
+      h += "<dt>Break</dt><dd>" + esc(e.break) + "</dd><dt>Baseline</dt><dd>" + esc(e.baseline) + "</dd></dl>";
+      if (e.hold) h += '<div><span class="label">Then add to the definition file, at ' + esc(e.subject) + '</span><div class="snippet">' + esc(e.hold) + "</div></div>";
+      else h += '<p class="muted">No hold in this step names a file to suggest.</p>';
+      return h + "</article>";
+    }).join("");
+  }
+
+  function renderFindings() {
+    if (!V.findings.length) { $("findings").innerHTML = '<p class="empty">No findings.</p>'; return; }
+    $("findings").innerHTML = V.findings.map(function (f) {
+      return '<button class="finding' + (f.accepted ? " accepted" : "") + '" data-el="' + esc(f.element || "") + '" data-pl="' + esc(f.place || "") + '"><span class="ck">' + (f.accepted ? "accepted · " : "") + esc(f.check) + '</span><span class="sj">' + esc(f.subject) + '</span><span class="ms">' + esc(f.accepted ? f.reason : f.message) + "</span></button>";
+    }).join("");
+  }
+
+  function render() {
+    stats();
+    renderLens();
+    $("tree").innerHTML = renderNode(V.system, "", "", faultView());
+    renderSweep();
+    renderTests();
+    renderFindings();
+    Object.keys(S.show).forEach(function (k) { $("show-" + k).setAttribute("aria-pressed", String(S.show[k])); });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("button");
+    if (!b) return;
+    if (b.dataset.place !== undefined) { S.focus = b.dataset.place && S.focus !== b.dataset.place ? b.dataset.place : null; render(); return; }
+    if (b.dataset.toggle) { S.collapsed[b.dataset.toggle] = !S.collapsed[b.dataset.toggle]; render(); return; }
+    if (b.dataset.fault) {
+      var parts = b.dataset.fault.split(":"), ri = +parts[0], fi = +parts[1];
+      var same = S.fault && S.fault.ri === ri && S.fault.fi === fi;
+      S.fault = same ? null : { ri: ri, fi: fi, rv: V.runs[ri], f: V.runs[ri].faults[fi] };
+      if (!same) S.collapsed[V.runs[ri].run] = false;
+      render();
+      if (!same) $("tree").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (b.classList.contains("finding")) {
+      // A finding on a description file can name a place the definition
+      // does not have; only the definition's places are traced.
+      if (PLACE[b.dataset.pl]) S.focus = b.dataset.pl;
+      render();
+      $("tree").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (b.id && b.id.indexOf("show-") === 0) { var k = b.id.slice(5); S.show[k] = !S.show[k]; render(); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

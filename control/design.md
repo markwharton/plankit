@@ -103,6 +103,10 @@ about.
   Conformance, below, is what would compare it with the running code.
 - The run that disabled each check to prove its break test is not part
   of the suite.
+- The sweep in `view.md` plays a design by rules the format does not
+  state, and stops at what the format holds in words: it does not play
+  checks before a write or the conditions of an or, and a refusal's
+  reason is not compared with the invalid value it meets.
 
 ## Conformance: designed, not built
 

@@ -188,7 +188,7 @@ func TestEveryNamedHoldExists(t *testing.T) {
 	for _, p := range []struct {
 		path     string
 		mustName bool
-	}{{"control/README.md", true}, {"control/design.md", false}, {"control/axioms.md", true}, {"docs/control.md", true}} {
+	}{{"control/README.md", true}, {"control/design.md", false}, {"control/axioms.md", true}, {"control/view.md", true}, {"docs/control.md", true}} {
 		data, err := os.ReadFile(filepath.Join(root, p.path))
 		if err != nil {
 			t.Fatal(err)
