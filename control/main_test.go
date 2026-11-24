@@ -307,6 +307,40 @@ func TestJSONFormatPrintsTheSameFindings(t *testing.T) {
 	}
 }
 
+// A finding in JSON names its element and place in their own fields,
+// so a reader never parses them out of the subject.
+func TestAFindingNamesItsElementAndPlace(t *testing.T) {
+	_, stdout, _ := baselineRun(t, func(def, intake, audit obj) {
+		noBelongs(def, intake, audit)
+		delete(place(def, "shelf"), "invalid")
+	}, nil, "--format", "json")
+	var out struct {
+		Findings []struct{ Check, Subject, Element, Place string }
+	}
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		t.Fatalf("not JSON: %v\n%s", err, stdout)
+	}
+	want := map[string][2]string{
+		"replace-checks-owner  update writes shelf":   {"update", "shelf"},
+		"reject-values  place shelf":                  {"", "shelf"},
+		"follows  update writes shelf, check belongs": {"update", "shelf"},
+	}
+	seen := 0
+	for _, f := range out.Findings {
+		w, ok := want[f.Check+"  "+f.Subject]
+		if !ok {
+			continue
+		}
+		seen++
+		if f.Element != w[0] || f.Place != w[1] {
+			t.Errorf("%s  %s: element %q place %q, want %q %q", f.Check, f.Subject, f.Element, f.Place, w[0], w[1])
+		}
+	}
+	if seen != len(want) {
+		t.Errorf("found %d of the %d findings in %s", seen, len(want), stdout)
+	}
+}
+
 func TestChecksListsEveryCheckOfTheFirstQuestion(t *testing.T) {
 	code, stdout, _ := runCLI("checks")
 	lines := strings.Split(strings.TrimRight(stdout, "\n"), "\n")

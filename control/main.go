@@ -100,6 +100,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		type line struct {
 			Check   string `json:"check"`
 			Subject string `json:"subject"`
+			Element string `json:"element,omitempty"`
+			Place   string `json:"place,omitempty"`
 			Message string `json:"message,omitempty"`
 			Reason  string `json:"reason,omitempty"`
 		}
@@ -109,9 +111,9 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		}{Findings: []line{}, Accepted: []line{}}
 		for _, f := range findings {
 			if f.Accepted {
-				out.Accepted = append(out.Accepted, line{Check: f.Check, Subject: f.Subject, Reason: f.Reason})
+				out.Accepted = append(out.Accepted, line{Check: f.Check, Subject: f.Subject, Element: f.Element, Place: f.Place, Reason: f.Reason})
 			} else {
-				out.Findings = append(out.Findings, line{Check: f.Check, Subject: f.Subject, Message: f.Message})
+				out.Findings = append(out.Findings, line{Check: f.Check, Subject: f.Subject, Element: f.Element, Place: f.Place, Message: f.Message})
 			}
 		}
 		enc := json.NewEncoder(stdout)
@@ -215,7 +217,7 @@ func checkFiles(definition string, descriptions []string, root string) ([]*Findi
 				}
 			}
 			if !found {
-				c.add("stale", file, 0, a.Finding, "accepted, and no longer found")
+				c.add("stale", file, 0, Subject{Text: a.Finding}, "accepted, and no longer found")
 			}
 		}
 	}

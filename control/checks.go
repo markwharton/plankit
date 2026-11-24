@@ -14,6 +14,9 @@ import (
 type Finding struct {
 	Check   string
 	Subject string
+	// Element and Place are what the subject names, when it names them.
+	Element string
+	Place   string
 	Message string
 	// file is the file the finding is accepted beside: -1 for the
 	// definition file, otherwise the index of a description file.
@@ -36,16 +39,36 @@ var soundChecks = []string{
 // checkOrder is every check, in the order findings are printed.
 var checkOrder = append(append([]string{}, soundChecks...), "held", "follows", "source", "unsaid", "stale")
 
+// Subject is what a finding is about: the text checks.md gives, and the
+// element, place, check and unsaid entry that text names, set where the
+// subject is made so that no reader has to parse the text back.
+type Subject struct {
+	Text    string
+	Element string
+	Place   string
+	Check   string
+	Unsaid  string
+}
+
 // The subjects, as checks.md gives them.
-func sPlace(p string) string       { return "place " + p }
-func sElement(e string) string     { return "element " + e }
-func sRead(e, p string) string     { return e + " reads " + p }
-func sWrite(e, p string) string    { return e + " writes " + p }
-func sCheck(e, p, k string) string { return sWrite(e, p) + ", check " + k }
-func sRejects(e string) string     { return e + " rejects" }
-func sDeclines(e string) string    { return e + " declines" }
-func sBranch(e, c string) string   { return e + " branch to " + c }
-func sUnsaid(what string) string   { return `"` + what + `"` }
+func sPlace(p string) Subject   { return Subject{Text: "place " + p, Place: p} }
+func sElement(e string) Subject { return Subject{Text: "element " + e, Element: e} }
+func sRead(e, p string) Subject { return Subject{Text: e + " reads " + p, Element: e, Place: p} }
+func sWrite(e, p string) Subject {
+	return Subject{Text: e + " writes " + p, Element: e, Place: p}
+}
+func sCheck(e, p, k string) Subject {
+	s := sWrite(e, p)
+	s.Text += ", check " + k
+	s.Check = k
+	return s
+}
+func sRejects(e string) Subject  { return Subject{Text: e + " rejects", Element: e} }
+func sDeclines(e string) Subject { return Subject{Text: e + " declines", Element: e} }
+func sBranch(e, c string) Subject {
+	return Subject{Text: e + " branch to " + c, Element: e}
+}
+func sUnsaid(what string) Subject { return Subject{Text: `"` + what + `"`, Unsaid: what} }
 
 // collector gathers findings, one for each check, file and subject.
 // Several cases with the same subject share one finding, and its
@@ -55,9 +78,9 @@ type collector struct {
 	index map[string]*Finding
 }
 
-func (c *collector) add(check string, file, order int, subject, format string, a ...any) {
+func (c *collector) add(check string, file, order int, s Subject, format string, a ...any) {
 	msg := fmt.Sprintf(format, a...)
-	key := fmt.Sprintf("%s\x00%d\x00%d\x00%s", check, file, order, subject)
+	key := fmt.Sprintf("%s\x00%d\x00%d\x00%s", check, file, order, s.Text)
 	if c.index == nil {
 		c.index = map[string]*Finding{}
 	}
@@ -65,14 +88,16 @@ func (c *collector) add(check string, file, order int, subject, format string, a
 		f.Message += "; " + msg
 		return
 	}
-	f := &Finding{Check: check, Subject: subject, Message: msg, file: file, order: order}
+	f := &Finding{Check: check, Subject: s.Text, Element: s.Element, Place: s.Place, Message: msg, file: file, order: order}
 	c.index[key] = f
 	c.list = append(c.list, f)
 }
 
 // sound makes the checks of the first question on a definition file.
 func sound(m *model, c *collector) {
-	add := func(check, subject, format string, a ...any) { c.add(check, -1, 0, subject, format, a...) }
+	add := func(check string, subject Subject, format string, a ...any) {
+		c.add(check, -1, 0, subject, format, a...)
+	}
 	leaves := m.leaves()
 
 	// one-owner
@@ -222,7 +247,7 @@ func sound(m *model, c *collector) {
 // held makes the second question's check on every rule of a definition
 // file: each names a test, in a file that exists and contains its name.
 func held(m *model, root string, c *collector) {
-	rule := func(subject string, ev *Evidence) {
+	rule := func(subject Subject, ev *Evidence) {
 		if why := missing(root, ev, "hold", "test", false); why != "" {
 			c.add("held", -1, 0, subject, "%s", why)
 		}
@@ -254,7 +279,7 @@ func held(m *model, root string, c *collector) {
 // file, and reports each entry in its unsaid that the definition file
 // does not also state, word for word.
 func sourced(m *model, required map[string]bool, root string, file int, c *collector) {
-	stmt := func(subject string, ev *Evidence) {
+	stmt := func(subject Subject, ev *Evidence) {
 		if why := missing(root, ev, "source", "function", true); why != "" {
 			c.add("source", file, file, subject, "%s", why)
 		}

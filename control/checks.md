@@ -40,7 +40,10 @@ order:
    every small letter, and a subject that is the start of another
    comes first.
 
-`--format json` prints the same findings as JSON.
+`--format json` prints the same findings as JSON. Each finding there
+also names the element and the place its subject is about, in the
+fields `element` and `place`, as the last column of the table of
+subjects below gives. A field the subject does not name is left out.
 
 | Exit code | When |
 |---|---|
@@ -60,17 +63,17 @@ message is the checker's own wording.
 
 The subject says which statement the finding is about:
 
-| Statement | Subject | Example |
-|---|---|---|
-| A place | `place <place>` | `place volume` |
-| An element, of any shape | `element <element>` | `element import` |
-| A read | `<element> reads <place>` | `import reads image` |
-| A write | `<element> writes <place>` | `import writes volume` |
-| A check before a write | the write, then `, check <check>` | `import writes volume, check repeated` |
-| A `rejects` | `<element> rejects` | `import rejects` |
-| A `declines` | `<element> declines` | `import declines` |
-| A branch of an `or` | `<element> branch to <child>` | `save branch to say full` |
-| An entry in `unsaid` | its `what`, in double quotes | `"a long name is cut short"` |
+| Statement | Subject | Example | Fields in JSON |
+|---|---|---|---|
+| A place | `place <place>` | `place volume` | `place` |
+| An element, of any shape | `element <element>` | `element import` | `element` |
+| A read | `<element> reads <place>` | `import reads image` | `element`, `place` |
+| A write | `<element> writes <place>` | `import writes volume` | `element`, `place` |
+| A check before a write | the write, then `, check <check>` | `import writes volume, check repeated` | `element`, `place` |
+| A `rejects` | `<element> rejects` | `import rejects` | `element` |
+| A `declines` | `<element> declines` | `import declines` | `element` |
+| A branch of an `or` | `<element> branch to <child>` | `save branch to say full` | `element`, the `or` |
+| An entry in `unsaid` | its `what`, in double quotes | `"a long name is cut short"` | none |
 
 A check reports one finding for each subject in each file it is made
 on. Where several cases have the same subject, the one message names

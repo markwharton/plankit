@@ -91,23 +91,40 @@ func TestTheChecksPageListsEveryCheck(t *testing.T) {
 	}
 }
 
-// The subjects the checker prints are the ones in the page's table.
+// The subjects the checker prints are the ones in the page's table,
+// and each names the element and the place the table says it does.
 func TestTheSubjectsAreThePages(t *testing.T) {
 	rows, ok := tableRows(page(t, "checks.md"), "The subject says which statement")
 	if !ok {
 		t.Fatal("checks.md has no table of subjects")
 	}
-	want := []string{
+	subjects := []Subject{
 		sPlace("volume"), sElement("import"), sRead("import", "image"), sWrite("import", "volume"),
 		sCheck("import", "volume", "repeated"), sRejects("import"), sDeclines("import"),
 		sBranch("save", "say full"), sUnsaid("a long name is cut short"),
 	}
-	var got []string
-	for _, r := range rows[1:] {
-		got = append(got, strings.Trim(r[2], "`"))
+	if len(rows)-1 != len(subjects) {
+		t.Fatalf("checks.md has %d subjects, the checker %d", len(rows)-1, len(subjects))
 	}
-	if strings.Join(got, "|") != strings.Join(want, "|") {
-		t.Errorf("checks.md, the examples of subjects:\n page    %q\n checker %q", got, want)
+	field := regexp.MustCompile("`(element|place)`")
+	for i, r := range rows[1:] {
+		s := subjects[i]
+		if got := strings.Trim(r[2], "`"); got != s.Text {
+			t.Errorf("checks.md, row %d: the example is %q, the checker prints %q", i+1, got, s.Text)
+		}
+		var page, made []string
+		for _, m := range field.FindAllStringSubmatch(r[3], -1) {
+			page = append(page, m[1])
+		}
+		if s.Element != "" {
+			made = append(made, "element")
+		}
+		if s.Place != "" {
+			made = append(made, "place")
+		}
+		if strings.Join(page, " ") != strings.Join(made, " ") {
+			t.Errorf("checks.md, row %d (%s): the page names the fields %q, the checker sets %q", i+1, s.Text, page, made)
+		}
 	}
 }
 

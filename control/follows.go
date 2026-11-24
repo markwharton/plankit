@@ -13,7 +13,7 @@ const (
 // follows compares a description file with the definition file:
 // checks.md, "Does the code follow the design?".
 func follows(def, desc *model, file int, c *collector) {
-	add := func(subject, format string, a ...any) { c.add("follows", file, file, subject, format, a...) }
+	add := func(subject Subject, format string, a ...any) { c.add("follows", file, file, subject, format, a...) }
 
 	top := def.elem[desc.f.Top]
 	switch {
@@ -166,7 +166,7 @@ func branchChildren(e *Element) []string {
 	return out
 }
 
-func compareRefusal(add func(subject, format string, a ...any), subject string, d, s *Refusal) {
+func compareRefusal(add func(subject Subject, format string, a ...any), subject Subject, d, s *Refusal) {
 	switch {
 	case d == nil && s == nil:
 	case s == nil:
