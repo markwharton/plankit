@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>control lab</title>
+<style>
+/* One dark instrument panel. A colour means one thing everywhere:
+   cyan = structure and reads, amber = writes and warnings, red = an invalid
+   value or a refusal that fails, green = done or held, violet = a refusal
+   that reached a place. */
+:root {
+  --bg: #060a0f; --panel: #0b1219; --panel2: #0f1822; --line: #1d2b3a; --ink: #d3e7f5; --muted: #6d889e;
+  --cyan: #4fd8ff; --amber: #ffb547; --red: #ff5d62; --green: #58e6a0; --violet: #c794ff; --given: #9fb9cc;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5;
+  padding: 14px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); }
+.app { max-width: 1680px; margin: 0 auto; display: grid; gap: 12px; }
+h1 { font-size: 19px; margin: 0; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+h1 span { color: var(--cyan); font-family: var(--mono); }
+h2 { font-size: 13px; margin: 0 0 6px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.cols { display: grid; grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.6fr); gap: 12px; align-items: start; }
+.cols.noed { grid-template-columns: minmax(0, 1fr); }
+.cols.noed #edpane { display: none; }
+@media (max-width: 1080px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.main { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.row + .row { margin-top: 8px; }
+.lbl { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 600; min-width: 54px; }
+button, select, input[type="text"] { font: inherit; color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 10px; font-size: 12.5px; }
+button { cursor: pointer; }
+button:hover:not(:disabled), select:hover { border-color: var(--cyan); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button:disabled { opacity: 0.4; cursor: default; }
+button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; }
+button.brk { font-family: var(--mono); font-size: 12px; }
+button.brk .v, .tag { font-family: var(--sans); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; margin-left: 6px; }
+button.go { border-color: var(--green); color: var(--green); }
+select { max-width: 100%; }
+.v-held { color: var(--green); } .v-nohold { color: var(--amber); } .v-bad { color: var(--red); } .v-plain { color: var(--muted); }
+.tabs button { font-size: 12.5px; padding: 5px 14px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+#state { font-size: 12.5px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); }
+#state.live { color: var(--green); border-color: var(--green); } #state.draft { color: var(--amber); border-color: var(--amber); }
+#state.refused { color: var(--red); border-color: var(--red); }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; color: var(--muted); }
+.stats b { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.stats .up { color: var(--red); } .stats .down { color: var(--green); } .stats .same { color: var(--muted); }
+#readout { font-size: 14px; border-left: 3px solid var(--cyan); padding: 2px 0 2px 10px; }
+#readout.bad { border-left-color: var(--red); } #readout.warn { border-left-color: var(--amber); } #readout.ok { border-left-color: var(--green); }
+#readout b { font-family: var(--mono); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+textarea#ed { width: 100%; height: min(70vh, 760px); min-height: 320px; resize: vertical; background: var(--bg); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 4px; padding: 10px; font-family: var(--mono); font-size: 12px; line-height: 1.5; tab-size: 2; white-space: pre; }
+#edstatus { font-size: 12.5px; margin-top: 8px; display: grid; gap: 4px; }
+#edstatus .bad { color: var(--red); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+#edstatus .note { color: var(--amber); }
+#stage { overflow-x: auto; }
+#stage svg { display: block; }
+#note { color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+#note b { color: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.flist { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
+.flist li { border-left: 2px solid var(--amber); padding-left: 8px; overflow-wrap: anywhere; }
+.flist li.acc, .flist li.gone { border-left-color: var(--green); } .flist li.new { border-left-color: var(--red); }
+.flist li.gone { text-decoration: line-through; color: var(--muted); }
+.flist b { font-family: var(--mono); color: var(--amber); font-weight: 600; }
+.flist li.acc b { color: var(--green); }
+.flist span { color: var(--muted); }
+.tag.new { color: var(--red); margin: 0 6px 0 0; text-decoration: none; display: inline-block; } .tag.gone { color: var(--green); margin: 0 6px 0 0; display: inline-block; }
+.entry { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; }
+.entry + .entry { margin-top: 8px; }
+.entry h3 { margin: 0; font-family: var(--mono); font-size: 13px; }
+.proof { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 12.5px; }
+.proof dt { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding-top: 2px; }
+.proof dd { margin: 0; }
+pre.box { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; overflow-x: auto;
+  font-family: var(--mono); font-size: 12px; white-space: pre-wrap; }
+.empty { color: var(--muted); }
+#toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--panel2); border: 1px solid var(--cyan);
+  border-radius: 4px; padding: 6px 12px; font-size: 12.5px; }
+
+/* SVG text and marks */
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+svg .mut { fill: var(--muted); } svg .cy { fill: var(--cyan); } svg .am { fill: var(--amber); } svg .rd { fill: var(--red); }
+svg .gr { fill: var(--green); } svg .vi { fill: var(--violet); }
+svg .cap { font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; fill: var(--muted); }
+svg .name { font-weight: 600; font-size: 12px; }
+svg text.mask { paint-order: stroke; stroke: var(--panel); stroke-width: 6px; stroke-linejoin: round; }
+.s-given { fill: var(--given); } .s-present { fill: var(--cyan); } .s-empty { fill: var(--muted); } .s-written { fill: var(--green); }
+.s-invalid { fill: var(--red); font-weight: 600; } .s-refusal { fill: var(--violet); font-weight: 600; }
+.k-given { stroke: var(--given); } .k-present { stroke: var(--cyan); } .k-empty { stroke: var(--line); stroke-dasharray: 3 4; }
+.k-written { stroke: var(--green); } .k-invalid { stroke: var(--red); } .k-refusal { stroke: var(--violet); }
+.glow-red { filter: drop-shadow(0 0 5px var(--red)); } .glow-cy { filter: drop-shadow(0 0 4px var(--cyan)); }
+.glow-vi { filter: drop-shadow(0 0 5px var(--violet)); }
+.dim { opacity: 0.25; } .off { opacity: 0.4; }
+@keyframes flow { to { stroke-dashoffset: -24; } }
+@keyframes pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: no-preference) {
+  .flowing { stroke-dasharray: 6 6; animation: flow 0.9s linear infinite; }
+  .pulsing { animation: pulse 1.4s ease-in-out infinite; }
+}
+
+/* Tables */
+table.g { border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+table.g th, table.g td { border: 1px solid var(--line); padding: 3px 6px; text-align: center; white-space: nowrap; }
+table.g th.el, table.g td.el { text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+table.g th.pc { vertical-align: bottom; padding: 6px 2px; }
+table.g th.pc span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; font-weight: 500; }
+table.g th.pc.broken span { color: var(--red); font-weight: 700; }
+table.g td.broken, table.g th.broken { background: #2a1114; }
+table.g tr.par td { color: var(--cyan); background: var(--panel2); }
+table.g tr.par td.el { background: var(--panel2); }
+table.g tr.offrow td { opacity: 0.3; }
+table.g .sh { font-family: var(--sans); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-left: 8px; }
+.oc { font-family: var(--sans); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+.o-done { color: var(--green); } .o-refused { color: var(--red); } .o-passed-on { color: var(--amber); } .o-not-run { color: var(--muted); }
+.c-given { color: var(--given); } .c-present { color: var(--cyan); } .c-empty { color: var(--muted); } .c-written { color: var(--green); }
+.c-invalid { color: var(--red); font-weight: 700; } .c-refusal { color: var(--violet); font-weight: 700; }
+table.m { border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+table.m th, table.m td { padding: 3px 9px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); }
+table.m th { font-weight: 500; color: var(--muted); vertical-align: bottom; }
+table.m th span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+table.m td.l, table.m th.l { text-align: left; }
+table.m tr.sel td { background: #10222e; }
+table.m tr.pathrow td { color: var(--cyan); font-family: var(--sans); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; text-align: left; padding-top: 10px; }
+table.m td.gl { font-size: 14px; }
+table.m button { font-family: var(--mono); font-size: 12px; }
+table.cmp { border-collapse: collapse; font-size: 12.5px; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 14px 3px 0; border-bottom: 1px solid var(--line); }
+table.cmp th { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+table.cmp td.mono { font-size: 12px; }
+input[type="range"] { width: min(420px, 100%); accent-color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1><span>control</span> lab</h1>
+    <select id="scn" aria-label="Design"></select>
+    <span id="state"></span>
+    <div class="stats" id="stats"></div>
+    <span style="margin-left:auto" class="row">
+      <span class="lbl" style="min-width:0">Compare with</span>
+      <select id="cmp" aria-label="Compare with"></select>
+      <button type="button" id="b-ed" aria-pressed="true">Editor</button>
+    </span>
+  </header>
+
+  <div class="cols" id="cols">
+    <section class="panel" id="edpane" aria-label="The definition file">
+      <div class="row">
+        <h2 style="margin:0;flex:1" id="edtitle">The definition file</h2>
+        <button type="button" id="b-new" title="Start a new design from a small starter">New</button>
+        <button type="button" id="b-fmt" title="Lay the JSON out again">Format</button>
+        <button type="button" id="b-rev" title="Go back to the file as saved">Revert</button>
+        <button type="button" id="b-snap" title="Keep this version to compare against">Snapshot</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" id="b-save" class="go">Save</button>
+        <input type="text" id="saveas" placeholder="new-name.json" aria-label="Name for a new file" style="flex:1;min-width:120px">
+        <button type="button" id="b-saveas">Save as new</button>
+      </div>
+      <textarea id="ed" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Definition file text"></textarea>
+      <div id="edstatus" aria-live="polite"></div>
+    </section>
+
+    <div class="main">
+      <section class="panel" aria-label="What to look at">
+        <div class="row"><span class="lbl">Step</span><span id="c-run" class="row"></span></div>
+        <div class="row" id="r-path"><span class="lbl" id="l-path">Path</span><span id="c-path" class="row"></span></div>
+        <div class="row"><span class="lbl" id="l-brk">Break</span><span id="c-brk" class="row"></span></div>
+      </section>
+      <div id="readout" aria-live="polite"></div>
+      <nav class="row tabs" id="c-view" aria-label="View"></nav>
+      <section class="panel">
+        <div id="controls" class="row" style="margin-bottom:10px"></div>
+        <div id="stage"></div>
+      </section>
+      <section class="panel" id="note"></section>
+      <nav class="row tabs" id="c-panel" aria-label="Details"></nav>
+      <section class="panel" id="panel"></section>
+      <section class="panel">
+        <div class="legend">
+          <span><i style="background:var(--given)"></i>given</span>
+          <span><i style="background:var(--cyan)"></i>present, or a read</span>
+          <span><i style="background:var(--green)"></i>written, done</span>
+          <span><i style="background:var(--amber)"></i>a write, or passed on</span>
+          <span><i style="background:var(--red)"></i>invalid, refused, lost</span>
+          <span><i style="background:var(--violet)"></i>a refusal that reached a place</span>
+          <span><i style="background:var(--muted)"></i>empty, not run</span>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const VIEWS = [
+  { id: "rail", label: "Rail", good: "the shape of a step: what runs in order, what branches, and which element a refusal stops at.", weak: "seeing how one place is shared across steps. A wide step needs sideways scrolling." },
+  { id: "bus", label: "Bus", good: "all inputs and outputs at once, with no tangle: each place is a horizontal line and each leaf a vertical one. Drag the playhead to watch the values change.", weak: "the tree. Parents are not drawn, so you cannot see where a refusal climbs." },
+  { id: "ring", label: "Ring", good: "the whole system at a glance: which places are hubs, which leaves touch many places, and how far an invalid value reaches. Click a dot to isolate its wires.", weak: "order. The ring does not show what runs before what." },
+  { id: "grid", label: "Grid", good: "exact lookup. Every read, write, owner and refusal target is one cell, and nothing overlaps however large the design gets.", weak: "flow. It is a table, and you have to read it." },
+  { id: "matrix", label: "Matrix", good: "the whole sweep on one screen: every fault of a step, and what each leaf did in it. Click a row to load that fault into the other views.", weak: "structure. It shows outcomes, and the design only by implication." },
+];
+const PANELS = ["findings", "tests", "compare", "prompts"];
+/* A: what is open. S: what is selected. */
+const A = { scenarios: [], id: null, live: null, liveRefused: null, draft: null, refused: null, text: "", disk: "", stamp: null,
+  diskChanged: false, snaps: [], cmpKey: "", cmp: null, seq: 0, checking: false, prompts: null, error: null };
+const S = { runName: null, path: 0, place: null, view: "rail", t: 0, hover: null, timer: null, panel: "findings", promptStep: null };
+const store = { get(k) { try { return localStorage.getItem("control-lab." + k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem("control-lab." + k, v); } catch (e) { /* storage may be off */ } } };
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json", "X-Control-Lab": "1" }, body: JSON.stringify(body) } : {});
+  let j; try { j = await r.json(); } catch (e) { throw new Error("the lab's server gave no answer: is lab.py still running?"); }
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 2600); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast("Copied"); }
+  catch (e) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); toast("Copied"); } catch (e2) { toast("Select the text and copy it"); } ta.remove(); }
+}
+const scenario = () => A.scenarios.filter((s) => s.id === A.id)[0] || null;
+const dirty = () => A.text !== A.disk;
+const shownRes = () => (dirty() && A.draft) ? A.draft : (A.live || A.draft);
+const model = () => { const r = shownRes(); return r ? r.model : null; };
+
+/* ---------- reading the checker's model ---------- */
+function cur() {
+  const V = model(), NODE = {}, PLACE = {};
+  V.nodes.forEach((n) => { NODE[n.name] = n; });
+  V.places.forEach((p) => { PLACE[p.name] = p; });
+  let ri = V.runs.findIndex((r) => r.run === S.runName);
+  if (ri < 0) { ri = 0; S.runName = V.runs[0].run; S.path = 0; S.place = null; }
+  const rv = V.runs[ri];
+  if (S.path >= rv.paths.length) S.path = 0;
+  const faults = rv.faults.filter((f) => f.path === S.path);
+  const fault = S.place ? faults.filter((f) => f.place === S.place)[0] || null : null;
+  if (S.place && !fault) S.place = null;
+  const trace = rv.traces[fault ? fault.trace : rv.baselines[S.path]];
+  const step = {}, chosen = {};
+  trace.steps.forEach((s) => { step[s.element] = s; });
+  trace.path.forEach((p) => { chosen[p.or] = p.child; });
+  if (S.t > trace.steps.length || S.t < 0) S.t = trace.steps.length;
+  return { V, NODE, PLACE, ri, rv, faults, fault, trace, step, chosen };
+}
+function leavesUnder(C, name) { const n = C.NODE[name]; return n.children.length ? [].concat(...n.children.map((k) => leavesUnder(C, k))) : [name]; }
+function under(C, name, top) { for (let at = name; at; at = C.NODE[at].parent) if (at === top) return true; return false; }
+function role(C, name) {
+  for (const c of C.trace.refusals) {
+    if (c.lostAt === name) return { k: "lost", c };
+    if (c.from === name) return { k: !c.through.length && c.to ? "from-report" : "from", c };
+    const i = c.through.indexOf(name);
+    if (i >= 0) return { k: i === c.through.length - 1 && c.to ? "report" : "through", c };
+  }
+  return null;
+}
+function seenIn(list, place) { const x = (list || []).filter((s) => s.place === place)[0]; return x ? x.state : null; }
+function vlabel(f) { return f.verdict === "refused" ? (f.held ? "refused, held" : "refused, no hold") : f.verdict; }
+function vclass(f) { return f.verdict === "refused" ? (f.held ? "v-held" : "v-nohold") : (f.verdict === "lost" || f.verdict === "passed") ? "v-bad" : "v-plain"; }
+function pathText(rv, i) { return rv.paths[i].map((x) => x.or + " → " + x.child).join(", "); }
+function happens(rv, f) {
+  if (f.what) return esc(f.what);
+  const t = rv.traces[f.trace], c = t.refusals[0], b = (s) => "<b>" + esc(s) + "</b>";
+  const passed = t.steps.filter((s) => s.outcome === "passed-on").map((s) => s.element);
+  if (c && !c.lostAt) return b(c.from) + " refuses it" + (c.through.length ? ", through " + c.through.map(b).join(", ") : "") + ", and the refusal reaches " + b(c.to) + ".";
+  if (c) return b(c.from) + " refuses it, and the refusal stops at " + b(c.lostAt) + ", which declares no rejects. Nobody is told.";
+  if (f.verdict === "output") return "No leaf of this step reads it, so no refusal can meet it.";
+  if (f.verdict === "passed") return passed.map(b).join(", ") + " read it and refused nothing, so what they write is invalid too.";
+  return "No leaf read it while it held its invalid value.";
+}
+/* The state of every place of the step after each leaf: index 0 is the start. */
+function timeline(C) {
+  const tl = [{}];
+  C.trace.start.forEach((s) => { tl[0][s.place] = s.state; });
+  C.trace.steps.forEach((st) => {
+    const now = Object.assign({}, tl[tl.length - 1]);
+    st.writes.forEach((w) => { now[w.place] = w.state; });
+    if (st.outcome === "refused") C.trace.refusals.forEach((c) => { if (c.from === st.element && c.to) now[c.to] = "refusal"; });
+    tl.push(now);
+  });
+  return tl;
+}
+
+/* ---------- small DOM helpers ---------- */
+function btn(label, pressed, on, cls, title) {
+  const b = document.createElement("button");
+  b.type = "button"; b.innerHTML = label; b.setAttribute("aria-pressed", String(!!pressed));
+  if (cls) b.className = cls; if (title) b.title = title;
+  b.addEventListener("click", on);
+  return b;
+}
+function fill(id, nodes) { const el = $(id); el.textContent = ""; nodes.forEach((n) => el.appendChild(n)); }
+function stopPlay() { if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+function pick(patch) {
+  stopPlay();
+  if ("runName" in patch) { S.path = 0; S.place = null; }
+  Object.assign(S, patch);
+  if (!("t" in patch)) S.t = 1e9;
+  S.hover = null;
+  if ("view" in patch) store.set("view", S.view);
+  if ("panel" in patch) store.set("panel", S.panel);
+  render();
+}
+
+/* ---------- 1. Rail ---------- */
+const CH = 6.65;
+function wrapWords(text, max) {
+  const lines = [""];
+  text.split(" ").forEach((w) => { const l = lines.length - 1; if (lines[l] && (lines[l] + " " + w).length > max) lines.push(w); else lines[l] = lines[l] ? lines[l] + " " + w : w; });
+  return lines;
+}
+function rail(C) {
+  const o = [];
+  const T = (x, y, s, cls, anchor) => o.push('<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (cls ? ' class="' + cls + '"' : "") + (anchor ? ' text-anchor="' + anchor + '"' : "") + ">" + s + "</text>");
+  const L = (x1, y1, x2, y2, extra) => o.push('<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="var(--cyan)" stroke-width="1.5" ' + (extra || "") + "/>");
+  function tokens(prefix, toks) {
+    const lines = [[]]; let len = 0;
+    toks.forEach((tk) => { if (len + tk.t.length + 2 > 32 && lines[lines.length - 1].length) { lines.push([]); len = 0; } lines[lines.length - 1].push(tk); len += tk.t.length + 2; });
+    return lines.map((l, i) => ({ prefix: i ? "    " : prefix, toks: l }));
+  }
+  function ruleText(n, isLeaf) {
+    const rj = n.refusals.filter((r) => r.kind === "rejects")[0];
+    if (rj) return { t: "rejects → " + (rj.to === "parent" ? "its parent" : rj.to) + (rj.held ? "" : "  (no hold)"), cls: rj.held ? "mut" : "am" };
+    if (!isLeaf || n.reads.length) return { t: "declares no rejects", cls: "am" };
+    return null;
+  }
+  function lay(name) {
+    const n = C.NODE[name], kids = n.children, st = C.step[name], rl = role(C, name);
+    if (!kids.length) {
+      const rows = [];
+      if (n.reads.length) rows.push(...tokens("in  ", n.reads.map((p) => ({ t: p, cls: st ? "s-" + (seenIn(st.reads, p) || "empty") : "" }))));
+      if (n.writes.length) rows.push(...tokens("out ", n.writes.map((w) => ({ t: w.place, cls: st && seenIn(st.writes, w.place) ? "s-" + seenIn(st.writes, w.place) : "mut" }))));
+      const rule = ruleText(n, true), foot = rl && rl.k === "from-report" ? "⚑ reports the refusal to " + rl.c.to : "";
+      const head = name.length + (st ? st.outcome.length + 3 : 0);
+      const longest = Math.max(head, rule ? rule.t.length : 0, foot.length, ...rows.map((r) => 4 + r.toks.reduce((a, t) => a + t.t.length + 2, 0)));
+      const w = Math.max(150, longest * CH + 24), h = 26 + rows.length * 15 + (rule ? 16 : 0) + (foot ? 16 : 0) + 8;
+      return { w, h, draw(x, y) {
+        let stroke = "var(--line)", fillc = "var(--panel2)", cls = "";
+        if (st && st.outcome === "refused") { stroke = "var(--red)"; fillc = "#241014"; cls = "glow-red"; }
+        else if (st && st.outcome === "passed-on") { stroke = "var(--amber)"; fillc = "#241a0c"; }
+        else if (st && st.outcome === "done") stroke = "var(--green)";
+        o.push("<g" + (st && st.outcome === "not-run" ? ' class="dim"' : "") + '><rect class="' + cls + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="5" fill="' + fillc + '" stroke="' + stroke + '" stroke-width="1.5"/>');
+        T(x + 12, y + 18, esc(name), "name");
+        if (st) T(x + w - 12, y + 18, esc(st.outcome), st.outcome === "done" ? "gr" : st.outcome === "refused" ? "rd" : st.outcome === "passed-on" ? "am" : "mut", "end");
+        let yy = y + 36;
+        rows.forEach((r) => { T(x + 12, yy, '<tspan class="mut">' + r.prefix.replace(/ /g, "&#160;") + "</tspan>" + r.toks.map((t) => '<tspan class="' + t.cls + '">' + esc(t.t) + "</tspan>").join('<tspan class="mut">, </tspan>')); yy += 15; });
+        if (rule) { T(x + 12, yy + 1, esc(rule.t), rule.cls); yy += 16; }
+        if (foot) T(x + 12, yy + 1, esc(foot), "vi");
+        o.push("</g>");
+      } };
+    }
+    const parts = kids.map((k) => lay(k)), rule = ruleText(n, false);
+    const headLines = [name + "  " + n.shape.toUpperCase()].concat(rule ? [rule.t] : []);
+    const headW = Math.max(...headLines.map((l) => l.length)) * CH + 28, headH = 22 + (rule ? 15 : 0) + 8;
+    let innerW, innerH, place;
+    if (n.shape === "join" || n.shape === "steps") {
+      const gap = 30;
+      innerW = Math.max(...parts.map((p) => p.w)); innerH = parts.reduce((a, p) => a + p.h, 0) + gap * (parts.length - 1);
+      place = (x, y) => { let yy = y; parts.forEach((p, i) => { p.draw(x + (innerW - p.w) / 2, yy); if (i < parts.length - 1) L(x + innerW / 2, yy + p.h, x + innerW / 2, yy + p.h + gap, 'marker-end="url(#arr)"'); yy += p.h + gap; }); };
+    } else {
+      const whenOf = {};
+      n.branches.forEach((b) => { whenOf[b.child] = "when " + b.when; });
+      if (n.otherwise) whenOf[n.otherwise] = "otherwise";
+      const labels = kids.map((k, i) => n.shape === "or" ? wrapWords(whenOf[k] || "", Math.max(18, Math.floor(parts[i].w / CH) - 2)) : []);
+      const forkH = 28 + Math.max(0, ...labels.map((l) => l.length)) * 13, gap = 22, mergeH = 24;
+      const colW = parts.map((p, i) => Math.max(p.w, ...labels[i].map((l) => l.length * CH + 8)));
+      innerW = colW.reduce((a, b) => a + b, 0) + gap * (parts.length - 1);
+      const maxH = Math.max(...parts.map((p) => p.h));
+      innerH = forkH + maxH + mergeH;
+      place = (x, y) => {
+        const mid = x + innerW / 2; let xx = x;
+        const cxs = parts.map((p, i) => { const c = xx + colW[i] / 2; xx += colW[i] + gap; return c; });
+        const barY = y + 18, botY = y + forkH + maxH + 10;
+        if (n.shape === "or") o.push('<path d="M' + mid + " " + y + ' l7 7 l-7 7 l-7 -7 z" fill="var(--bg)" stroke="var(--cyan)" stroke-width="1.5"/>');
+        else { L(mid - 12, y + 5, mid + 12, y + 5); L(mid - 12, y + 9, mid + 12, y + 9); }
+        L(mid, y + 14, mid, barY); L(Math.min(mid, cxs[0]), barY, Math.max(mid, cxs[cxs.length - 1]), barY);
+        L(Math.min(mid, cxs[0]), botY, Math.max(mid, cxs[cxs.length - 1]), botY); L(mid, botY, mid, y + innerH);
+        parts.forEach((p, i) => {
+          const cx = cxs[i], offb = n.shape === "or" && C.chosen[name] && C.chosen[name] !== kids[i];
+          o.push("<g" + (offb ? ' class="off"' : "") + ">");
+          L(cx, barY, cx, y + forkH);
+          labels[i].forEach((l, li) => T(cx, y + 34 + li * 13, esc(l), "mut mask", "middle"));
+          p.draw(cx - p.w / 2, y + forkH);
+          L(cx, y + forkH + p.h, cx, botY);
+          o.push("</g>");
+        });
+      };
+    }
+    const foot = !rl ? "" : rl.k === "lost" ? "✕ the refusal stops here and is reported nowhere" : rl.k === "report" ? "⚑ reports the refusal to " + rl.c.to : "↑ passes the refusal up";
+    const w = Math.max(innerW + 28, headW, foot.length * CH + 28), h = headH + innerH + 14 + (rl ? 16 : 0);
+    return { w, h, draw(x, y) {
+      let stroke = "var(--line)", dash = "5 5", cls = "";
+      if (rl && rl.k === "lost") { stroke = "var(--red)"; dash = "8 5"; cls = "glow-red pulsing"; }
+      else if (rl && rl.k === "report") { stroke = "var(--violet)"; dash = ""; cls = "glow-vi"; }
+      else if (rl) { stroke = "var(--red)"; dash = "2 4"; }
+      o.push('<rect class="' + cls + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="7" fill="none" stroke="' + stroke + '" stroke-width="' + (rl ? 2 : 1) + '" stroke-dasharray="' + dash + '"/>');
+      T(x + 12, y + 17, esc(name) + ' <tspan class="cap" dx="6">' + esc(n.shape) + "</tspan>", "name cy");
+      if (rule) T(x + 12, y + 32, esc(rule.t), rule.cls);
+      place(x + (w - innerW) / 2, y + headH);
+      if (rl) T(x + 12, y + h - 8, esc(foot), rl.k === "report" ? "vi" : "rd");
+    } };
+  }
+  const root = lay(C.rv.run), W = root.w + 24, H = root.h + 24;
+  root.draw(12, 12);
+  $("stage").innerHTML = '<svg width="' + Math.ceil(W) + '" height="' + Math.ceil(H) + '" viewBox="0 0 ' + Math.ceil(W) + " " + Math.ceil(H) + '" role="img" aria-label="The step ' + esc(C.rv.run) + ' drawn as tracks">' +
+    '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--cyan)"/></marker></defs>' + o.join("") + "</svg>";
+  $("controls").innerHTML = '<span class="lbl" style="min-width:0">Reads top to bottom. A join runs its children in order, an or picks one branch, and a dashed box is a parent.</span>';
+}
+
+/* ---------- 2. Bus ---------- */
+function bus(C) {
+  const steps = C.trace.steps, tl = timeline(C), places = C.trace.start.map((s) => s.place);
+  const gut = Math.max(...places.map((p) => p.length)) * CH + 28, colW = Math.max(96, ...steps.map((s) => s.element.length * 7.5 + 28));
+  const top = 64, rowH = 30, endW = 86;
+  const W = gut + colW * steps.length + 30 + endW, H = top + rowH * places.length + 16;
+  const X = (i) => gut + colW * i + colW / 2, Y = (j) => top + rowH * j + rowH / 2, o = [];
+  const x0 = gut - 8, xEnd = gut + colW * steps.length + 22;
+  S.t = Math.min(S.t, steps.length);
+  places.forEach((p, j) => {
+    o.push('<text x="' + (gut - 16) + '" y="' + (Y(j) + 4) + '" text-anchor="end"' + (p === S.place ? ' class="rd name"' : "") + ">" + esc(p) + "</text>");
+    for (let i = 0; i <= steps.length; i++) {
+      const a = i === 0 ? x0 : X(i - 1), b = i === steps.length ? xEnd : X(i), stt = tl[i][p] || "empty", live = i <= S.t;
+      o.push('<line class="k-' + stt + (stt === "invalid" && live ? " flowing" : "") + (live ? "" : " dim") + '" x1="' + a + '" y1="' + Y(j) + '" x2="' + b + '" y2="' + Y(j) + '" stroke-width="' + (stt === "empty" ? 1.5 : 3) + '"/>');
+    }
+    const now = tl[S.t][p] || "empty";
+    o.push('<text x="' + (xEnd + 8) + '" y="' + (Y(j) + 4) + '" class="s-' + now + '">' + esc(now) + "</text>");
+  });
+  steps.forEach((s, i) => {
+    const n = C.NODE[s.element], live = i < S.t, oc = s.outcome;
+    const col = oc === "done" ? "var(--green)" : oc === "refused" ? "var(--red)" : oc === "passed-on" ? "var(--amber)" : "var(--muted)";
+    o.push('<g class="' + (live ? "" : "dim") + '">');
+    o.push('<line x1="' + X(i) + '" y1="' + (top - 14) + '" x2="' + X(i) + '" y2="' + (H - 10) + '" stroke="var(--line)" stroke-width="1"/>');
+    o.push('<rect class="' + (oc === "refused" && live ? "glow-red" : "") + '" x="' + (X(i) - colW / 2 + 5) + '" y="8" width="' + (colW - 10) + '" height="40" rx="4" fill="var(--panel2)" stroke="' + col + '" stroke-width="1.5"' + (oc === "not-run" ? ' stroke-dasharray="4 4"' : "") + "/>");
+    o.push('<text class="name" x="' + X(i) + '" y="25" text-anchor="middle">' + esc(s.element) + "</text>");
+    o.push('<text x="' + X(i) + '" y="40" text-anchor="middle" style="fill:' + col + '">' + esc(oc) + "</text>");
+    places.forEach((p, j) => {
+      const reads = n.reads.indexOf(p) >= 0, writes = n.writes.some((w) => w.place === p), rs = seenIn(s.reads, p), ws = seenIn(s.writes, p);
+      const reported = oc === "refused" && C.trace.refusals.some((c) => c.from === s.element && c.to === p);
+      if (reads) o.push('<circle cx="' + (X(i) - (writes ? 7 : 0)) + '" cy="' + Y(j) + '" r="5.5" fill="var(--bg)" ' + (rs ? 'class="k-' + rs + '"' : 'stroke="var(--muted)"') + ' stroke-width="2.5"><title>' + esc(s.element + " reads " + p + (rs ? ": " + rs : " (not in this play)")) + "</title></circle>");
+      if (writes) o.push('<rect x="' + (X(i) + (reads ? 2 : -5)) + '" y="' + (Y(j) - 5) + '" width="10" height="10" class="' + (reported ? "s-refusal glow-vi" : ws ? "s-" + ws : "") + '"' + (reported || ws ? "" : ' fill="var(--bg)" stroke="var(--muted)" stroke-width="1.5"') + "><title>" + esc(s.element + " writes " + p + (reported ? ": the refusal" : ws ? ": " + ws : " (not written in this play)")) + "</title></rect>");
+    });
+    o.push("</g>");
+  });
+  const px = S.t === 0 ? x0 : S.t >= steps.length ? xEnd : (X(S.t - 1) + X(S.t)) / 2;
+  o.push('<line x1="' + px + '" y1="0" x2="' + px + '" y2="' + H + '" stroke="var(--cyan)" stroke-width="1.5" class="glow-cy"/><path d="M' + (px - 6) + ' 0 h12 l-6 8 z" fill="var(--cyan)"/>');
+  $("stage").innerHTML = '<svg id="bus-svg" width="' + Math.ceil(W) + '" height="' + H + '" viewBox="0 0 ' + Math.ceil(W) + " " + H + '" style="cursor:ew-resize;touch-action:none" role="img" aria-label="Places as lines and leaves as columns">' + o.join("") + "</svg>";
+  const last = S.t > 0 ? steps[S.t - 1] : null, seenHtml = (r) => esc(r.place) + ' <span class="c-' + r.state + '">' + r.state + "</span>";
+  const say = !last ? "Before the first leaf. Each place holds its starting state." :
+    '<b class="mono">' + esc(last.element) + "</b> " + (last.outcome === "not-run" ? "does not run." :
+      "read " + (last.reads.map(seenHtml).join(", ") || "nothing") + (last.outcome === "refused" ? " and refused. It wrote nothing." : " and wrote " + (last.writes.map(seenHtml).join(", ") || "nothing") + "."));
+  $("controls").innerHTML = '<button type="button" id="b-play">' + (S.timer ? "Pause" : "Play") + '</button><input type="range" id="b-t" min="0" max="' + steps.length + '" step="1" value="' + S.t + '" aria-label="Playhead"><span class="mono" style="color:var(--muted)">' + S.t + " / " + steps.length + '</span><span style="flex-basis:100%">' + say + '</span><span class="lbl" style="min-width:0;flex-basis:100%">○ a read · ■ a write · drag across the picture to move the playhead</span>';
+  $("b-t").addEventListener("input", (e) => { stopPlay(); S.t = +e.target.value; bus(cur()); });
+  $("b-play").addEventListener("click", () => {
+    if (S.timer) { stopPlay(); bus(cur()); return; }
+    if (S.t >= steps.length) S.t = 0;
+    S.timer = setInterval(() => { if (S.t >= steps.length) stopPlay(); else S.t += 1; bus(cur()); }, 750);
+    bus(cur());
+  });
+  const svg = $("bus-svg");
+  const scrub = (e) => { const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (W / r.width); const t = Math.max(0, Math.min(steps.length, Math.round((x - gut) / colW))); if (t !== S.t) { stopPlay(); S.t = t; bus(cur()); } };
+  svg.addEventListener("pointerdown", (e) => { scrub(e); const mv = (ev) => scrub(ev); const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up); });
+}
+
+/* ---------- 3. Ring ---------- */
+function ring(C) {
+  /* a design you can run reuses parts across runs, so its ring shows the run that is selected */
+  const top = C.V.facts ? C.rv.run : C.V.system, leaves = leavesUnder(C, top), places = C.V.places.map((p) => p.name);
+  const height = {}; (function h(name) { const n = C.NODE[name]; return (height[name] = n.children.length ? 1 + Math.max(...n.children.map(h)) : 0); })(top);
+  const levels = Math.max(0, height[top] - 1), R = 230, cx = 490, cy = 490, o = [], rad = (d) => d * Math.PI / 180;
+  const P = (r, d) => [cx + r * Math.cos(rad(d)), cy + r * Math.sin(rad(d))];
+  const slots = []; let prevStep = null;
+  leaves.forEach((l) => { let s = l; while (C.NODE[s].parent && C.NODE[s].parent !== top) s = C.NODE[s].parent; if (prevStep && s !== prevStep) slots.push(null); prevStep = s; slots.push(l); });
+  const la = {}, span = 156, facts = C.V.facts || [], pspan = facts.length ? 72 : span;
+  slots.forEach((l, i) => { if (l) la[l] = 258 - (slots.length > 1 ? i * span / (slots.length - 1) : span / 2); });
+  const idx = {}; leaves.forEach((l, i) => { idx[l] = i; });
+  const mean = (p) => { const pl = C.PLACE[p], ls = pl.readers.concat(pl.writers); return ls.length ? ls.reduce((a, l) => a + idx[l], 0) / ls.length : leaves.length; };
+  const ordered = places.slice().sort((a, b) => mean(a) - mean(b));
+  const pa = {}; ordered.forEach((p, i) => { pa[p] = (facts.length ? -82 : -78) + (ordered.length > 1 ? i * pspan / (ordered.length - 1) : pspan / 2); });
+  const inRun = (l) => under(C, l, C.rv.run);
+  const wires = [];
+  leaves.forEach((l) => {
+    const n = C.NODE[l], st = C.step[l];
+    n.reads.forEach((p) => wires.push({ l, p, kind: "read", state: st ? seenIn(st.reads, p) : null }));
+    n.writes.forEach((w) => wires.push({ l, p: w.place, kind: "write", state: st ? seenIn(st.writes, w.place) : null,
+      refusal: !!(st && st.outcome === "refused" && C.trace.refusals.some((c) => c.from === l && c.to === w.place)) }));
+  });
+  wires.sort((a, b) => (a.state === "invalid" || a.refusal ? 1 : 0) - (b.state === "invalid" || b.refusal ? 1 : 0));
+  wires.forEach((w) => {
+    const a = P(R - 6, la[w.l]), b = P(R - 6, pa[w.p]), bend = w.kind === "read" ? 0.12 : -0.12;
+    const mx = cx + (a[1] - b[1]) * bend, my = cy + (b[0] - a[0]) * bend * 0.4;
+    let col = w.kind === "read" ? "var(--cyan)" : "var(--amber)", cls = "", wd = 1.1, op = inRun(w.l) ? 0.5 : 0.14;
+    if (w.refusal) { col = "var(--violet)"; cls = "glow-vi"; wd = 2.4; op = 1; }
+    else if (w.state === "invalid") { col = "var(--red)"; cls = "flowing glow-red"; wd = 2.2; op = 1; }
+    if (S.hover) op = S.hover === w.l || S.hover === w.p ? 1 : 0.06;
+    o.push('<path d="M' + a[0].toFixed(1) + " " + a[1].toFixed(1) + " Q" + mx.toFixed(1) + " " + my.toFixed(1) + " " + b[0].toFixed(1) + " " + b[1].toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="' + wd + '" opacity="' + op + '" class="' + cls + '"/>');
+  });
+  /* facts, on a third arc: a wire to each action that answers one, or that runs by one */
+  const given = C.trace.given || [], fw = [], fa = {};
+  if (facts.length) {
+    C.V.nodes.forEach((n) => {
+      if (la[n.name] === undefined) return;
+      (n.answers || []).forEach((a) => a.facts.forEach((f) => fw.push({ l: n.name, f, then: a.then })));
+      (n.asks || []).forEach((f) => { if (!fw.some((w) => w.l === n.name && w.f === f)) fw.push({ l: n.name, f, then: "" }); });
+    });
+    const fmean = (f) => { const ls = fw.filter((w) => w.f === f.name); return ls.length ? ls.reduce((a, w) => a + idx[w.l], 0) / ls.length : leaves.length; };
+    const fs = facts.slice().sort((a, b) => fmean(a) - fmean(b));
+    fs.forEach((f, i) => { fa[f.name] = 6 + (fs.length > 1 ? i * 82 / (fs.length - 1) : 41); });
+    fw.forEach((w) => {
+      const a = P(R - 6, la[w.l]), b = P(R - 6, fa[w.f]), on = given.indexOf(w.f) >= 0;
+      let op = on ? 1 : inRun(w.l) ? 0.32 : 0.1;
+      if (S.hover) op = S.hover === w.l || S.hover === w.f ? 1 : 0.05;
+      o.push('<path d="M' + a[0].toFixed(1) + " " + a[1].toFixed(1) + " Q" + cx + " " + cy + " " + b[0].toFixed(1) + " " + b[1].toFixed(1) + '" fill="none" stroke="' + (w.then ? "var(--green)" : "var(--given)") + '" stroke-width="' + (on ? 2.2 : 1) + '" opacity="' + op + '"' + (w.then ? "" : ' stroke-dasharray="3 4"') + "><title>" + esc(w.l + (w.then ? " answers " + w.f + ": " + w.then : " runs by " + w.f)) + "</title></path>");
+    });
+    fs.forEach((f) => {
+      const a = fa[f.name], d = P(R, a), tt = P(R + 12, a), on = given.indexOf(f.name) >= 0;
+      const op = S.hover ? (S.hover === f.name || fw.some((w) => w.f === f.name && w.l === S.hover) ? 1 : 0.2) : 1;
+      o.push('<g opacity="' + op + '" data-hover="' + esc(f.name) + '" style="cursor:pointer"><circle cx="' + d[0].toFixed(1) + '" cy="' + d[1].toFixed(1) + '" r="4.5" fill="' + (on ? (f.fault ? "var(--red)" : "var(--cyan)") : "var(--bg)") + '" stroke="' + (f.fault ? "var(--red)" : f.open ? "var(--amber)" : "var(--given)") + '" stroke-width="2"' + (on && f.fault ? ' class="glow-red"' : "") + '/><text x="' + tt[0].toFixed(1) + '" y="' + tt[1].toFixed(1) + '" dominant-baseline="middle" style="font-size:9.5px" transform="rotate(' + a.toFixed(1) + " " + tt[0].toFixed(1) + " " + tt[1].toFixed(1) + ')" class="' + (on ? (f.fault ? "rd name" : "cy name") : "mut") + '">' + esc(f.name) + "</text></g>");
+    });
+    o.push('<text class="cap" x="984" y="968" text-anchor="end">facts: a red ring is a fault, a solid wire an answer</text>');
+  }
+  C.V.nodes.forEach((n, ni) => {
+    if (!n.children.length || n.name === top || !under(C, n.name, top)) return;
+    const ls = leavesUnder(C, n.name), a1 = Math.max(...ls.map((l) => la[l])) + 3.2, a2 = Math.min(...ls.map((l) => la[l])) - 3.2, r = R + 14 + (height[n.name] - 1) * 17, rl = role(C, n.name);
+    const s = P(r, a1), e = P(r, a2), col = rl ? (rl.k === "report" ? "var(--violet)" : "var(--red)") : "var(--line)";
+    o.push('<path id="band' + ni + '" d="M' + s[0].toFixed(1) + " " + s[1].toFixed(1) + " A" + r + " " + r + " 0 0 0 " + e[0].toFixed(1) + " " + e[1].toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="13"' + (rl && rl.k === "lost" ? ' class="pulsing glow-red" stroke-dasharray="10 5"' : rl ? ' class="glow-' + (rl.k === "report" ? "vi" : "red") + '"' : "") + "><title>" + esc(n.name + " · " + n.shape + (rl ? rl.k === "lost" ? " · the refusal stops here" : rl.k === "report" ? " · reports the refusal to " + rl.c.to : " · passes the refusal up" : "")) + "</title></path>");
+    o.push('<text class="cap" dy="3.4" style="fill:' + (rl ? "var(--bg)" : "var(--ink)") + '"><textPath href="#band' + ni + '" startOffset="50%" text-anchor="middle">' + esc(n.name + (rl && rl.k === "lost" ? " ✕" : rl && rl.k === "report" ? " ⚑" : "")) + "</textPath></text>");
+  });
+  const lr = R + 14 + levels * 17 + 4;
+  leaves.forEach((l) => {
+    const st = C.step[l], a = la[l], d = P(R, a), t = P(lr, a), oc = st ? st.outcome : null;
+    const col = oc === "done" ? "var(--green)" : oc === "refused" ? "var(--red)" : oc === "passed-on" ? "var(--amber)" : "var(--muted)";
+    const op = S.hover ? (S.hover === l || wires.some((w) => w.l === l && w.p === S.hover) || fw.some((w) => w.l === l && w.f === S.hover) ? 1 : 0.2) : inRun(l) ? 1 : 0.3;
+    o.push('<g opacity="' + op + '" data-hover="' + esc(l) + '" style="cursor:pointer"><circle cx="' + d[0].toFixed(1) + '" cy="' + d[1].toFixed(1) + '" r="6" fill="' + (oc && oc !== "not-run" ? col : "var(--bg)") + '" stroke="' + col + '" stroke-width="2"' + (oc === "refused" ? ' class="glow-red"' : "") + "/>" +
+      '<text x="' + t[0].toFixed(1) + '" y="' + t[1].toFixed(1) + '" text-anchor="end" dominant-baseline="middle" transform="rotate(' + (a + 180).toFixed(1) + " " + t[0].toFixed(1) + " " + t[1].toFixed(1) + ')"' + (oc === "refused" ? ' class="rd name"' : oc === "passed-on" ? ' class="am name"' : "") + ">" + esc(l) + "</text></g>");
+  });
+  const end = {}; C.trace.end.forEach((s) => { end[s.place] = s.state; });
+  ordered.forEach((p) => {
+    const a = pa[p], d = P(R, a), t = P(R + 14, a), stt = end[p];
+    const op = S.hover ? (S.hover === p || wires.some((w) => w.p === p && w.l === S.hover) ? 1 : 0.2) : stt ? 1 : 0.35;
+    o.push('<g opacity="' + op + '" data-hover="' + esc(p) + '" style="cursor:pointer"><rect x="' + (d[0] - 6).toFixed(1) + '" y="' + (d[1] - 6).toFixed(1) + '" width="12" height="12" transform="rotate(45 ' + d[0].toFixed(1) + " " + d[1].toFixed(1) + ')" class="' + (stt ? "s-" + stt : "") + (stt === "invalid" ? " glow-red pulsing" : stt === "refusal" ? " glow-vi" : "") + '"' + (stt ? "" : ' fill="var(--muted)"') + "/>" +
+      '<text x="' + t[0].toFixed(1) + '" y="' + t[1].toFixed(1) + '" dominant-baseline="middle" transform="rotate(' + a.toFixed(1) + " " + t[0].toFixed(1) + " " + t[1].toFixed(1) + ')" class="' + (stt === "invalid" ? "rd name" : stt === "refusal" ? "vi name" : "") + '">' + esc(p) + (stt ? ' <tspan class="s-' + stt + '" dx="4">' + stt + "</tspan>" : "") + "</text></g>");
+  });
+  o.push('<text class="cap" x="16" y="22">leaves, in the order of the tree</text><text class="cap" x="984" y="22" text-anchor="end">places</text>');
+  o.push('<text class="cap" x="16" y="968">' + wires.length + " reads and writes</text>");
+  $("stage").innerHTML = '<svg id="ring-svg" viewBox="0 0 1000 980" style="width:100%;max-width:1000px;min-width:680px;margin:0 auto" role="img" aria-label="Every read and write of the system as a wire">' + o.join("") + "</svg>";
+  let info = "Cyan wires are reads and amber wires are writes. A place's label shows its state at the end of the play.";
+  if (S.hover && C.PLACE[S.hover]) { const p = C.PLACE[S.hover]; info = '<b class="mono">' + esc(p.name) + "</b>: " + esc(p.kind) + ", owned by " + esc(p.owner || "nothing, it comes from outside") + ". Written by " + esc(p.writers.join(", ") || "no leaf") + ". Read by " + esc(p.readers.join(", ") || "no leaf") + "."; }
+  else if (S.hover && facts.some((f) => f.name === S.hover)) { const f = facts.filter((x) => x.name === S.hover)[0], who = fw.filter((w) => w.f === f.name && w.then); info = '<b class="mono">' + esc(f.name) + "</b>" + (f.says ? ": " + esc(f.says) : "") + ". " + (f.fault ? "A fault" : f.open ? "Not decided yet" : "A fact") + (f.about ? " about " + esc(f.about) : "") + ". " + (who.length ? "Answered by " + who.map((w) => esc(w.l) + " (" + w.then + ")").join(", ") + "." : f.fault ? "No action answers it." : ""); }
+  else if (S.hover && C.NODE[S.hover]) { const n = C.NODE[S.hover]; info = '<b class="mono">' + esc(n.writes.map((w) => w.place).join(", ") || "nothing") + " = " + esc(n.name) + "(" + esc(n.reads.join(", ")) + ")</b>"; }
+  $("controls").innerHTML = "<span>" + info + '</span><span class="lbl" style="min-width:0;flex-basis:100%">click a dot to hold its wires · click it again to release</span>';
+  $("ring-svg").addEventListener("click", (e) => { const g = e.target.closest("[data-hover]"); S.hover = g && S.hover !== g.dataset.hover ? g.dataset.hover : null; ring(cur()); });
+}
+
+/* ---------- 4. Grid ---------- */
+function grid(C) {
+  const faults = (C.V.facts || []).filter((f) => f.fault);
+  if (!faults.length) return gridPlaces(C);
+  if (S.gridMode === "answers") gridAnswers(C, faults); else gridPlaces(C);
+  $("controls").insertAdjacentHTML("afterbegin", '<button type="button" id="g-p" aria-pressed="' + (S.gridMode !== "answers") + '">Places</button><button type="button" id="g-a" aria-pressed="' + (S.gridMode === "answers") + '">Who answers what</button>');
+  $("g-p").addEventListener("click", () => { S.gridMode = "places"; grid(cur()); });
+  $("g-a").addEventListener("click", () => { S.gridMode = "answers"; grid(cur()); });
+}
+function gridAnswers(C, faults) {
+  const rows = [], given = C.trace.given || [], THEN = { refuse: "o-refused", fail: "o-refused", warn: "o-passed-on", tell: "c-present", ask: "c-refusal", accept: "o-done" };
+  (function walk(name, depth) { rows.push({ name, depth }); C.NODE[name].children.forEach((k) => walk(k, depth + 1)); })(C.V.system, 0);
+  let h = '<table class="g"><thead><tr><th class="el">action</th><th>outcome</th>' + faults.map((f) => '<th class="pc' + (given.indexOf(f.name) >= 0 ? " broken" : "") + '" title="' + esc(f.says || f.name) + '"><span>' + esc(f.name) + "</span></th>").join("") + "</tr></thead><tbody>";
+  rows.forEach((r) => {
+    const n = C.NODE[r.name], st = C.step[r.name], leaf = !n.children.length, inRun = under(C, r.name, C.rv.run);
+    h += '<tr class="' + (leaf ? "" : "par") + (leaf && !inRun ? " offrow" : "") + '"><td class="el" style="padding-left:' + (6 + r.depth * 14) + 'px">' + esc(r.name) + (leaf ? "" : '<span class="sh">' + esc(n.shape) + "</span>") + "</td><td>" + (st ? '<span class="oc o-' + st.outcome + '">' + st.outcome + "</span>" : "") + "</td>";
+    faults.forEach((f) => {
+      const on = given.indexOf(f.name) >= 0, ans = (n.answers || []).filter((a) => a.facts.indexOf(f.name) >= 0)[0], meets = (n.meets || []).indexOf(f.name) >= 0;
+      let cell = "";
+      if (ans) cell = '<span class="' + THEN[ans.then] + '" title="' + esc(r.name + " answers it: " + ans.then) + '">' + ans.then + "</span>";
+      else if (meets && on && st && st.outcome === "passed-on") cell = '<span class="c-invalid" title="' + esc(r.name + " goes on with it, and nothing has answered it") + '">?</span>';
+      else if (meets) cell = '<span style="color:var(--muted)" title="' + esc(r.name + " meets it and has no answer of its own") + '">·</span>';
+      h += '<td class="' + (on ? "broken" : "") + '">' + cell + "</td>";
+    });
+    h += "</tr>";
+  });
+  $("stage").innerHTML = h + "</tbody></table>";
+  $("controls").innerHTML = '<span class="lbl" style="min-width:0;flex-basis:100%">a word is the action\'s answer to that fault · a dot: it meets the fault and has no answer of its own · ? in this play it goes on with the fault unanswered</span>';
+}
+function gridPlaces(C) {
+  const places = C.V.places.map((p) => p.name), rows = [];
+  (function walk(name, depth) { rows.push({ name, depth }); C.NODE[name].children.forEach((k) => walk(k, depth + 1)); })(C.V.system, 0);
+  let h = '<table class="g"><thead><tr><th class="el">element</th><th>outcome</th>' + places.map((p) => '<th class="pc' + (p === S.place ? " broken" : "") + '" title="' + esc(C.PLACE[p].kind + (C.PLACE[p].owner ? ", owned by " + C.PLACE[p].owner : "")) + '"><span>' + esc(p) + "</span></th>").join("") + "</tr></thead><tbody>";
+  rows.forEach((r) => {
+    const n = C.NODE[r.name], st = C.step[r.name], rl = role(C, r.name), leaf = !n.children.length, inRun = under(C, r.name, C.rv.run);
+    const to = {}; n.refusals.forEach((x) => { if (x.to && x.to !== "parent") to[x.to] = x.kind; });
+    let oc = "";
+    if (st) oc = '<span class="oc o-' + st.outcome + '">' + st.outcome + "</span>";
+    if (rl && rl.k === "lost") oc = '<span class="oc o-refused">✕ refusal lost here</span>';
+    else if (rl && rl.k === "report") oc = '<span class="oc c-refusal">⚑ reports refusal</span>';
+    else if (rl && rl.k === "through") oc = '<span class="oc o-refused">↑ passes refusal up</span>';
+    h += '<tr class="' + (leaf ? "" : "par") + (leaf && !inRun ? " offrow" : "") + '"><td class="el" style="padding-left:' + (6 + r.depth * 14) + 'px">' + esc(r.name) + (leaf ? "" : '<span class="sh">' + esc(n.shape) + "</span>") + (n.findings.length ? ' <span class="tag v-nohold" title="' + esc(n.findings.map((i) => C.V.findings[i].check).join(", ")) + '">' + n.findings.length + "!</span>" : "") + "</td><td>" + oc + "</td>";
+    places.forEach((p) => {
+      const w = n.writes.filter((x) => x.place === p)[0], rd = n.reads.indexOf(p) >= 0, own = C.PLACE[p].owner === r.name;
+      const rs = st ? seenIn(st.reads, p) : null, ws = st ? seenIn(st.writes, p) : null, bits = [];
+      if (rd) bits.push('<span class="' + (rs ? "c-" + rs : "") + '" title="reads' + (rs ? ": " + rs : "") + '">R</span>');
+      if (w) bits.push('<span class="' + (ws ? "c-" + ws : "") + '" title="writes, mode ' + esc(w.mode) + (w.before.length ? ", after checking " + esc(w.before.map((b) => b.check).join(", ")) : "") + (ws ? ": " + ws : "") + '">' + (w.mode === "create" ? "C" : w.mode === "replace" ? "X" : "W") + (w.before.length ? "✓" : "") + "</span>");
+      if (to[p]) bits.push('<span class="c-refusal" title="' + to[p] + ' reports here">⚑</span>');
+      if (own) bits.push('<span style="color:var(--muted)" title="owns this place">◦</span>');
+      h += '<td class="' + (p === S.place ? "broken" : "") + '">' + bits.join(" ") + "</td>";
+    });
+    h += "</tr>";
+  });
+  $("stage").innerHTML = h + "</tbody></table>";
+  $("controls").innerHTML = '<span class="lbl" style="min-width:0">R reads · W writes · C creates a record · X replaces a record · ✓ checks before the write · ⚑ a refusal is reported here · ◦ owns the place · n! findings on the element</span>';
+}
+
+/* ---------- 5. Matrix ---------- */
+function matrix(C) {
+  const leaves = leavesUnder(C, C.rv.run), G = { done: "●", refused: "✕", "passed-on": "▲", "not-run": "·" };
+  let h = '<table class="m"><thead><tr><th class="l">broken place</th>' + leaves.map((l) => "<th><span>" + esc(l) + "</span></th>").join("") + '<th class="l">verdict</th><th class="l">where the refusal goes</th></tr></thead><tbody>';
+  const row = (label, t, f, path, place) => {
+    const oc = {}; t.steps.forEach((s) => { oc[s.element] = s.outcome; });
+    const c = t.refusals[0], sel = S.path === path && (S.place || null) === place;
+    h += '<tr class="' + (sel ? "sel" : "") + '"><td class="l"><button type="button" data-path="' + path + '" data-place="' + esc(place || "") + '" aria-pressed="' + sel + '">' + esc(label) + "</button></td>" +
+      leaves.map((l) => '<td class="gl o-' + (oc[l] || "not-run") + '" title="' + esc(l + ": " + (oc[l] || "not on this path")) + '">' + (oc[l] ? G[oc[l]] : "") + "</td>").join("") +
+      '<td class="l">' + (f ? '<span class="' + vclass(f) + '">' + esc(vlabel(f)) + "</span>" : '<span class="v-plain">baseline</span>') + '</td><td class="l">' +
+      (c ? esc(c.from) + c.through.map((e) => " → " + esc(e)).join("") + (c.lostAt ? ' → <span class="o-refused">✕ ' + esc(c.lostAt) + "</span>" : ' → <span class="c-refusal">⚑ ' + esc(c.to) + "</span>") : "") + "</td></tr>";
+  };
+  C.rv.paths.forEach((p, pi) => {
+    if (C.rv.paths.length > 1) h += '<tr class="pathrow"><td colspan="' + (leaves.length + 3) + '">path: ' + esc(pathText(C.rv, pi)) + "</td></tr>";
+    row("nothing", C.rv.traces[C.rv.baselines[pi]], null, pi, null);
+    C.rv.faults.filter((f) => f.path === pi).forEach((f) => row(f.place, C.rv.traces[f.trace], f, pi, f.place));
+  });
+  $("stage").innerHTML = h + "</tbody></table>";
+  $("controls").innerHTML = '<span class="lbl" style="min-width:0">● done · ✕ refused · ▲ read an invalid value and passed it on · · did not run · blank: not on this path</span>';
+  $("stage").querySelector("table").addEventListener("click", (e) => { const b = e.target.closest("button[data-path]"); if (b) pick({ path: +b.dataset.path, place: b.dataset.place || null }); });
+}
+const DRAW = { rail, bus, ring, grid, matrix };
+
+/* ---------- comparing two results ---------- */
+const fkey = (f) => (f.accepted ? "accepted  " : "") + f.check + "  " + f.subject;
+function faultMap(m) {
+  const out = new Map();
+  m.runs.forEach((rv) => rv.faults.forEach((f) => out.set(rv.run + " | " + pathText(rv, f.path) + " | " + f.place, { run: rv.run, path: pathText(rv, f.path), place: f.place, label: vlabel(f), cls: vclass(f) })));
+  return out;
+}
+function tally(m) {
+  const t = { open: m.findings.filter((f) => !f.accepted).length, accepted: m.findings.filter((f) => f.accepted).length, tests: m.tests.length, faults: 0, by: {} };
+  m.runs.forEach((rv) => rv.faults.forEach((f) => { t.faults++; t.by[vlabel(f)] = (t.by[vlabel(f)] || 0) + 1; }));
+  return t;
+}
+function compare(base, now) {
+  const fb = new Map(base.findings.map((f) => [fkey(f), f])), fn = new Map(now.findings.map((f) => [fkey(f), f]));
+  const sb = faultMap(base), sn = faultMap(now), sweep = [];
+  new Set([...sb.keys(), ...sn.keys()]).forEach((k) => { const a = sb.get(k), b = sn.get(k); if (!a || !b || a.label !== b.label) sweep.push({ k, a, b }); });
+  const tb = new Set(base.tests.map((t) => t.kind + "  " + t.subject)), tn = new Set(now.tests.map((t) => t.kind + "  " + t.subject));
+  return { gone: [...fb.values()].filter((f) => !fn.has(fkey(f))), fresh: [...fn.values()].filter((f) => !fb.has(fkey(f))), kept: [...fn.values()].filter((f) => fb.has(fkey(f))).length,
+    sweep, sweepSame: [...sn.keys()].filter((k) => sb.has(k) && sb.get(k).label === sn.get(k).label).length,
+    testsGone: [...tb].filter((t) => !tn.has(t)), testsNew: [...tn].filter((t) => !tb.has(t)) };
+}
+
+/* ---------- the panels under the view ---------- */
+function findingLi(f, cls, tag) {
+  return '<li class="' + cls + '">' + (tag || "") + "<b>" + (f.accepted ? "accepted · " : "") + esc(f.check) + "</b> " + esc(f.subject) + ": <span>" + esc(f.accepted ? f.reason : f.message) + "</span></li>";
+}
+function testPrompt(C, e) {
+  const gives = e.inputs.map((i) => i.place + " holds its invalid value: " + (C.PLACE[i.place] ? C.PLACE[i.place].invalid : "")).concat(e.input ? [e.input] : []);
+  if (e.firstRefusers.length) gives.push("No fault reaches it: " + e.firstRefusers.map((r) => r.by + " refuses " + r.place + " first").join(", ") + ". Bring about the refusal's reason directly.");
+  return ["Write one test for a rule of the design in " + C.V.definition + ".", "",
+    "Rule: " + e.subject + " (" + e.kind + ")" + (e.words ? ": " + e.words : ""),
+    "Give: " + (gives.join("; ") || "(the rule is in words: decide this from the rule)"),
+    "Assert: " + (e.asserts || "(decide this from the rule)"),
+    "Break: " + (e.break || "(name the change to the code that must make the test fail)"),
+    "Baseline: " + (e.baseline || "the code as it is: the test passes."), "",
+    "Run the test on the code as it is and show that it passes. Make the break, show that the test fails, and undo the break.",
+    "Report the test's file and name, for the owner to add as the rule's hold. Change no other code, and do not edit the definition file."].join("\n");
+}
+function renderPanel(C) {
+  const V = C.V, p = $("panel"), res = shownRes();
+  fill("c-panel", PANELS.map((id) => btn({ findings: "Findings " + V.findings.filter((f) => !f.accepted).length, tests: "Tests to write " + V.tests.length, compare: "Compare", prompts: "Prompts" }[id], id === S.panel, () => pick({ panel: id, t: S.t }))));
+  if (S.panel === "findings") {
+    p.innerHTML = "<h2>" + (V.labels ? "Questions for the owner" : "What control check prints") + "</h2>" + '<ul class="flist">' + (V.findings.map((f) => findingLi(f, f.accepted ? "acc" : "")).join("") || '<li class="acc">No findings.</li>') + "</ul>" +
+      '<p class="empty" style="margin-top:8px">' + esc(res.check.summary) + ". " + (V.labels ? "The engine" : "<code>control check</code>") + " exits " + res.check.exit + '. <button type="button" id="p-copy">Copy the lines</button></p>';
+    $("p-copy").addEventListener("click", () => copy(res.check.lines.join("\n")));
+  } else if (S.panel === "tests") {
+    p.innerHTML = "<h2>One test for each rule that names no hold</h2>" + (V.tests.map((e, i) => '<article class="entry"><div class="row"><h3>' + esc(e.subject) + '</h3><span class="tag v-plain">' + esc(e.kind) + (e.run ? " · in " + esc(e.run) : "") + '</span><button type="button" data-test="' + i + '" style="margin-left:auto">Copy as a prompt</button></div><p>' + esc(e.words) + "</p>" +
+      (e.unwritten ? '<p class="empty">The rule is in words, so the test, its break and its file are for the session that writes it.</p>' :
+        '<dl class="proof"><dt>Gives</dt><dd>' + (e.inputs.map((x) => "<code>" + esc(x.place) + "</code> holds its invalid value: " + esc(C.PLACE[x.place] ? C.PLACE[x.place].invalid : "")).concat(e.input ? [esc(e.input)] : []).concat(e.firstRefusers.length ? ["No fault reaches it: " + e.firstRefusers.map((r) => esc(r.by) + " refuses " + esc(r.place) + " first").join(", ")] : []).join("<br>")) +
+        "</dd><dt>Asserts</dt><dd>" + esc(e.asserts || "") + "</dd><dt>Break</dt><dd>" + esc(e.break || "") + "</dd><dt>Baseline</dt><dd>" + esc(e.baseline || "") + "</dd></dl>" +
+        (e.hold ? '<pre class="box">' + esc(e.hold) + "</pre>" : "")) + "</article>").join("") || '<p class="empty">Every rule names a hold.</p>');
+    p.querySelectorAll("button[data-test]").forEach((b) => b.addEventListener("click", () => copy(testPrompt(C, V.tests[+b.dataset.test]))));
+  } else if (S.panel === "compare") {
+    if (!A.cmp) { p.innerHTML = '<h2>Compare</h2><p class="empty">Choose something under "Compare with" at the top: the saved file, a snapshot, or another design. This panel then lists what changed.</p>'; return; }
+    const d = compare(A.cmp.model, V);
+    p.innerHTML = "<h2>" + esc(A.cmp.label) + " → what is shown now</h2>" +
+      '<ul class="flist">' + d.fresh.map((f) => findingLi(f, "new", '<span class="tag new">new</span>')).join("") + d.gone.map((f) => findingLi(f, "gone", '<span class="tag gone">gone</span>')).join("") + "</ul>" +
+      '<p class="empty" style="margin:6px 0 12px">' + d.fresh.length + " new, " + d.gone.length + " gone, " + d.kept + " unchanged findings.</p>" +
+      (d.sweep.length ? '<table class="cmp"><thead><tr><th>Step</th><th>Path</th><th>Broken place</th><th>Before</th><th>Now</th></tr></thead><tbody>' + d.sweep.map((r) => { const x = r.b || r.a; return '<tr><td class="mono">' + esc(x.run) + '</td><td class="empty">' + esc(x.path) + '</td><td class="mono">' + esc(x.place) + "</td><td>" + (r.a ? '<span class="' + r.a.cls + '">' + esc(r.a.label) + "</span>" : '<span class="empty">not there</span>') + "</td><td>" + (r.b ? '<span class="' + r.b.cls + '">' + esc(r.b.label) + "</span>" : '<span class="empty">not there</span>') + "</td></tr>"; }).join("") + "</tbody></table>" : "") +
+      '<p class="empty" style="margin-top:6px">' + d.sweep.length + " sweep verdicts changed, " + d.sweepSame + " the same.</p>" +
+      (d.testsNew.length || d.testsGone.length ? '<p style="margin-top:10px">Tests to write: ' + d.testsNew.map((t) => '<span class="tag new">new</span><code>' + esc(t) + "</code> ").join("") + d.testsGone.map((t) => '<span class="tag gone">gone</span><code>' + esc(t) + "</code> ").join("") + "</p>" : "");
+  } else {
+    if (V.labels) {                                // a design you can run has prompts of its own
+      const pr = A.prompts && A.prompts.runnable;
+      p.innerHTML = "<h2>Prompts for a session</h2>" + (!pr ? '<p class="empty">Loading.</p>' : pr.map((x, i) => '<div class="row" style="margin:12px 0 6px"><b>' + esc(x.title) + '</b><button type="button" data-pr="' + i + '" style="margin-left:auto">Copy</button></div><pre class="box">' + esc(x.text) + "</pre>").join("") || '<p class="empty">None found in lab/engine/PROMPTS.md.</p>');
+      p.querySelectorAll("button[data-pr]").forEach((b) => b.addEventListener("click", () => copy(pr[+b.dataset.pr].text)));
+      return;
+    }
+    const sc = scenario(), steps = V.runs.map((r) => r.run);
+    if (steps.indexOf(S.promptStep) < 0) S.promptStep = C.rv.run;
+    const pr = A.prompts && A.prompts.description;
+    let body = '<h2>Write a description file from the code</h2>';
+    if (!pr) body += '<p class="empty">Loading.</p>';
+    else if (!pr.text) body += '<p class="empty">Not available: ' + esc(pr.why) + ".</p>";
+    else {
+      const text = pr.text.replace("<the step>", S.promptStep).replace("<path>", sc ? sc.file : V.definition);
+      body += '<div class="row" style="margin-bottom:8px"><span class="lbl" style="min-width:0">For the step</span>' + steps.map((s) => '<button type="button" data-step="' + esc(s) + '" class="brk" aria-pressed="' + (s === S.promptStep) + '">' + esc(s) + "</button>").join("") + '<button type="button" id="p-desc" style="margin-left:auto">Copy</button></div><pre class="box" id="p-desc-text">' + esc(text) + '</pre><p class="empty" style="margin-top:6px">The checker\'s own prompt, read from <code>control/README.md</code>, with the step and the definition file filled in. Paste it into a session in the repository the step belongs to.</p>';
+    }
+    body += '<h2 style="margin-top:14px">Write a test for a rule</h2><p class="empty">Each entry under "Tests to write" has a "Copy as a prompt" button. The wording around the checker\'s four lines is the lab\'s.</p>';
+    p.innerHTML = body;
+    p.querySelectorAll("button[data-step]").forEach((b) => b.addEventListener("click", () => { S.promptStep = b.dataset.step; renderPanel(cur()); }));
+    if ($("p-desc")) $("p-desc").addEventListener("click", () => copy($("p-desc-text").textContent));
+  }
+}
+
+/* ---------- the top bar, the editor's status, and the page ---------- */
+function delta(now, base, lowerIsBetter) {
+  if (base === null || now === base) return base === null ? "" : ' <span class="same">=</span>';
+  const up = now > base; return ' <span class="' + ((up === lowerIsBetter) ? "up" : "down") + '">' + (up ? "▲" : "▼") + Math.abs(now - base) + "</span>";
+}
+function renderTop() {
+  const sc = scenario(), m = model(), sel = $("scn");
+  sel.innerHTML = A.scenarios.map((s) => '<option value="' + s.id + '"' + (s.id === A.id ? " selected" : "") + ">" + esc(s.label) + "</option>").join("");
+  sel.title = sc ? sc.note || sc.file : "";
+  const st = $("state");
+  if (A.error) { st.className = "refused"; st.textContent = A.error; }
+  else if (A.refused) { st.className = "refused"; st.textContent = dirty() ? "The checker refuses this text" : "The checker refuses this file"; }
+  else if (dirty()) { st.className = "draft"; st.textContent = A.checking ? "Checking…" : "Draft: not saved"; }
+  else { st.className = "live"; st.textContent = "Live: as saved"; }
+  const opts = [["", "nothing"]];
+  if (dirty() && A.live) opts.push(["disk", "the saved file"]);
+  A.snaps.forEach((s) => opts.push([s.key, s.label]));
+  A.scenarios.forEach((s) => { if (s.id !== A.id) opts.push(["scn:" + s.id, s.label]); });
+  if (!opts.some((o) => o[0] === A.cmpKey)) { A.cmpKey = ""; A.cmp = null; }
+  $("cmp").innerHTML = opts.map((o) => '<option value="' + esc(o[0]) + '"' + (o[0] === A.cmpKey ? " selected" : "") + ">" + esc(o[1]) + "</option>").join("");
+  if (!m) { $("stats").innerHTML = ""; return; }
+  const t = tally(m), b = A.cmp ? tally(A.cmp.model) : null;
+  $("stats").innerHTML = "<span><b>" + t.open + "</b>findings" + delta(t.open, b && b.open, true) + "</span><span><b>" + t.accepted + "</b>accepted</span><span><b>" + t.tests + "</b>tests to write" + delta(t.tests, b && b.tests, true) + "</span><span><b>" + t.faults + "</b>faults played: " +
+    ["refused, held", "refused, no hold", "lost", "passed", "output", "unread"].filter((k) => t.by[k]).map((k) => t.by[k] + " " + k).join(", ") + "</span>";
+}
+function renderEditor() {
+  const sc = scenario(), ro = !sc || sc.readonly;
+  $("edtitle").textContent = sc ? sc.file : "The definition file";
+  $("b-save").disabled = ro || !dirty(); $("b-save").textContent = ro ? "Read-only" : "Save";
+  $("b-save").title = ro ? "This design is marked read-only. Take a snapshot to compare, or open your own copy." : "Write the text to " + (sc ? sc.file : "the file");
+  $("b-saveas").disabled = ro; $("saveas").disabled = ro;
+  $("b-rev").disabled = !dirty();
+  const out = [];
+  if (A.diskChanged) out.push('<span class="note">The file changed on disk while you were editing. <button type="button" id="b-load">Load it</button></span>');
+  if (A.refused) {
+    out.push('<span class="note">' + (model() ? "The views show the last version the checker accepted." : "There is nothing to draw until the checker accepts the file.") + "</span>");
+    A.refused.forEach((r) => out.push('<span class="bad">' + esc(r) + "</span>"));
+  }
+  $("edstatus").innerHTML = out.join("");
+  if ($("b-load")) $("b-load").addEventListener("click", () => openScenario(A.id, true));
+}
+function render() {
+  renderTop(); renderEditor();
+  fill("c-view", VIEWS.map((v) => btn(v.label, v.id === S.view, () => pick({ view: v.id }))));
+  const main = model();
+  ["c-run", "c-path", "c-brk"].forEach((id) => { $(id).textContent = ""; });
+  if (!main) {
+    $("readout").className = "bad"; $("readout").textContent = A.error || "The checker refuses this file, so there is nothing to draw. Its reasons are under the editor.";
+    $("stage").innerHTML = ""; $("controls").innerHTML = ""; $("note").innerHTML = ""; $("panel").innerHTML = ""; $("c-panel").textContent = "";
+    return;
+  }
+  const C = cur();
+  fill("c-run", C.V.runs.map((r) => btn(esc(r.run), r.run === C.rv.run, () => pick({ runName: r.run }), "brk")));
+  $("r-path").hidden = C.rv.paths.length < 2;
+  if (C.rv.paths.length > 8) {                     // many choices read better as a list than as a wall of chips
+    const sel = document.createElement("select");
+    sel.id = "s-path"; sel.setAttribute("aria-label", "Given");
+    sel.innerHTML = C.rv.paths.map((p, i) => '<option value="' + i + '"' + (i === S.path ? " selected" : "") + ">" + esc(pathText(C.rv, i)) + "</option>").join("");
+    sel.addEventListener("change", () => pick({ path: +sel.value }));
+    const n = document.createElement("span"); n.className = "lbl"; n.style.minWidth = "0"; n.textContent = C.rv.paths.length + " choices";
+    fill("c-path", [sel, n]);
+  } else fill("c-path", C.rv.paths.map((p, i) => btn(esc(pathText(C.rv, i) || "the only path"), i === S.path, () => pick({ path: i }))));
+  fill("c-brk", [btn("nothing", !S.place, () => pick({ place: null }))].concat(C.faults.map((f) =>
+    btn(esc(f.place) + '<span class="v ' + vclass(f) + '">' + esc(vlabel(f)) + "</span>", f.place === S.place, () => pick({ place: f.place }), "brk", f.says || (C.PLACE[f.place] || {}).invalid || ""))));
+  const lab = C.V.labels || {};
+  $("l-path").textContent = lab.path || "Path"; $("l-brk").textContent = lab.break || "Break";
+  const r = $("readout");
+  if (!C.fault) { r.className = ""; r.innerHTML = C.V.labels ? "Nothing is wrong in this play of <b>" + esc(C.rv.run) + "</b>. Pick something under Wrong to see what the design does about it." : "Nothing is broken: this is the baseline play of <b>" + esc(C.rv.run) + "</b>. Pick a place under Break to give it an invalid value."; }
+  else {
+    r.className = C.fault.verdict === "lost" || C.fault.verdict === "passed" ? "bad" : C.fault.verdict === "refused" ? (C.fault.held ? "ok" : "warn") : "";
+    r.innerHTML = (C.fault.says ? "<b>" + esc(C.fault.place) + "</b>: " + esc(C.fault.says) : "<b>" + esc(C.fault.place) + "</b> holds " + esc((C.PLACE[C.fault.place] || {}).invalid || "its invalid value")) + '. Verdict: <b class="' + vclass(C.fault) + '">' + esc(vlabel(C.fault)) + "</b>. " + happens(C.rv, C.fault);
+  }
+  const v = VIEWS.filter((x) => x.id === S.view)[0];
+  $("note").innerHTML = "<span><b>" + v.label + " is good at</b> " + v.good + "</span><span><b>It is weak at</b> " + v.weak + "</span>";
+  DRAW[S.view](C);
+  renderPanel(C);
+}
+
+/* ---------- opening, editing, saving ---------- */
+async function openScenario(id, keep) {
+  stopPlay();
+  A.id = id; A.error = null; A.diskChanged = false; A.draft = null; A.refused = null; A.seq++;
+  $("cols").dataset.open = ""; $("ed").disabled = true;   /* typing while a design loads would be overwritten */
+  store.set("scenario", id);
+  if (!keep) { S.runName = null; S.path = 0; S.place = null; S.hover = null; }
+  try {
+    const [src, res] = await Promise.all([api("/api/source?id=" + id), api("/api/model?id=" + id)]);
+    A.text = A.disk = src.text; $("ed").value = src.text;
+    A.live = res.ok ? res : null; A.refused = res.ok ? null : res.refused;
+    const sc = scenario(); A.stamp = sc ? sc.stamp : null;
+  } catch (e) { A.live = null; A.error = e.message; }
+  S.t = 1e9;
+  render();
+  $("ed").disabled = false; $("cols").dataset.open = id;
+}
+let debounce = null;
+function edited() {
+  A.text = $("ed").value;
+  clearTimeout(debounce);
+  if (!dirty()) { A.draft = null; A.refused = A.live ? null : A.refused; A.checking = false; render(); return; }
+  A.checking = true; renderTop(); renderEditor();
+  debounce = setTimeout(checkDraft, 350);
+}
+async function checkDraft() {
+  const seq = ++A.seq, text = A.text;
+  try {
+    const res = await api("/api/check", { id: A.id, text });
+    if (seq !== A.seq) return;
+    A.error = null;
+    if (res.ok) { A.draft = res; A.refused = null; } else A.refused = res.refused;
+  } catch (e) { if (seq !== A.seq) return; A.error = e.message; }
+  A.checking = false;
+  render();
+}
+async function save(name) {
+  try {
+    const out = await api("/api/save", name ? { id: A.id, text: A.text, name } : { id: A.id, text: A.text });
+    await refreshList();
+    toast("Saved " + out.saved);
+    $("saveas").value = "";
+    await openScenario(name && out.id ? out.id : A.id, !name);
+  } catch (e) { toast(e.message); }
+}
+async function refreshList() { const l = await api("/api/scenarios"); A.scenarios = l.scenarios; A.checker = l.checker; return l; }
+async function chooseCompare(key) {
+  A.cmpKey = key; A.cmp = null;
+  try {
+    if (key === "disk") A.cmp = { label: "the saved file", model: A.live.model };
+    else if (key.indexOf("snap:") === 0) { const s = A.snaps.filter((x) => x.key === key)[0]; A.cmp = { label: s.label, model: s.model }; }
+    else if (key.indexOf("scn:") === 0) { const id = key.slice(4), res = await api("/api/model?id=" + id), sc = A.scenarios.filter((x) => x.id === id)[0]; if (!res.ok) throw new Error("the checker refuses " + sc.label); A.cmp = { label: sc.label, model: res.model }; }
+  } catch (e) { toast(e.message); A.cmpKey = ""; }
+  if (A.cmp) S.panel = "compare";
+  render();
+}
+const STARTER = { system: "my system", places: [
+  { name: "input", outside: true, invalid: "say what makes an input invalid" },
+  { name: "store", belongsTo: "do it", lasting: true, invalid: "say what makes a stored value invalid" },
+  { name: "message", belongsTo: "do it", invalid: "a message with no text" } ],
+  elements: [ { name: "my system", steps: ["do it"] },
+    { name: "do it", reads: [{ place: "input" }], writes: [{ place: "store", mode: "write" }, { place: "message", mode: "write" }],
+      rejects: { reason: "the input is invalid", to: "message" } } ], unsaid: [] };
+
+async function poll() {
+  try {
+    const before = A.scenarios.map((s) => s.id).join(","), checker = A.checker, l = await refreshList(), sc = scenario();
+    if (A.error) { A.error = null; return openScenario(A.id || (A.scenarios[0] && A.scenarios[0].id), true); }
+    if (!sc) { if (A.scenarios.length) await openScenario(A.scenarios[0].id); return; }
+    const changed = sc.stamp !== A.stamp || l.checker !== checker;
+    if (changed) {
+      A.stamp = sc.stamp;
+      if (!dirty()) return openScenario(A.id, true);
+      const src = await api("/api/source?id=" + A.id);
+      if (src.text !== A.disk) A.diskChanged = true;
+      const res = await api("/api/model?id=" + A.id); A.live = res.ok ? res : A.live;
+      return checkDraft();
+    }
+    if (before !== A.scenarios.map((s) => s.id).join(",")) renderTop();
+  } catch (e) { if (!A.error) { A.error = e.message; render(); } }
+}
+
+$("scn").addEventListener("change", (e) => openScenario(e.target.value));
+$("cmp").addEventListener("change", (e) => chooseCompare(e.target.value));
+$("ed").addEventListener("input", edited);
+$("ed").addEventListener("keydown", (e) => {
+  if (e.key === "Tab" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); const t = e.target, a = t.selectionStart; t.setRangeText("  ", a, t.selectionEnd, "end"); edited(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (!$("b-save").disabled) save(); }
+});
+$("b-save").addEventListener("click", () => save());
+$("b-saveas").addEventListener("click", () => { const n = $("saveas").value.trim(); if (!n) { toast("Give the new file a name ending .json"); $("saveas").focus(); return; } save(n); });
+$("b-rev").addEventListener("click", () => { $("ed").value = A.disk; edited(); });
+$("b-fmt").addEventListener("click", () => { try { $("ed").value = JSON.stringify(JSON.parse($("ed").value), null, 2) + "\n"; edited(); } catch (e) { toast("Not valid JSON yet: " + e.message); } });
+$("b-new").addEventListener("click", () => { $("ed").value = JSON.stringify(STARTER, null, 2) + "\n"; edited(); toast("A starter design. Name it and choose Save as new to keep it."); });
+$("b-snap").addEventListener("click", () => {
+  const res = shownRes(); if (!res) { toast("Nothing to snapshot: the checker refuses this file"); return; }
+  const sc = scenario(), n = A.snaps.length + 1;
+  A.snaps.push({ key: "snap:" + n, label: "snapshot " + n + ": " + (sc ? sc.label : "") + (dirty() ? " (draft)" : ""), model: res.model });
+  toast("Snapshot " + n + " kept. Choose it under Compare with."); renderTop();
+});
+$("b-ed").addEventListener("click", () => { const off = $("cols").classList.toggle("noed"); $("b-ed").setAttribute("aria-pressed", String(!off)); store.set("editor", off ? "off" : "on"); });
+window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+(async function boot() {
+  if (DRAW[store.get("view")]) S.view = store.get("view");
+  if (PANELS.indexOf(store.get("panel")) >= 0) S.panel = store.get("panel");
+  if (store.get("editor") === "off") { $("cols").classList.add("noed"); $("b-ed").setAttribute("aria-pressed", "false"); }
+  const m = /^#([a-z]+)$/.exec(location.hash || ""); if (m && DRAW[m[1]]) S.view = m[1];
+  try {
+    await refreshList();
+    const want = store.get("scenario"), first = A.scenarios.filter((s) => s.id === want)[0] || A.scenarios[0];
+    if (!first) { A.error = "No design to open: start lab.py with a definition file or a directory of them."; render(); return; }
+    await openScenario(first.id);
+    api("/api/prompts").then((p) => { A.prompts = p; if (S.panel === "prompts" && model()) renderPanel(cur()); }).catch(() => {});
+  } catch (e) { A.error = e.message; render(); }
+  setInterval(poll, 1500);
+})();
+})();
+</script>
+</body>
+</html>

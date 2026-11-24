@@ -1,0 +1,181 @@
+{
+  "system": "contacts",
+  "places": [
+    {
+      "name": "csv",
+      "outside": true,
+      "invalid": "a file that is not a CSV of contacts"
+    },
+    {
+      "name": "rows",
+      "belongsTo": "parse",
+      "invalid": "a row with no email"
+    },
+    {
+      "name": "book",
+      "belongsTo": "contacts",
+      "keyed": true,
+      "lasting": true,
+      "onExisting": "replace",
+      "invalid": "a contact with no email"
+    },
+    {
+      "name": "message",
+      "belongsTo": "import",
+      "invalid": "a message with no text"
+    },
+    {
+      "name": "change",
+      "outside": true,
+      "invalid": "a change with no email"
+    },
+    {
+      "name": "edit message",
+      "belongsTo": "edit",
+      "invalid": "a message with no text"
+    }
+  ],
+  "elements": [
+    {
+      "name": "contacts",
+      "steps": [
+        "import",
+        "edit"
+      ]
+    },
+    {
+      "name": "import",
+      "join": [
+        "parse",
+        "store"
+      ],
+      "rejects": {
+        "reason": "the import failed",
+        "to": "message",
+        "hold": {
+          "file": "contacts/import.test.js",
+          "test": "tells the person when an import fails"
+        }
+      }
+    },
+    {
+      "name": "parse",
+      "reads": [
+        {
+          "place": "csv"
+        }
+      ],
+      "writes": [
+        {
+          "place": "rows",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the file is not a CSV of contacts",
+        "to": "parent",
+        "hold": {
+          "file": "contacts/import.test.js",
+          "test": "refuses a file that is not a CSV of contacts"
+        }
+      }
+    },
+    {
+      "name": "store",
+      "reads": [
+        {
+          "place": "rows"
+        },
+        {
+          "place": "book"
+        }
+      ],
+      "writes": [
+        {
+          "place": "book",
+          "mode": "create",
+          "key": "content",
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "hold": {
+                "file": "contacts/import.test.js",
+                "test": "asks before replacing a contact"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "hold": {
+                "file": "contacts/import.test.js",
+                "test": "refuses an email given twice"
+              }
+            }
+          ]
+        },
+        {
+          "place": "message",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "a row has no email",
+        "to": "parent",
+        "hold": {
+          "file": "contacts/import.test.js",
+          "test": "refuses a row with no email"
+        }
+      },
+      "declines": {
+        "reason": "the person chose to keep the contact they have",
+        "hold": {
+          "file": "contacts/import.test.js",
+          "test": "keeps the old contact when the person says no"
+        }
+      }
+    },
+    {
+      "name": "edit",
+      "reads": [
+        {
+          "place": "change"
+        },
+        {
+          "place": "book"
+        }
+      ],
+      "writes": [
+        {
+          "place": "book",
+          "mode": "replace",
+          "key": "content",
+          "records": "one",
+          "before": [
+            {
+              "check": "belongs",
+              "then": "refuse",
+              "hold": {
+                "file": "contacts/edit.test.js",
+                "test": "refuses to replace a different contact"
+              }
+            }
+          ]
+        },
+        {
+          "place": "edit message",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the change has no email",
+        "to": "edit message",
+        "hold": {
+          "file": "contacts/edit.test.js",
+          "test": "refuses a change with no email"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}

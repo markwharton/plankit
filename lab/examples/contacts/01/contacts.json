@@ -1,0 +1,51 @@
+{
+  "system": "contacts",
+  "places": [
+    {
+      "name": "csv",
+      "outside": true,
+      "invalid": "a file that is not a CSV of contacts"
+    },
+    {
+      "name": "book",
+      "belongsTo": "import",
+      "keyed": true,
+      "lasting": true,
+      "onExisting": "replace",
+      "invalid": "a contact with no email"
+    },
+    {
+      "name": "message",
+      "belongsTo": "import",
+      "invalid": "a message with no text"
+    }
+  ],
+  "elements": [
+    {
+      "name": "contacts",
+      "steps": [
+        "import"
+      ]
+    },
+    {
+      "name": "import",
+      "reads": [
+        {
+          "place": "csv"
+        }
+      ],
+      "writes": [
+        {
+          "place": "book",
+          "mode": "create",
+          "key": "content"
+        },
+        {
+          "place": "message",
+          "mode": "write"
+        }
+      ]
+    }
+  ],
+  "unsaid": []
+}

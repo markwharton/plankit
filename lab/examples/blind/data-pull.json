@@ -1,0 +1,213 @@
+{
+  "system": "download: pull the area's work items from the remote server into the local exports",
+  "reports": "stderr",
+  "faults": 2,
+  "places": [
+    { "name": "config", "kind": "outside" },
+    { "name": "ALM", "kind": "outside" },
+    { "name": "raw extracts", "kind": "lasting", "keyed": true },
+    { "name": "partial directory", "kind": "lasting" },
+    { "name": "replaced copy", "kind": "lasting" },
+    { "name": "label cache", "kind": "lasting" },
+    { "name": "CSV", "kind": "lasting", "keyed": true },
+    { "name": "cursor", "kind": "run" },
+    { "name": "coverage", "kind": "run" },
+    { "name": "labels", "kind": "run" },
+    { "name": "stderr", "kind": "report" }
+  ],
+  "facts": [
+    { "name": "full", "says": "--full is given: make a new baseline" },
+    { "name": "since", "says": "--since DATE is given: an explicit cursor" },
+    { "name": "overwrite", "says": "--overwrite is given: replace today's full extract" },
+    { "name": "refresh labels", "says": "--refresh-labels is given" },
+    { "name": "no extract yet", "about": "raw extracts",
+      "says": "no committed extract exists: this is the first run",
+      "only": { "not": "raw extracts already has the record" } },
+    { "name": "the run has a cursor",
+      "says": "the run is a delta: it fetches what was modified since a cursor",
+      "only": { "not": { "any": [
+        { "all": ["full", { "any": [{ "not": "since" }, "full takes over since"] }] },
+        { "all": [{ "not": "full" }, { "not": "since" }, "no extract yet"] }
+      ] } } },
+    { "name": "full takes over since", "open": true,
+      "says": "given --full and --since together, the run is a full extract; the pages name both flags and do not say what the two do together",
+      "only": { "all": ["full", "since"] } },
+    { "name": "the retry is reported", "open": true,
+      "says": "a retry after a dropped connection is shown to the person; the pages say it costs one retry and never the run, and not whether it is shown" },
+    { "name": "the previous copy is set aside before the windows are written", "open": true,
+      "says": "the previous copy is renamed to <dir>.replaced before the windows are written, and not at promotion; the pages say it is held there until the promotion and not from when" },
+    { "name": "ALM is out of reach", "fault": true, "about": "ALM",
+      "says": "the VPN or the credentials the download needs are missing" },
+    { "name": "an extract holds fewer items than its manifest certified", "fault": true, "about": "raw extracts",
+      "says": "a committed extract directory holds fewer items than its manifest certified",
+      "only": { "not": "no extract yet" } },
+    { "name": "coverage falls short of the server's total", "fault": true,
+      "says": "the partition's coverage and the server's own total count differ by at least one item" },
+    { "name": "a connection drops", "fault": true,
+      "says": "a request's connection is dropped" },
+    { "name": "two items share one id", "fault": true,
+      "says": "a window one id wide still returns a next page" }
+  ],
+  "parts": {
+    "download": {
+      "seq": [
+        { "name": "choose the mode",
+          "says": "The first run is a full extract. With no flag a later run fetches everything modified since the newest modified date across the committed extracts. --full makes a new baseline, --since DATE an explicit cursor.",
+          "choose": [
+            { "when": { "any": [
+                { "all": ["full", { "any": [{ "not": "since" }, "full takes over since"] }] },
+                { "all": [{ "not": "full" }, { "not": "since" }, "no extract yet"] }
+              ] },
+              "run": "full extract" }
+          ],
+          "otherwise": "delta extract" },
+        "resolve the labels",
+        "write the CSV"
+      ]
+    },
+    "full extract": {
+      "name": "full extract",
+      "says": "The pages say a second full extract on one UTC day is refused, and not at what point of the run.",
+      "all": [
+        "check for today's full extract",
+        "extract and promote"
+      ]
+    },
+    "delta extract": {
+      "name": "delta extract",
+      "seq": [
+        "settle the cursor",
+        "extract and promote"
+      ]
+    },
+    "check for today's full extract": {
+      "do": "check for today's full extract",
+      "reads": ["raw extracts"],
+      "handles": [
+        { "when": { "all": ["raw extracts already has the record", "overwrite"] }, "then": "accept",
+          "because": "--overwrite replaces today's full extract" },
+        { "when": "raw extracts already has the record", "then": "refuse",
+          "says": "A second full extract on one UTC day is refused without --overwrite, because window files renumber from 1 and two runs would interleave." }
+      ]
+    },
+    "settle the cursor": {
+      "do": "settle the cursor",
+      "says": "With no flag, the newest modified date across the committed extracts; with --since, the date given.",
+      "reads": [{ "place": "raw extracts", "when": { "not": "since" } }],
+      "changes": [{ "place": "cursor", "makes": { "the run has a cursor": true } }]
+    },
+    "extract and promote": {
+      "name": "extract and promote",
+      "seq": [
+        { "use": "set the previous copy aside",
+          "when": { "all": ["raw extracts already has the record", "the previous copy is set aside before the windows are written"] } },
+        "compare the coverage with the server's total",
+        "walk the windows",
+        { "name": "finish the partial directory",
+          "says": "The pages name the catch-up pass and the manifest, and not which comes first.",
+          "all": ["catch-up pass", "write the manifest"] },
+        { "use": "set the previous copy aside",
+          "when": { "all": ["raw extracts already has the record", { "not": "the previous copy is set aside before the windows are written" }] } },
+        "promote the partial directory"
+      ]
+    },
+    "set the previous copy aside": {
+      "do": "set the previous copy aside",
+      "says": "The previous copy is held as <dir>.replaced until the new one is promoted.",
+      "changes": [
+        { "place": "replaced copy" },
+        { "place": "raw extracts", "how": "delete" }
+      ]
+    },
+    "compare the coverage with the server's total": {
+      "do": "compare the coverage with the server's total",
+      "says": "Before walking, the run compares the partition's coverage with the server's own total count. The ceiling is discovered by doubling, never guessed.",
+      "reads": ["config", "ALM"],
+      "changes": ["coverage"],
+      "handles": [
+        { "when": "coverage falls short of the server's total", "then": "refuse",
+          "says": "A gap of one item aborts the run." }
+      ]
+    },
+    "walk the windows": {
+      "do": "walk the windows",
+      "says": "Each window that comes back without a next page is written as a window file into <dir>.partial; one that overflows is bisected.",
+      "reads": ["ALM", "coverage", { "place": "cursor", "when": "the run has a cursor" }],
+      "changes": [{ "place": "partial directory" }],
+      "handles": [
+        { "when": "two items share one id", "then": "fail",
+          "says": "stop: two items with one id cannot happen" },
+        { "when": { "all": ["a connection drops", "the retry is reported"] }, "then": "tell",
+          "says": "A dropped connection costs one retry, never the run." },
+        { "when": "a connection drops", "then": "accept",
+          "because": "Every request is independent, so a dropped connection costs one retry, never the run." }
+      ]
+    },
+    "catch-up pass": {
+      "do": "catch-up pass",
+      "says": "Re-fetches everything modified while the run was going, so the drift window shrinks from the run's duration to seconds.",
+      "reads": ["ALM"],
+      "changes": [{ "place": "partial directory" }]
+    },
+    "write the manifest": {
+      "do": "write the manifest",
+      "says": "Exhaustiveness is certified, not assumed, and manifest.json records it.",
+      "reads": ["coverage", "partial directory", { "place": "cursor", "when": "the run has a cursor" }],
+      "changes": [{ "place": "partial directory" }]
+    },
+    "promote the partial directory": {
+      "do": "promote the partial directory",
+      "says": "Windows are written to <dir>.partial and promoted on success; the previous copy is held as <dir>.replaced until then.",
+      "reads": ["partial directory"],
+      "changes": [
+        { "place": "raw extracts", "how": "create" },
+        { "place": "partial directory", "how": "delete" },
+        { "place": "replaced copy", "how": "delete", "when": "raw extracts already has the record" }
+      ],
+      "handles": [
+        { "when": { "all": ["raw extracts already has the record", "the run has a cursor"] }, "then": "accept",
+          "because": "A delta directory is named by its exact cursor, so a same-cursor rerun replaces it silently (a strict superset)." }
+      ]
+    },
+    "resolve the labels": {
+      "do": "resolve the labels",
+      "says": "After the extract, the run resolves the labels and caches them under the exports directory.",
+      "reads": ["ALM", "label cache"],
+      "changes": ["label cache", "labels"]
+    },
+    "write the CSV": {
+      "do": "write the CSV",
+      "says": "A CSV of the same run beside the raw directory, carrying the resolved labels.",
+      "reads": ["raw extracts", "labels"],
+      "changes": [{ "place": "CSV", "how": "create" }]
+    }
+  },
+  "runs": ["download"],
+  "expects": [
+    { "name": "extraction is non-destructive: a run that stops leaves the committed extracts as they were",
+      "on": "stopped", "never changes": ["raw extracts"] },
+    { "name": "the mark only advances when an extract completed",
+      "on": "stopped", "never creates": ["raw extracts"] },
+    { "name": "exhaustiveness is certified, not assumed, and the manifest records it",
+      "on": "success", "runs": ["compare the coverage with the server's total", "write the manifest"] },
+    { "name": "the coverage is compared before the walk",
+      "before": "walk the windows", "place": "coverage", "is": "set" },
+    { "name": "a run that succeeds has promoted its partial directory",
+      "on": "success", "ends": { "partial directory": "deleted" } },
+    { "name": "the previous copy is held only until the promotion",
+      "when": "raw extracts already has the record", "on": "success", "ends": { "replaced copy": "deleted" } }
+  ],
+  "rules": [
+    { "rule": "A window that comes back without a next page is complete and is written; one that overflows is bisected; a window that held no items writes nothing.", "about": "walk the windows" },
+    { "rule": "The summary line's counts agree: requests = 2 x splits + 1.", "about": "walk the windows" },
+    { "rule": "Window files are written byte for byte, with no newline translation.", "about": "walk the windows" },
+    { "rule": "The ceiling is discovered by doubling from 2^20, never guessed.", "about": "compare the coverage with the server's total" },
+    { "rule": "The manifest records items_extracted, certified_total, windows_written, since and extracted_at.", "about": "write the manifest" },
+    { "rule": "A full extract's directory is named by area and date; a delta's by its exact cursor as well.", "about": "promote the partial directory" },
+    { "rule": "The cursor is the given date.", "about": "settle the cursor", "when": "since" },
+    { "rule": "User names are never written to the label cache.", "about": "resolve the labels" },
+    { "rule": "Enumerations are fetched once per parent endpoint and cached per enum; contributors, categories and iterations are swept in bulk; anything left is fetched one URI at a time.", "about": "resolve the labels" },
+    { "rule": "The cached labels are revalidated; without the flag the cache never revalidates.", "about": "resolve the labels", "when": "refresh labels" },
+    { "rule": "The CSV carries the resolved labels and is formula-neutralised.", "about": "write the CSV" }
+  ]
+}

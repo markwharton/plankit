@@ -1,0 +1,175 @@
+{
+  "scenarios": [
+    {
+      "label": "pk, as a design you can run",
+      "definition": "../engine/pk.json",
+      "root": "../..",
+      "readonly": true,
+      "note": "The new engine: pk changelog, release and ship, played for every choice of facts."
+    },
+    {
+      "label": "pk, written blind from its pages",
+      "definition": "blind/pk-blind.json",
+      "root": "../..",
+      "readonly": true,
+      "note": "A fresh session's design of changelog and release, written from pk's two pages alone."
+    },
+    {
+      "label": "pk's code, described blind",
+      "definition": "blind/pk-code-blind.json",
+      "root": "../..",
+      "readonly": true,
+      "note": "What pk's code does, written by a fresh session from the code and the design's names alone."
+    },
+    {
+      "label": "a data pull, written blind",
+      "definition": "blind/data-pull.json",
+      "root": "blind",
+      "readonly": true,
+      "note": "A second system: a command that pulls records into a staging area and promotes the copy, designed from its pages alone."
+    },
+    {
+      "label": "a disk import, written blind",
+      "definition": "blind/disk-import.json",
+      "root": "blind",
+      "readonly": true,
+      "note": "A third system: importing a disk image's files onto a volume of saved files, designed from its pages alone."
+    },
+    {
+      "label": "a timer stop, written blind",
+      "definition": "blind/timer-stop.json",
+      "root": "blind",
+      "readonly": true,
+      "note": "A fourth system: stopping a running timer and logging its hours, designed from its pages alone."
+    },
+    {
+      "label": "contacts 1: name the places and one step",
+      "definition": "contacts/01/contacts.json",
+      "root": "contacts/01",
+      "readonly": true,
+      "note": "Stage 1 of the field guide."
+    },
+    {
+      "label": "contacts 2: refuse a bad file",
+      "definition": "contacts/02/contacts.json",
+      "root": "contacts/02",
+      "readonly": true,
+      "note": "Stage 2 of the field guide."
+    },
+    {
+      "label": "contacts 3: check before writing",
+      "definition": "contacts/03/contacts.json",
+      "root": "contacts/03",
+      "readonly": true,
+      "note": "Stage 3 of the field guide."
+    },
+    {
+      "label": "contacts 4: split the step into two parts",
+      "definition": "contacts/04/contacts.json",
+      "root": "contacts/04",
+      "readonly": true,
+      "note": "Stage 4 of the field guide."
+    },
+    {
+      "label": "contacts 5: say where the refusal lands",
+      "definition": "contacts/05/contacts.json",
+      "root": "contacts/05",
+      "readonly": true,
+      "note": "Stage 5 of the field guide."
+    },
+    {
+      "label": "contacts 6: name the tests",
+      "definition": "contacts/06/contacts.json",
+      "root": "contacts/06",
+      "readonly": true,
+      "note": "Stage 6 of the field guide."
+    },
+    {
+      "label": "contacts 7: add a second step",
+      "definition": "contacts/07/contacts.json",
+      "root": "contacts/07",
+      "readonly": true,
+      "note": "Stage 7 of the field guide."
+    },
+    {
+      "label": "contacts 8: decide who owns the book",
+      "definition": "contacts/08/contacts.json",
+      "root": "contacts/08",
+      "readonly": true,
+      "note": "Stage 8 of the field guide."
+    },
+    {
+      "label": "contacts 9: the code arrives",
+      "definition": "contacts/09/contacts.json",
+      "root": "contacts/09",
+      "readonly": true,
+      "note": "Stage 9 of the field guide.",
+      "descriptions": [
+        "contacts/09/import.json"
+      ]
+    },
+    {
+      "label": "contacts 10: fix the code",
+      "definition": "contacts/10/contacts.json",
+      "root": "contacts/10",
+      "readonly": true,
+      "note": "Stage 10 of the field guide.",
+      "descriptions": [
+        "contacts/10/import.json"
+      ]
+    },
+    {
+      "label": "save trial",
+      "definition": "../../control/examples/save/games.json",
+      "descriptions": [
+        "../../control/examples/save/save.json"
+      ],
+      "root": "../../control/examples/save",
+      "readonly": true,
+      "note": "control/examples/save: a game's Save and Save As, with two ors and three paths."
+    },
+    {
+      "label": "upload trial",
+      "definition": "../../control/examples/upload/documents.json",
+      "descriptions": [
+        "../../control/examples/upload/upload.json",
+        "../../control/examples/upload/manual-file.json"
+      ],
+      "root": "../../control/examples/upload",
+      "readonly": true,
+      "note": "control/examples/upload: a pipeline that files uploaded documents."
+    },
+    {
+      "label": "import trial",
+      "definition": "../../control/examples/import/saved-files.json",
+      "descriptions": [
+        "../../control/examples/import/import.json"
+      ],
+      "root": "../../control/examples/import",
+      "readonly": true,
+      "note": "control/examples/import: the example in fields.md."
+    },
+    {
+      "label": "every shape",
+      "definition": "../../control/testdata/baseline/library.json",
+      "descriptions": [
+        "../../control/testdata/baseline/intake.json",
+        "../../control/testdata/baseline/audit.json"
+      ],
+      "root": "shapes",
+      "readonly": true,
+      "note": "control/testdata/baseline, with a stand-in file for each hold and source, as the checker's tests make them."
+    },
+    {
+      "label": "pk itself",
+      "definition": "../../definition/pk.json",
+      "descriptions": [
+        "../../definition/changelog.json",
+        "../../definition/release.json"
+      ],
+      "root": "../..",
+      "readonly": true,
+      "note": "definition/pk.json: pk changelog and pk release."
+    }
+  ]
+}

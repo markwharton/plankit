@@ -1,0 +1,6 @@
+update
+read_parsed
+read_shelf
+write_shelf
+check_belongs
+rejects_update

@@ -1,0 +1,87 @@
+{
+  "system": "notes",
+  "reports": "message",
+  "places": [
+    {
+      "name": "text",
+      "kind": "outside"
+    },
+    {
+      "name": "draft",
+      "kind": "lasting"
+    },
+    {
+      "name": "site",
+      "kind": "lasting"
+    },
+    {
+      "name": "message",
+      "kind": "report"
+    }
+  ],
+  "facts": [
+    {
+      "name": "preview",
+      "says": "--preview is given"
+    },
+    {
+      "name": "the note is empty",
+      "fault": true,
+      "about": "text"
+    },
+    {
+      "name": "the site is down",
+      "fault": true,
+      "says": "the site does not answer"
+    }
+  ],
+  "parts": {
+    "publish": {
+      "seq": [
+        {
+          "do": "save draft",
+          "reads": [
+            "text"
+          ],
+          "changes": [
+            {
+              "place": "draft",
+              "later": "undone"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the note is empty",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "put on site",
+          "reads": [
+            "draft"
+          ],
+          "changes": [
+            "site"
+          ],
+          "handles": [
+            {
+              "when": "the site is down",
+              "then": "refuse"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "runs": [
+    "publish"
+  ],
+  "rules": [
+    {
+      "rule": "a preview shows the note as it will appear",
+      "about": "put on site",
+      "when": "preview"
+    }
+  ]
+}

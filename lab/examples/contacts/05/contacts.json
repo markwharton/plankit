@@ -1,0 +1,105 @@
+{
+  "system": "contacts",
+  "places": [
+    {
+      "name": "csv",
+      "outside": true,
+      "invalid": "a file that is not a CSV of contacts"
+    },
+    {
+      "name": "rows",
+      "belongsTo": "parse",
+      "invalid": "a row with no email"
+    },
+    {
+      "name": "book",
+      "belongsTo": "import",
+      "keyed": true,
+      "lasting": true,
+      "onExisting": "replace",
+      "invalid": "a contact with no email"
+    },
+    {
+      "name": "message",
+      "belongsTo": "import",
+      "invalid": "a message with no text"
+    }
+  ],
+  "elements": [
+    {
+      "name": "contacts",
+      "steps": [
+        "import"
+      ]
+    },
+    {
+      "name": "import",
+      "join": [
+        "parse",
+        "store"
+      ],
+      "rejects": {
+        "reason": "the import failed",
+        "to": "message"
+      }
+    },
+    {
+      "name": "parse",
+      "reads": [
+        {
+          "place": "csv"
+        }
+      ],
+      "writes": [
+        {
+          "place": "rows",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "the file is not a CSV of contacts",
+        "to": "parent"
+      }
+    },
+    {
+      "name": "store",
+      "reads": [
+        {
+          "place": "rows"
+        },
+        {
+          "place": "book"
+        }
+      ],
+      "writes": [
+        {
+          "place": "book",
+          "mode": "create",
+          "key": "content",
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask"
+            },
+            {
+              "check": "repeated",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "place": "message",
+          "mode": "write"
+        }
+      ],
+      "rejects": {
+        "reason": "a row has no email",
+        "to": "parent"
+      },
+      "declines": {
+        "reason": "the person chose to keep the contact they have"
+      }
+    }
+  ],
+  "unsaid": []
+}

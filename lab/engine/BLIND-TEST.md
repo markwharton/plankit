@@ -1,0 +1,87 @@
+# The blind test
+
+The way to find out whether the language can say what a system needs,
+and whether `DESIGN.md` is enough to write in it: give a new session
+only the reference, the engine and a system's own pages, and have it
+write the design cold.
+
+Five rounds of this shaped the language. Each found gaps that the
+writer of the language could not see.
+
+## Setting it up
+
+1. Make an empty directory. Copy `engine.py` into it, and `DESIGN.md`
+   as `LANGUAGE.md` with the section "What it found on pk" taken out
+   and its examples changed to ones that are not about the system under
+   test. The page must give away no answer.
+2. Start a new session with the prompt below.
+3. Run the engine on the file it wrote yourself, and check the numbers
+   it reported.
+
+## The prompt
+
+```
+You are testing a new design language cold. You will write a design for
+<the system> from its documentation pages only, run an engine on it, and
+report. Work only in <the directory> and write nothing anywhere else.
+
+What you may read: LANGUAGE.md, engine.py (ONLY where LANGUAGE.md leaves
+you unsure, and note each time what you looked up and why), and <the
+pages>. Read nothing else: no source code, no tests, no other designs.
+
+1. Read LANGUAGE.md.
+2. From the pages alone, write one design file for <the runs>. State
+   what the pages say: the places, the facts that change a run, the
+   faults, each action in order with what it does about each fault that
+   matters to it, what happens to a change when the run stops later,
+   and each thing that must always be true as an expectation. Put rules
+   about how a value is computed under "rules". Leave "hold" out.
+3. Run the engine. Fix the file only until the engine accepts it. Then
+   do NOT change the design to make findings go away. The findings are
+   the result.
+
+Model the pages faithfully. Do not guess: where the pages are silent,
+leave the design silent in the ways LANGUAGE.md says the engine will ask
+about, and use an open fact for anything else the language makes you
+choose.
+
+Report: the play counts and each finding's kind and subject; for each
+finding whether it is (1) a real gap or contradiction in the pages, (2)
+something the pages do not say, or (3) an artifact of your modelling;
+every point where LANGUAGE.md did not tell you how to write something,
+or the language could not say it; exactly what you looked up in
+engine.py; every refusal or crash; and counts of what your design has.
+```
+
+## Reading the result
+
+- A finding judged (3) points at the language or the reference, and is
+  the one to act on first.
+- A question that independent writers raise again and again is a real
+  gap in the pages.
+- If the writer had to read `engine.py`, the reference is missing
+  something. Say it there.
+
+`lab/examples/blind/pk-blind.json` is the design the fifth round wrote
+for pk's changelog and release.
+
+`data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
+designs written the same way for one flow each of three other systems.
+They are kept because each showed something pk could not: a run made a
+second time over its own records, a person who is always asked, and a
+person offered three things.
+
+## Describing code blind
+
+The same method holds code to a design. A new session reads the code
+and nothing that says what the code should do. It is given the design's
+names and no more: the places, the facts and the names of the actions.
+`PROMPTS.md` has the prompt. The engine then plays the two with
+`--against`.
+
+`lab/examples/blind/pk-code-blind.json` is the description one session
+wrote of pk's changelog and release this way. Played against
+`lab/engine/pk.json` it gives 32 differences. The real ones are in
+`docs/control-findings.md`. About a third are noise: the reader split
+the work into actions the design does not have, and the engine reports
+the first action where two plays part.

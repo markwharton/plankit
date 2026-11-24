@@ -192,3 +192,138 @@ description files and drew the definition as a map, on 24 November
   finds without changing it. What a definition would need to state for
   them is open. Candidate principle: Reference, through "a need is met
   in one place".
+
+From the session that sorted what `definition/pk.json` leaves in words,
+on 25 November 2026.
+
+- **Half of pk's rules are in `unsaid`, and two kinds of entry are
+  where the fields fall short.** `control check` on `definition/pk.json`
+  and its two description files prints 51 findings, and 38 of them are
+  `unsaid`. The definition states 19 rules in fields and 21 in `unsaid`.
+  The three files hold 59 different entries. Sorted by reading:
+
+  | Kind | Entries | What it says |
+  |---|---|---|
+  | Variant | 17 | A flag, a flow or a state changes what the run does |
+  | Computation | 13 | How an output is worked out from its inputs |
+  | Recovery | 11 | What is undone, kept or only warned about after a failure |
+  | Order | 6 | When one thing happens relative to another |
+  | Validity | 6 | A further reason for refusing, or when a refusal does not apply |
+  | Interface | 5 | Exit codes, output streams, how a hook is run |
+  | End state | 1 | What is true when the run ends |
+
+  Computation, validity, interface and end state, 25 entries, are words
+  by the format's own decisions: a leaf's tests hold what it computes,
+  and `fields.md` sends each further reason for refusing to `unsaid`.
+  Variants and recovery, 28 entries, are the two kinds the tree could
+  carry and does not.
+
+  Variants. `definition/pk.json` has no `or`. Restating four of its
+  variants with `or`, in copies outside the tracked tree, showed three
+  costs:
+
+  - A branch cannot use a leaf another branch has. The checker refuses
+    the file: `element "pre-flight" is the child of two elements`.
+    Trunk flow with leaves of its own adds 7 elements and 6 rules with
+    no hold, and moves 2 entries out of `unsaid`.
+  - A part that is skipped cannot be said. The checker refuses it:
+    `element "skip checks" is a leaf with no reads and no writes`.
+  - Three `or`s on one condition play as 8 paths where 2 can happen,
+    and the sweep grows from 22 faults to 121.
+
+  A variant that replaces a whole step fits as it is: `--undo` adds 2
+  elements, and a run with nothing to release adds 3.
+
+  Recovery. Of the 14 leaves of pk that declare a `rejects`, 11 refuse
+  after an earlier leaf of the same step has written a lasting place.
+  By reading, 8 of the 11 are writes the run has to put back: version
+  files, the changelog file, the working tree, the release branch, a
+  tag. pk's code does put them back. The definition says so for 4, and
+  only the description files say so for the other 4. The other 3 are
+  writes that stand: a message, and what a fetch brought. The three
+  trials have none. The baseline traces the sweep already makes hold
+  all of this, and no check reads it.
+
+  Order. A join's order already states that one part runs before
+  another, so "preRelease runs before the tag exists" is said twice.
+  That two writes happen together, and that a check made at the start
+  is not made again later, are timing.
+
+  Three changes would close most of that gap: a part that is skipped
+  under a condition, a condition named once and used wherever it
+  matters, and a question raised for each refusal after a lasting
+  write, with a way for the design to say the write is undone or
+  stands. They were not added to the checker's format, which is
+  unchanged, so the counts above still describe it. They were built
+  into a separate engine, in `lab/engine/`, which plays a design. Of
+  the 21 rules pk's definition keeps in `unsaid`, that engine plays 16,
+  and a test in `lab/engine/test_pk.py` checks the count.
+  `lab/engine/DESIGN.md` is its reference. One system was measured, and
+  it is a command-line tool. Candidate principles: Reference, through
+  "where none exists, write the definition first and compare with
+  that", and Separation, through "each worker writes only what it
+  owns".
+
+## pk
+
+From five sessions that each wrote a design of `pk changelog` and
+`pk release` from `skills/changelog/SKILL.md` and
+`skills/release/SKILL.md` alone, on 25 November 2026. None saw the
+code, the definition or another session's design. `lab/engine/` played
+each design, and each session judged its own findings against the two
+pages. `lab/engine/BLIND-TEST.md` gives the method.
+
+- **Questions about the two pages that independent writers raised.**
+  A question several writers reach without seeing each other's work is
+  a gap in the pages. Whether pk's code has the same gap was not
+  checked.
+
+  | Question | Raised by |
+  |---|---|
+  | Do the tags a changelog run fetches stay when a later step refuses? | 5 of 5 |
+  | The rollback after a failed release names the tag, the merge and the checkout. Is a commit made by the preRelease hook put back? | 4 of 5 |
+  | "prePush runs with the tag in existence", and a dry run does not tag. Does a dry run skip prePush? | 3 of 5 |
+  | preRelease "runs before the tag exists". Does it run before or after pre-flight and the merge? | 3 of 5 |
+  | "A protected branch is refused, and so is a detached HEAD, except by `--dry-run`". Does the exception cover both? | 3 of 5 |
+  | What does a run do when there is no commit since the last version tag? | 2 of 5 |
+  | Pre-flight checks that no tag of the release's name exists. Is origin's tag checked too? | 2 of 5 |
+
+  Two more were marked undecided by the last session and not raised
+  before it: whether a changelog dry run runs the postVersion and
+  preCommit hooks, and whether a rehearsed preRelease hook that commits
+  really commits. Candidate principle: Reference, through "a claim names
+  its hold": each is a sentence a reader has to guess the end of.
+
+From a session that described the code of `pk changelog` and
+`pk release` from `internal/` alone, using only the names of the
+design in `lab/engine/pk.json`, on 25 November 2026. `lab/engine/`
+played its description against that design.
+
+- **Where pk's code and its design part ways.** The engine reported 32
+  differences. About a third come from the two files cutting the work
+  into different actions, and say nothing about pk. These are the ones
+  that do, each with the fact that causes it:
+
+  | The fact | The design | The code |
+  |---|---|---|
+  | origin's tags cannot be fetched | refuses | goes on |
+  | a hook's command fails | refuses, having done nothing | fails after the hook has changed the tree, and puts the tree back |
+  | the changelog file cannot be written | goes ahead | refuses |
+  | the trailer is not a version | says nothing | refuses at the pending release check |
+
+  The design was written from the 21 statements the definition keeps in
+  words, so most of these are the design saying too little. The owner
+  decides each: fix the code, change the design, or accept it with a
+  reason. Not settled: the comparison is sensitive to how the reader of
+  the code splits it into actions.
+
+- **Four questions settled on 25 November 2026.** Each was raised
+  about the pages, and for each the code had already made a choice. What
+  the code does is now written in `skills/changelog/SKILL.md`,
+  `skills/release/SKILL.md` and `lab/engine/pk.json`, and the rows are
+  gone from the two tables above: a run without `--dry-run` refuses a
+  dirty tree, and so does `--undo`; a `--bump` value other than major,
+  minor or patch is refused as a usage error; an `--exclude` hash that
+  matches no commit is warned about and the run goes on; a release with
+  no `Release-Tag` trailer on HEAD refuses and says to run
+  `pk changelog` first, and `--undo` refuses without a valid one.

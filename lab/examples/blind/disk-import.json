@@ -1,0 +1,172 @@
+{
+  "system": "Import on the page of saved files: an image's files are put on the volume shown, once the page has asked",
+  "reports": "the page",
+  "places": [
+    { "name": "the image", "kind": "outside", "keyed": true },
+    { "name": "the files read from the image", "kind": "run", "keyed": true },
+    { "name": "the volume shown", "kind": "lasting", "keyed": true },
+    { "name": "the title's own disks", "kind": "lasting" },
+    { "name": "the page", "kind": "report" }
+  ],
+  "facts": [
+    {
+      "name": "the title has a disk system",
+      "says": "the title's volumes are a disk system's (a 1541's, ProDOS's or DOS 3.3's), so the page shows Import"
+    },
+    {
+      "name": "the image's name is not the volume's",
+      "says": "the disk in the image has another name than the volume shown",
+      "fault": true,
+      "about": "the image"
+    },
+    {
+      "name": "the volume shown already has the record",
+      "says": "the volume shown has a saved file of the same name as a file in the image",
+      "about": "the volume shown"
+    },
+    {
+      "name": "the saved files are kept in memory",
+      "says": "the browser gives no storage, so the saved files are kept in memory"
+    },
+    {
+      "name": "the virtual disk is full",
+      "says": "the title's saved files are at the limit their backend has",
+      "fault": true,
+      "about": "the volume shown",
+      "only": "the saved files are kept in memory"
+    },
+    {
+      "name": "the browser cannot keep a write",
+      "says": "the browser's storage cannot keep a file written to it",
+      "fault": true,
+      "only": { "not": "the saved files are kept in memory" }
+    },
+    {
+      "name": "a write that cannot be kept leaves the files already put",
+      "says": "when a write cannot be kept, the files of the image put before it stay on the volume",
+      "open": true
+    }
+  ],
+  "parts": {
+    "import": {
+      "name": "import",
+      "when": "the title has a disk system",
+      "seq": [
+        {
+          "do": "read the image",
+          "says": "Import reads an image: the disk's name and its files",
+          "reads": ["the image"],
+          "changes": ["the files read from the image"],
+          "handles": [
+            {
+              "when": "the image's name is not the volume's",
+              "then": "accept",
+              "because": "the files go on the volume shown, whatever the image's own name"
+            }
+          ]
+        },
+        {
+          "do": "ask whether to put the files",
+          "says": "the page asks: Put N files on the volume? A file of the same name is replaced.",
+          "reads": ["the files read from the image"],
+          "handles": [
+            {
+              "when": "the volume shown already has the record",
+              "then": "ask",
+              "says": "the question says a file of the same name is replaced"
+            },
+            {
+              "when": { "not": "the volume shown already has the record" },
+              "then": "ask",
+              "says": "the page asks whether or not a file of the same name is there"
+            }
+          ]
+        },
+        {
+          "do": "put the files on the volume",
+          "says": "the image's files are put on the volume shown; a file of the same name is replaced",
+          "reads": ["the files read from the image"],
+          "changes": [
+            {
+              "place": "the volume shown",
+              "how": "create",
+              "many": true,
+              "when": { "not": "the volume shown already has the record" }
+            },
+            {
+              "place": "the volume shown",
+              "how": "replace",
+              "when": "the volume shown already has the record"
+            }
+          ],
+          "handles": [
+            {
+              "when": { "all": ["the browser cannot keep a write", "a write that cannot be kept leaves the files already put"] },
+              "then": "fail",
+              "says": "a write the browser cannot keep is told on the page"
+            },
+            {
+              "when": "the browser cannot keep a write",
+              "then": "refuse",
+              "says": "a write the browser cannot keep is told on the page"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "runs": ["import"],
+  "expects": [
+    {
+      "name": "a title's own disks never change",
+      "in": "import",
+      "never changes": ["the title's own disks"]
+    },
+    {
+      "name": "nothing is put before the page has asked",
+      "in": "import",
+      "before": "put the files on the volume",
+      "place": "the page",
+      "is": "set"
+    },
+    {
+      "name": "nothing is put when the person says no",
+      "in": "import",
+      "on": "declined",
+      "never changes": ["the volume shown"]
+    },
+    {
+      "name": "a title with no disk system has no Import",
+      "in": "import",
+      "when": { "not": "the title has a disk system" },
+      "never runs": ["read the image", "ask whether to put the files", "put the files on the volume"]
+    },
+    {
+      "name": "the files go on the volume shown, whatever the image's own name",
+      "in": "import",
+      "when": { "all": ["the title has a disk system", "the image's name is not the volume's"] },
+      "on": "success",
+      "ends": { "the volume shown": "changed" }
+    },
+    {
+      "name": "a write the browser cannot keep is told on the page",
+      "in": "import",
+      "when": "the browser cannot keep a write",
+      "ends": { "the page": "set" }
+    }
+  ],
+  "rules": [
+    {
+      "rule": "The image is its disk system's: a .d64 for a 1541, a .po for ProDOS, a .dsk for DOS 3.3. The files read from an image the page exported are the files laid on it, each with its name, type and bytes.",
+      "about": "read the image"
+    },
+    {
+      "rule": "The question gives the number of files and the volume's name, and says that a file of the same name is replaced.",
+      "about": "ask whether to put the files"
+    },
+    {
+      "rule": "A volume exported, then emptied, then given its image by Import holds the same files as before.",
+      "about": "put the files on the volume"
+    }
+  ]
+}

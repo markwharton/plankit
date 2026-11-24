@@ -1,0 +1,8 @@
+add
+read_parsed
+read_shelf
+write_shelf
+check_exists
+check_repeated
+rejects_add
+declines_add

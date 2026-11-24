@@ -1,0 +1,166 @@
+{
+  "describes": "import",
+  "places": [
+    {
+      "name": "csv",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "readFile"
+      }
+    },
+    {
+      "name": "rows",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "parseCsv"
+      }
+    },
+    {
+      "name": "book",
+      "keyed": true,
+      "onExisting": "replace",
+      "source": {
+        "file": "contacts/book.js",
+        "function": "openBook"
+      }
+    },
+    {
+      "name": "message",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "showMessage"
+      }
+    }
+  ],
+  "elements": [
+    {
+      "name": "import",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "importContacts"
+      },
+      "join": [
+        "parse",
+        "store"
+      ],
+      "rejects": {
+        "reason": "the import failed",
+        "to": "message",
+        "source": {
+          "file": "contacts/import.js",
+          "function": "importContacts"
+        }
+      }
+    },
+    {
+      "name": "parse",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "parseCsv"
+      },
+      "reads": [
+        {
+          "place": "csv",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "parseCsv"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "rows",
+          "mode": "write",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "parseCsv"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "the file is not a CSV of contacts",
+        "to": "parent",
+        "source": {
+          "file": "contacts/import.js",
+          "function": "parseCsv"
+        }
+      }
+    },
+    {
+      "name": "store",
+      "source": {
+        "file": "contacts/import.js",
+        "function": "storeRows"
+      },
+      "reads": [
+        {
+          "place": "rows",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "storeRows"
+          }
+        },
+        {
+          "place": "book",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "storeRows"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "place": "book",
+          "mode": "create",
+          "key": "content",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "storeRows"
+          },
+          "before": [
+            {
+              "check": "exists",
+              "then": "ask",
+              "source": {
+                "file": "contacts/import.js",
+                "function": "confirmReplace"
+              }
+            },
+            {
+              "check": "repeated",
+              "then": "refuse",
+              "source": {
+                "file": "contacts/import.js",
+                "function": "refuseRepeated"
+              }
+            }
+          ]
+        },
+        {
+          "place": "message",
+          "mode": "write",
+          "source": {
+            "file": "contacts/import.js",
+            "function": "showMessage"
+          }
+        }
+      ],
+      "rejects": {
+        "reason": "a row has no email",
+        "to": "parent",
+        "source": {
+          "file": "contacts/import.js",
+          "function": "storeRows"
+        }
+      },
+      "declines": {
+        "reason": "the person chose to keep the contact they have",
+        "source": {
+          "file": "contacts/import.js",
+          "function": "storeRows"
+        }
+      }
+    }
+  ],
+  "unsaid": []
+}
