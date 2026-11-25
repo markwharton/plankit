@@ -28,6 +28,9 @@ the override next to the version it generates:
 Generating v0.8.1 (--bump patch; the commits infer minor)
 ```
 
+Any other `--bump` value is refused as a usage error, and nothing is
+generated.
+
 `--bump` and `--exclude` are the developer's: `--bump` for the case
 the commits cannot show, `--exclude` to leave commits out of the
 section. Use either only when the developer asks, with the exact value
@@ -67,11 +70,14 @@ pk changelog --exclude abc1234,def5678
 pk changelog --undo
 ```
 
-`--dry-run` prints the section to stdout and runs on a dirty tree.
-`--exclude` drops commits by short hash before bump inference.
+`--dry-run` prints the section to stdout and runs on a dirty tree. A
+run without it refuses a dirty tree.
+`--exclude` drops commits by short hash before bump inference. A hash
+that matches no commit is warned about, and the run goes on.
 `--undo` unwinds the release commit, restoring `CHANGELOG.md` and
-version files. It refuses unless the tree is clean and the commit is
-only on the current branch: not pushed, not tagged, not merged. With
+version files. It refuses unless HEAD carries a valid `Release-Tag`
+trailer, the tree is clean and the commit is only on the current
+branch: not pushed, not tagged, not merged. With
 `--dry-run` it makes the same checks, says what it would unwind, and
 changes nothing.
 

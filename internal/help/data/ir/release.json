@@ -37,7 +37,23 @@
         },
         {
           "type": "text",
-          "text": " trailer on HEAD, runs pre-flight checks, creates the tag, and pushes atomically to origin."
+          "text": " trailer on HEAD, runs pre-flight checks, creates the tag, and pushes atomically to origin. With no "
+        },
+        {
+          "type": "code",
+          "text": "Release-Tag"
+        },
+        {
+          "type": "text",
+          "text": " trailer on HEAD it refuses, and says to run "
+        },
+        {
+          "type": "code",
+          "text": "pk changelog"
+        },
+        {
+          "type": "text",
+          "text": " first."
         }
       ]
     },

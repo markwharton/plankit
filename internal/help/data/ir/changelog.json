@@ -122,6 +122,23 @@
       "type": "para",
       "inlines": [
         {
+          "type": "text",
+          "text": "Any other "
+        },
+        {
+          "type": "code",
+          "text": "--bump"
+        },
+        {
+          "type": "text",
+          "text": " value is refused as a usage error, and nothing is generated."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
           "type": "code",
           "text": "--bump"
         },
@@ -250,7 +267,7 @@
         },
         {
           "type": "text",
-          "text": " prints the section to stdout and runs on a dirty tree. "
+          "text": " prints the section to stdout and runs on a dirty tree. A run without it refuses a dirty tree. "
         },
         {
           "type": "code",
@@ -258,7 +275,7 @@
         },
         {
           "type": "text",
-          "text": " drops commits by short hash before bump inference. "
+          "text": " drops commits by short hash before bump inference. A hash that matches no commit is warned about, and the run goes on. "
         },
         {
           "type": "code",
@@ -274,7 +291,15 @@
         },
         {
           "type": "text",
-          "text": " and version files. It refuses unless the tree is clean and the commit is only on the current branch: not pushed, not tagged, not merged. With "
+          "text": " and version files. It refuses unless HEAD carries a valid "
+        },
+        {
+          "type": "code",
+          "text": "Release-Tag"
+        },
+        {
+          "type": "text",
+          "text": " trailer, the tree is clean and the commit is only on the current branch: not pushed, not tagged, not merged. With "
         },
         {
           "type": "code",

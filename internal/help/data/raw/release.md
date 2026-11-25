@@ -7,7 +7,8 @@ description: Tag the pending release from the Release-Tag trailer and push it, w
 
 Completes what `pk changelog` staged: reads the `Release-Tag` trailer
 on HEAD, runs pre-flight checks, creates the tag, and pushes
-atomically to origin.
+atomically to origin. With no `Release-Tag` trailer on HEAD it refuses,
+and says to run `pk changelog` first.
 
 ## Two flows
 
