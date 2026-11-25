@@ -25,7 +25,8 @@ It is not plugin content: the plugin ships context through skills/.
 
 ```bash
 make build          # docgen + go build -> bin/pk-<os>-<arch>, run as ./bin/pk
-make test           # go vet + go test ./... (repo, tools/docgen and control)
+make test           # go vet + go test ./... (repo, tools/docgen and control), then the lab's Python tests
+make lab-e2e        # the lab's page in a headless browser (Node 22+, Chrome)
 make docs           # compile skills/ into internal/help/data (committed)
 make fmt            # gofmt the tree
 make dist           # cross-compile all shim targets into bin/

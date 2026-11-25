@@ -92,7 +92,8 @@ python3 -m unittest test_lab
 node e2e.mjs
 ```
 
-`e2e.mjs` needs Node 22 or later and Google Chrome. Both suites copy
+`make test` runs the first two with the repository's own tests, and
+`make lab-e2e` runs the third. `e2e.mjs` needs Node 22 or later and Google Chrome. Both suites copy
 `designs/` to a scratch directory first, so they change nothing here.
 
 ## Adding a view

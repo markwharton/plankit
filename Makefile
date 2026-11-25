@@ -4,7 +4,7 @@
 VERSION ?=
 LDFLAGS = -s -w $(if $(VERSION),-X github.com/markwharton/plankit/internal/version.stamped=$(VERSION))
 
-.PHONY: build test docs site site-preview site-serve fmt
+.PHONY: build test docs site site-preview site-serve fmt lab-e2e
 
 # The one local binary: the platform-named file the bin/pk shim runs,
 # so a checkout used with --plugin-dir is current after every build.
@@ -36,6 +36,12 @@ test:
 	go test ./...
 	cd tools/docgen && go vet ./... && go test ./...
 	cd control && go vet ./... && go test ./...
+	cd lab/engine && python3 -m unittest -q test_engine test_pk
+	cd lab && python3 -m unittest -q test_lab
+
+# The lab's page in a headless browser. Needs Node 22 or later and Google Chrome.
+lab-e2e:
+	cd lab && node e2e.mjs
 
 fmt:
 	gofmt -w cmd internal

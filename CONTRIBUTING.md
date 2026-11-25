@@ -4,7 +4,7 @@
 
 ```bash
 make build      # docgen + go build -> bin/pk-<os>-<arch>, run as ./bin/pk
-make test       # go vet + go test ./... (repo and tools/docgen)
+make test       # go vet + go test ./... (repo, tools/docgen and control), then the lab's Python tests
 make docs       # compile skills/ into internal/help/data (committed)
 make site       # render the website into site/dist (not committed)
 make site-serve # preview the site at http://localhost:8000
