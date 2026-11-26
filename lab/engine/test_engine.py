@@ -66,6 +66,22 @@ def legs():
     }
 
 
+def pipeline():
+    """Read a feed, work out a total from it, then post the total. The feed can be wrong."""
+    return {
+        "system": "totals", "reports": "message",
+        "places": [{"name": "feed", "kind": "outside"}, {"name": "rows", "kind": "run"}, {"name": "total", "kind": "run"},
+                   {"name": "books", "kind": "lasting"}, {"name": "message", "kind": "report"}, {"name": "log", "kind": "report"}],
+        "facts": [{"name": "the feed is short", "fault": True, "about": "feed"}],
+        "parts": {"post": {"seq": [
+            {"do": "read the feed", "reads": ["feed"], "changes": ["rows"]},
+            {"do": "add it up", "reads": ["rows"], "changes": ["total"]},
+            {"do": "post the total", "reads": ["total"], "changes": [{"place": "books", "later": "stands", "because": "a posted total is corrected, not removed"}]},
+        ]}},
+        "runs": ["post"],
+    }
+
+
 def play(doc, *given):
     d = engine.Design(doc)
     return [p for p in engine.explore_all(d) if p.given() == sorted(given)][0]
@@ -419,6 +435,50 @@ class Engine(unittest.TestCase):
         self.assertEqual(kinds(doc), [])                                                   # answered at the run's own part, the failure never leaves it
         p = play(doc, "the source is down")
         self.assertEqual((p.state["published"], p.state["ledger"]), ("undone", "set"))     # it did leave the part that marked, so the mark is undone
+
+    def test_a_fault_is_asked_where_something_lasting_is_changed_on_the_strength_of_it(self):
+        d = engine.Design(pipeline())
+        found = [f for f in engine.findings(d, engine.explore_all(d)) if f["kind"] == "unanswered"]
+        self.assertEqual([(f["subject"], f["actions"], f["rest"]) for f in found], [("the feed is short", ["post the total"], ["rows", "total", "books"])])
+        doc = pipeline()                                   # a later action can answer for an earlier read, before anything lasting changes
+        doc["parts"]["post"]["seq"][1]["handles"] = [{"when": "the feed is short", "then": "refuse"}]
+        self.assertEqual(kinds(doc), [])
+        doc = pipeline()                                   # answered after the lasting change is too late
+        doc["parts"]["post"]["seq"].append({"do": "check the feed", "reads": ["feed"], "handles": [{"when": "the feed is short", "then": "refuse"}]})
+        self.assertEqual(kinds(doc), [("unanswered", "the feed is short")])
+        doc = pipeline()                                   # a value that never reaches anything lasting is no question
+        del doc["parts"]["post"]["seq"][2]
+        self.assertEqual(kinds(doc), [])
+
+    def test_a_fault_can_say_the_step_it_goes_wrong_at(self):
+        doc = pipeline()
+        doc["facts"].append({"name": "the sum overflows", "fault": True, "at": "add it up"})
+        self.assertEqual(kinds(doc), [("unanswered", "the feed is short"), ("unanswered", "the sum overflows")])
+        d = engine.Design(doc)
+        at = [f["actions"] for f in engine.findings(d, engine.explore_all(d)) if f["subject"] == "the sum overflows"]
+        self.assertEqual(at, [["add it up"]])              # asked at its step, whatever the step changes
+        doc["parts"]["post"]["seq"][1]["handles"] = [{"when": "the sum overflows", "then": "refuse"}]
+        self.assertEqual(kinds(doc), [("unanswered", "the feed is short")])
+        doc["facts"][-1]["at"] = ["add it up", "balance"]
+        with self.assertRaises(engine.Refused) as cm:
+            engine.Design(doc)
+        self.assertIn("\"balance\", which is not an action", str(cm.exception))
+
+    def test_an_answer_can_tell_more_than_one_place(self):
+        doc = pipeline()
+        doc["parts"]["post"]["seq"][0]["handles"] = [{"when": "the feed is short", "then": "refuse", "tells": ["message", "log"]}]
+        p = play(doc, "the feed is short")
+        self.assertEqual((p.state["message"], p.state["log"]), ("set", "set"))
+        doc["parts"]["post"]["seq"][0]["handles"][0]["tells"] = ["message", "ledger"]
+        with self.assertRaises(engine.Refused):
+            engine.Design(doc)
+
+    def test_a_use_can_carry_the_sentence_it_stands_for(self):
+        doc = pipeline()
+        doc["parts"]["nightly"] = {"seq": [{"use": "post", "says": "The totals are posted each night."}]}
+        doc["runs"] = ["nightly"]
+        d = engine.Design(doc)
+        self.assertIn(("The totals are posted each night.", "played"), engine.said(d))
 
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [

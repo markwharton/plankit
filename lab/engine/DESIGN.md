@@ -162,15 +162,23 @@ whenever an action creates or replaces a record there:
   A fault `about` a place is about the value an action reads there. A
   full disk, or a store that will not take a write, is a fault with no
   `about`, named by the answer of the action that writes.
-- **A fault about a place is asked of each action that reads the
-  place, until one answers it.** An answer stands for the rest of the
-  run. Where a bad value does not matter to a run, its first reader
+- **A fault about a place is carried, and asked where something
+  lasting is changed.** What an action reads carries the fault, and so
+  does everything made from it. It becomes a question when an action
+  changes a lasting place or a report with something that carries it,
+  and no action up to then has answered it. So one action can read a
+  place and a later one can answer for it, as long as nothing lasting
+  is changed in between. An answer stands for the rest of the run.
+  Where a bad value does not matter to a run, an action that reads it
   says `accept`.
 - **Once a run changes a place, the faults about it are false for the
   rest of the run.** The value is then the run's own.
 - **A fault needs no `about`.** A fault with none is something that
-  goes wrong at a step. It matters only to the actions whose answers
-  name it.
+  goes wrong at a step. It can say the action it happens `at`, or a
+  list of actions, and the engine then asks each of them about it. Use
+  `at` where the source names a step and does not say what happens
+  when it fails. Without `at`, the fault matters only to the actions
+  whose answers name it.
 - **`only` takes anything a `when` takes.**
 - **`create` and `replace` are for keyed places.** A fetch or a copy
   that cannot collide is a `set`.
@@ -243,7 +251,7 @@ Each finding is one question for the owner.
 |---|---|
 | `open` | The design uses a fact nobody has decided. What is so? The finding says what runs only one way. |
 | `expect` | A play breaks something the design says must hold. Which is wrong? |
-| `unanswered` | An action goes on with a fault that no answer covers. What should happen? The finding names what the run then changes on the strength of it. |
+| `unanswered` | Something lasting is changed while a fault that no answer covers is carried into it, or a fault goes wrong at a step and nothing there answers it. What should happen? The finding names the action, and what the run then changes on the strength of it. |
 | `left-behind` | A failure left a part after a lasting place was changed in it. Is the change undone, or does it stand? |
 | `reads-unwritten` | An action reads a value nothing has written by then. Was its writer skipped? |
 | `order` | Two parts in no stated order touch a place one of them changes. Which runs first? |
@@ -294,16 +302,16 @@ and names it.
 |---|---|
 | The design | `system`, `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
 | A place | `name`, `kind` (`outside`, `lasting`, `run` or `report`), `keyed` (`true` for a place of records), `owner` (a part) |
-| A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `only` (a fact that must hold for this one to be possible) |
+| A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `at` (an action, or a list of them), `only` (a fact that must hold for this one to be possible) |
 | An action | `do` (its name), `when`, `reads`, `changes`, `handles` |
 | A read | a place's name, or `{ "place": ..., "when": ... }` |
 | A change | a place's name, or `{ "place": ..., "how": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `set` when left out, and `because` says why a change that `stands` may |
-| An answer | `{ "when": ..., "then": ... }` (`when` left out for one that always applies), with `because` (why, for an `accept`), `tells` (a place, when it is not the design's `reports`) and, for `ask`, `no` (`stop` or `skip`) |
+| An answer | `{ "when": ..., "then": ... }` (`when` left out for one that always applies), with `because` (why, for an `accept`), `tells` (a place or a list of places, when it is not the design's `reports`) and, for `ask`, `no` (`stop` or `skip`) |
 | A sequence | `seq` (a list of parts), `name`, `when`, `handles` |
 | Parts that do not depend on each other | `all` (a list of parts), `name`, `when`, `handles` |
 | A choice | `choose` (a list of `{ "when": ..., "run": part }`), `otherwise` (a part, or `null` for nothing), `name`, `when`, `handles` |
 | A part's answer | `{ "when": ..., "then": ... }` where `then` is `warn`, `tell` or `accept`, with `because` and `tells` |
-| A use of a part | the part's name as a string, or `{ "use": name, "when": ... }` |
+| A use of a part | the part's name as a string, or `{ "use": name, "when": ..., "says": ... }` |
 | Where a fact is asked for | a name, `{ "not": f }`, `{ "all": [f, ...] }` or `{ "any": [f, ...] }` |
 | An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `failed` or `declined`), and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
 | A state | `untouched`, `set`, `created`, `replaced`, `deleted`, `undone`; or `changed` for any of the middle four, and `unchanged` for `untouched` or `undone` |

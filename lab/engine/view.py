@@ -133,7 +133,7 @@ def view_model(d, plays, findings, tests, shown):
                     seen = [{"place": x, "state": "invalid" if (x in wrong_at.values() and s == "untouched") else old(x, s, r)} for x, s, r in p.saw.get(a, [])]
                     made = [{"place": x, "state": old(x, s, r)} for x, s, r in p.did.get(a, [])] if status in ("ran", "failed") else []
                     steps.append({"element": names[run][a], "outcome": "passed-on" if a in went_on and status == "ran" else STATUS[status], "reads": seen, "writes": made})
-                told = (p.stop.handle.get("tells", d.reports()) or "") if p.stop else ""
+                told = (d.told(p.stop.handle) or [""])[0] if p.stop else ""
                 refusals = [dict({"kind": "rejects", "from": names[run][p.stop.action], "through": []}, **({"to": told} if told else {"lostAt": names[run][p.stop.action]}))] if p.stop else []
                 end = [{"place": x, "state": "refusal" if p.stop and x == told else old(x, p.state[x], bool(p.rests[x]))} for x in touched]
                 rv["traces"].append({"run": run, "break": {}, "path": rv["paths"][i], "start": start, "steps": steps, "end": end, "refusals": refusals, "given": p.given()})

@@ -19,12 +19,12 @@ import textwrap
 KEYS = {
     "design": {"system", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
     "place": {"name", "kind", "keyed", "owner"},
-    "fact": {"name", "says", "fault", "open", "about", "only"},
+    "fact": {"name", "says", "fault", "open", "about", "at", "only"},
     "action": {"do", "when", "reads", "changes", "handles", "says"},
     "seq": {"seq", "name", "when", "handles", "says"},
     "all": {"all", "name", "when", "handles", "says"},
     "choose": {"choose", "otherwise", "name", "when", "handles", "says"},
-    "use": {"use", "when"},
+    "use": {"use", "when", "name", "says"},
     "branch": {"when", "run"},
     "read": {"place", "when"},
     "change": {"place", "how", "when", "later", "many", "makes", "because", "hold", "says"},
@@ -140,6 +140,11 @@ def anothers(place):
     return "%s holds another's record" % place
 
 
+def listing(x):
+    """One name or a list of names, as a list."""
+    return [] if x is None else [x] if isinstance(x, str) else list(x)
+
+
 def in_run(run):
     return "in %s" % run
 
@@ -205,6 +210,12 @@ class Design:
                 raise Refused("the run \"%s\" is not a part" % r)
         for name in self.parts:
             self.inside[name] = set(self.actions_of(name))
+        self.at = {}                            # action -> the faults that go wrong at it
+        for f in self.facts.values():
+            for a in listing(f.get("at")):
+                if a not in self.actions:
+                    raise Refused("the fact \"%s\" goes wrong at \"%s\", which is not an action" % (f["name"], a))
+                self.at.setdefault(a, []).append(f["name"])
         for p in self.places.values():
             if "owner" in p and p["owner"] not in self.inside:
                 raise Refused("place \"%s\": its owner \"%s\" is not a part" % (p["name"], p["owner"]))
@@ -216,6 +227,10 @@ class Design:
 
     def reports(self):
         return self.doc.get("reports")
+
+    def told(self, h):
+        """The places where an answer tells the person: its own, or the design's."""
+        return listing(h["tells"]) if "tells" in h else listing(self.reports())
 
     def check_place(self, name, where):
         if name not in self.places:
@@ -293,8 +308,8 @@ class Design:
                 if h.get("no", "stop") not in ("stop", "skip"):
                     raise Refused("%s: when the person says no the run will \"stop\" or \"skip\" the action" % where)
                 self.check_fact(h.get("when"), where)
-                if "tells" in h:
-                    self.check_place(h["tells"], where)
+                for t in listing(h.get("tells")):
+                    self.check_place(t, where)
                 if h["then"] == "ask":
                     self.facts.setdefault(yes_at(name), {"name": yes_at(name), "says": "the person asked at %s says yes" % name, "built in": True})
         elif "seq" in part or "all" in part:
@@ -323,8 +338,8 @@ class Design:
             if h.get("then") not in PART_THENS:
                 raise Refused("%s: a part answers a failure its children return with %s" % (where, ", ".join(PART_THENS[:-1]) + " or " + PART_THENS[-1]))
             self.check_fact(h.get("when"), where)
-            if "tells" in h:
-                self.check_place(h["tells"], where)
+            for t in listing(h.get("tells")):
+                self.check_place(t, where)
 
     def called(self, part):
         """What a finding calls a part: its name, or the actions in it."""
@@ -428,6 +443,7 @@ class Play:
         self.effects, self.steps, self.before = [], [], {}
         self.saw, self.did = {}, {}                        # action -> what it read and what it changed, with the states
         self.answered, self.open, self.unwritten, self.warned, self.left = set(), [], [], [], []
+        self.asked = set()                                 # the faults this play has already put as a question
         self.stop = self.exec(run)                         # the failure that reached the run, or None
 
     def exec(self, part):
@@ -481,9 +497,8 @@ class Play:
             if holds(h.get("when"), self.now):
                 self.answered |= {n for n in names_in(h.get("when")) if self.now.get(n) and self.d.is_fault(n)}
                 if h["then"] != "accept":
-                    told = h.get("tells", self.d.reports())
-                    if told:
-                        self.state[told] = "set"
+                    for t in self.d.told(h):
+                        self.state[t] = "set"
                     self.warned.append(self.d.called(part))
                 return None
         return failure
@@ -504,6 +519,7 @@ class Play:
             for f in ([already(p)] + ([twice(p)] if c.get("many") else []) if how == "create" else [anothers(p)] if how == "replace" else []):
                 if holds(f, env) and d.is_fault(f):       # a design can list one of these itself, without "fault", where it is normal
                     wrong.append(f)
+        here = [f for f in d.at.get(name, []) if holds(f, env)]   # what goes wrong at this step
         fired = None
         for h in a.get("handles", []):
             if holds(h.get("when"), env):
@@ -513,9 +529,8 @@ class Play:
             self.answered |= {n for n in names_in(fired.get("when")) if env.get(n) and d.is_fault(n)}
             then = fired["then"]
             if then != "accept":
-                told = fired.get("tells", d.reports())
-                if told:
-                    self.state[told] = "set"
+                for t in d.told(fired):
+                    self.state[t] = "set"
             if then == "refuse":
                 self.steps.append((name, "refused"))
                 return Failure("failed", name, fired)
@@ -528,10 +543,15 @@ class Play:
                 if fired.get("no", "stop") == "skip":
                     return None
                 return Failure("declined", name, fired)
-        open_ = [f for f in wrong if f not in self.answered]
-        for f in open_:
-            self.open.append((name, f))
-        rests = set(open_).union(*[self.rests[p] for p in reads]) if reads else set(open_)
+        for f in here:                                # a fault at this step is asked here, whatever the step changes
+            if f not in self.answered:
+                self.ask(name, f)
+        # what is read carries its faults into what is made from it. One becomes a question
+        # when something lasting, or a report, is changed while nothing has answered it.
+        rests = (set(wrong) | set(here)).union(*[self.rests[p] for p in reads]) - self.answered
+        if any(d.places[c["place"]]["kind"] in ("lasting", "report") for c in changes):
+            for f in [f for f in wrong if f in rests] + sorted(rests - set(wrong)):
+                self.ask(name, f)
         for c in changes:
             p = c["place"]
             self.effects.append({"place": p, "action": name, "later": c.get("later"), "was": self.state[p], "rested": self.rests[p]})
@@ -547,6 +567,11 @@ class Play:
             return Failure("failed", name, fired)
         self.steps.append((name, "ran"))
         return None
+
+    def ask(self, action, fault):
+        if fault not in self.asked:
+            self.asked.add(fault)
+            self.open.append((action, fault))
 
     def outcome(self):
         return self.stop.how if self.stop else "completed with a warning" if self.warned else "completed"
@@ -706,7 +731,8 @@ def findings(design, plays):
         if f["kind"] == "unanswered":
             says = design.facts[f["subject"]].get("says", f["subject"])
             f["shows"] = ["%s." % (says[0].upper() + says[1:]),
-                          "%s on with it: %s." % ("This action goes" if len(f["actions"]) == 1 else "These actions go", ", ".join(f["actions"]))]
+                          "Nothing answers it at: %s." % ", ".join(f["actions"]) if design.facts[f["subject"]].get("at") else
+                          "%s the first to change something lasting with it unanswered: %s." % ("This action is" if len(f["actions"]) == 1 else "These actions are", ", ".join(f["actions"]))]
             if f["rest"]:
                 f["shows"].append("What the run changes then rests on it: %s." % ", ".join(f["rest"]))
         if f["kind"] == "left-behind":
@@ -749,7 +775,7 @@ def findings(design, plays):
             if isinstance(c, dict) and c.get("later") == "stands" and not c.get("because"):
                 add("unexplained", "%s: its change to %s stands" % (name, c["place"]), None,
                     shows=["The change stays when a failure leaves its part, and the design does not say why that is fine."], settle='Give the change a "because".')
-        quiet = [h for h in a.get("handles", []) if h["then"] != "accept" and "tells" not in h]
+        quiet = [h for h in a.get("handles", []) if h["then"] != "accept" and not listing(h.get("tells"))]
         if quiet and not design.reports():
             f = add("silent", "the design", None, shows=[], quiet=[],
                     settle='Name the place where a person learns of a failure once, as "reports" at the top of the design.')
