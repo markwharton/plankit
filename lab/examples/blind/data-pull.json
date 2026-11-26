@@ -185,9 +185,9 @@
   "runs": ["download"],
   "expects": [
     { "name": "extraction is non-destructive: a run that stops leaves the committed extracts as they were",
-      "on": "stopped", "never changes": ["raw extracts"] },
+      "on": "failed", "never changes": ["raw extracts"] },
     { "name": "the mark only advances when an extract completed",
-      "on": "stopped", "never creates": ["raw extracts"] },
+      "on": "failed", "never creates": ["raw extracts"] },
     { "name": "exhaustiveness is certified, not assumed, and the manifest records it",
       "on": "success", "runs": ["compare the coverage with the server's total", "write the manifest"] },
     { "name": "the coverage is compared before the walk",

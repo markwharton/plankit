@@ -48,6 +48,29 @@ def book():
     }
 
 
+def legs():
+    """A nightly run of two legs. The first stages and then publishes; the second needs nothing from the first."""
+    kept = {"later": "stands", "because": "what landed is kept"}
+    return {
+        "system": "nightly", "reports": "message",
+        "places": [{"name": "source", "kind": "outside"}, {"name": "staged", "kind": "lasting"}, {"name": "published", "kind": "lasting"},
+                   {"name": "ledger", "kind": "lasting"}, {"name": "message", "kind": "report"}],
+        "facts": [{"name": "the source is down", "fault": True, "about": "source"}],
+        "parts": {"nightly": {"all": [
+            {"name": "first leg", "seq": [
+                {"do": "stage", "reads": ["source"], "changes": [dict(kept, place="staged")], "handles": [{"when": "the source is down", "then": "refuse"}]},
+                {"do": "publish", "reads": ["staged"], "changes": [dict(kept, place="published")]}]},
+            {"do": "post the ledger", "changes": [dict(kept, place="ledger")]},
+        ]}},
+        "runs": ["nightly"],
+    }
+
+
+def play(doc, *given):
+    d = engine.Design(doc)
+    return [p for p in engine.explore_all(d) if p.given() == sorted(given)][0]
+
+
 def step(doc, name):
     return engine.Design(doc).actions[name]
 
@@ -65,7 +88,7 @@ def outcomes(doc):
 class Engine(unittest.TestCase):
     def test_the_design_as_it_is_leaves_no_question(self):
         self.assertEqual(kinds(notes()), [])
-        self.assertEqual(outcomes(notes()), [((), "completed"), (("the note is empty",), "refused"), (("the site is down",), "refused")])
+        self.assertEqual(outcomes(notes()), [((), "completed"), (("the note is empty",), "failed"), (("the site is down",), "failed")])
 
     def test_one_thing_goes_wrong_in_a_play_unless_the_design_allows_more(self):
         self.assertTrue(all(len(g) <= 1 for g, _ in outcomes(notes())))
@@ -73,7 +96,7 @@ class Engine(unittest.TestCase):
         doc["faults"] = 2
         doc["parts"]["publish"]["seq"][0]["handles"][0]["then"] = "warn"      # an empty note is skipped, and the run goes on
         doc["places"][1]["kind"] = "run"
-        self.assertIn((("the note is empty", "the site is down"), "refused"), outcomes(doc))
+        self.assertIn((("the note is empty", "the site is down"), "failed"), outcomes(doc))
 
     def test_a_fact_that_makes_no_difference_makes_no_extra_play(self):
         doc = notes()
@@ -85,7 +108,7 @@ class Engine(unittest.TestCase):
         doc = notes()
         doc["parts"]["publish"]["seq"][1]["when"] = {"not": "preview"}
         doc["facts"][1]["only"] = {"not": "preview"}               # an empty note is not something a preview meets
-        self.assertNotIn((("preview", "the note is empty"), "refused"), outcomes(doc))
+        self.assertNotIn((("preview", "the note is empty"), "failed"), outcomes(doc))
         self.assertEqual(len(outcomes(doc)), 4)
 
     def test_something_wrong_that_nothing_answers_is_one_question_and_what_rests_on_it_is_named(self):
@@ -98,7 +121,7 @@ class Engine(unittest.TestCase):
         self.assertEqual(sorted(fs[0]["rest"]), ["draft", "site"])   # the bad note reaches the site through the draft
 
     def test_each_way_of_answering_does_what_it_says(self):
-        for then, outcome, draft in [("refuse", "refused", "untouched"), ("warn", "completed with a warning", "untouched"),
+        for then, outcome, draft in [("refuse", "failed", "untouched"), ("warn", "completed with a warning", "untouched"),
                                      ("tell", "completed", "set"), ("accept", "completed", "set")]:
             with self.subTest(then=then):
                 doc = notes()
@@ -120,7 +143,7 @@ class Engine(unittest.TestCase):
         self.assertEqual(kinds(doc), [])
         d = engine.Design(doc)
         p = [p for p in engine.explore_all(d) if p.given() == ["the site is down"]][0]
-        self.assertEqual((p.outcome(), p.state["site"], p.state["draft"], p.steps[-1]), ("refused", "undone", "undone", ("put on site", "failed")))
+        self.assertEqual((p.outcome(), p.state["site"], p.state["draft"], p.steps[-1]), ("failed", "undone", "undone", ("put on site", "failed")))
 
     def test_what_a_design_waves_through_says_why(self):
         doc = notes()
@@ -154,7 +177,7 @@ class Engine(unittest.TestCase):
         doc["parts"]["publish"]["seq"][0]["handles"] = [{"when": {"all": ["the note is empty", "preview"]}, "then": "accept"}, {"when": "the note is empty", "then": "refuse"}]
         self.assertIn((("preview", "the note is empty"), "completed"), outcomes(doc))
         doc["parts"]["publish"]["seq"][0]["handles"].reverse()
-        self.assertIn((("the note is empty",), "refused"), outcomes(doc))
+        self.assertIn((("the note is empty",), "failed"), outcomes(doc))
         self.assertNotIn((("preview", "the note is empty"), "completed"), outcomes(doc))
 
     def test_a_bad_value_can_be_accepted_under_a_fact(self):
@@ -172,7 +195,7 @@ class Engine(unittest.TestCase):
         self.assertEqual(outcomes(doc), [
             ((), "completed"), (("book already has the record",), "declined"),
             (("book already has the record", "the person says yes at import"), "completed"),
-            (("book is given a key twice",), "refused"), (("the file is not a list of contacts",), "refused")])
+            (("book is given a key twice",), "failed"), (("the file is not a list of contacts",), "failed")])
         doc["parts"]["import"]["handles"][1]["no"] = "skip"
         self.assertIn((("book already has the record",), "completed"), outcomes(doc))
 
@@ -192,7 +215,7 @@ class Engine(unittest.TestCase):
         doc["facts"].append({"name": "book already has the record", "about": "book", "says": "an import is run again over the same book"})
         doc["rules"] = [{"rule": "a contact already in the book is brought up to date", "about": "import", "when": "book already has the record"}]
         self.assertEqual(kinds(doc), [])                                  # a state of the world now, and it no longer uses up the one fault
-        self.assertIn((("book already has the record", "the file is not a list of contacts"), "refused"), outcomes(doc))
+        self.assertIn((("book already has the record", "the file is not a list of contacts"), "failed"), outcomes(doc))
 
     def test_replacing_a_record_asks_whose_it_is(self):
         doc = book()
@@ -266,7 +289,7 @@ class Engine(unittest.TestCase):
         doc["parts"]["publish twice"] = {"seq": ["publish", {"do": "say done", "changes": ["message"]}]}
         doc["runs"].append("publish twice")
         doc["facts"][1]["only"] = "in publish"                                # an empty note matters to publish alone
-        self.assertEqual([o for o in outcomes(doc) if "the note is empty" in o[0]], [(("the note is empty",), "refused")])
+        self.assertEqual([o for o in outcomes(doc) if "the note is empty" in o[0]], [(("the note is empty",), "failed")])
         d = engine.Design(doc)
         self.assertEqual({p.run for p in engine.explore_all(d) if "the note is empty" in p.given()}, {"publish"})
         self.assertTrue(all(not g.startswith("in ") for p in engine.explore_all(d) for g in p.given()))
@@ -313,6 +336,7 @@ class Engine(unittest.TestCase):
     def test_parts_in_no_order_must_not_touch_what_another_changes(self):
         doc = notes()
         doc["parts"]["publish"] = {"all": doc["parts"]["publish"]["seq"]}
+        doc["parts"]["publish"]["all"][1]["changes"] = [{"place": "site", "later": "stands", "because": "what is on the site stays"}]   # in no order, it runs though the draft was refused
         self.assertEqual(kinds(doc), [("order", "save draft and put on site")])
         doc["parts"]["publish"]["all"][1]["reads"] = ["text"]
         self.assertEqual([k for k in kinds(doc) if k[0] == "order"], [])
@@ -361,6 +385,40 @@ class Engine(unittest.TestCase):
         got = engine.compare(engine.Design(design), engine.Design(code))
         self.assertEqual([f["subject"] for f in got], ["save draft: the design goes ahead, the code refuses"])
         self.assertIn("Every play where this happens has: the disk is full.", got[0]["shows"])
+
+    def test_a_failure_ends_a_sequence_and_the_parts_beside_it_still_run(self):
+        p = play(legs(), "the source is down")
+        self.assertEqual((p.outcome(), p.stop.action), ("failed", "stage"))
+        self.assertEqual(p.steps, [("stage", "refused"), ("post the ledger", "ran")])      # publish needs what stage produced; the ledger does not
+        doc = legs()
+        doc["parts"]["nightly"] = {"seq": doc["parts"]["nightly"]["all"]}                   # in a sequence the ledger waits on the first leg
+        self.assertEqual(play(doc, "the source is down").steps, [("stage", "refused")])
+
+    def test_a_part_can_answer_a_failure_its_children_return(self):
+        doc = legs()
+        doc["parts"]["nightly"]["all"][0]["handles"] = [{"when": "the source is down", "then": "warn"}]
+        p = play(doc, "the source is down")
+        self.assertEqual((p.outcome(), p.stop), ("completed with a warning", None))
+        self.assertEqual(p.steps, [("stage", "refused"), ("post the ledger", "ran")])      # the sequence still ended at the failure
+        self.assertEqual(p.state["message"], "set")                                        # and the person is told
+        doc["parts"]["nightly"]["all"][0]["handles"] = [{"when": "the source is down", "then": "accept"}]
+        self.assertEqual(kinds(doc), [("unexplained", "first leg: accept, when the source is down")])
+        doc["parts"]["nightly"]["all"][0]["handles"] = [{"when": "the source is down", "then": "refuse"}]
+        with self.assertRaises(engine.Refused) as cm:
+            engine.Design(doc)
+        self.assertIn("warn, tell or accept", str(cm.exception))
+
+    def test_what_happens_later_is_decided_as_a_failure_leaves_each_part(self):
+        doc = legs()
+        first = doc["parts"]["nightly"]["all"][0]
+        first["seq"] = [{"do": "open the ledger", "changes": ["ledger"]},
+                        {"name": "staging", "seq": [{"do": "mark", "changes": [{"place": "published", "later": "undone"}]}, first["seq"][0]]}]
+        doc["parts"]["nightly"] = first
+        self.assertEqual(kinds(doc), [("left-behind", "ledger")])                         # the failure leaves the whole run, and the ledger was opened in it
+        first["handles"] = [{"when": "the source is down", "then": "warn"}]
+        self.assertEqual(kinds(doc), [])                                                   # answered at the run's own part, the failure never leaves it
+        p = play(doc, "the source is down")
+        self.assertEqual((p.state["published"], p.state["ledger"]), ("undone", "set"))     # it did leave the part that marked, so the mark is undone
 
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [

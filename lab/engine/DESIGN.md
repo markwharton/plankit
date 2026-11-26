@@ -81,7 +81,9 @@ matter to it. Everything else follows from that one mechanism:
 | A step changes the world | a change `makes` a fact true or false for the rest of the run |
 | A failure after a write puts it back | the change says `later`: `undone`, or `stands` |
 | Several things happen together | they are the changes of one action, which all happen or none do |
-| Two checks have no order | they are answers of one action, or parts of an `all` |
+| Two checks have no order | they are answers of one action |
+| Two parts do not depend on each other | they are parts of an `all`, where a failure in one does not stop the other |
+| A failure is dealt with where it is caught | the part that holds the action `handles` it |
 | Nobody has decided this yet | an `open` fact, used wherever the answer would matter. The engine plays it both ways and asks |
 | Why something is fine | `because`, on the statement that lets it through |
 | A rule holds for every run | an expectation, limited by `when` to the plays it is about |
@@ -94,23 +96,55 @@ matter to it. Everything else follows from that one mechanism:
 | Place | Something that holds data, and where its value lives: `outside` the system, `lasting`, within one `run`, or a `report` to a person. A `keyed` place holds many records, each under a key. A place can name the part that owns it. |
 | Fact | A name, what it `says` in words, whether it is a `fault` or still `open`, the place it is `about`, and what it is possible `only` with. |
 | Action | One thing a run does: the places it `reads`, the `changes` it makes, and what it `handles`. |
-| Change | A place and how it is changed: `set`, `create`, `replace` or `delete`. It can say what happens `later` if the run stops, and what facts it `makes` true or false. |
+| Change | A place and how it is changed: `set`, `create`, `replace` or `delete`. It can say what happens `later` if a failure leaves the part it is in, and what facts it `makes` true or false. |
 | Answer | An entry of `handles`: `when` a fact holds, `then` one of six things. |
-| Sequence, choice, `all` | Parts in order; one part chosen by a fact; parts in no stated order. |
+| Sequence, choice, `all` | Parts in order, each needing the ones before; one part chosen by a fact; parts that do not depend on each other. |
 | Use | A part is defined once under `parts` and used by name, so a variant never needs a copy. |
 | Expectation | Something that must be true of every play it covers. |
 | Rule in words | What an action computes. The engine does not play it; a test holds it. |
 
 The six answers:
 
-| `then` | The action | The run | The person |
+| `then` | The action | Next | The person |
 |---|---|---|---|
-| `refuse` | does nothing | stops | is told |
-| `fail` | does its work | stops | is told |
-| `warn` | does nothing | goes on | is told |
-| `tell` | does its work | goes on | is told |
-| `accept` | does its work | goes on | is not told |
-| `ask` | does its work on yes; on no the run stops, or with `"no": "skip"` goes on without it | | is asked |
+| `refuse` | does nothing | the failure goes to its parent | is told |
+| `fail` | does its work | the failure goes to its parent | is told |
+| `warn` | does nothing | the run goes on | is told |
+| `tell` | does its work | the run goes on | is told |
+| `accept` | does its work | the run goes on | is not told |
+| `ask` | does its work on yes. On no, the failure goes to its parent, or with `"no": "skip"` the run goes on without it | | is asked |
+
+## Failures go to the parent
+
+A failure is a value an action returns to the part that holds it. That
+part decides what happens next. Hamilton's axioms give a parent the
+answer for its own children; the owner's table of them is
+`control/axioms.md`.
+
+| Part | Its children | When a child returns a failure |
+|---|---|---|
+| `seq` | depend on the ones before | The sequence ends. The children after it do not run. The sequence returns the failure to its own parent. |
+| `all` | are independent | The other children still run. Then the `all` returns the failure to its own parent. |
+| `choose` | one is chosen | It returns the failure of the child it ran. |
+
+- A `seq`, an `all` or a `choose` can have `handles` of its own, for
+  the failures its children return. It answers with `warn` or `tell`,
+  and the person is told, or with `accept` and a `because`, and the
+  person is not. The failure stops there, and the part counts as
+  complete.
+- A failure no part answers reaches the run. The run has failed, and
+  the person is told at `reports`.
+- A change can say what happens `later`, when a failure leaves a part
+  that contains the change: `undone`, or `stands` with a `because`.
+  Silence is a question.
+
+Use `seq` where a part needs what the one before it produced. Use
+`all` where it does not. That choice is what decides whether a failure
+stops the part after it.
+
+Where the source gives an order and a failure of one part does not
+stop the next, use `seq` and have the earlier part answer its own
+failure with `warn`.
 
 A keyed place brings three faults with it, which the engine asks about
 whenever an action creates or replaces a record there:
@@ -188,9 +222,8 @@ whenever an action creates or replaces a record there:
   flag the play never asked about made no difference to it, so the play
   counts. A fault counts only where some action met it.
 - **`on` limits an expectation by how the play ended:** `success` for a
-  run that completed, with or without a warning; `refused` for one an
-  action stopped; `declined` for one a person's no stopped; `stopped`
-  for either of those two.
+  run that completed, with or without a warning; `failed` for one a
+  failure reached; `declined` for one a person's no ended.
 
 ## What the engine does
 
@@ -201,7 +234,7 @@ asks for the faults about each place it reads, and for the facts its
 answers and its `when` name.
 
 For each play the engine knows which actions ran, which were skipped,
-where the run stopped, what was undone, the state of every place at the
+which failure reached the run, what was undone, the state of every place at the
 end, and which values rest on something wrong that nothing answered.
 
 Each finding is one question for the owner.
@@ -211,7 +244,7 @@ Each finding is one question for the owner.
 | `open` | The design uses a fact nobody has decided. What is so? The finding says what runs only one way. |
 | `expect` | A play breaks something the design says must hold. Which is wrong? |
 | `unanswered` | An action goes on with a fault that no answer covers. What should happen? The finding names what the run then changes on the strength of it. |
-| `left-behind` | A run stopped after changing a lasting place. Is the change undone, or does it stand? |
+| `left-behind` | A failure left a part after a lasting place was changed in it. Is the change undone, or does it stand? |
 | `reads-unwritten` | An action reads a value nothing has written by then. Was its writer skipped? |
 | `order` | Two parts in no stated order touch a place one of them changes. Which runs first? |
 | `owner` | A place is changed by a part that does not own it, or comes from outside. |
@@ -266,12 +299,13 @@ and names it.
 | A read | a place's name, or `{ "place": ..., "when": ... }` |
 | A change | a place's name, or `{ "place": ..., "how": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `set` when left out, and `because` says why a change that `stands` may |
 | An answer | `{ "when": ..., "then": ... }` (`when` left out for one that always applies), with `because` (why, for an `accept`), `tells` (a place, when it is not the design's `reports`) and, for `ask`, `no` (`stop` or `skip`) |
-| A sequence | `seq` (a list of parts), `name`, `when` |
-| Parts in no order | `all` (a list of parts), `name`, `when` |
-| A choice | `choose` (a list of `{ "when": ..., "run": part }`), `otherwise` (a part, or `null` for nothing) |
+| A sequence | `seq` (a list of parts), `name`, `when`, `handles` |
+| Parts that do not depend on each other | `all` (a list of parts), `name`, `when`, `handles` |
+| A choice | `choose` (a list of `{ "when": ..., "run": part }`), `otherwise` (a part, or `null` for nothing), `name`, `when`, `handles` |
+| A part's answer | `{ "when": ..., "then": ... }` where `then` is `warn`, `tell` or `accept`, with `because` and `tells` |
 | A use of a part | the part's name as a string, or `{ "use": name, "when": ... }` |
 | Where a fact is asked for | a name, `{ "not": f }`, `{ "all": [f, ...] }` or `{ "any": [f, ...] }` |
-| An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `refused`, `declined` or `stopped`), and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
+| An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `failed` or `declined`), and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
 | A state | `untouched`, `set`, `created`, `replaced`, `deleted`, `undone`; or `changed` for any of the middle four, and `unchanged` for `untouched` or `undone` |
 | A rule in words | `rule`, `about` (an action), `when` (the fact it depends on, when there is one) |
 
@@ -325,8 +359,9 @@ by `lab/engine/test_pk.py`.
 - Ask about a failure nobody listed. Where a source names no way for a
   step to fail, the design has no fault for it and the engine has
   nothing to ask.
-- Limit `later` to stops after a named action. A change is undone by
-  any later stop, or stands through all of them.
+- Limit `later` to failures after a named action. A change is undone by
+  any failure that leaves a part it is in, or stands through all of
+  them.
 - Play two runs at once, or anything else about time beyond the order
   of a sequence.
 - Say that a value is bad in a way that depends on how it was computed.

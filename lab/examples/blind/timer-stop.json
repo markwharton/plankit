@@ -137,7 +137,7 @@
       "never changes": ["the person's timer", "the remote system's time entries"] },
     { "name": "a refused stop keeps the timer",
       "when": { "any": [ "the item is closed or no longer assigned", "the hours sent are more than 24", "the day would pass 24 hours" ] },
-      "on": "refused",
+      "on": "failed",
       "ends": { "the person's timer": "unchanged" } },
     { "name": "closed work takes no time",
       "when": "the item is closed or no longer assigned",

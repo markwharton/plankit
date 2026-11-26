@@ -141,7 +141,7 @@ def view_model(d, plays, findings, tests, shown):
                     rv["baselines"].append(len(rv["traces"]) - 1)
                 if not bad:
                     continue
-                if p.stop and p.stop.how == "refused":
+                if p.stop and p.stop.how == "failed":
                     verdict, what = "refused", "%s stops the run, and %s." % (p.stop.action, "the person is told in " + told if told else "nobody is told")
                 elif p.stop:
                     verdict, what = "declined", "The person says no at %s, and the run stops." % p.stop.action
