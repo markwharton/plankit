@@ -1,1020 +1,1071 @@
 {
- "system": "pk",
- "reports": "message",
- "places": [
-  {
-   "name": "settings",
-   "kind": "outside"
-  },
-  {
-   "name": "working branch",
-   "kind": "outside"
-  },
-  {
-   "name": "origin address",
-   "kind": "outside"
-  },
-  {
-   "name": "working tree",
-   "kind": "lasting"
-  },
-  {
-   "name": "origin",
-   "kind": "lasting"
-  },
-  {
-   "name": "remote-tracking branches",
-   "kind": "lasting"
-  },
-  {
-   "name": "release branch",
-   "kind": "lasting"
-  },
-  {
-   "name": "changelog file",
-   "kind": "lasting"
-  },
-  {
-   "name": "version files",
-   "kind": "lasting"
-  },
-  {
-   "name": "release commit",
-   "kind": "lasting"
-  },
-  {
-   "name": "next version",
-   "kind": "run"
-  },
-  {
-   "name": "commits since tag",
-   "kind": "run"
-  },
-  {
-   "name": "section",
-   "kind": "run"
-  },
-  {
-   "name": "message",
-   "kind": "report"
-  },
-  {
-   "name": "standard output",
-   "kind": "report"
-  },
-  {
-   "name": "tags",
-   "kind": "lasting",
-   "keyed": true
-  }
- ],
- "facts": [
-  {
-   "name": "dry run",
-   "says": "--dry-run is given"
-  },
-  {
-   "name": "undo",
-   "says": "--undo is given",
-   "only": {
-    "not": "in ship"
-   }
-  },
-  {
-   "name": "nothing to release",
-   "says": "no conventional commit of a visible type is left to release"
-  },
-  {
-   "name": "no local tags",
-   "says": "the clone has no tags"
-  },
-  {
-   "name": "trunk flow",
-   "says": "release.branch is not set"
-  },
-  {
-   "name": "the last commit is a release commit",
-   "about": "release commit",
-   "says": "HEAD carries a Release-Tag trailer"
-  },
-  {
-   "name": "settings are invalid",
-   "fault": true,
-   "about": "settings",
-   "says": "a .pk.json with an unknown key or a value outside the allowed ones"
-  },
-  {
-   "name": "the working branch is unfit",
-   "fault": true,
-   "about": "working branch",
-   "says": "no branch checked out, a protected branch, or a branch that is behind origin or does not hold the last version tag"
-  },
-  {
-   "name": "the branch is not the default",
-   "fault": true,
-   "about": "working branch",
-   "only": "trunk flow",
-   "says": "in trunk flow, the branch is not origin's default branch"
-  },
-  {
-   "name": "the tree is dirty",
-   "fault": true,
-   "about": "working tree",
-   "says": "a tree with uncommitted changes"
-  },
-  {
-   "name": "a tag does not name a version",
-   "fault": true,
-   "about": "tags",
-   "says": "a tag that does not name a version"
-  },
-  {
-   "name": "origin does not answer",
-   "fault": true,
-   "about": "origin",
-   "says": "a remote that does not answer, or lacks the working branch"
-  },
-  {
-   "name": "the remote-tracking branches are stale",
-   "fault": true,
-   "about": "remote-tracking branches",
-   "says": "a record of origin's branches that origin has moved past"
-  },
-  {
-   "name": "the release branch has diverged",
-   "fault": true,
-   "about": "release branch",
-   "only": {
-    "not": "trunk flow"
-   },
-   "says": "a branch that cannot be resolved, or has diverged from the working branch"
-  },
-  {
-   "name": "the changelog file cannot be read",
-   "fault": true,
-   "about": "changelog file",
-   "says": "a CHANGELOG.md that cannot be read"
-  },
-  {
-   "name": "a version file has no version field",
-   "fault": true,
-   "about": "version files",
-   "says": "a JSON file with no version field at its root"
-  },
-  {
-   "name": "origin has no address",
-   "fault": true,
-   "about": "origin address",
-   "says": "no address for origin, so the section gets no link"
-  },
-  {
-   "name": "origin's tags cannot be fetched",
-   "fault": true
-  },
-  {
-   "name": "the last version tag is not in the branch's history",
-   "fault": true
-  },
-  {
-   "name": "the postVersion command fails",
-   "fault": true
-  },
-  {
-   "name": "the preCommit command fails",
-   "fault": true
-  },
-  {
-   "name": "the commit cannot be made",
-   "fault": true
-  },
-  {
-   "name": "the commit is pushed, tagged or merged",
-   "fault": true
-  },
-  {
-   "name": "the release branch cannot be fast-forwarded",
-   "fault": true
-  },
-  {
-   "name": "the preRelease command fails",
-   "fault": true
-  },
-  {
-   "name": "the tag cannot be created",
-   "fault": true
-  },
-  {
-   "name": "the prePush command fails",
-   "fault": true
-  },
-  {
-   "name": "origin rejects the push",
-   "fault": true
-  },
-  {
-   "name": "the switch back fails",
-   "fault": true
-  },
-  {
-   "name": "the push of the working branch fails",
-   "fault": true
-  },
-  {
-   "name": "the --bump value is not a level",
-   "fault": true,
-   "says": "--bump is given a value other than major, minor or patch"
-  },
-  {
-   "name": "an --exclude entry matches no commit",
-   "fault": true,
-   "says": "an --exclude hash matches no commit"
-  }
- ],
- "parts": {
-  "changelog": {
-   "choose": [
+  "system": "pk",
+  "reports": "message",
+  "places": [
     {
-     "when": "undo",
-     "run": {
-      "do": "undo",
-      "says": "--undo unwinds the release commit and restores the changelog file and the version files",
-      "reads": [
-       "release commit",
-       "tags",
-       "origin",
-       "working tree"
-      ],
-      "changes": [
-       {
-        "place": "release commit",
-        "when": {
-         "not": "dry run"
-        },
-        "makes": {
-         "the last commit is a release commit": false
-        }
-       },
-       {
-        "place": "changelog file",
-        "when": {
-         "not": "dry run"
-        }
-       },
-       {
-        "place": "version files",
-        "when": {
-         "not": "dry run"
-        }
-       }
-      ],
-      "handles": [
-       {
-        "when": "the commit is pushed, tagged or merged",
-        "then": "refuse",
-        "says": "--undo refuses a commit that is pushed, tagged or merged",
-        "hold": {
-         "file": "internal/changelog/changelog_test.go",
-         "test": "TestUndoRefusesACommitSomethingElseHolds"
-        }
-       },
-       {
-        "when": "the tree is dirty",
-        "then": "refuse"
-       },
-       {
-        "when": {
-         "not": "the last commit is a release commit"
-        },
-        "then": "refuse"
-       }
-      ]
-     }
+      "name": "settings",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "working branch",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "origin address",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "working tree",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "origin",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "remote-tracking branches",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "release branch",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "changelog file",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "version files",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "release commit",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "next version",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "commits since tag",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "section",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "message",
+      "kind": "report",
+      "is": "one"
+    },
+    {
+      "name": "standard output",
+      "kind": "report",
+      "is": "one"
+    },
+    {
+      "name": "tags",
+      "kind": "lasting",
+      "is": "many"
     }
-   ],
-   "otherwise": "make changelog"
-  },
-  "make changelog": {
-   "name": "make changelog",
-   "seq": [
+  ],
+  "facts": [
     {
-     "do": "branch checks",
-     "when": {
-      "not": "dry run"
-     },
-     "reads": [
-      "settings",
-      "working tree",
-      "working branch",
-      "origin"
-     ],
-     "handles": [
-      {
-       "when": {
-        "any": [
-         "settings are invalid",
-         "the tree is dirty",
-         "the working branch is unfit",
-         "origin does not answer"
-        ]
-       },
-       "then": "refuse",
-       "hold": {
-        "file": "internal/changelog/changelog_test.go",
-        "test": "TestRefusals"
-       }
+      "name": "dry run",
+      "says": "--dry-run is given"
+    },
+    {
+      "name": "undo",
+      "says": "--undo is given",
+      "only": {
+        "not": "in ship"
+      }
+    },
+    {
+      "name": "nothing to release",
+      "says": "no conventional commit of a visible type is left to release"
+    },
+    {
+      "name": "no local tags",
+      "says": "the clone has no tags"
+    },
+    {
+      "name": "trunk flow",
+      "says": "release.branch is not set"
+    },
+    {
+      "name": "the last commit is a release commit",
+      "about": "release commit",
+      "says": "HEAD carries a Release-Tag trailer"
+    },
+    {
+      "name": "settings are invalid",
+      "fault": true,
+      "about": "settings",
+      "says": "a .pk.json with an unknown key or a value outside the allowed ones"
+    },
+    {
+      "name": "the working branch is unfit",
+      "fault": true,
+      "about": "working branch",
+      "says": "no branch checked out, a protected branch, or a branch that is behind origin or does not hold the last version tag"
+    },
+    {
+      "name": "the branch is not the default",
+      "fault": true,
+      "about": "working branch",
+      "only": "trunk flow",
+      "says": "in trunk flow, the branch is not origin's default branch"
+    },
+    {
+      "name": "the tree is dirty",
+      "fault": true,
+      "about": "working tree",
+      "says": "a tree with uncommitted changes"
+    },
+    {
+      "name": "a tag does not name a version",
+      "fault": true,
+      "about": "tags",
+      "says": "a tag that does not name a version"
+    },
+    {
+      "name": "origin does not answer",
+      "fault": true,
+      "about": "origin",
+      "says": "a remote that does not answer, or lacks the working branch"
+    },
+    {
+      "name": "the remote-tracking branches are stale",
+      "fault": true,
+      "about": "remote-tracking branches",
+      "says": "a record of origin's branches that origin has moved past"
+    },
+    {
+      "name": "the release branch has diverged",
+      "fault": true,
+      "about": "release branch",
+      "only": {
+        "not": "trunk flow"
       },
-      {
-       "when": "the branch is not the default",
-       "then": "refuse",
-       "hold": {
-        "file": "internal/changelog/changelog_test.go",
-        "test": "TestRefusals"
-       }
-      }
-     ]
+      "says": "a branch that cannot be resolved, or has diverged from the working branch"
     },
     {
-     "do": "fetch tags",
-     "when": "no local tags",
-     "says": "with no local tags, changelog fetches origin's tags first and measures from the latest",
-     "reads": [
-      "origin"
-     ],
-     "changes": [
-      "tags"
-     ],
-     "handles": [
-      {
-       "when": {
-        "any": [
-         "origin does not answer",
-         "origin's tags cannot be fetched"
-        ]
-       },
-       "then": "refuse",
-       "hold": {
-        "file": "internal/changelog/changelog_test.go",
-        "test": "TestNoLocalTagsButOriginHasThem"
-       }
-      }
-     ]
+      "name": "the changelog file cannot be read",
+      "fault": true,
+      "about": "changelog file",
+      "says": "a CHANGELOG.md that cannot be read"
     },
     {
-     "do": "infer version",
-     "reads": [
-      "tags",
-      "working branch"
-     ],
-     "changes": [
-      "commits since tag",
-      "next version"
-     ],
-     "handles": [
-      {
-       "when": "the last version tag is not in the branch's history",
-       "then": "refuse",
-       "hold": {
-        "file": "internal/changelog/changelog_test.go",
-        "test": "TestTagOutsideHistoryIsRefused"
-       }
-      },
-      {
-       "when": "the --bump value is not a level",
-       "then": "refuse"
-      },
-      {
-       "when": "an --exclude entry matches no commit",
-       "then": "tell"
-      }
-     ]
+      "name": "a version file has no version field",
+      "fault": true,
+      "about": "version files",
+      "says": "a JSON file with no version field at its root"
     },
     {
-     "do": "pending release check",
-     "when": {
-      "not": "dry run"
-     },
-     "reads": [
-      "release commit"
-     ],
-     "handles": [
-      {
-       "when": "the last commit is a release commit",
-       "then": "refuse"
-      }
-     ]
+      "name": "origin has no address",
+      "fault": true,
+      "about": "origin address",
+      "says": "no address for origin, so the section gets no link"
     },
     {
-     "choose": [
-      {
-       "when": "nothing to release",
-       "run": {
-        "do": "say nothing to release",
-        "changes": [
-         "message"
-        ]
-       }
-      }
-     ],
-     "otherwise": {
-      "seq": [
-       {
-        "do": "build section",
-        "reads": [
-         "settings",
-         "commits since tag",
-         "next version"
-        ],
-        "changes": [
-         "section"
-        ]
-       },
-       {
-        "choose": [
-         {
-          "when": "dry run",
+      "name": "origin's tags cannot be fetched",
+      "fault": true
+    },
+    {
+      "name": "the last version tag is not in the branch's history",
+      "fault": true
+    },
+    {
+      "name": "the postVersion command fails",
+      "fault": true
+    },
+    {
+      "name": "the preCommit command fails",
+      "fault": true
+    },
+    {
+      "name": "the commit cannot be made",
+      "fault": true
+    },
+    {
+      "name": "the commit is pushed, tagged or merged",
+      "fault": true
+    },
+    {
+      "name": "the release branch cannot be fast-forwarded",
+      "fault": true
+    },
+    {
+      "name": "the preRelease command fails",
+      "fault": true
+    },
+    {
+      "name": "the tag cannot be created",
+      "fault": true
+    },
+    {
+      "name": "the prePush command fails",
+      "fault": true
+    },
+    {
+      "name": "origin rejects the push",
+      "fault": true
+    },
+    {
+      "name": "the switch back fails",
+      "fault": true
+    },
+    {
+      "name": "the push of the working branch fails",
+      "fault": true
+    },
+    {
+      "name": "the --bump value is not a level",
+      "fault": true,
+      "says": "--bump is given a value other than major, minor or patch"
+    },
+    {
+      "name": "an --exclude entry matches no commit",
+      "fault": true,
+      "says": "an --exclude hash matches no commit"
+    }
+  ],
+  "parts": {
+    "changelog": {
+      "choose": [
+        {
+          "when": "undo",
           "run": {
-           "do": "print section",
-           "reads": [
-            "section"
-           ],
-           "changes": [
-            "standard output"
-           ]
+            "do": "undo",
+            "says": "--undo unwinds the release commit and restores the changelog file and the version files",
+            "reads": [
+              "release commit",
+              "tags",
+              "origin",
+              "working tree"
+            ],
+            "changes": [
+              {
+                "place": "release commit",
+                "when": {
+                  "not": "dry run"
+                },
+                "makes": {
+                  "the last commit is a release commit": false
+                },
+                "how": "replace"
+              },
+              {
+                "place": "changelog file",
+                "when": {
+                  "not": "dry run"
+                },
+                "how": "replace"
+              },
+              {
+                "place": "version files",
+                "when": {
+                  "not": "dry run"
+                },
+                "how": "replace"
+              }
+            ],
+            "handles": [
+              {
+                "when": "the commit is pushed, tagged or merged",
+                "then": "refuse",
+                "says": "--undo refuses a commit that is pushed, tagged or merged",
+                "hold": {
+                  "file": "internal/changelog/changelog_test.go",
+                  "test": "TestUndoRefusesACommitSomethingElseHolds"
+                }
+              },
+              {
+                "when": "the tree is dirty",
+                "then": "refuse"
+              },
+              {
+                "when": {
+                  "not": "the last commit is a release commit"
+                },
+                "then": "refuse"
+              }
+            ]
           }
-         }
-        ],
-        "otherwise": {
-         "name": "write release",
-         "seq": [
-          {
-           "do": "stamp versions",
-           "reads": [
-            "settings",
-            "next version",
-            "version files"
-           ],
-           "changes": [
-            {
-             "place": "version files",
-             "later": "undone",
-             "says": "when a version file or a hook fails, nothing is committed and the tree goes back to how the run found it",
-             "hold": {
-              "file": "internal/changelog/changelog_test.go",
-              "test": "TestARefusedReleasePutsTheWholeTreeBack"
-             }
-            }
-           ],
-           "handles": [
-            {
-             "when": "a version file has no version field",
-             "then": "refuse"
-            }
-           ]
+        }
+      ],
+      "otherwise": "make changelog"
+    },
+    "make changelog": {
+      "name": "make changelog",
+      "seq": [
+        {
+          "do": "branch checks",
+          "when": {
+            "not": "dry run"
           },
-          {
-           "do": "postVersion hook",
-           "reads": [
+          "reads": [
             "settings",
-            "next version"
-           ],
-           "handles": [
+            "working tree",
+            "working branch",
+            "origin"
+          ],
+          "handles": [
             {
-             "when": "the postVersion command fails",
-             "then": "refuse",
-             "hold": {
-              "file": "internal/changelog/changelog_test.go",
-              "test": "TestFailingHookAborts"
-             }
-            }
-           ]
-          },
-          {
-           "do": "write section",
-           "reads": [
-            "section",
-            "changelog file",
-            "commits since tag",
-            "next version",
-            "origin address"
-           ],
-           "changes": [
-            {
-             "place": "changelog file",
-             "later": "undone"
-            }
-           ],
-           "handles": [
-            {
-             "when": "the changelog file cannot be read",
-             "then": "refuse",
-             "hold": {
-              "file": "internal/changelog/changelog_test.go",
-              "test": "TestAChangelogThatIsThereMustBeReadable"
-             }
+              "when": {
+                "any": [
+                  "settings are invalid",
+                  "the tree is dirty",
+                  "the working branch is unfit",
+                  "origin does not answer"
+                ]
+              },
+              "then": "refuse",
+              "hold": {
+                "file": "internal/changelog/changelog_test.go",
+                "test": "TestRefusals"
+              }
             },
             {
-             "when": "origin has no address",
-             "then": "accept",
-             "because": "the section is then written with no link"
+              "when": "the branch is not the default",
+              "then": "refuse",
+              "hold": {
+                "file": "internal/changelog/changelog_test.go",
+                "test": "TestRefusals"
+              }
             }
-           ]
+          ]
+        },
+        {
+          "do": "fetch tags",
+          "when": "no local tags",
+          "says": "with no local tags, changelog fetches origin's tags first and measures from the latest",
+          "reads": [
+            "origin"
+          ],
+          "changes": [
+            {
+              "place": "tags",
+              "how": "create"
+            }
+          ],
+          "handles": [
+            {
+              "when": {
+                "any": [
+                  "origin does not answer",
+                  "origin's tags cannot be fetched"
+                ]
+              },
+              "then": "refuse",
+              "hold": {
+                "file": "internal/changelog/changelog_test.go",
+                "test": "TestNoLocalTagsButOriginHasThem"
+              }
+            }
+          ]
+        },
+        {
+          "do": "infer version",
+          "reads": [
+            "tags",
+            "working branch"
+          ],
+          "changes": [
+            {
+              "place": "commits since tag",
+              "how": "create"
+            },
+            {
+              "place": "next version",
+              "how": "create"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the last version tag is not in the branch's history",
+              "then": "refuse",
+              "hold": {
+                "file": "internal/changelog/changelog_test.go",
+                "test": "TestTagOutsideHistoryIsRefused"
+              }
+            },
+            {
+              "when": "the --bump value is not a level",
+              "then": "refuse"
+            },
+            {
+              "when": "an --exclude entry matches no commit",
+              "then": "tell"
+            }
+          ]
+        },
+        {
+          "do": "pending release check",
+          "when": {
+            "not": "dry run"
           },
-          {
-           "do": "preCommit hook",
-           "reads": [
-            "settings",
-            "next version"
-           ],
-           "handles": [
+          "reads": [
+            "release commit"
+          ],
+          "handles": [
             {
-             "when": "the preCommit command fails",
-             "then": "refuse"
+              "when": "the last commit is a release commit",
+              "then": "refuse"
             }
-           ]
-          },
-          {
-           "do": "commit",
-           "reads": [
-            "settings",
-            "next version",
-            "changelog file",
-            "version files",
-            "working tree"
-           ],
-           "changes": [
+          ]
+        },
+        {
+          "choose": [
             {
-             "place": "release commit",
-             "later": "undone",
-             "makes": {
-              "the last commit is a release commit": true
-             },
-             "says": "pk ship runs changelog and then release, and when the release half fails it undoes the changelog commit it made",
-             "hold": {
-              "file": "internal/ship/ship_test.go",
-              "test": "TestFailedReleaseUndoesTheChangelogCommit"
-             }
+              "when": "nothing to release",
+              "run": {
+                "do": "say nothing to release",
+                "changes": [
+                  {
+                    "place": "message",
+                    "how": "create"
+                  }
+                ]
+              }
             }
-           ],
-           "handles": [
-            {
-             "when": "the commit cannot be made",
-             "then": "refuse"
-            }
-           ]
+          ],
+          "otherwise": {
+            "seq": [
+              {
+                "do": "build section",
+                "reads": [
+                  "settings",
+                  "commits since tag",
+                  "next version"
+                ],
+                "changes": [
+                  {
+                    "place": "section",
+                    "how": "create"
+                  }
+                ]
+              },
+              {
+                "choose": [
+                  {
+                    "when": "dry run",
+                    "run": {
+                      "do": "print section",
+                      "reads": [
+                        "section"
+                      ],
+                      "changes": [
+                        {
+                          "place": "standard output",
+                          "how": "create"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "otherwise": {
+                  "name": "write release",
+                  "seq": [
+                    {
+                      "do": "stamp versions",
+                      "reads": [
+                        "settings",
+                        "next version",
+                        "version files"
+                      ],
+                      "changes": [
+                        {
+                          "place": "version files",
+                          "later": "undone",
+                          "says": "when a version file or a hook fails, nothing is committed and the tree goes back to how the run found it",
+                          "hold": {
+                            "file": "internal/changelog/changelog_test.go",
+                            "test": "TestARefusedReleasePutsTheWholeTreeBack"
+                          },
+                          "how": "replace"
+                        }
+                      ],
+                      "handles": [
+                        {
+                          "when": "a version file has no version field",
+                          "then": "refuse"
+                        }
+                      ]
+                    },
+                    {
+                      "do": "postVersion hook",
+                      "reads": [
+                        "settings",
+                        "next version"
+                      ],
+                      "handles": [
+                        {
+                          "when": "the postVersion command fails",
+                          "then": "refuse",
+                          "hold": {
+                            "file": "internal/changelog/changelog_test.go",
+                            "test": "TestFailingHookAborts"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "do": "write section",
+                      "reads": [
+                        "section",
+                        "changelog file",
+                        "commits since tag",
+                        "next version",
+                        "origin address"
+                      ],
+                      "changes": [
+                        {
+                          "place": "changelog file",
+                          "later": "undone",
+                          "how": "replace"
+                        }
+                      ],
+                      "handles": [
+                        {
+                          "when": "the changelog file cannot be read",
+                          "then": "refuse",
+                          "hold": {
+                            "file": "internal/changelog/changelog_test.go",
+                            "test": "TestAChangelogThatIsThereMustBeReadable"
+                          }
+                        },
+                        {
+                          "when": "origin has no address",
+                          "then": "accept",
+                          "because": "the section is then written with no link"
+                        }
+                      ]
+                    },
+                    {
+                      "do": "preCommit hook",
+                      "reads": [
+                        "settings",
+                        "next version"
+                      ],
+                      "handles": [
+                        {
+                          "when": "the preCommit command fails",
+                          "then": "refuse"
+                        }
+                      ]
+                    },
+                    {
+                      "do": "commit",
+                      "reads": [
+                        "settings",
+                        "next version",
+                        "changelog file",
+                        "version files",
+                        "working tree"
+                      ],
+                      "changes": [
+                        {
+                          "place": "release commit",
+                          "later": "undone",
+                          "makes": {
+                            "the last commit is a release commit": true
+                          },
+                          "says": "pk ship runs changelog and then release, and when the release half fails it undoes the changelog commit it made",
+                          "hold": {
+                            "file": "internal/ship/ship_test.go",
+                            "test": "TestFailedReleaseUndoesTheChangelogCommit"
+                          },
+                          "how": "replace"
+                        }
+                      ],
+                      "handles": [
+                        {
+                          "when": "the commit cannot be made",
+                          "then": "refuse"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
           }
-         ]
         }
-       }
       ]
-     }
+    },
+    "release": {
+      "name": "release",
+      "seq": [
+        {
+          "do": "pre-flight",
+          "reads": [
+            "release commit",
+            "settings",
+            "working tree",
+            "working branch",
+            {
+              "place": "release branch",
+              "when": {
+                "not": "trunk flow"
+              }
+            },
+            "tags",
+            "origin",
+            "remote-tracking branches"
+          ],
+          "changes": [
+            {
+              "place": "remote-tracking branches",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": {
+                "any": [
+                  {
+                    "not": "the last commit is a release commit"
+                  },
+                  "settings are invalid",
+                  "the tree is dirty",
+                  "the working branch is unfit",
+                  "the release branch has diverged",
+                  "a tag does not name a version",
+                  "origin does not answer"
+                ]
+              },
+              "then": "refuse",
+              "hold": {
+                "file": "internal/release/release_test.go",
+                "test": "TestRefusals"
+              }
+            },
+            {
+              "when": "the branch is not the default",
+              "then": "refuse",
+              "says": "trunk flow refuses to run on any branch but the default branch",
+              "hold": {
+                "file": "internal/release/release_test.go",
+                "test": "TestTrunkFlowRefusesNonDefaultBranch"
+              }
+            },
+            {
+              "when": "the remote-tracking branches are stale",
+              "then": "accept",
+              "because": "pre-flight fetches, which brings them up to date"
+            }
+          ]
+        },
+        {
+          "says": "in trunk flow there is no merge: the release tags and pushes the default branch",
+          "otherwise": null,
+          "choose": [
+            {
+              "when": {
+                "all": [
+                  "dry run",
+                  {
+                    "not": "trunk flow"
+                  }
+                ]
+              },
+              "run": {
+                "do": "rehearse merge",
+                "says": "a release dry run rehearses the merge against origin's release branch when there is no local one",
+                "reads": [
+                  "working branch",
+                  "release branch",
+                  "remote-tracking branches"
+                ],
+                "handles": [
+                  {
+                    "when": "the release branch cannot be fast-forwarded",
+                    "then": "refuse",
+                    "hold": {
+                      "file": "internal/release/release_test.go",
+                      "test": "TestDryRunRehearsesAReleaseBranchThatIsOnlyOnOrigin"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "when": {
+                "not": "trunk flow"
+              },
+              "run": {
+                "do": "merge",
+                "reads": [
+                  "working branch",
+                  "release branch",
+                  "remote-tracking branches"
+                ],
+                "changes": [
+                  {
+                    "place": "working tree",
+                    "later": "undone",
+                    "says": "a failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out",
+                    "hold": {
+                      "file": "internal/release/release_test.go",
+                      "test": "TestRejectedPushRollsEverythingBack"
+                    },
+                    "how": "replace"
+                  },
+                  {
+                    "place": "release branch",
+                    "later": "undone",
+                    "how": "replace"
+                  }
+                ],
+                "handles": [
+                  {
+                    "when": "the release branch cannot be fast-forwarded",
+                    "then": "refuse",
+                    "hold": {
+                      "file": "internal/release/release_test.go",
+                      "test": "TestDivergedReleaseBranchRefused"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "do": "preRelease hook",
+          "reads": [
+            "settings",
+            "release commit"
+          ],
+          "handles": [
+            {
+              "when": "the preRelease command fails",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "tag",
+          "when": {
+            "not": "dry run"
+          },
+          "reads": [
+            "release commit",
+            "tags"
+          ],
+          "changes": [
+            {
+              "place": "tags",
+              "how": "create",
+              "later": "undone"
+            }
+          ],
+          "handles": [
+            {
+              "when": {
+                "any": [
+                  "tags already has the member",
+                  "the tag cannot be created"
+                ]
+              },
+              "then": "refuse",
+              "hold": {
+                "file": "internal/release/release_test.go",
+                "test": "TestRefusals"
+              }
+            }
+          ]
+        },
+        {
+          "do": "prePush hook",
+          "when": {
+            "not": "dry run"
+          },
+          "reads": [
+            "settings",
+            "release commit"
+          ],
+          "handles": [
+            {
+              "when": "the prePush command fails",
+              "then": "refuse",
+              "hold": {
+                "file": "internal/release/release_test.go",
+                "test": "TestFailingPrePushCleansUp"
+              }
+            }
+          ]
+        },
+        {
+          "do": "push",
+          "when": {
+            "not": "dry run"
+          },
+          "says": "the release branch and the tag are pushed together",
+          "reads": [
+            {
+              "place": "release branch",
+              "when": {
+                "not": "trunk flow"
+              }
+            },
+            "tags",
+            {
+              "place": "working branch",
+              "when": "trunk flow"
+            }
+          ],
+          "changes": [
+            {
+              "place": "origin",
+              "later": "stands",
+              "because": "once the release branch and the tag are on origin the release stands",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "origin rejects the push",
+              "then": "refuse",
+              "hold": {
+                "file": "internal/release/release_test.go",
+                "test": "TestRejectedPushRollsEverythingBack"
+              }
+            }
+          ]
+        },
+        {
+          "do": "switch back",
+          "when": {
+            "all": [
+              {
+                "not": "dry run"
+              },
+              {
+                "not": "trunk flow"
+              }
+            ]
+          },
+          "reads": [
+            "working branch"
+          ],
+          "changes": [
+            {
+              "place": "working tree",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the switch back fails",
+              "then": "warn",
+              "says": "once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is a warning"
+            }
+          ]
+        },
+        {
+          "do": "push working branch",
+          "when": {
+            "all": [
+              {
+                "not": "dry run"
+              },
+              {
+                "not": "trunk flow"
+              }
+            ]
+          },
+          "reads": [
+            "working branch"
+          ],
+          "changes": [
+            {
+              "place": "origin",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the push of the working branch fails",
+              "then": "warn"
+            }
+          ]
+        }
+      ]
+    },
+    "ship": {
+      "name": "ship",
+      "seq": [
+        "changelog",
+        "release"
+      ]
     }
-   ]
   },
-  "release": {
-   "name": "release",
-   "seq": [
-    {
-     "do": "pre-flight",
-     "reads": [
-      "release commit",
-      "settings",
-      "working tree",
-      "working branch",
-      {
-       "place": "release branch",
-       "when": {
-        "not": "trunk flow"
-       }
-      },
-      "tags",
-      "origin",
-      "remote-tracking branches"
-     ],
-     "changes": [
-      "remote-tracking branches"
-     ],
-     "handles": [
-      {
-       "when": {
-        "any": [
-         {
-          "not": "the last commit is a release commit"
-         },
-         "settings are invalid",
-         "the tree is dirty",
-         "the working branch is unfit",
-         "the release branch has diverged",
-         "a tag does not name a version",
-         "origin does not answer"
-        ]
-       },
-       "then": "refuse",
-       "hold": {
-        "file": "internal/release/release_test.go",
-        "test": "TestRefusals"
-       }
-      },
-      {
-       "when": "the branch is not the default",
-       "then": "refuse",
-       "says": "trunk flow refuses to run on any branch but the default branch",
-       "hold": {
-        "file": "internal/release/release_test.go",
-        "test": "TestTrunkFlowRefusesNonDefaultBranch"
-       }
-      },
-      {
-       "when": "the remote-tracking branches are stale",
-       "then": "accept",
-       "because": "pre-flight fetches, which brings them up to date"
-      }
-     ]
-    },
-    {
-     "says": "in trunk flow there is no merge: the release tags and pushes the default branch",
-     "otherwise": null,
-     "choose": [
-      {
-       "when": {
-        "all": [
-         "dry run",
-         {
-          "not": "trunk flow"
-         }
-        ]
-       },
-       "run": {
-        "do": "rehearse merge",
-        "says": "a release dry run rehearses the merge against origin's release branch when there is no local one",
-        "reads": [
-         "working branch",
-         "release branch",
-         "remote-tracking branches"
-        ],
-        "handles": [
-         {
-          "when": "the release branch cannot be fast-forwarded",
-          "then": "refuse",
-          "hold": {
-           "file": "internal/release/release_test.go",
-           "test": "TestDryRunRehearsesAReleaseBranchThatIsOnlyOnOrigin"
-          }
-         }
-        ]
-       }
-      },
-      {
-       "when": {
-        "not": "trunk flow"
-       },
-       "run": {
-        "do": "merge",
-        "reads": [
-         "working branch",
-         "release branch",
-         "remote-tracking branches"
-        ],
-        "changes": [
-         {
-          "place": "working tree",
-          "later": "undone",
-          "says": "a failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out",
-          "hold": {
-           "file": "internal/release/release_test.go",
-           "test": "TestRejectedPushRollsEverythingBack"
-          }
-         },
-         {
-          "place": "release branch",
-          "later": "undone"
-         }
-        ],
-        "handles": [
-         {
-          "when": "the release branch cannot be fast-forwarded",
-          "then": "refuse",
-          "hold": {
-           "file": "internal/release/release_test.go",
-           "test": "TestDivergedReleaseBranchRefused"
-          }
-         }
-        ]
-       }
-      }
-     ]
-    },
-    {
-     "do": "preRelease hook",
-     "reads": [
-      "settings",
-      "release commit"
-     ],
-     "handles": [
-      {
-       "when": "the preRelease command fails",
-       "then": "refuse"
-      }
-     ]
-    },
-    {
-     "do": "tag",
-     "when": {
-      "not": "dry run"
-     },
-     "reads": [
-      "release commit",
-      "tags"
-     ],
-     "changes": [
-      {
-       "place": "tags",
-       "how": "create",
-       "later": "undone"
-      }
-     ],
-     "handles": [
-      {
-       "when": {
-        "any": [
-         "tags already has the record",
-         "the tag cannot be created"
-        ]
-       },
-       "then": "refuse",
-       "hold": {
-        "file": "internal/release/release_test.go",
-        "test": "TestRefusals"
-       }
-      }
-     ]
-    },
-    {
-     "do": "prePush hook",
-     "when": {
-      "not": "dry run"
-     },
-     "reads": [
-      "settings",
-      "release commit"
-     ],
-     "handles": [
-      {
-       "when": "the prePush command fails",
-       "then": "refuse",
-       "hold": {
-        "file": "internal/release/release_test.go",
-        "test": "TestFailingPrePushCleansUp"
-       }
-      }
-     ]
-    },
-    {
-     "do": "push",
-     "when": {
-      "not": "dry run"
-     },
-     "says": "the release branch and the tag are pushed together",
-     "reads": [
-      {
-       "place": "release branch",
-       "when": {
-        "not": "trunk flow"
-       }
-      },
-      "tags",
-      {
-       "place": "working branch",
-       "when": "trunk flow"
-      }
-     ],
-     "changes": [
-      {
-       "place": "origin",
-       "later": "stands",
-       "because": "once the release branch and the tag are on origin the release stands"
-      }
-     ],
-     "handles": [
-      {
-       "when": "origin rejects the push",
-       "then": "refuse",
-       "hold": {
-        "file": "internal/release/release_test.go",
-        "test": "TestRejectedPushRollsEverythingBack"
-       }
-      }
-     ]
-    },
-    {
-     "do": "switch back",
-     "when": {
-      "all": [
-       {
-        "not": "dry run"
-       },
-       {
-        "not": "trunk flow"
-       }
-      ]
-     },
-     "reads": [
-      "working branch"
-     ],
-     "changes": [
-      "working tree"
-     ],
-     "handles": [
-      {
-       "when": "the switch back fails",
-       "then": "warn",
-       "says": "once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is a warning"
-      }
-     ]
-    },
-    {
-     "do": "push working branch",
-     "when": {
-      "all": [
-       {
-        "not": "dry run"
-       },
-       {
-        "not": "trunk flow"
-       }
-      ]
-     },
-     "reads": [
-      "working branch"
-     ],
-     "changes": [
-      "origin"
-     ],
-     "handles": [
-      {
-       "when": "the push of the working branch fails",
-       "then": "warn"
-      }
-     ]
-    }
-   ]
-  },
-  "ship": {
-   "name": "ship",
-   "seq": [
+  "runs": [
     "changelog",
-    "release"
-   ]
-  }
- },
- "runs": [
-  "changelog",
-  "release",
-  "ship"
- ],
- "expects": [
-  {
-   "name": "changelog with --dry-run writes nothing",
-   "in": "changelog",
-   "when": "dry run",
-   "never changes": [
-    "working tree",
-    "tags",
-    "origin",
-    "remote-tracking branches",
-    "release branch",
-    "changelog file",
-    "version files",
-    "release commit"
-   ],
-   "says": "changelog with --dry-run prints the section to standard output and writes nothing",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestDryRunPrintsSectionToStdout"
-   }
-  },
-  {
-   "name": "--undo with --dry-run changes nothing",
-   "in": "changelog",
-   "when": {
-    "all": [
-     "undo",
-     "dry run"
-    ]
-   },
-   "never changes": [
-    "working tree",
-    "tags",
-    "origin",
-    "remote-tracking branches",
-    "release branch",
-    "changelog file",
-    "version files",
-    "release commit"
-   ],
-   "says": "--undo with --dry-run makes the same checks and changes nothing",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestUndoWithDryRunChangesNothing"
-   }
-  },
-  {
-   "name": "a release dry run merges nothing, tags nothing and pushes nothing",
-   "in": "release",
-   "when": "dry run",
-   "never changes": [
-    "release branch",
-    "working tree",
-    "tags",
-    "origin"
-   ],
-   "says": "release with --dry-run merges nothing, tags nothing and pushes nothing",
-   "hold": {
-    "file": "internal/release/release_test.go",
-    "test": "TestDryRunTouchesNothing"
-   }
-  },
-  {
-   "name": "a release ends with the tag and the branches on origin",
-   "in": "release",
-   "when": {
-    "not": "dry run"
-   },
-   "on": "success",
-   "ends": {
-    "origin": "changed",
-    "tags": "created"
-   },
-   "says": "a release ends on the working branch, with the tag, the release branch and the working branch all on origin",
-   "hold": {
-    "file": "internal/release/release_test.go",
-    "test": "TestMergeFlowReleases"
-   }
-  },
-  {
-   "name": "preRelease runs before the tag exists",
-   "in": "release",
-   "before": "preRelease hook",
-   "place": "tags",
-   "is": "untouched",
-   "says": "preRelease runs before the tag exists, and prePush runs with the tag in existence",
-   "hold": {
-    "file": "internal/release/release_test.go",
-    "test": "TestHooks"
-   }
-  },
-  {
-   "name": "prePush runs with the tag in existence",
-   "in": "release",
-   "before": "prePush hook",
-   "place": "tags",
-   "is": "created",
-   "hold": {
-    "file": "internal/release/release_test.go",
-    "test": "TestHooks"
-   }
-  }
- ],
- "rules": [
-  {
-   "rule": "a breaking change bumps major, a feat bumps minor, and anything else bumps patch",
-   "about": "infer version",
-   "says": "a breaking change bumps major, a feat bumps minor, and anything else bumps patch",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestBumpInference"
-   }
-  },
-  {
-   "rule": "--bump overrides the inferred version, and the run names the override",
-   "about": "infer version",
-   "says": "--bump overrides the inferred version, and the run names the override",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestBumpOverrideAndValidation"
-   }
-  },
-  {
-   "rule": "--exclude drops commits before the version is inferred",
-   "about": "infer version",
-   "says": "--exclude drops commits before the version is inferred",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestExcludeAffectsBump"
-   }
-  },
-  {
-   "rule": "with no version tag, the first release covers the whole history",
-   "about": "infer version",
-   "says": "with no version tag, the first release covers the whole history",
-   "hold": {
-    "file": "internal/changelog/changelog_test.go",
-    "test": "TestFirstReleaseCoversAllHistory"
-   }
-  },
-  {
-   "rule": "a preRelease hook that commits produces a commit the tag then covers",
-   "about": "preRelease hook",
-   "says": "a preRelease hook that commits produces a commit the tag then covers"
-  }
- ]
+    "release",
+    "ship"
+  ],
+  "expects": [
+    {
+      "name": "changelog with --dry-run writes nothing",
+      "in": "changelog",
+      "when": "dry run",
+      "never changes": [
+        "working tree",
+        "tags",
+        "origin",
+        "remote-tracking branches",
+        "release branch",
+        "changelog file",
+        "version files",
+        "release commit"
+      ],
+      "says": "changelog with --dry-run prints the section to standard output and writes nothing",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestDryRunPrintsSectionToStdout"
+      }
+    },
+    {
+      "name": "--undo with --dry-run changes nothing",
+      "in": "changelog",
+      "when": {
+        "all": [
+          "undo",
+          "dry run"
+        ]
+      },
+      "never changes": [
+        "working tree",
+        "tags",
+        "origin",
+        "remote-tracking branches",
+        "release branch",
+        "changelog file",
+        "version files",
+        "release commit"
+      ],
+      "says": "--undo with --dry-run makes the same checks and changes nothing",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestUndoWithDryRunChangesNothing"
+      }
+    },
+    {
+      "name": "a release dry run merges nothing, tags nothing and pushes nothing",
+      "in": "release",
+      "when": "dry run",
+      "never changes": [
+        "release branch",
+        "working tree",
+        "tags",
+        "origin"
+      ],
+      "says": "release with --dry-run merges nothing, tags nothing and pushes nothing",
+      "hold": {
+        "file": "internal/release/release_test.go",
+        "test": "TestDryRunTouchesNothing"
+      }
+    },
+    {
+      "name": "a release ends with the tag and the branches on origin",
+      "in": "release",
+      "when": {
+        "not": "dry run"
+      },
+      "on": "success",
+      "ends": {
+        "origin": "changed",
+        "tags": "created"
+      },
+      "says": "a release ends on the working branch, with the tag, the release branch and the working branch all on origin",
+      "hold": {
+        "file": "internal/release/release_test.go",
+        "test": "TestMergeFlowReleases"
+      }
+    },
+    {
+      "name": "preRelease runs before the tag exists",
+      "in": "release",
+      "before": "preRelease hook",
+      "place": "tags",
+      "is": "untouched",
+      "says": "preRelease runs before the tag exists, and prePush runs with the tag in existence",
+      "hold": {
+        "file": "internal/release/release_test.go",
+        "test": "TestHooks"
+      }
+    },
+    {
+      "name": "prePush runs with the tag in existence",
+      "in": "release",
+      "before": "prePush hook",
+      "place": "tags",
+      "is": "created",
+      "hold": {
+        "file": "internal/release/release_test.go",
+        "test": "TestHooks"
+      }
+    }
+  ],
+  "rules": [
+    {
+      "rule": "a breaking change bumps major, a feat bumps minor, and anything else bumps patch",
+      "about": "infer version",
+      "says": "a breaking change bumps major, a feat bumps minor, and anything else bumps patch",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestBumpInference"
+      }
+    },
+    {
+      "rule": "--bump overrides the inferred version, and the run names the override",
+      "about": "infer version",
+      "says": "--bump overrides the inferred version, and the run names the override",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestBumpOverrideAndValidation"
+      }
+    },
+    {
+      "rule": "--exclude drops commits before the version is inferred",
+      "about": "infer version",
+      "says": "--exclude drops commits before the version is inferred",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestExcludeAffectsBump"
+      }
+    },
+    {
+      "rule": "with no version tag, the first release covers the whole history",
+      "about": "infer version",
+      "says": "with no version tag, the first release covers the whole history",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestFirstReleaseCoversAllHistory"
+      }
+    },
+    {
+      "rule": "a preRelease hook that commits produces a commit the tag then covers",
+      "about": "preRelease hook",
+      "says": "a preRelease hook that commits produces a commit the tag then covers"
+    }
+  ]
 }

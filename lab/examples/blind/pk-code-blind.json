@@ -1,397 +1,1232 @@
 {
- "system": "pk",
- "reports": "message",
- "places": [
-  {"name": "settings", "kind": "outside"},
-  {"name": "working branch", "kind": "outside"},
-  {"name": "origin address", "kind": "outside"},
-  {"name": "working tree", "kind": "lasting"},
-  {"name": "origin", "kind": "lasting"},
-  {"name": "remote-tracking branches", "kind": "lasting"},
-  {"name": "release branch", "kind": "lasting"},
-  {"name": "changelog file", "kind": "lasting"},
-  {"name": "version files", "kind": "lasting"},
-  {"name": "release commit", "kind": "lasting"},
-  {"name": "checked-out branch", "kind": "lasting"},
-  {"name": "next version", "kind": "run"},
-  {"name": "commits since tag", "kind": "run"},
-  {"name": "section", "kind": "run"},
-  {"name": "message", "kind": "report"},
-  {"name": "standard output", "kind": "report"},
-  {"name": "tags", "kind": "lasting", "keyed": true}
- ],
- "facts": [
-  {"name": "dry run", "says": "--dry-run is given"},
-  {"name": "undo", "says": "--undo is given"},
-  {"name": "nothing to release", "says": "no conventional commit of a visible type is left to release"},
-  {"name": "only hidden commits remain", "says": "conventional commits are left, and every one is of a hidden or unmapped type", "only": "nothing to release"},
-  {"name": "no local tags", "says": "the clone has no tags"},
-  {"name": "origin has tags", "says": "origin can be asked for its tags and lists at least one"},
-  {"name": "trunk flow", "says": "release.branch is not set"},
-  {"name": "origin names no default branch", "says": "origin advertises no HEAD symref, or cannot be asked for it"},
-  {"name": "the release branch is on origin", "says": "origin has a branch named by release.branch"},
-  {"name": "the last commit is a release commit", "says": "HEAD carries a Release-Tag trailer", "about": "release commit"},
-
-  {"name": "the directory is not in a git repository", "says": "no .git entry at or above the project directory", "fault": true},
-  {"name": "there are no settings", "says": "no .pk.json at the repository root", "fault": true, "about": "settings"},
-  {"name": "settings are invalid", "says": "a .pk.json with an unknown key or a value outside the allowed ones", "fault": true, "about": "settings"},
-
-  {"name": "the working branch is unfit", "says": "no branch checked out, a protected branch, or a branch that is behind origin or does not hold the last version tag", "fault": true, "about": "working branch"},
-  {"name": "no branch is checked out", "says": "the working branch is unfit because HEAD is detached", "only": "the working branch is unfit"},
-  {"name": "the branch is behind origin", "says": "the working branch is unfit because origin's copy of it is not in its history", "only": {"all": ["the working branch is unfit", {"not": "no branch is checked out"}]}},
-  {"name": "only guard.branches protects the branch", "says": "the working branch is unfit because guard.branches lists it, and it is not release.branch", "only": {"all": ["the working branch is unfit", {"not": "no branch is checked out"}, {"not": "the branch is behind origin"}, {"not": "trunk flow"}]}},
-  {"name": "only release.branch protects the branch", "says": "the working branch is unfit because it is release.branch, and guard.branches does not list it", "only": {"all": ["the working branch is unfit", {"not": "no branch is checked out"}, {"not": "the branch is behind origin"}, {"not": "only guard.branches protects the branch"}, {"not": "trunk flow"}]}},
-  {"name": "the branch is not the default", "says": "in trunk flow, the branch is not origin's default branch", "fault": true, "about": "working branch", "only": "trunk flow"},
-
-  {"name": "the tree is dirty", "says": "a tree with uncommitted changes", "fault": true, "about": "working tree"},
-  {"name": "a tag does not name a version", "says": "a tag that does not name a version", "fault": true, "about": "tags"},
-  {"name": "origin does not answer", "says": "a remote that does not answer, or lacks the working branch", "fault": true, "about": "origin"},
-  {"name": "the remote-tracking branches are stale", "says": "a record of origin's branches that origin has moved past", "fault": true, "about": "remote-tracking branches"},
-  {"name": "the release branch has diverged", "says": "a branch that cannot be resolved, or has diverged from the working branch", "fault": true, "about": "release branch"},
-  {"name": "the changelog file cannot be read", "says": "a CHANGELOG.md that cannot be read", "fault": true, "about": "changelog file"},
-  {"name": "a version file has no version field", "says": "a JSON file with no version field at its root", "fault": true, "about": "version files"},
-  {"name": "origin has no address", "says": "no address for origin, so the section gets no link", "fault": true, "about": "origin address"},
-  {"name": "the trailer is not a version", "says": "a Release-Tag trailer on HEAD whose value does not parse and render back as a version", "fault": true, "about": "release commit", "only": "the last commit is a release commit"},
-
-  {"name": "origin's tags cannot be fetched", "fault": true},
-  {"name": "the last version tag is not in the branch's history", "fault": true},
-  {"name": "the --bump value is not a level", "says": "--bump is given a value other than major, minor or patch", "fault": true},
-  {"name": "an --exclude entry matches no commit", "says": "--exclude names a hash that is not among the commits since the tag", "fault": true},
-  {"name": "the postVersion command fails", "fault": true},
-  {"name": "the changelog file cannot be written", "says": "writing CHANGELOG.md fails", "fault": true},
-  {"name": "the preCommit command fails", "fault": true},
-  {"name": "the commit cannot be made", "fault": true},
-  {"name": "the commit is pushed, tagged or merged", "fault": true},
-  {"name": "the reset fails", "says": "git reset --hard HEAD~1 fails", "fault": true},
-  {"name": "the switch to the release branch fails", "says": "git switch to release.branch fails", "fault": true},
-  {"name": "the release branch cannot be fast-forwarded", "fault": true},
-  {"name": "the preRelease command fails", "fault": true},
-  {"name": "the tag cannot be created", "fault": true},
-  {"name": "the prePush command fails", "fault": true},
-  {"name": "origin rejects the push", "fault": true},
-  {"name": "the switch back fails", "fault": true},
-  {"name": "the push of the working branch fails", "fault": true}
- ],
- "parts": {
-  "say nothing to release": {
-   "do": "say nothing to release",
-   "reads": ["commits since tag"],
-   "changes": ["message"]
-  },
-
-  "changelog": {
-   "seq": [
+  "system": "pk",
+  "reports": "message",
+  "places": [
     {
-     "do": "load settings",
-     "reads": ["settings"],
-     "handles": [
-      {"when": "the directory is not in a git repository", "then": "refuse"},
-      {"when": "there are no settings", "then": "refuse"},
-      {"when": "settings are invalid", "then": "refuse"}
-     ]
+      "name": "settings",
+      "kind": "outside",
+      "is": "one"
     },
     {
-     "choose": [{"when": "undo", "run": "unwind a release commit"}],
-     "otherwise": "stage a release"
+      "name": "working branch",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "origin address",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "working tree",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "origin",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "remote-tracking branches",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "release branch",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "changelog file",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "version files",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "release commit",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "checked-out branch",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "next version",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "commits since tag",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "section",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "message",
+      "kind": "report",
+      "is": "one"
+    },
+    {
+      "name": "standard output",
+      "kind": "report",
+      "is": "one"
+    },
+    {
+      "name": "tags",
+      "kind": "lasting",
+      "is": "many"
     }
-   ]
-  },
-
-  "unwind a release commit": {
-   "do": "undo",
-   "reads": ["release commit", "working tree", "working branch", "tags", "remote-tracking branches"],
-   "changes": [
-    {"place": "release commit", "how": "delete", "when": {"not": "dry run"}, "makes": {"the last commit is a release commit": false}},
-    {"place": "changelog file", "when": {"not": "dry run"}},
-    {"place": "version files", "when": {"not": "dry run"}}
-   ],
-   "handles": [
-    {"when": {"not": "the last commit is a release commit"}, "then": "refuse"},
-    {"when": "the trailer is not a version", "then": "refuse"},
-    {"when": "the tree is dirty", "then": "refuse"},
-    {"when": {"all": ["the working branch is unfit", "no branch is checked out"]}, "then": "accept", "because": "undo counts every holder of the commit when HEAD is detached, and goes on when there is none"},
-    {"when": "the commit is pushed, tagged or merged", "then": "refuse"},
-    {"when": {"all": ["the reset fails", {"not": "dry run"}]}, "then": "refuse"}
-   ]
-  },
-
-  "stage a release": {
-   "seq": [
+  ],
+  "facts": [
     {
-     "do": "branch checks",
-     "reads": [
-      {"place": "working tree", "when": {"not": "dry run"}},
-      "working branch",
-      "settings",
-      {"place": "origin", "when": {"not": "no branch is checked out"}}
-     ],
-     "handles": [
-      {"when": {"all": ["the tree is dirty", {"not": "dry run"}]}, "then": "refuse"},
-      {"when": {"all": ["the working branch is unfit", "no branch is checked out", "dry run"]}, "then": "accept", "because": "a dry run writes nothing, so it reads the commits from a detached HEAD and skips the checks that need a branch"},
-      {"when": {"all": ["the working branch is unfit", "no branch is checked out"]}, "then": "refuse"},
-      {"when": {"all": ["the working branch is unfit", {"not": "the branch is behind origin"}, {"not": "only release.branch protects the branch"}]}, "then": "refuse"},
-      {"when": {"all": ["the branch is not the default", "origin names no default branch"]}, "then": "accept", "because": "CheckTrunkBranch returns no error when origin names no default branch, so the check does not run"},
-      {"when": "the branch is not the default", "then": "refuse"},
-      {"when": "origin does not answer", "then": "refuse"}
-     ]
+      "name": "dry run",
+      "says": "--dry-run is given"
     },
     {
-     "do": "fetch tags",
-     "when": "no local tags",
-     "reads": ["origin"],
-     "changes": [
-      {"place": "tags", "when": {"not": "origin's tags cannot be fetched"}},
-      {"place": "remote-tracking branches", "when": {"not": "origin's tags cannot be fetched"}}
-     ],
-     "handles": [
-      {"when": {"all": ["origin's tags cannot be fetched", "origin has tags"]}, "then": "refuse"},
-      {"when": "origin's tags cannot be fetched", "then": "accept", "because": "when the fetch fails and origin lists no tags, or cannot be asked, the run goes on as a first release"}
-     ]
+      "name": "undo",
+      "says": "--undo is given"
     },
     {
-     "do": "read commits since tag",
-     "reads": ["tags", "working branch"],
-     "changes": ["commits since tag"],
-     "handles": [
-      {"when": "a tag does not name a version", "then": "accept", "because": "version.Latest passes over a tag name that does not parse and render back as a version"},
-      {"when": "the last version tag is not in the branch's history", "then": "refuse"}
-     ]
+      "name": "nothing to release",
+      "says": "no conventional commit of a visible type is left to release"
     },
     {
-     "choose": [
-      {"when": {"all": ["nothing to release", {"not": "only hidden commits remain"}]}, "run": "say nothing to release"}
-     ],
-     "otherwise": {
-      "seq": [
-       {
-        "do": "infer version",
-        "reads": ["commits since tag"],
-        "changes": ["next version"],
-        "handles": [
-         {"when": "an --exclude entry matches no commit", "then": "tell"},
-         {"when": "the --bump value is not a level", "then": "refuse"}
-        ]
-       },
-       {
-        "do": "pending release check",
-        "when": {"not": "dry run"},
-        "reads": ["release commit"],
-        "handles": [
-         {"when": {"all": ["the last commit is a release commit", {"not": "the trailer is not a version"}]}, "then": "refuse"}
-        ]
-       },
-       {
-        "choose": [
-         {"when": "nothing to release", "run": "say nothing to release"}
-        ],
-        "otherwise": {
-         "seq": [
+      "name": "only hidden commits remain",
+      "says": "conventional commits are left, and every one is of a hidden or unmapped type",
+      "only": "nothing to release"
+    },
+    {
+      "name": "no local tags",
+      "says": "the clone has no tags"
+    },
+    {
+      "name": "origin has tags",
+      "says": "origin can be asked for its tags and lists at least one"
+    },
+    {
+      "name": "trunk flow",
+      "says": "release.branch is not set"
+    },
+    {
+      "name": "origin names no default branch",
+      "says": "origin advertises no HEAD symref, or cannot be asked for it"
+    },
+    {
+      "name": "the release branch is on origin",
+      "says": "origin has a branch named by release.branch"
+    },
+    {
+      "name": "the last commit is a release commit",
+      "says": "HEAD carries a Release-Tag trailer",
+      "about": "release commit"
+    },
+    {
+      "name": "the directory is not in a git repository",
+      "says": "no .git entry at or above the project directory",
+      "fault": true
+    },
+    {
+      "name": "there are no settings",
+      "says": "no .pk.json at the repository root",
+      "fault": true,
+      "about": "settings"
+    },
+    {
+      "name": "settings are invalid",
+      "says": "a .pk.json with an unknown key or a value outside the allowed ones",
+      "fault": true,
+      "about": "settings"
+    },
+    {
+      "name": "the working branch is unfit",
+      "says": "no branch checked out, a protected branch, or a branch that is behind origin or does not hold the last version tag",
+      "fault": true,
+      "about": "working branch"
+    },
+    {
+      "name": "no branch is checked out",
+      "says": "the working branch is unfit because HEAD is detached",
+      "only": "the working branch is unfit"
+    },
+    {
+      "name": "the branch is behind origin",
+      "says": "the working branch is unfit because origin's copy of it is not in its history",
+      "only": {
+        "all": [
+          "the working branch is unfit",
           {
-           "do": "build section",
-           "reads": ["commits since tag", "next version", "settings"],
-           "changes": ["section"]
+            "not": "no branch is checked out"
+          }
+        ]
+      }
+    },
+    {
+      "name": "only guard.branches protects the branch",
+      "says": "the working branch is unfit because guard.branches lists it, and it is not release.branch",
+      "only": {
+        "all": [
+          "the working branch is unfit",
+          {
+            "not": "no branch is checked out"
           },
           {
-           "choose": [
-            {
-             "when": "dry run",
-             "run": {
-              "do": "print section",
-              "reads": ["section"],
-              "changes": ["standard output"]
-             }
-            }
-           ],
-           "otherwise": "write the release"
+            "not": "the branch is behind origin"
+          },
+          {
+            "not": "trunk flow"
           }
-         ]
+        ]
+      }
+    },
+    {
+      "name": "only release.branch protects the branch",
+      "says": "the working branch is unfit because it is release.branch, and guard.branches does not list it",
+      "only": {
+        "all": [
+          "the working branch is unfit",
+          {
+            "not": "no branch is checked out"
+          },
+          {
+            "not": "the branch is behind origin"
+          },
+          {
+            "not": "only guard.branches protects the branch"
+          },
+          {
+            "not": "trunk flow"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the branch is not the default",
+      "says": "in trunk flow, the branch is not origin's default branch",
+      "fault": true,
+      "about": "working branch",
+      "only": "trunk flow"
+    },
+    {
+      "name": "the tree is dirty",
+      "says": "a tree with uncommitted changes",
+      "fault": true,
+      "about": "working tree"
+    },
+    {
+      "name": "a tag does not name a version",
+      "says": "a tag that does not name a version",
+      "fault": true,
+      "about": "tags"
+    },
+    {
+      "name": "origin does not answer",
+      "says": "a remote that does not answer, or lacks the working branch",
+      "fault": true,
+      "about": "origin"
+    },
+    {
+      "name": "the remote-tracking branches are stale",
+      "says": "a record of origin's branches that origin has moved past",
+      "fault": true,
+      "about": "remote-tracking branches"
+    },
+    {
+      "name": "the release branch has diverged",
+      "says": "a branch that cannot be resolved, or has diverged from the working branch",
+      "fault": true,
+      "about": "release branch"
+    },
+    {
+      "name": "the changelog file cannot be read",
+      "says": "a CHANGELOG.md that cannot be read",
+      "fault": true,
+      "about": "changelog file"
+    },
+    {
+      "name": "a version file has no version field",
+      "says": "a JSON file with no version field at its root",
+      "fault": true,
+      "about": "version files"
+    },
+    {
+      "name": "origin has no address",
+      "says": "no address for origin, so the section gets no link",
+      "fault": true,
+      "about": "origin address"
+    },
+    {
+      "name": "the trailer is not a version",
+      "says": "a Release-Tag trailer on HEAD whose value does not parse and render back as a version",
+      "fault": true,
+      "about": "release commit",
+      "only": "the last commit is a release commit"
+    },
+    {
+      "name": "origin's tags cannot be fetched",
+      "fault": true
+    },
+    {
+      "name": "the last version tag is not in the branch's history",
+      "fault": true
+    },
+    {
+      "name": "the --bump value is not a level",
+      "says": "--bump is given a value other than major, minor or patch",
+      "fault": true
+    },
+    {
+      "name": "an --exclude entry matches no commit",
+      "says": "--exclude names a hash that is not among the commits since the tag",
+      "fault": true
+    },
+    {
+      "name": "the postVersion command fails",
+      "fault": true
+    },
+    {
+      "name": "the changelog file cannot be written",
+      "says": "writing CHANGELOG.md fails",
+      "fault": true
+    },
+    {
+      "name": "the preCommit command fails",
+      "fault": true
+    },
+    {
+      "name": "the commit cannot be made",
+      "fault": true
+    },
+    {
+      "name": "the commit is pushed, tagged or merged",
+      "fault": true
+    },
+    {
+      "name": "the reset fails",
+      "says": "git reset --hard HEAD~1 fails",
+      "fault": true
+    },
+    {
+      "name": "the switch to the release branch fails",
+      "says": "git switch to release.branch fails",
+      "fault": true
+    },
+    {
+      "name": "the release branch cannot be fast-forwarded",
+      "fault": true
+    },
+    {
+      "name": "the preRelease command fails",
+      "fault": true
+    },
+    {
+      "name": "the tag cannot be created",
+      "fault": true
+    },
+    {
+      "name": "the prePush command fails",
+      "fault": true
+    },
+    {
+      "name": "origin rejects the push",
+      "fault": true
+    },
+    {
+      "name": "the switch back fails",
+      "fault": true
+    },
+    {
+      "name": "the push of the working branch fails",
+      "fault": true
+    }
+  ],
+  "parts": {
+    "say nothing to release": {
+      "do": "say nothing to release",
+      "reads": [
+        "commits since tag"
+      ],
+      "changes": [
+        {
+          "place": "message",
+          "how": "create"
         }
-       }
       ]
-     }
+    },
+    "changelog": {
+      "seq": [
+        {
+          "do": "load settings",
+          "reads": [
+            "settings"
+          ],
+          "handles": [
+            {
+              "when": "the directory is not in a git repository",
+              "then": "refuse"
+            },
+            {
+              "when": "there are no settings",
+              "then": "refuse"
+            },
+            {
+              "when": "settings are invalid",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "choose": [
+            {
+              "when": "undo",
+              "run": "unwind a release commit"
+            }
+          ],
+          "otherwise": "stage a release"
+        }
+      ]
+    },
+    "unwind a release commit": {
+      "do": "undo",
+      "reads": [
+        "release commit",
+        "working tree",
+        "working branch",
+        "tags",
+        "remote-tracking branches"
+      ],
+      "changes": [
+        {
+          "place": "release commit",
+          "how": "destroy",
+          "when": {
+            "not": "dry run"
+          },
+          "makes": {
+            "the last commit is a release commit": false
+          }
+        },
+        {
+          "place": "changelog file",
+          "when": {
+            "not": "dry run"
+          },
+          "how": "replace"
+        },
+        {
+          "place": "version files",
+          "when": {
+            "not": "dry run"
+          },
+          "how": "replace"
+        }
+      ],
+      "handles": [
+        {
+          "when": {
+            "not": "the last commit is a release commit"
+          },
+          "then": "refuse"
+        },
+        {
+          "when": "the trailer is not a version",
+          "then": "refuse"
+        },
+        {
+          "when": "the tree is dirty",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "the working branch is unfit",
+              "no branch is checked out"
+            ]
+          },
+          "then": "accept",
+          "because": "undo counts every holder of the commit when HEAD is detached, and goes on when there is none"
+        },
+        {
+          "when": "the commit is pushed, tagged or merged",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "the reset fails",
+              {
+                "not": "dry run"
+              }
+            ]
+          },
+          "then": "refuse"
+        }
+      ]
+    },
+    "stage a release": {
+      "seq": [
+        {
+          "do": "branch checks",
+          "reads": [
+            {
+              "place": "working tree",
+              "when": {
+                "not": "dry run"
+              }
+            },
+            "working branch",
+            "settings",
+            {
+              "place": "origin",
+              "when": {
+                "not": "no branch is checked out"
+              }
+            }
+          ],
+          "handles": [
+            {
+              "when": {
+                "all": [
+                  "the tree is dirty",
+                  {
+                    "not": "dry run"
+                  }
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  "no branch is checked out",
+                  "dry run"
+                ]
+              },
+              "then": "accept",
+              "because": "a dry run writes nothing, so it reads the commits from a detached HEAD and skips the checks that need a branch"
+            },
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  "no branch is checked out"
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  {
+                    "not": "the branch is behind origin"
+                  },
+                  {
+                    "not": "only release.branch protects the branch"
+                  }
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the branch is not the default",
+                  "origin names no default branch"
+                ]
+              },
+              "then": "accept",
+              "because": "CheckTrunkBranch returns no error when origin names no default branch, so the check does not run"
+            },
+            {
+              "when": "the branch is not the default",
+              "then": "refuse"
+            },
+            {
+              "when": "origin does not answer",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "fetch tags",
+          "when": "no local tags",
+          "reads": [
+            "origin"
+          ],
+          "changes": [
+            {
+              "place": "tags",
+              "when": {
+                "not": "origin's tags cannot be fetched"
+              },
+              "how": "create"
+            },
+            {
+              "place": "remote-tracking branches",
+              "when": {
+                "not": "origin's tags cannot be fetched"
+              },
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": {
+                "all": [
+                  "origin's tags cannot be fetched",
+                  "origin has tags"
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": "origin's tags cannot be fetched",
+              "then": "accept",
+              "because": "when the fetch fails and origin lists no tags, or cannot be asked, the run goes on as a first release"
+            }
+          ]
+        },
+        {
+          "do": "read commits since tag",
+          "reads": [
+            "tags",
+            "working branch"
+          ],
+          "changes": [
+            {
+              "place": "commits since tag",
+              "how": "create"
+            }
+          ],
+          "handles": [
+            {
+              "when": "a tag does not name a version",
+              "then": "accept",
+              "because": "version.Latest passes over a tag name that does not parse and render back as a version"
+            },
+            {
+              "when": "the last version tag is not in the branch's history",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "choose": [
+            {
+              "when": {
+                "all": [
+                  "nothing to release",
+                  {
+                    "not": "only hidden commits remain"
+                  }
+                ]
+              },
+              "run": "say nothing to release"
+            }
+          ],
+          "otherwise": {
+            "seq": [
+              {
+                "do": "infer version",
+                "reads": [
+                  "commits since tag"
+                ],
+                "changes": [
+                  {
+                    "place": "next version",
+                    "how": "create"
+                  }
+                ],
+                "handles": [
+                  {
+                    "when": "an --exclude entry matches no commit",
+                    "then": "tell"
+                  },
+                  {
+                    "when": "the --bump value is not a level",
+                    "then": "refuse"
+                  }
+                ]
+              },
+              {
+                "do": "pending release check",
+                "when": {
+                  "not": "dry run"
+                },
+                "reads": [
+                  "release commit"
+                ],
+                "handles": [
+                  {
+                    "when": {
+                      "all": [
+                        "the last commit is a release commit",
+                        {
+                          "not": "the trailer is not a version"
+                        }
+                      ]
+                    },
+                    "then": "refuse"
+                  }
+                ]
+              },
+              {
+                "choose": [
+                  {
+                    "when": "nothing to release",
+                    "run": "say nothing to release"
+                  }
+                ],
+                "otherwise": {
+                  "seq": [
+                    {
+                      "do": "build section",
+                      "reads": [
+                        "commits since tag",
+                        "next version",
+                        "settings"
+                      ],
+                      "changes": [
+                        {
+                          "place": "section",
+                          "how": "create"
+                        }
+                      ]
+                    },
+                    {
+                      "choose": [
+                        {
+                          "when": "dry run",
+                          "run": {
+                            "do": "print section",
+                            "reads": [
+                              "section"
+                            ],
+                            "changes": [
+                              {
+                                "place": "standard output",
+                                "how": "create"
+                              }
+                            ]
+                          }
+                        }
+                      ],
+                      "otherwise": "write the release"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "write the release": {
+      "seq": [
+        {
+          "do": "stamp versions",
+          "reads": [
+            "settings",
+            "next version",
+            "version files"
+          ],
+          "changes": [
+            {
+              "place": "version files",
+              "later": "undone",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "a version file has no version field",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "postVersion hook",
+          "reads": [
+            "settings",
+            "next version"
+          ],
+          "changes": [
+            {
+              "place": "working tree",
+              "later": "undone",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the postVersion command fails",
+              "then": "fail"
+            }
+          ]
+        },
+        {
+          "do": "write section",
+          "reads": [
+            "changelog file",
+            "section",
+            "next version",
+            "commits since tag",
+            "origin address"
+          ],
+          "changes": [
+            {
+              "place": "changelog file",
+              "later": "undone",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the changelog file cannot be read",
+              "then": "refuse"
+            },
+            {
+              "when": "origin has no address",
+              "then": "accept",
+              "because": "writeRelease adds the reference link only when git.RepoURL returns an address"
+            },
+            {
+              "when": "the changelog file cannot be written",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "preCommit hook",
+          "reads": [
+            "settings",
+            "next version"
+          ],
+          "changes": [
+            {
+              "place": "working tree",
+              "later": "undone",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the preCommit command fails",
+              "then": "fail"
+            }
+          ]
+        },
+        {
+          "do": "commit",
+          "reads": [
+            "changelog file",
+            "version files",
+            "working tree",
+            "next version"
+          ],
+          "changes": [
+            {
+              "place": "release commit",
+              "makes": {
+                "the last commit is a release commit": true
+              },
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the commit cannot be made",
+              "then": "refuse"
+            }
+          ]
+        }
+      ]
+    },
+    "release": {
+      "seq": [
+        {
+          "do": "pre-flight",
+          "reads": [
+            "working branch",
+            "settings",
+            "release commit",
+            "tags",
+            "working tree",
+            "origin"
+          ],
+          "changes": [
+            {
+              "place": "remote-tracking branches",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the directory is not in a git repository",
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  "no branch is checked out"
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": "there are no settings",
+              "then": "refuse"
+            },
+            {
+              "when": "settings are invalid",
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  {
+                    "not": "the branch is behind origin"
+                  },
+                  {
+                    "not": "only guard.branches protects the branch"
+                  },
+                  {
+                    "not": "trunk flow"
+                  }
+                ]
+              },
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "not": "the last commit is a release commit"
+              },
+              "then": "refuse"
+            },
+            {
+              "when": "the trailer is not a version",
+              "then": "refuse"
+            },
+            {
+              "when": "tags already has the member",
+              "then": "refuse"
+            },
+            {
+              "when": "the tree is dirty",
+              "then": "refuse"
+            },
+            {
+              "when": {
+                "all": [
+                  "the branch is not the default",
+                  "origin names no default branch"
+                ]
+              },
+              "then": "tell"
+            },
+            {
+              "when": "the branch is not the default",
+              "then": "refuse"
+            },
+            {
+              "when": "origin does not answer",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "behind check",
+          "reads": [
+            "working branch",
+            "remote-tracking branches"
+          ],
+          "handles": [
+            {
+              "when": {
+                "all": [
+                  "the working branch is unfit",
+                  "the branch is behind origin"
+                ]
+              },
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "fetch release branch",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              "the release branch is on origin"
+            ]
+          },
+          "reads": [
+            "origin"
+          ],
+          "changes": [
+            {
+              "place": "remote-tracking branches",
+              "how": "replace"
+            }
+          ]
+        },
+        {
+          "do": "release branch check",
+          "when": {
+            "not": "trunk flow"
+          },
+          "reads": [
+            "release branch",
+            {
+              "place": "remote-tracking branches",
+              "when": "the release branch is on origin"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the release branch has diverged",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "last tag check",
+          "reads": [
+            "tags",
+            "working branch"
+          ],
+          "handles": [
+            {
+              "when": "a tag does not name a version",
+              "then": "accept",
+              "because": "version.Latest passes over a tag name that does not parse and render back as a version"
+            },
+            {
+              "when": "the last version tag is not in the branch's history",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "rehearse merge",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              "dry run"
+            ]
+          },
+          "reads": [
+            "release branch",
+            "working branch"
+          ],
+          "handles": [
+            {
+              "when": "the release branch cannot be fast-forwarded",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "merge",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              {
+                "not": "dry run"
+              }
+            ]
+          },
+          "reads": [
+            "working branch",
+            "release branch"
+          ],
+          "changes": [
+            {
+              "place": "checked-out branch",
+              "later": "undone",
+              "how": "replace"
+            },
+            {
+              "place": "release branch",
+              "later": "undone",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the switch to the release branch fails",
+              "then": "refuse"
+            },
+            {
+              "when": "the release branch cannot be fast-forwarded",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "preRelease hook",
+          "reads": [
+            "settings",
+            "release commit"
+          ],
+          "handles": [
+            {
+              "when": "the preRelease command fails",
+              "then": "fail"
+            }
+          ]
+        },
+        {
+          "do": "tag",
+          "when": {
+            "not": "dry run"
+          },
+          "reads": [
+            "release commit"
+          ],
+          "changes": [
+            {
+              "place": "tags",
+              "how": "create",
+              "later": "undone"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the tag cannot be created",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "prePush hook",
+          "when": {
+            "not": "dry run"
+          },
+          "reads": [
+            "settings",
+            "release commit"
+          ],
+          "handles": [
+            {
+              "when": "the prePush command fails",
+              "then": "fail"
+            }
+          ]
+        },
+        {
+          "do": "push",
+          "when": {
+            "not": "dry run"
+          },
+          "reads": [
+            "tags",
+            {
+              "place": "release branch",
+              "when": {
+                "not": "trunk flow"
+              }
+            },
+            {
+              "place": "working branch",
+              "when": "trunk flow"
+            }
+          ],
+          "changes": [
+            {
+              "place": "origin",
+              "how": "replace"
+            },
+            {
+              "place": "remote-tracking branches",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "origin rejects the push",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "switch back",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              {
+                "not": "dry run"
+              }
+            ]
+          },
+          "changes": [
+            {
+              "place": "checked-out branch",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the switch back fails",
+              "then": "warn"
+            }
+          ]
+        },
+        {
+          "do": "push working branch",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              {
+                "not": "dry run"
+              }
+            ]
+          },
+          "reads": [
+            "working branch"
+          ],
+          "changes": [
+            {
+              "place": "origin",
+              "how": "replace"
+            }
+          ],
+          "handles": [
+            {
+              "when": "the push of the working branch fails",
+              "then": "warn"
+            }
+          ]
+        }
+      ]
     }
-   ]
   },
-
-  "write the release": {
-   "seq": [
-    {
-     "do": "stamp versions",
-     "reads": ["settings", "next version", "version files"],
-     "changes": [{"place": "version files", "later": "undone"}],
-     "handles": [
-      {"when": "a version file has no version field", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "postVersion hook",
-     "reads": ["settings", "next version"],
-     "changes": [{"place": "working tree", "later": "undone"}],
-     "handles": [
-      {"when": "the postVersion command fails", "then": "fail"}
-     ]
-    },
-    {
-     "do": "write section",
-     "reads": ["changelog file", "section", "next version", "commits since tag", "origin address"],
-     "changes": [{"place": "changelog file", "later": "undone"}],
-     "handles": [
-      {"when": "the changelog file cannot be read", "then": "refuse"},
-      {"when": "origin has no address", "then": "accept", "because": "writeRelease adds the reference link only when git.RepoURL returns an address"},
-      {"when": "the changelog file cannot be written", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "preCommit hook",
-     "reads": ["settings", "next version"],
-     "changes": [{"place": "working tree", "later": "undone"}],
-     "handles": [
-      {"when": "the preCommit command fails", "then": "fail"}
-     ]
-    },
-    {
-     "do": "commit",
-     "reads": ["changelog file", "version files", "working tree", "next version"],
-     "changes": [
-      {"place": "release commit", "makes": {"the last commit is a release commit": true}}
-     ],
-     "handles": [
-      {"when": "the commit cannot be made", "then": "refuse"}
-     ]
-    }
-   ]
-  },
-
-  "release": {
-   "seq": [
-    {
-     "do": "pre-flight",
-     "reads": ["working branch", "settings", "release commit", "tags", "working tree", "origin"],
-     "changes": ["remote-tracking branches"],
-     "handles": [
-      {"when": "the directory is not in a git repository", "then": "refuse"},
-      {"when": {"all": ["the working branch is unfit", "no branch is checked out"]}, "then": "refuse"},
-      {"when": "there are no settings", "then": "refuse"},
-      {"when": "settings are invalid", "then": "refuse"},
-      {"when": {"all": ["the working branch is unfit", {"not": "the branch is behind origin"}, {"not": "only guard.branches protects the branch"}, {"not": "trunk flow"}]}, "then": "refuse"},
-      {"when": {"not": "the last commit is a release commit"}, "then": "refuse"},
-      {"when": "the trailer is not a version", "then": "refuse"},
-      {"when": "tags already has the record", "then": "refuse"},
-      {"when": "the tree is dirty", "then": "refuse"},
-      {"when": {"all": ["the branch is not the default", "origin names no default branch"]}, "then": "tell"},
-      {"when": "the branch is not the default", "then": "refuse"},
-      {"when": "origin does not answer", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "behind check",
-     "reads": ["working branch", "remote-tracking branches"],
-     "handles": [
-      {"when": {"all": ["the working branch is unfit", "the branch is behind origin"]}, "then": "refuse"}
-     ]
-    },
-    {
-     "do": "fetch release branch",
-     "when": {"all": [{"not": "trunk flow"}, "the release branch is on origin"]},
-     "reads": ["origin"],
-     "changes": ["remote-tracking branches"]
-    },
-    {
-     "do": "release branch check",
-     "when": {"not": "trunk flow"},
-     "reads": [
-      "release branch",
-      {"place": "remote-tracking branches", "when": "the release branch is on origin"}
-     ],
-     "handles": [
-      {"when": "the release branch has diverged", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "last tag check",
-     "reads": ["tags", "working branch"],
-     "handles": [
-      {"when": "a tag does not name a version", "then": "accept", "because": "version.Latest passes over a tag name that does not parse and render back as a version"},
-      {"when": "the last version tag is not in the branch's history", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "rehearse merge",
-     "when": {"all": [{"not": "trunk flow"}, "dry run"]},
-     "reads": ["release branch", "working branch"],
-     "handles": [
-      {"when": "the release branch cannot be fast-forwarded", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "merge",
-     "when": {"all": [{"not": "trunk flow"}, {"not": "dry run"}]},
-     "reads": ["working branch", "release branch"],
-     "changes": [
-      {"place": "checked-out branch", "later": "undone"},
-      {"place": "release branch", "later": "undone"}
-     ],
-     "handles": [
-      {"when": "the switch to the release branch fails", "then": "refuse"},
-      {"when": "the release branch cannot be fast-forwarded", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "preRelease hook",
-     "reads": ["settings", "release commit"],
-     "handles": [
-      {"when": "the preRelease command fails", "then": "fail"}
-     ]
-    },
-    {
-     "do": "tag",
-     "when": {"not": "dry run"},
-     "reads": ["release commit"],
-     "changes": [{"place": "tags", "how": "create", "later": "undone"}],
-     "handles": [
-      {"when": "the tag cannot be created", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "prePush hook",
-     "when": {"not": "dry run"},
-     "reads": ["settings", "release commit"],
-     "handles": [
-      {"when": "the prePush command fails", "then": "fail"}
-     ]
-    },
-    {
-     "do": "push",
-     "when": {"not": "dry run"},
-     "reads": [
-      "tags",
-      {"place": "release branch", "when": {"not": "trunk flow"}},
-      {"place": "working branch", "when": "trunk flow"}
-     ],
-     "changes": ["origin", "remote-tracking branches"],
-     "handles": [
-      {"when": "origin rejects the push", "then": "refuse"}
-     ]
-    },
-    {
-     "do": "switch back",
-     "when": {"all": [{"not": "trunk flow"}, {"not": "dry run"}]},
-     "changes": ["checked-out branch"],
-     "handles": [
-      {"when": "the switch back fails", "then": "warn"}
-     ]
-    },
-    {
-     "do": "push working branch",
-     "when": {"all": [{"not": "trunk flow"}, {"not": "dry run"}]},
-     "reads": ["working branch"],
-     "changes": ["origin"],
-     "handles": [
-      {"when": "the push of the working branch fails", "then": "warn"}
-     ]
-    }
-   ]
-  }
- },
- "runs": ["changelog", "release"]
+  "runs": [
+    "changelog",
+    "release"
+  ]
 }

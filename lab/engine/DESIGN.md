@@ -79,6 +79,9 @@ matter to it. Everything else follows from that one mechanism:
 | Two flags cannot go together | a fact is possible `only` when another holds |
 | Something matters to one run and not another | the fact is possible `only` when `in` that run |
 | A step changes the world | a change `makes` a fact true or false for the rest of the run |
+| A step adds, overwrites or removes | a change says `how`: `create`, `replace` or `destroy` |
+| A step copies | a change says the place its content comes `from` |
+| One thing is part of another | a place says the place it is `in` |
 | A failure after a write puts it back | the change says `later`: `undone`, or `stands` |
 | Several things happen together | they are the changes of one action, which all happen or none do |
 | Two checks have no order | they are answers of one action |
@@ -93,10 +96,10 @@ matter to it. Everything else follows from that one mechanism:
 
 | Part | What it says |
 |---|---|
-| Place | Something that holds data, and where its value lives: `outside` the system, `lasting`, within one `run`, or a `report` to a person. A `keyed` place holds many records, each under a key. A place can name the part that owns it. |
+| Place | Something that holds data. It says what it holds (`one` state, `many` members, or a `series` of them), where its value lives (`outside` the system, `lasting`, within one `run`, or a `report` to a person), and the place it is `in`, when it is part of another. A place can name the part that owns it. |
 | Fact | A name, what it `says` in words, whether it is a `fault` or still `open`, the place it is `about`, and what it is possible `only` with. |
 | Action | One thing a run does: the places it `reads`, the `changes` it makes, and what it `handles`. |
-| Change | A place and how it is changed: `set`, `create`, `replace` or `delete`. It can say what happens `later` if a failure leaves the part it is in, and what facts it `makes` true or false. |
+| Change | A place and what is done to it: `create`, `replace` or `destroy`. It can say the place its content comes `from`, what happens `later` if a failure leaves the part it is in, and what facts it `makes` true or false. |
 | Answer | An entry of `handles`: `when` a fact holds, `then` one of six things. |
 | Sequence, choice, `all` | Parts in order, each needing the ones before; one part chosen by a fact; parts that do not depend on each other. |
 | Use | A part is defined once under `parts` and used by name, so a variant never needs a copy. |
@@ -146,12 +149,72 @@ Where the source gives an order and a failure of one part does not
 stop the next, use `seq` and have the earlier part answer its own
 failure with `warn`.
 
-A keyed place brings three faults with it, which the engine asks about
-whenever an action creates or replaces a record there:
+## Places, and what can be done to one
 
-- `<place> already has the record`, on a `create`
-- `<place> is given a key twice`, on a `create` that says `"many": true`
-- `<place> holds another's record`, on a `replace`
+A place says what it holds.
+
+| `is` | The place holds |
+|---|---|
+| `one` | One state at a time. |
+| `many` | Members, each under a key. |
+| `series` | Members in the order they were added. The newest is its last member. |
+
+A place with no `is` is made of the places that are `in` it.
+
+A place can say it is `in` another place. It is then a named member of
+that place, and what is done to it is done to the place it is in. The
+version files are in the working tree, so stamping a version changes
+the working tree.
+
+There are three operations. A change names one with `how`.
+
+| `how` | What it does |
+|---|---|
+| `create` | Adds a member to a `many` or a `series`, or gives a `one` its first state. Nothing that was there is touched. |
+| `replace` | Gives a `one`, or one member, a new state. The state it had is gone from that place. |
+| `destroy` | Removes a state or a member. From a `series` it removes the last member. |
+
+There is no operation that edits a state. A change makes a new state.
+
+A change can say `from`: the place its content comes from. The changed
+place then holds a copy of that state. A commit is a `create` on a
+branch `from` the working tree. A fetch of tags is a `create` on the
+tags `from` origin's tags.
+
+These rules are Hamilton's for types: each type owns its operations,
+two objects cannot be in one place, and a state is not edited. Her
+sources are in `control/axioms.md`. The three shapes and the wording
+of what a place brings are ours.
+
+## What a place brings
+
+The engine asks about these facts without their being listed. Each is
+a fault. An action answers one in `handles`, by the name written here.
+
+<!-- brought: held to engine.BROUGHT by test_engine.py -->
+| When an action | The engine asks about |
+|---|---|
+| creates in a `many` | `<place> already has the member` |
+| creates in a `many`, with `"many": true` | `<place> is given a key twice` |
+| replaces a member of a `many` | `<place> holds another's member` |
+| replaces in a lasting place | `<place> holds what is kept nowhere` |
+| destroys in a lasting place | `<place> is held elsewhere` |
+<!-- /brought -->
+
+`<place> holds what is kept nowhere` says the place's state has changed
+since it was last copied to another lasting place, so replacing it
+loses that state. `<place> is held elsewhere` says another place holds
+a copy of what is removed.
+
+- A change `from` a place brings every fault about that place. It now
+  applies to what arrived.
+- A place is copied by a change that names it in `from`. After that
+  change, `<place> holds what is kept nowhere` is false until the
+  place changes again. A place the run changes by its own work holds
+  what is kept nowhere from then on.
+- An answer about a place answers for the places in it. A run that has
+  refused a working tree that holds what is kept nowhere has answered
+  for the version files.
 
 ## How the engine reads a design
 
@@ -171,8 +234,11 @@ whenever an action creates or replaces a record there:
   is changed in between. An answer stands for the rest of the run.
   Where a bad value does not matter to a run, an action that reads it
   says `accept`.
-- **Once a run changes a place, the faults about it are false for the
-  rest of the run.** The value is then the run's own.
+- **A new state ends what was wrong with the old one.** After a
+  `replace` or a `destroy`, and after a `create` that gives a `one` its
+  first state, the faults about the place are false for the rest of
+  the run. After a `create` in a `many` or a `series` they still
+  stand: what was there is still there.
 - **A fault needs no `about`.** A fault with none is something that
   goes wrong at a step. It can say the action it happens `at`, or a
   list of actions, and the engine then asks each of them about it. Use
@@ -180,8 +246,8 @@ whenever an action creates or replaces a record there:
   when it fails. Without `at`, the fault matters only to the actions
   whose answers name it.
 - **`only` takes anything a `when` takes.**
-- **`create` and `replace` are for keyed places.** A fetch or a copy
-  that cannot collide is a `set`.
+- **Every change says how.** The engine refuses a change with no
+  `how`. `"many": true` is for a `create` in a place that holds many.
 - **A place the system changes is not `outside`.** The remote a run
   pushes to is `lasting`.
 - **A rehearsal is the same action with its changes left out.** Give
@@ -199,13 +265,13 @@ whenever an action creates or replaces a record there:
 - **A question is settled in the design.** There is no list for
   silencing questions. Say the change stands, accept the fault, decide
   the open fact, and give the reason there.
-- **A keyed place's three faults need no listing.** An answer names
-  them as they are written above, and so can a `when` or an `only`.
-  Where one of them is normal for a place, as an existing record is for
-  a run made a second time, list that fact yourself without `fault`.
-  It is then a state of the world, and does not use up the play's one
-  fault. Unlike a listed fault about a place, these stay as they were
-  after the run changes the place.
+- **What a place brings needs no listing.** An answer names one as it
+  is written above, and so can a `when` or an `only`. Where one is
+  normal for a place, as an existing member is for a run made a second
+  time, list that fact yourself without `fault`. It is then a state of
+  the world, and does not use up the play's one fault. Any action that
+  reads a place can answer one of these about it, whether or not its
+  own changes bring it.
 - **A fact a change `makes` starts as any other fact does:** undecided,
   until a play asks for it or a change makes it. `only` looks at what
   was so when the run started, and not at what the run made since.
@@ -224,8 +290,8 @@ whenever an action creates or replaces a record there:
   `only`.** A fault about a place is otherwise asked of every run that
   reads the place.
 - **An earlier action can answer for a later one.** That holds for a
-  keyed place's own faults too: a check before a `create` can answer
-  `<place> already has the record`.
+  what a place brings too: a check before a `create` can answer
+  `<place> already has the member`.
 - **An expectation covers a play when its `when` can hold there.** A
   flag the play never asked about made no difference to it, so the play
   counts. A fault counts only where some action met it.
@@ -301,11 +367,11 @@ and names it.
 | Object | Keys |
 |---|---|
 | The design | `system`, `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
-| A place | `name`, `kind` (`outside`, `lasting`, `run` or `report`), `keyed` (`true` for a place of records), `owner` (a part) |
+| A place | `name`, `is` (`one`, `many` or `series`; left out for a place made of the places in it), `kind` (`outside`, `lasting`, `run` or `report`), `in` (a place), `owner` (a part) |
 | A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `at` (an action, or a list of them), `only` (a fact that must hold for this one to be possible) |
 | An action | `do` (its name), `when`, `reads`, `changes`, `handles` |
 | A read | a place's name, or `{ "place": ..., "when": ... }` |
-| A change | a place's name, or `{ "place": ..., "how": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `set` when left out, and `because` says why a change that `stands` may |
+| A change | `{ "place": ..., "how": ..., "from": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `create`, `replace` or `destroy`, and `because` says why a change that `stands` may |
 | An answer | `{ "when": ..., "then": ... }` (`when` left out for one that always applies), with `because` (why, for an `accept`), `tells` (a place or a list of places, when it is not the design's `reports`) and, for `ask`, `no` (`stop` or `skip`) |
 | A sequence | `seq` (a list of parts), `name`, `when`, `handles` |
 | Parts that do not depend on each other | `all` (a list of parts), `name`, `when`, `handles` |
@@ -314,7 +380,7 @@ and names it.
 | A use of a part | the part's name as a string, or `{ "use": name, "when": ..., "says": ... }` |
 | Where a fact is asked for | a name, `{ "not": f }`, `{ "all": [f, ...] }` or `{ "any": [f, ...] }` |
 | An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `failed` or `declined`), and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
-| A state | `untouched`, `set`, `created`, `replaced`, `deleted`, `undone`; or `changed` for any of the middle four, and `unchanged` for `untouched` or `undone` |
+| A state | `untouched`, `created`, `replaced`, `destroyed`, `undone`; or `changed` for any of the middle three, and `unchanged` for `untouched` or `undone` |
 | A rule in words | `rule`, `about` (an action), `when` (the fact it depends on, when there is one) |
 
 An answer, a change, an expectation and a rule can each name a `hold`:
@@ -333,19 +399,33 @@ from the 21 statements the checker's definition of pk keeps in words.
 Each statement in the design carries the sentence it stands for. Held
 by `lab/engine/test_pk.py`.
 
+It was written before places had a shape, and `convert.py` converted
+it. The conversion cannot tell an add from an overwrite on a place
+that was not keyed, so the design now asks about each lasting place it
+replaces.
+
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- The design has 364 plays: 79 of changelog, 52 of release, 233 of ship.
-- It reports 8 questions:
+- The design has 464 plays: 101 of changelog, 62 of release, 301 of
+  ship.
+- It reports 16 questions:
   - "changelog with --dry-run writes nothing" is broken by fetching
     tags.
-  - Five faults that some action goes on with, each with what the run
-    then changes on the strength of it.
-  - Two asking whether what a fetch brought stands when a later action
-    stops the run.
+  - Five faults carried into something lasting with no answer.
+  - Seven asking what happens to what was there, one for each lasting
+    place the design replaces.
+  - One asking whether a fetched tag is one the repository already
+    has.
+  - Two asking whether what a fetch brought stands when a later
+    failure leaves the run.
 - `pk-code.json` is that design changed in one place to what an
   earlier description of pk's code says the code does. Played against
   the design it gives 2 `differs` findings, each naming the facts that
   cause it.
+
+## Converting an older design
+
+`python3 convert.py DESIGN.json` rewrites a design written before
+places had a shape. Its rule is at the top of `convert.py`.
 
 ## What it does not do yet
 
@@ -353,7 +433,9 @@ by `lab/engine/test_pk.py`.
   a state has to be written out wherever it is used.
 - Say that an action tries again, or that an open fact has more than
   two outcomes.
-- Play a run record by record. A fact holds for the whole run, so an
+- Ask anything of a `create` that gives a `one` its state when it
+  already has one. Only a `many` brings `already has the member`.
+- Play a run member by member. A fact holds for the whole run, so an
   import where some names are already there and some are not is one
   play or the other.
 - Tell a question put to a person from a failure they are told of. Both

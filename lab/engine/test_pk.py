@@ -33,9 +33,16 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 79, "release": 52, "ship": 233})
+        # 364 plays before places had a shape. Each fact a place brings is played both ways where a change brings it.
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 101, "release": 62, "ship": 301})
         found = engine.findings(d, plays)
-        self.assertEqual(collections.Counter(f["kind"] for f in found), {"expect": 1, "unanswered": 5, "left-behind": 2})
+        # Converted by convert.py, the design asks eight things more: what happens to what was there in each of
+        # the seven lasting places it replaces, and whether a fetched tag is one the repository already has.
+        self.assertEqual(collections.Counter(f["kind"] for f in found), {"expect": 1, "unanswered": 13, "left-behind": 2})
+        brought = sorted(f["subject"] for f in found if f["subject"].endswith(("holds what is kept nowhere", "already has the member")))
+        self.assertEqual(brought, ["changelog file holds what is kept nowhere", "origin holds what is kept nowhere", "release branch holds what is kept nowhere",
+                                   "release commit holds what is kept nowhere", "remote-tracking branches holds what is kept nowhere", "tags already has the member",
+                                   "version files holds what is kept nowhere", "working tree holds what is kept nowhere"])
         self.assertIn(("expect", "changelog with --dry-run writes nothing"), [(f["kind"], f["subject"]) for f in found])
         self.assertIn(("unanswered", "settings are invalid"), [(f["kind"], f["subject"]) for f in found])
         self.assertNotIn(("unanswered", "the tree is dirty"), [(f["kind"], f["subject"]) for f in found])   # --undo refuses a dirty tree

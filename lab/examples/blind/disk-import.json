@@ -2,11 +2,31 @@
   "system": "Import on the page of saved files: an image's files are put on the volume shown, once the page has asked",
   "reports": "the page",
   "places": [
-    { "name": "the image", "kind": "outside", "keyed": true },
-    { "name": "the files read from the image", "kind": "run", "keyed": true },
-    { "name": "the volume shown", "kind": "lasting", "keyed": true },
-    { "name": "the title's own disks", "kind": "lasting" },
-    { "name": "the page", "kind": "report" }
+    {
+      "name": "the image",
+      "kind": "outside",
+      "is": "many"
+    },
+    {
+      "name": "the files read from the image",
+      "kind": "run",
+      "is": "many"
+    },
+    {
+      "name": "the volume shown",
+      "kind": "lasting",
+      "is": "many"
+    },
+    {
+      "name": "the title's own disks",
+      "kind": "lasting",
+      "is": "one"
+    },
+    {
+      "name": "the page",
+      "kind": "report",
+      "is": "one"
+    }
   ],
   "facts": [
     {
@@ -20,7 +40,7 @@
       "about": "the image"
     },
     {
-      "name": "the volume shown already has the record",
+      "name": "the volume shown already has the member",
       "says": "the volume shown has a saved file of the same name as a file in the image",
       "about": "the volume shown"
     },
@@ -39,7 +59,9 @@
       "name": "the browser cannot keep a write",
       "says": "the browser's storage cannot keep a file written to it",
       "fault": true,
-      "only": { "not": "the saved files are kept in memory" }
+      "only": {
+        "not": "the saved files are kept in memory"
+      }
     },
     {
       "name": "a write that cannot be kept leaves the files already put",
@@ -55,8 +77,15 @@
         {
           "do": "read the image",
           "says": "Import reads an image: the disk's name and its files",
-          "reads": ["the image"],
-          "changes": ["the files read from the image"],
+          "reads": [
+            "the image"
+          ],
+          "changes": [
+            {
+              "place": "the files read from the image",
+              "how": "create"
+            }
+          ],
           "handles": [
             {
               "when": "the image's name is not the volume's",
@@ -68,15 +97,19 @@
         {
           "do": "ask whether to put the files",
           "says": "the page asks: Put N files on the volume? A file of the same name is replaced.",
-          "reads": ["the files read from the image"],
+          "reads": [
+            "the files read from the image"
+          ],
           "handles": [
             {
-              "when": "the volume shown already has the record",
+              "when": "the volume shown already has the member",
               "then": "ask",
               "says": "the question says a file of the same name is replaced"
             },
             {
-              "when": { "not": "the volume shown already has the record" },
+              "when": {
+                "not": "the volume shown already has the member"
+              },
               "then": "ask",
               "says": "the page asks whether or not a file of the same name is there"
             }
@@ -85,23 +118,32 @@
         {
           "do": "put the files on the volume",
           "says": "the image's files are put on the volume shown; a file of the same name is replaced",
-          "reads": ["the files read from the image"],
+          "reads": [
+            "the files read from the image"
+          ],
           "changes": [
             {
               "place": "the volume shown",
               "how": "create",
               "many": true,
-              "when": { "not": "the volume shown already has the record" }
+              "when": {
+                "not": "the volume shown already has the member"
+              }
             },
             {
               "place": "the volume shown",
               "how": "replace",
-              "when": "the volume shown already has the record"
+              "when": "the volume shown already has the member"
             }
           ],
           "handles": [
             {
-              "when": { "all": ["the browser cannot keep a write", "a write that cannot be kept leaves the files already put"] },
+              "when": {
+                "all": [
+                  "the browser cannot keep a write",
+                  "a write that cannot be kept leaves the files already put"
+                ]
+              },
               "then": "fail",
               "says": "a write the browser cannot keep is told on the page"
             },
@@ -115,44 +157,65 @@
       ]
     }
   },
-  "runs": ["import"],
+  "runs": [
+    "import"
+  ],
   "expects": [
     {
       "name": "a title's own disks never change",
       "in": "import",
-      "never changes": ["the title's own disks"]
+      "never changes": [
+        "the title's own disks"
+      ]
     },
     {
       "name": "nothing is put before the page has asked",
       "in": "import",
       "before": "put the files on the volume",
       "place": "the page",
-      "is": "set"
+      "is": "created"
     },
     {
       "name": "nothing is put when the person says no",
       "in": "import",
       "on": "declined",
-      "never changes": ["the volume shown"]
+      "never changes": [
+        "the volume shown"
+      ]
     },
     {
       "name": "a title with no disk system has no Import",
       "in": "import",
-      "when": { "not": "the title has a disk system" },
-      "never runs": ["read the image", "ask whether to put the files", "put the files on the volume"]
+      "when": {
+        "not": "the title has a disk system"
+      },
+      "never runs": [
+        "read the image",
+        "ask whether to put the files",
+        "put the files on the volume"
+      ]
     },
     {
       "name": "the files go on the volume shown, whatever the image's own name",
       "in": "import",
-      "when": { "all": ["the title has a disk system", "the image's name is not the volume's"] },
+      "when": {
+        "all": [
+          "the title has a disk system",
+          "the image's name is not the volume's"
+        ]
+      },
       "on": "success",
-      "ends": { "the volume shown": "changed" }
+      "ends": {
+        "the volume shown": "changed"
+      }
     },
     {
       "name": "a write the browser cannot keep is told on the page",
       "in": "import",
       "when": "the browser cannot keep a write",
-      "ends": { "the page": "set" }
+      "ends": {
+        "the page": "created"
+      }
     }
   ],
   "rules": [

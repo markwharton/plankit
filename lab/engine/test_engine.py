@@ -5,6 +5,8 @@
 Each test has the design that must be reported and the one that must not.
 """
 import copy
+import os
+import re
 import unittest
 
 import engine
@@ -15,10 +17,10 @@ def notes():
     return {
         "system": "notes", "reports": "message",
         "places": [
-            {"name": "text", "kind": "outside"},
-            {"name": "draft", "kind": "lasting"},
-            {"name": "site", "kind": "lasting"},
-            {"name": "message", "kind": "report"},
+            {"name": "text", "is": "one", "kind": "outside"},
+            {"name": "draft", "is": "one", "kind": "lasting"},
+            {"name": "site", "is": "one", "kind": "lasting"},
+            {"name": "message", "is": "one", "kind": "report"},
         ],
         "facts": [
             {"name": "preview", "says": "--preview is given"},
@@ -26,9 +28,9 @@ def notes():
             {"name": "the site is down", "fault": True, "says": "the site does not answer"},
         ],
         "parts": {"publish": {"seq": [
-            {"do": "save draft", "reads": ["text"], "changes": [{"place": "draft", "later": "undone"}],
+            {"do": "save draft", "reads": ["text"], "changes": [{"place": "draft", "how": "create", "later": "undone"}],
              "handles": [{"when": "the note is empty", "then": "refuse"}]},
-            {"do": "put on site", "reads": ["draft"], "changes": ["site"],
+            {"do": "put on site", "reads": ["draft"], "changes": [{"place": "site", "how": "create"}],
              "handles": [{"when": "the site is down", "then": "refuse"}]},
         ]}},
         "runs": ["publish"],
@@ -40,7 +42,7 @@ def book():
     """An address book: import contacts from a file, each under its email."""
     return {
         "system": "contacts", "reports": "message",
-        "places": [{"name": "file", "kind": "outside"}, {"name": "book", "kind": "lasting", "keyed": True}, {"name": "message", "kind": "report"}],
+        "places": [{"name": "file", "is": "one", "kind": "outside"}, {"name": "book", "is": "many", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}],
         "facts": [{"name": "the file is not a list of contacts", "fault": True, "about": "file"}],
         "parts": {"import": {"do": "import", "reads": ["file"], "changes": [{"place": "book", "how": "create", "many": True, "later": "stands", "because": "an import is not undone"}],
                              "handles": [{"when": "the file is not a list of contacts", "then": "refuse"}]}},
@@ -50,11 +52,11 @@ def book():
 
 def legs():
     """A nightly run of two legs. The first stages and then publishes; the second needs nothing from the first."""
-    kept = {"later": "stands", "because": "what landed is kept"}
+    kept = {"how": "create", "later": "stands", "because": "what landed is kept"}
     return {
         "system": "nightly", "reports": "message",
-        "places": [{"name": "source", "kind": "outside"}, {"name": "staged", "kind": "lasting"}, {"name": "published", "kind": "lasting"},
-                   {"name": "ledger", "kind": "lasting"}, {"name": "message", "kind": "report"}],
+        "places": [{"name": "source", "is": "one", "kind": "outside"}, {"name": "staged", "is": "one", "kind": "lasting"}, {"name": "published", "is": "one", "kind": "lasting"},
+                   {"name": "ledger", "is": "one", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}],
         "facts": [{"name": "the source is down", "fault": True, "about": "source"}],
         "parts": {"nightly": {"all": [
             {"name": "first leg", "seq": [
@@ -70,13 +72,13 @@ def pipeline():
     """Read a feed, work out a total from it, then post the total. The feed can be wrong."""
     return {
         "system": "totals", "reports": "message",
-        "places": [{"name": "feed", "kind": "outside"}, {"name": "rows", "kind": "run"}, {"name": "total", "kind": "run"},
-                   {"name": "books", "kind": "lasting"}, {"name": "message", "kind": "report"}, {"name": "log", "kind": "report"}],
+        "places": [{"name": "feed", "is": "one", "kind": "outside"}, {"name": "rows", "is": "one", "kind": "run"}, {"name": "total", "is": "one", "kind": "run"},
+                   {"name": "books", "is": "one", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}, {"name": "log", "is": "one", "kind": "report"}],
         "facts": [{"name": "the feed is short", "fault": True, "about": "feed"}],
         "parts": {"post": {"seq": [
-            {"do": "read the feed", "reads": ["feed"], "changes": ["rows"]},
-            {"do": "add it up", "reads": ["rows"], "changes": ["total"]},
-            {"do": "post the total", "reads": ["total"], "changes": [{"place": "books", "later": "stands", "because": "a posted total is corrected, not removed"}]},
+            {"do": "read the feed", "reads": ["feed"], "changes": [{"place": "rows", "how": "create"}]},
+            {"do": "add it up", "reads": ["rows"], "changes": [{"place": "total", "how": "create"}]},
+            {"do": "post the total", "reads": ["total"], "changes": [{"place": "books", "how": "create", "later": "stands", "because": "a posted total is corrected, not removed"}]},
         ]}},
         "runs": ["post"],
     }
@@ -138,7 +140,7 @@ class Engine(unittest.TestCase):
 
     def test_each_way_of_answering_does_what_it_says(self):
         for then, outcome, draft in [("refuse", "failed", "untouched"), ("warn", "completed with a warning", "untouched"),
-                                     ("tell", "completed", "set"), ("accept", "completed", "set")]:
+                                     ("tell", "completed", "created"), ("accept", "completed", "created")]:
             with self.subTest(then=then):
                 doc = notes()
                 doc["places"][1]["kind"] = "lasting"
@@ -147,13 +149,13 @@ class Engine(unittest.TestCase):
                 d = engine.Design(doc)
                 p = [p for p in engine.explore_all(d) if p.given() == ["the note is empty"]][0]
                 self.assertEqual((p.outcome(), p.state["draft"]), (outcome, draft))
-                self.assertEqual(p.state["message"], "untouched" if then == "accept" else "set")
+                self.assertEqual(p.state["message"], "untouched" if then == "accept" else "created")
                 self.assertEqual(kinds(doc), [])                               # each is an answer
 
     def test_an_action_can_do_its_work_and_then_fail(self):
         doc = notes()
         doc["parts"]["publish"]["seq"][1]["handles"][0]["then"] = "fail"       # the site took the note and then broke
-        doc["parts"]["publish"]["seq"][1]["changes"] = [{"place": "site"}]
+        doc["parts"]["publish"]["seq"][1]["changes"] = [{"place": "site", "how": "create"}]
         self.assertEqual(kinds(doc), [("left-behind", "site")])                 # its own change needs an answer too
         doc["parts"]["publish"]["seq"][1]["changes"][0]["later"] = "undone"
         self.assertEqual(kinds(doc), [])
@@ -205,15 +207,15 @@ class Engine(unittest.TestCase):
 
     def test_asking_a_person_plays_both_answers(self):
         doc = book()
-        self.assertEqual(kinds(doc), [("unanswered", "book already has the record"), ("unanswered", "book is given a key twice")])
-        doc["parts"]["import"]["handles"] += [{"when": "book already has the record", "then": "ask"}, {"when": "book is given a key twice", "then": "refuse"}]
+        self.assertEqual(kinds(doc), [("unanswered", "book already has the member"), ("unanswered", "book is given a key twice")])
+        doc["parts"]["import"]["handles"] += [{"when": "book already has the member", "then": "ask"}, {"when": "book is given a key twice", "then": "refuse"}]
         self.assertEqual(kinds(doc), [])
         self.assertEqual(outcomes(doc), [
-            ((), "completed"), (("book already has the record",), "declined"),
-            (("book already has the record", "the person says yes at import"), "completed"),
+            ((), "completed"), (("book already has the member",), "declined"),
+            (("book already has the member", "the person says yes at import"), "completed"),
             (("book is given a key twice",), "failed"), (("the file is not a list of contacts",), "failed")])
         doc["parts"]["import"]["handles"][1]["no"] = "skip"
-        self.assertIn((("book already has the record",), "completed"), outcomes(doc))
+        self.assertIn((("book already has the member",), "completed"), outcomes(doc))
 
     def test_an_answer_with_no_when_always_applies(self):
         doc = notes()
@@ -224,29 +226,27 @@ class Engine(unittest.TestCase):
         self.assertIn((("the person says yes at put on site",), "completed"), got)
         self.assertIn("put on site: ask, always", [x["subject"] for x in engine.tests(engine.Design(doc))])
 
-    def test_an_existing_record_can_be_normal_for_a_place(self):
+    def test_an_existing_member_can_be_normal_for_a_place(self):
         doc = book()
         doc["parts"]["import"]["handles"].append({"when": "book is given a key twice", "then": "refuse"})
-        self.assertEqual(kinds(doc), [("unanswered", "book already has the record")])
-        doc["facts"].append({"name": "book already has the record", "about": "book", "says": "an import is run again over the same book"})
-        doc["rules"] = [{"rule": "a contact already in the book is brought up to date", "about": "import", "when": "book already has the record"}]
+        self.assertEqual(kinds(doc), [("unanswered", "book already has the member")])
+        doc["facts"].append({"name": "book already has the member", "about": "book", "says": "an import is run again over the same book"})
+        doc["rules"] = [{"rule": "a contact already in the book is brought up to date", "about": "import", "when": "book already has the member"}]
         self.assertEqual(kinds(doc), [])                                  # a state of the world now, and it no longer uses up the one fault
-        self.assertIn((("book already has the record", "the file is not a list of contacts"), "failed"), outcomes(doc))
+        self.assertIn((("book already has the member", "the file is not a list of contacts"), "failed"), outcomes(doc))
 
-    def test_replacing_a_record_asks_whose_it_is(self):
+    def test_replacing_a_member_asks_whose_it_is(self):
         doc = book()
         doc["parts"]["import"]["changes"] = [{"place": "book", "how": "replace", "later": "stands", "because": "an import is not undone"}]
-        self.assertEqual(kinds(doc), [("unanswered", "book holds another's record")])
-        doc["places"][1]["keyed"] = False
-        with self.assertRaises(engine.Refused) as cm:
-            engine.Design(doc)
-        self.assertIn("not keyed", str(cm.exception))
+        self.assertEqual(kinds(doc), [("unanswered", "book holds another's member"), ("unanswered", "book holds what is kept nowhere")])
+        doc["places"][1]["is"] = "one"                     # a place that holds one state has no members to be another's
+        self.assertEqual(kinds(doc), [("unanswered", "book holds what is kept nowhere")])
 
     def test_a_change_says_what_happens_to_it_when_the_run_stops_later(self):
         doc = notes()
         del doc["parts"]["publish"]["seq"][0]["changes"][0]["later"]
         self.assertEqual(kinds(doc), [("left-behind", "draft")])
-        for later, state in [("undone", "undone"), ("stands", "set")]:
+        for later, state in [("undone", "undone"), ("stands", "created")]:
             doc["parts"]["publish"]["seq"][0]["changes"][0].update(later=later, because="a draft is kept for another try")
             self.assertEqual(kinds(doc), [])
             d = engine.Design(doc)
@@ -259,7 +259,7 @@ class Engine(unittest.TestCase):
             {"name": "a preview changes nothing", "when": "preview", "never changes": ["draft", "site"]},
             {"name": "a note that fails to publish leaves no draft", "when": "the site is down", "ends": {"draft": "unchanged"}},
             {"name": "an empty note is never put on the site", "when": "the note is empty", "never runs": ["put on site"]},
-            {"name": "the site is written after the draft", "before": "put on site", "place": "draft", "is": "set"},
+            {"name": "the site is written after the draft", "before": "put on site", "place": "draft", "is": "created"},
         ]
         self.assertEqual(kinds(doc), [("expect", "a preview changes nothing")])
         d = engine.Design(doc)
@@ -302,7 +302,7 @@ class Engine(unittest.TestCase):
 
     def test_which_run_it_is_is_a_fact(self):
         doc = notes()
-        doc["parts"]["publish twice"] = {"seq": ["publish", {"do": "say done", "changes": ["message"]}]}
+        doc["parts"]["publish twice"] = {"seq": ["publish", {"do": "say done", "changes": [{"place": "message", "how": "create"}]}]}
         doc["runs"].append("publish twice")
         doc["facts"][1]["only"] = "in publish"                                # an empty note matters to publish alone
         self.assertEqual([o for o in outcomes(doc) if "the note is empty" in o[0]], [(("the note is empty",), "failed")])
@@ -352,7 +352,7 @@ class Engine(unittest.TestCase):
     def test_parts_in_no_order_must_not_touch_what_another_changes(self):
         doc = notes()
         doc["parts"]["publish"] = {"all": doc["parts"]["publish"]["seq"]}
-        doc["parts"]["publish"]["all"][1]["changes"] = [{"place": "site", "later": "stands", "because": "what is on the site stays"}]   # in no order, it runs though the draft was refused
+        doc["parts"]["publish"]["all"][1]["changes"] = [{"place": "site", "how": "create", "later": "stands", "because": "what is on the site stays"}]   # in no order, it runs though the draft was refused
         self.assertEqual(kinds(doc), [("order", "save draft and put on site")])
         doc["parts"]["publish"]["all"][1]["reads"] = ["text"]
         self.assertEqual([k for k in kinds(doc) if k[0] == "order"], [])
@@ -365,7 +365,7 @@ class Engine(unittest.TestCase):
         self.assertEqual(kinds(doc), [])
         doc["places"][2]["owner"] = "drafting"
         self.assertEqual(kinds(doc), [("owner", "put on site changes site")])
-        doc["places"][2] = {"name": "site", "kind": "outside"}
+        doc["places"][2] = {"name": "site", "is": "one", "kind": "outside"}
         self.assertEqual(kinds(doc), [("owner", "put on site changes site")])
 
     def test_a_design_names_where_failures_are_reported_once(self):
@@ -378,7 +378,7 @@ class Engine(unittest.TestCase):
 
     def test_a_part_is_used_in_two_runs_without_being_copied(self):
         doc = notes()
-        doc["parts"]["publish twice"] = {"seq": ["publish", {"do": "say done", "changes": ["message"]}]}
+        doc["parts"]["publish twice"] = {"seq": ["publish", {"do": "say done", "changes": [{"place": "message", "how": "create"}]}]}
         doc["runs"].append("publish twice")
         self.assertEqual(sorted({p.run for p in engine.explore_all(engine.Design(doc))}), ["publish", "publish twice"])
 
@@ -393,7 +393,7 @@ class Engine(unittest.TestCase):
         code = notes()
         code["parts"]["publish"]["seq"][0]["changes"][0].update(later="stands", because="the code keeps it")   # the code keeps the draft when the site is down
         got = engine.compare(engine.Design(design), engine.Design(code))
-        self.assertEqual([f["subject"] for f in got], ["draft ends undone in the design and set in the code"])
+        self.assertEqual([f["subject"] for f in got], ["draft ends undone in the design and created in the code"])
         self.assertIn("Every play where this happens has: the site is down.", got[0]["shows"])
         code = notes()
         code["facts"].append({"name": "the disk is full", "fault": True})   # the code refuses for a reason the design never names
@@ -416,7 +416,7 @@ class Engine(unittest.TestCase):
         p = play(doc, "the source is down")
         self.assertEqual((p.outcome(), p.stop), ("completed with a warning", None))
         self.assertEqual(p.steps, [("stage", "refused"), ("post the ledger", "ran")])      # the sequence still ended at the failure
-        self.assertEqual(p.state["message"], "set")                                        # and the person is told
+        self.assertEqual(p.state["message"], "created")                                    # and the person is told
         doc["parts"]["nightly"]["all"][0]["handles"] = [{"when": "the source is down", "then": "accept"}]
         self.assertEqual(kinds(doc), [("unexplained", "first leg: accept, when the source is down")])
         doc["parts"]["nightly"]["all"][0]["handles"] = [{"when": "the source is down", "then": "refuse"}]
@@ -427,14 +427,14 @@ class Engine(unittest.TestCase):
     def test_what_happens_later_is_decided_as_a_failure_leaves_each_part(self):
         doc = legs()
         first = doc["parts"]["nightly"]["all"][0]
-        first["seq"] = [{"do": "open the ledger", "changes": ["ledger"]},
-                        {"name": "staging", "seq": [{"do": "mark", "changes": [{"place": "published", "later": "undone"}]}, first["seq"][0]]}]
+        first["seq"] = [{"do": "open the ledger", "changes": [{"place": "ledger", "how": "create"}]},
+                        {"name": "staging", "seq": [{"do": "mark", "changes": [{"place": "published", "how": "create", "later": "undone"}]}, first["seq"][0]]}]
         doc["parts"]["nightly"] = first
         self.assertEqual(kinds(doc), [("left-behind", "ledger")])                         # the failure leaves the whole run, and the ledger was opened in it
         first["handles"] = [{"when": "the source is down", "then": "warn"}]
         self.assertEqual(kinds(doc), [])                                                   # answered at the run's own part, the failure never leaves it
         p = play(doc, "the source is down")
-        self.assertEqual((p.state["published"], p.state["ledger"]), ("undone", "set"))     # it did leave the part that marked, so the mark is undone
+        self.assertEqual((p.state["published"], p.state["ledger"]), ("undone", "created"))     # it did leave the part that marked, so the mark is undone
 
     def test_a_fault_is_asked_where_something_lasting_is_changed_on_the_strength_of_it(self):
         d = engine.Design(pipeline())
@@ -468,7 +468,7 @@ class Engine(unittest.TestCase):
         doc = pipeline()
         doc["parts"]["post"]["seq"][0]["handles"] = [{"when": "the feed is short", "then": "refuse", "tells": ["message", "log"]}]
         p = play(doc, "the feed is short")
-        self.assertEqual((p.state["message"], p.state["log"]), ("set", "set"))
+        self.assertEqual((p.state["message"], p.state["log"]), ("created", "created"))
         doc["parts"]["post"]["seq"][0]["handles"][0]["tells"] = ["message", "ledger"]
         with self.assertRaises(engine.Refused):
             engine.Design(doc)
@@ -479,6 +479,84 @@ class Engine(unittest.TestCase):
         doc["runs"] = ["nightly"]
         d = engine.Design(doc)
         self.assertIn(("The totals are posted each night.", "played"), engine.said(d))
+
+    def test_replacing_what_lasts_asks_what_happens_to_what_was_there(self):
+        doc = notes()
+        doc["parts"]["publish"]["seq"][0]["changes"][0]["how"] = "replace"                 # saving over the last draft loses it
+        self.assertEqual(kinds(doc), [("unanswered", "draft holds what is kept nowhere")])
+        doc["parts"]["publish"]["seq"][0]["handles"].append({"when": "draft holds what is kept nowhere", "then": "refuse"})
+        self.assertEqual(kinds(doc), [])
+        doc["places"][1]["kind"] = "run"                   # what lasts for one run is not asked about
+        del doc["parts"]["publish"]["seq"][0]["handles"][1]
+        self.assertEqual(kinds(doc), [])
+
+    def test_a_place_copied_to_another_is_kept_until_it_changes_again(self):
+        doc = notes()
+        seq = doc["parts"]["publish"]["seq"]
+        seq[0]["changes"][0]["how"] = "replace"
+        seq[0]["handles"].append({"when": "draft holds what is kept nowhere", "then": "refuse"})
+        seq[1]["changes"] = [{"place": "site", "how": "create", "from": "draft"}]           # the site now holds a copy of the draft
+        seq.append({"do": "clear draft", "changes": [{"place": "draft", "how": "replace"}]})
+        self.assertEqual(kinds(doc), [])                                                    # so clearing the draft loses nothing
+        del seq[1]["changes"][0]["from"]
+        self.assertEqual(kinds(doc), [("unanswered", "draft holds what is kept nowhere")])  # with no copy it does, in every play
+
+    def test_destroying_asks_who_else_holds_it(self):
+        doc = notes()
+        gone = {"place": "draft", "how": "destroy", "later": "stands", "because": "the old draft is not wanted back"}
+        doc["parts"]["publish"]["seq"].insert(0, {"do": "discard the old draft", "changes": [gone]})
+        self.assertEqual(kinds(doc), [("unanswered", "draft is held elsewhere")])
+        doc["parts"]["publish"]["seq"][0]["handles"] = [{"when": "draft is held elsewhere", "then": "refuse"}]
+        self.assertEqual(kinds(doc), [])
+        doc = notes()                                      # a draft this run made is held nowhere else, until the site takes a copy
+        seq = doc["parts"]["publish"]["seq"]
+        seq.append({"do": "discard draft", "changes": [gone], "handles": [{"when": "draft is held elsewhere", "then": "refuse"}]})
+        self.assertEqual(play(doc).steps[-1], ("discard draft", "ran"))
+        seq[1]["changes"] = [{"place": "site", "how": "create", "from": "draft"}]
+        self.assertEqual(play(doc).steps[-1], ("discard draft", "refused"))
+
+    def test_a_create_leaves_what_was_there_and_a_replace_ends_it(self):
+        def tags(how):
+            return {
+                "system": "versions", "reports": "message",
+                "places": [{"name": "remote", "is": "many", "kind": "outside"}, {"name": "tags", "is": "many", "kind": "lasting"},
+                           {"name": "version", "is": "one", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}],
+                "facts": [{"name": "a tag does not name a version", "fault": True, "about": "tags"},
+                          {"name": "tags already has the member", "about": "tags", "says": "a tag is fetched that is here already"}],
+                "parts": {"next": {"seq": [
+                    {"do": "fetch", "reads": ["remote"], "changes": [{"place": "tags", "how": how, "later": "stands", "because": "fetched tags stay"}],
+                     "handles": [{"when": {"any": ["tags holds what is kept nowhere", "tags holds another's member"]}, "then": "accept", "because": "the remote has them"}]},
+                    {"do": "work out the version", "reads": ["tags"], "changes": [{"place": "version", "how": "create"}]}]}},
+                "runs": ["next"],
+            }
+        self.assertEqual(kinds(tags("create")), [("unanswered", "a tag does not name a version")])   # the tags that were there are still there
+        self.assertEqual(kinds(tags("replace")), [("unused", "a tag does not name a version"), ("unused", "tags already has the member")])
+
+    def test_what_comes_from_a_place_carries_what_is_wrong_with_it(self):
+        doc = notes()
+        doc["facts"].append({"name": "the old draft is damaged", "fault": True, "about": "draft"})
+        doc["parts"]["publish"]["seq"] = [{"do": "put on site", "changes": [{"place": "site", "how": "create", "from": "draft"}],
+                                           "handles": [{"when": "the site is down", "then": "refuse"}]}]
+        self.assertEqual(kinds(doc), [("unanswered", "the old draft is damaged"), ("unused", "the note is empty")])   # asked though the action lists no read
+
+    def test_a_place_can_be_in_another(self):
+        doc = notes()
+        doc["places"].insert(1, {"name": "folder", "kind": "lasting"})                      # made of the places in it
+        doc["places"][2]["in"] = "folder"
+        doc["expects"] = [{"name": "a preview leaves the folder alone", "when": "preview", "never changes": ["folder"]}]
+        self.assertEqual(kinds(doc), [("expect", "a preview leaves the folder alone")])     # what is done to the draft is done to the folder
+        doc["expects"] = []
+        seq = doc["parts"]["publish"]["seq"]
+        seq[0]["changes"][0]["how"] = "replace"
+        self.assertEqual(kinds(doc), [("unanswered", "draft holds what is kept nowhere")])
+        seq.insert(0, {"do": "check the folder", "reads": ["folder"], "handles": [{"when": "folder holds what is kept nowhere", "then": "refuse"}]})
+        self.assertEqual(kinds(doc), [])                                                    # an answer about the folder answers for the draft in it
+
+    def test_the_page_lists_what_a_place_brings_as_the_engine_has_it(self):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "DESIGN.md"), encoding="utf-8") as f:
+            page = f.read()
+        table = page[page.index("<!-- brought"):page.index("<!-- /brought -->")]
+        self.assertEqual(sorted(re.findall(r"`(<place> [^`]+)`", table)), sorted(name % "<place>" for name, _ in engine.BROUGHT.values()))
 
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [
@@ -491,7 +569,15 @@ class Engine(unittest.TestCase):
             (lambda d: d.update(expects=[{"name": "x"}]), "says nothing to check"),
             (lambda d: d["parts"]["publish"]["seq"][0]["handles"][0].update(then="shrug"), "refuse, fail, warn, tell, ask, accept"),
             (lambda d: d["parts"]["publish"]["seq"][0]["changes"][0].update(makes={"nothing": True}), '"nothing"'),
-            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=[{"place": "site", "how": "create"}]), "not keyed"),
+            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=[{"place": "site"}]), "says how"),
+            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=["site"]), "says how"),
+            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=[{"place": "site", "how": "set"}]), "create, replace, destroy"),
+            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=[{"place": "site", "how": "create", "many": True}]), "holds many"),
+            (lambda d: d["parts"]["publish"]["seq"][1].update(changes=[{"place": "site", "how": "create", "from": "nowhere"}]), '"nowhere"'),
+            (lambda d: d["places"][1].pop("is"), "made of the places in it"),
+            (lambda d: d["places"][1].update({"is": "pile"}), "one, many, series"),
+            (lambda d: d["places"][1].update({"in": "nowhere"}), '"nowhere"'),
+            (lambda d: (d["places"][1].update({"in": "site"}), d["places"][2].update({"in": "draft"})), "is in itself"),
             (lambda d: d["places"][1].update(owner="nobody"), "is not a part"),
         ]
         engine.Design(notes())

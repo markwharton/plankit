@@ -49,17 +49,15 @@ def view_model(d, plays, findings, tests, shown):
             node["name"] = run if top else unique(part["do"], run)
             names[run][part["do"]] = node["name"]
             node["reads"] = [r["place"] if isinstance(r, dict) else r for r in part.get("reads", [])]
-            node["writes"] = [{"place": c["place"] if isinstance(c, dict) else c, "mode": c.get("how", "set") if isinstance(c, dict) else "set",
-                               "key": "", "records": "", "before": []} for c in part.get("changes", [])]
-            node["refusals"] = [{"kind": h["then"], "reason": ("when " + words(h["when"]) if h.get("when") is not None else "always") + (", because " + h["because"] if h.get("because") else ""), "to": "" if h["then"] == "accept" else h.get("tells", d.reports() or ""),
+            node["writes"] = [{"place": c["place"], "mode": c["how"], "key": "", "records": "", "before": []} for c in part.get("changes", [])]
+            node["refusals"] = [{"kind": h["then"], "reason": ("when " + words(h["when"]) if h.get("when") is not None else "always") + (", because " + h["because"] if h.get("because") else ""), "to": "" if h["then"] == "accept" else (d.told(h) or [""])[0],
                                  "held": engine.held(d, h.get("hold")), "test": (h.get("hold") or {}).get("test", "")} for h in part.get("handles", [])]
             node["label"] = ", ".join(w["place"] for w in node["writes"]) + " = " + part["do"] + "(" + ", ".join(node["reads"]) + ")"
             # who answers what: the facts each answer names, the faults the action meets, and the facts that decide whether it runs
             node["answers"] = [{"facts": sorted(engine.names_in(h.get("when"))), "then": h["then"]} for h in part.get("handles", [])]
             meets = [f for p in node["reads"] for f in d.about(p)]
             for c in part.get("changes", []):
-                if isinstance(c, dict) and c.get("how") in ("create", "replace"):
-                    meets += [engine.already(c["place"])] + ([engine.twice(c["place"])] if c.get("many") else []) if c["how"] == "create" else [engine.anothers(c["place"])]
+                meets += d.brings(c) + (d.about(c["from"]) if "from" in c else [])
             node["meets"] = sorted(set(meets) | {f for a in node["answers"] for f in a["facts"] if d.is_fault(f)})
             own = set(gates)
             for it in part.get("reads", []) + part.get("changes", []):
@@ -92,7 +90,7 @@ def view_model(d, plays, findings, tests, shown):
 
     kinds = {"outside": "outside", "lasting": "lasting", "run": "in a run", "report": "in a run"}
     leaves = [n for n in nodes if n["shape"] == "leaf"]
-    places = [{"name": p["name"], "owner": p.get("owner", ""), "kind": kinds[p["kind"]], "keyed": bool(p.get("keyed")), "onExisting": "",
+    places = [{"name": p["name"], "owner": p.get("owner", ""), "kind": kinds[p["kind"]], "keyed": p.get("is") == "many", "onExisting": "",
                "invalid": "; ".join(d.facts[f].get("says", f) for f in d.about(p["name"])),
                "writers": [n["name"] for n in leaves if any(w["place"] == p["name"] for w in n["writes"])],
                "readers": [n["name"] for n in leaves if p["name"] in n["reads"]], "writesFromOutside": [], "findings": []} for p in d.doc["places"]]

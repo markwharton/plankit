@@ -18,7 +18,7 @@ import textwrap
 
 KEYS = {
     "design": {"system", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
-    "place": {"name", "kind", "keyed", "owner"},
+    "place": {"name", "is", "kind", "in", "owner", "says"},
     "fact": {"name", "says", "fault", "open", "about", "at", "only"},
     "action": {"do", "when", "reads", "changes", "handles", "says"},
     "seq": {"seq", "name", "when", "handles", "says"},
@@ -27,7 +27,7 @@ KEYS = {
     "use": {"use", "when", "name", "says"},
     "branch": {"when", "run"},
     "read": {"place", "when"},
-    "change": {"place", "how", "when", "later", "many", "makes", "because", "hold", "says"},
+    "change": {"place", "how", "from", "when", "later", "many", "makes", "because", "hold", "says"},
     "handle": {"when", "then", "no", "tells", "because", "hold", "says"},
     "accepted": {"accepted"},
     "acceptance": {"finding", "because"},
@@ -36,10 +36,20 @@ KEYS = {
     "hold": {"file", "test"},
 }
 KINDS = ("outside", "lasting", "run", "report")
-HOWS = {"set": "set", "create": "created", "replace": "replaced", "delete": "deleted"}
+SHAPES = ("one", "many", "series")               # what a place holds: one state, members under keys, members in the order added
+HOWS = {"create": "created", "replace": "replaced", "destroy": "destroyed"}
+# What a place brings: a fact the engine asks about without its being listed. Each has
+# its name, with the place's, and what it says. Design.brings says which change brings which.
+BROUGHT = {
+    "has": ("%s already has the member", "a member is already at the key"),
+    "twice": ("%s is given a key twice", "one key is given twice in the run"),
+    "anothers": ("%s holds another's member", "the member at the key belongs to something else"),
+    "unkept": ("%s holds what is kept nowhere", "its state has changed since it was last copied to another lasting place, so replacing it loses that state"),
+    "held": ("%s is held elsewhere", "another place holds a copy of what is removed"),
+}
 THENS = ("refuse", "fail", "warn", "tell", "ask", "accept")
 PART_THENS = ("warn", "tell", "accept")       # how a part answers a failure one of its children returns
-STATES = {"untouched", "set", "created", "replaced", "deleted", "undone", "changed", "unchanged"}
+STATES = {"untouched", "created", "replaced", "destroyed", "undone", "changed", "unchanged"}
 ONS = ("any", "success", "failed", "declined")
 
 
@@ -128,16 +138,9 @@ def only(obj, kind, where):
         raise Refused("%s: the key %s is not one a %s has (%s)" % (where, ", ".join('"%s"' % k for k in extra), kind, ", ".join(sorted(KEYS[kind]))))
 
 
-def already(place):
-    return "%s already has the record" % place
-
-
-def twice(place):
-    return "%s is given a key twice" % place
-
-
-def anothers(place):
-    return "%s holds another's record" % place
+def brought(kind, place):
+    """The name of a fact a place brings."""
+    return BROUGHT[kind][0] % place
 
 
 def listing(x):
@@ -168,9 +171,26 @@ class Design:
             only(p, "place", "a place")
             if p.get("kind") not in KINDS:
                 raise Refused("place \"%s\": its kind is one of %s" % (p.get("name"), ", ".join(KINDS)))
+            if "is" in p and p["is"] not in SHAPES:
+                raise Refused("place \"%s\": what it holds is one of %s" % (p["name"], ", ".join(SHAPES)))
             if p["name"] in self.places:
                 raise Refused("two places are named \"%s\"" % p["name"])
             self.places[p["name"]] = p
+        self.within, self.members = {}, {n: [] for n in self.places}    # the places a place is in, nearest first; and the places in it
+        for name, p in self.places.items():
+            chain, at = [], p
+            while "in" in at:
+                self.check_place(at["in"], "the place \"%s\"" % at["name"])
+                if at["in"] == name or at["in"] in chain:
+                    raise Refused("place \"%s\" is in itself, directly or through another place" % name)
+                chain.append(at["in"])
+                at = self.places[at["in"]]
+            self.within[name] = chain
+            for c in chain:
+                self.members[c].append(name)
+        for name, p in self.places.items():
+            if "is" not in p and not self.members[name]:
+                raise Refused("place \"%s\" does not say what it holds (\"is\"). A place that says nothing is made of the places in it, and no place is in it" % name)
         for f in doc.get("facts", []):
             only(f, "fact", "a fact")
             if "name" not in f:
@@ -182,11 +202,15 @@ class Design:
             if "about" in f:
                 self.check_place(f["about"], "the fact \"%s\"" % f["name"])
             self.facts[f["name"]] = f
-        for p in self.places.values():          # what can go wrong with any keyed place
-            if p.get("keyed"):
-                for name, says in [(already(p["name"]), "a record is already at the key"), (twice(p["name"]), "one key is given twice in the run"),
-                                   (anothers(p["name"]), "the record at the key belongs to something else")]:
-                    self.facts.setdefault(name, {"name": name, "fault": True, "about": p["name"], "says": says, "built in": True})
+        for p in self.places.values():          # what each place brings, by what it holds and how long it lasts
+            for kind in (("has", "twice", "anothers") if p.get("is") == "many" else ()) + (("unkept", "held") if p["kind"] == "lasting" else ()):
+                name = brought(kind, p["name"])
+                self.facts.setdefault(name, {"name": name, "fault": True, "about": p["name"], "says": BROUGHT[kind][1], "built in": True})
+        for name, chain in self.within.items():  # a place in another holds something unkept only when the place it is in does
+            outer = [c for c in chain if self.places[c]["kind"] == "lasting"]
+            f = self.facts.get(brought("unkept", name))
+            if f and f.get("built in") and outer:
+                f["only"] = f["with"] = brought("unkept", outer[0])
         for r in doc["runs"]:                   # which run it is, is a fact too
             self.facts.setdefault(in_run(r), {"name": in_run(r), "says": "the run is %s" % r, "built in": True, "run": r})
         if self.reports() is not None:
@@ -284,21 +308,24 @@ class Design:
                     self.check_fact(r.get("when"), where)
                 self.check_place(r["place"] if isinstance(r, dict) else r, where)
             for c in part.get("changes", []):
-                if isinstance(c, dict):
-                    only(c, "change", where)
-                    self.check_fact(c.get("when"), where)
-                    if c.get("how", "set") not in HOWS:
-                        raise Refused("%s: a change is one of %s" % (where, ", ".join(HOWS)))
-                    if c.get("later") not in (None, "undone", "stands"):
-                        raise Refused("%s: when a failure leaves its part a change is \"undone\" or \"stands\"" % where)
-                    for fact, value in c.get("makes", {}).items():
-                        if not isinstance(value, bool):
-                            raise Refused("%s: a change makes a fact true or false" % where)
-                        if fact not in self.facts:
-                            raise Refused("%s: a change makes the fact \"%s\", which the design does not list" % (where, fact))
-                    if c.get("how", "set") in ("create", "replace") and not self.places.get(c["place"], {}).get("keyed"):
-                        raise Refused("%s: only a keyed place has records to %s; \"%s\" is not keyed" % (where, c["how"], c["place"]))
-                self.check_place(c["place"] if isinstance(c, dict) else c, where)
+                if not isinstance(c, dict) or "how" not in c:
+                    raise Refused("%s: a change says how: \"how\" is one of %s" % (where, ", ".join(HOWS)))
+                only(c, "change", where)
+                self.check_fact(c.get("when"), where)
+                if c["how"] not in HOWS:
+                    raise Refused("%s: a change is one of %s" % (where, ", ".join(HOWS)))
+                if c.get("later") not in (None, "undone", "stands"):
+                    raise Refused("%s: when a failure leaves its part a change is \"undone\" or \"stands\"" % where)
+                for fact, value in c.get("makes", {}).items():
+                    if not isinstance(value, bool):
+                        raise Refused("%s: a change makes a fact true or false" % where)
+                    if fact not in self.facts:
+                        raise Refused("%s: a change makes the fact \"%s\", which the design does not list" % (where, fact))
+                self.check_place(c.get("place"), where)
+                if "from" in c:
+                    self.check_place(c["from"], where)
+                if c.get("many") and not (c["how"] == "create" and self.places[c["place"]].get("is") == "many"):
+                    raise Refused("%s: \"many\" is for a create in a place that holds many, and \"%s\" is not one" % (where, c["place"]))
             if not part.get("reads") and not part.get("changes"):
                 raise Refused("%s reads nothing and changes nothing" % where)
             for h in part.get("handles", []):
@@ -371,10 +398,30 @@ class Design:
     def is_fault(self, name):
         return bool(self.facts[name].get("fault"))
 
+    def lasting(self, place):
+        return self.places[place]["kind"] == "lasting"
+
+    def brings(self, c):
+        """The facts a change brings with it, by the operation and by what its place holds."""
+        p, how, kinds = self.places[c["place"]], c["how"], []
+        if how == "create" and p.get("is") == "many":
+            kinds += ["has"] + (["twice"] if c.get("many") else [])
+        if how == "replace" and p.get("is") == "many":
+            kinds.append("anothers")
+        if how == "replace" and p["kind"] == "lasting":
+            kinds.append("unkept")
+        if how == "destroy" and p["kind"] == "lasting":
+            kinds.append("held")
+        return [brought(k, p["name"]) for k in kinds]
+
+    def counted(self, env):
+        """How many things are wrong in env. What a place in another brings is the same thing wrong as its container's."""
+        return sum(1 for n, v in env.items() if v and self.is_fault(n) and not self.facts[n].get("with"))
+
     def possible(self, env):
         """False when more has gone wrong than a play allows, or a fact is
         true that can be true only when something that is false holds."""
-        if sum(1 for n, v in env.items() if v and self.is_fault(n)) > self.budget:
+        if self.counted(env) > self.budget:
             return False
         for name, value in env.items():
             if value and not holds(self.facts[name].get("only"), env):
@@ -395,7 +442,7 @@ class Design:
                     if need:
                         env.update(need)
                         more = True
-        return env if sum(1 for n, v in env.items() if v and self.is_fault(n)) <= self.budget else None
+        return env if self.counted(env) <= self.budget else None
 
     def about(self, place, faults=True):
         """The facts about a place that say what can be wrong with the value it holds."""
@@ -457,8 +504,14 @@ class Play:
                     continue
                 e["decided"] = True
                 if e["later"] == "undone":
-                    self.state[e["place"]] = e["was"] if e["was"] != "untouched" else "undone"
-                    self.rests[e["place"]] = e["rested"]
+                    for place, was in e["was"].items():
+                        self.state[place] = was if was != "untouched" else "undone"
+                    self.rests.update(e["rested"])
+                    for fact, was in e["made"].items():
+                        if was is None:
+                            self.now.made.pop(fact, None)
+                        else:
+                            self.now.made[fact] = was
                 elif e["later"] is None and self.d.places[e["place"]]["kind"] == "lasting":
                     self.left.append(dict(e, at=failure.action))
         return failure
@@ -498,7 +551,7 @@ class Play:
                 self.answered |= {n for n in names_in(h.get("when")) if self.now.get(n) and self.d.is_fault(n)}
                 if h["then"] != "accept":
                     for t in self.d.told(h):
-                        self.state[t] = "set"
+                        self.state[t] = "created"
                     self.warned.append(self.d.called(part))
                 return None
         return failure
@@ -508,6 +561,7 @@ class Play:
         self.before[name] = dict(self.state)
         reads = [r["place"] for r in listed(a.get("reads", []), env)]
         changes = listed(a.get("changes", []), env)
+        reads += [c["from"] for c in changes if "from" in c and c["from"] not in reads]   # what a change comes from is read
         self.saw[name] = [(p, self.state[p], bool(self.rests[p])) for p in reads]
         wrong = []                                    # what is wrong here, in this play
         for p in reads:
@@ -515,8 +569,7 @@ class Play:
                 self.unwritten.append((name, p))
             wrong += [f for f in d.about(p) if holds(f, env)]
         for c in changes:
-            how, p = c.get("how", "set"), c["place"]
-            for f in ([already(p)] + ([twice(p)] if c.get("many") else []) if how == "create" else [anothers(p)] if how == "replace" else []):
+            for f in d.brings(c):
                 if holds(f, env) and d.is_fault(f):       # a design can list one of these itself, without "fault", where it is normal
                     wrong.append(f)
         here = [f for f in d.at.get(name, []) if holds(f, env)]   # what goes wrong at this step
@@ -530,7 +583,7 @@ class Play:
             then = fired["then"]
             if then != "accept":
                 for t in d.told(fired):
-                    self.state[t] = "set"
+                    self.state[t] = "created"
             if then == "refuse":
                 self.steps.append((name, "refused"))
                 return Failure("failed", name, fired)
@@ -553,14 +606,34 @@ class Play:
             for f in [f for f in wrong if f in rests] + sorted(rests - set(wrong)):
                 self.ask(name, f)
         for c in changes:
-            p = c["place"]
-            self.effects.append({"place": p, "action": name, "later": c.get("later"), "was": self.state[p], "rested": self.rests[p]})
-            self.state[p] = HOWS[c.get("how", "set")]
-            self.rests[p] = set(rests)
-            self.by[p] = name
-            for f in d.about(p):                      # a value the run has just written is not the bad one it started with
-                self.now.made[f] = False
-            self.now.made.update(c.get("makes", {}))
+            p, how, src = c["place"], c["how"], c.get("from")
+            touched = [p] + d.within[p]                 # what is done to a place is done to each place it is in
+            facts = {}                                # the facts this change settles for the rest of the run
+            if not (how == "create" and d.places[p].get("is") in ("many", "series")):
+                for f in d.about(p):                  # a new state is not the bad one the place started with; an added member leaves it there
+                    facts[f] = False
+            if d.lasting(p):
+                kept = src is not None and d.places[src]["kind"] != "run"      # what came from a place that outlives the run is still there
+                for t in [t for t in touched if d.lasting(t)]:
+                    if not kept:
+                        facts[brought("unkept", t)] = True
+                facts[brought("unkept", p)] = not kept
+                facts[brought("held", p)] = False
+            if src is not None and d.lasting(src):
+                for t in [src] + [m for m in d.members[src] if d.lasting(m)]:
+                    facts[brought("unkept", t)] = False     # a copy of it now exists
+                if d.lasting(p):
+                    facts[brought("held", src)] = True
+            facts.update(c.get("makes", {}))
+            self.effects.append({"place": p, "action": name, "later": c.get("later"), "was": {t: self.state[t] for t in touched},
+                                 "rested": {t: self.rests[t] for t in touched}, "made": {f: self.now.made.get(f) for f in facts}})
+            self.state[p] = HOWS[how]
+            for t in touched[1:]:
+                self.state[t] = "replaced"
+            for t in touched:
+                self.rests[t] = set(rests)
+                self.by[t] = name
+            self.now.made.update(facts)
         self.did[name] = [(c["place"], self.state[c["place"]], bool(rests)) for c in changes]
         if fired and fired["then"] == "fail":         # it did its work, and then returns the failure
             self.steps.append((name, "failed"))
@@ -638,7 +711,7 @@ def held(design, hold):
 
 def is_state(got, want):
     if want == "changed":
-        return got in ("set", "created", "replaced", "deleted")
+        return got in ("created", "replaced", "destroyed")
     if want == "unchanged":
         return got in ("untouched", "undone")
     return got == want
@@ -649,8 +722,8 @@ def reach(design, part):
     r, c = set(), set()
     for a in design.actions_of(part):
         act = design.actions[a]
-        r |= {x["place"] if isinstance(x, dict) else x for x in act.get("reads", [])}
-        c |= {x["place"] if isinstance(x, dict) else x for x in act.get("changes", [])}
+        r |= {x["place"] if isinstance(x, dict) else x for x in act.get("reads", [])} | {x["from"] for x in act.get("changes", []) if "from" in x}
+        c |= {x["place"] for x in act.get("changes", [])}
     return r, c
 
 
@@ -712,7 +785,7 @@ def findings(design, plays):
                     broke.append("%s changes %s." % (p.by[place], place) if place in p.by else "A failure is reported to %s." % place)
             for place in e.get("never creates", []):
                 if p.state[place] == "created":
-                    broke.append("%s creates a record in %s." % (p.by[place], place))
+                    broke.append("%s creates in %s." % (p.by[place], place))
             for place, want in e.get("ends", {}).items():
                 if not is_state(p.state[place], want):
                     broke.append("%s ends %s, and the design says %s." % (place, p.state[place], want))
@@ -760,7 +833,7 @@ def findings(design, plays):
     walk(design, part_answers)
     for name, a in design.actions.items():
         for c in a.get("changes", []):
-            place = design.places[c["place"] if isinstance(c, dict) else c]
+            place = design.places[c["place"]]
             if place["kind"] == "outside":
                 add("owner", "%s changes %s" % (name, place["name"]), None, shows=["%s comes from outside the system, and %s changes it." % (place["name"], name)],
                     settle="If the system changes it, it is not outside: make it lasting and say who owns it.")
@@ -772,7 +845,7 @@ def findings(design, plays):
                 add("unexplained", "%s: accept, %s" % (name, whenever(h)), None,
                     shows=["%s goes on with something wrong, and the design does not say why that is fine." % name], settle='Give the answer a "because".')
         for c in a.get("changes", []):
-            if isinstance(c, dict) and c.get("later") == "stands" and not c.get("because"):
+            if c.get("later") == "stands" and not c.get("because"):
                 add("unexplained", "%s: its change to %s stands" % (name, c["place"]), None,
                     shows=["The change stays when a failure leaves its part, and the design does not say why that is fine."], settle='Give the change a "because".')
         quiet = [h for h in a.get("handles", []) if h["then"] != "accept" and not listing(h.get("tells"))]
@@ -899,7 +972,7 @@ def tests(design):
         for h in a.get("handles", []):
             out.append({"what": "answer", "subject": "%s: %s, %s" % (name, h["then"], whenever(h)), "held": held(design, h.get("hold"))})
         for c in a.get("changes", []):
-            if isinstance(c, dict) and c.get("later"):
+            if c.get("later"):
                 out.append({"what": "recovery", "subject": "%s: its change to %s %s when a failure leaves its part" % (name, c["place"], "is undone" if c["later"] == "undone" else "stands"), "held": held(design, c.get("hold"))})
     for e in design.doc.get("expects", []):
         out.append({"what": "expectation", "subject": e["name"], "held": held(design, e.get("hold"))})

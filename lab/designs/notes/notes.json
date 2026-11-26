@@ -4,19 +4,23 @@
   "places": [
     {
       "name": "text",
-      "kind": "outside"
+      "kind": "outside",
+      "is": "one"
     },
     {
       "name": "draft",
-      "kind": "lasting"
+      "kind": "lasting",
+      "is": "one"
     },
     {
       "name": "site",
-      "kind": "lasting"
+      "kind": "lasting",
+      "is": "one"
     },
     {
       "name": "message",
-      "kind": "report"
+      "kind": "report",
+      "is": "one"
     }
   ],
   "facts": [
@@ -46,7 +50,8 @@
           "changes": [
             {
               "place": "draft",
-              "later": "undone"
+              "later": "undone",
+              "how": "create"
             }
           ],
           "handles": [
@@ -62,7 +67,10 @@
             "draft"
           ],
           "changes": [
-            "site"
+            {
+              "place": "site",
+              "how": "create"
+            }
           ],
           "handles": [
             {

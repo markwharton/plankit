@@ -2,189 +2,537 @@
   "system": "Stopping a timer and logging its hours: a screen, the service behind it, and the remote system that keeps the time entries",
   "reports": "the message in the stop dialog",
   "places": [
-    { "name": "the person's timer", "kind": "lasting", "owner": "the service handles the request" },
-    { "name": "the remote system's time entries", "kind": "lasting", "keyed": true },
-    { "name": "the remote system's items", "kind": "outside" },
-    { "name": "the stop dialog", "kind": "run" },
-    { "name": "the service's answer", "kind": "run" },
-    { "name": "the week on the screen", "kind": "run" },
-    { "name": "the message in the stop dialog", "kind": "report" }
+    {
+      "name": "the person's timer",
+      "kind": "lasting",
+      "owner": "the service handles the request",
+      "is": "one"
+    },
+    {
+      "name": "the remote system's time entries",
+      "kind": "lasting",
+      "is": "many"
+    },
+    {
+      "name": "the remote system's items",
+      "kind": "outside",
+      "is": "one"
+    },
+    {
+      "name": "the stop dialog",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "the service's answer",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "the week on the screen",
+      "kind": "run",
+      "is": "one"
+    },
+    {
+      "name": "the message in the stop dialog",
+      "kind": "report",
+      "is": "one"
+    }
   ],
   "facts": [
-    { "name": "no timer is left", "about": "the person's timer",
-      "says": "when the person presses stop, the service holds no timer for them, as after a stop on another device" },
-    { "name": "the timer first started on an earlier day", "about": "the person's timer",
-      "says": "the timer was started before today and left running or paused" },
-    { "name": "the person chooses to discard",
-      "says": "in the dialog the person chooses to discard the timer instead of logging its hours" },
-    { "name": "a discard also reads the week again", "open": true,
-      "says": "the pages say a write reads the week once, after it lands; they do not say whether clearing a timer without logging counts as such a write" },
-    { "name": "the timer is marked from an earlier try", "about": "the person's timer",
-      "says": "an earlier try at this stop got no clear answer from the remote system, and the timer still carries the mark of that stop" },
-    { "name": "the earlier try's hours landed", "about": "the remote system's time entries",
+    {
+      "name": "no timer is left",
+      "about": "the person's timer",
+      "says": "when the person presses stop, the service holds no timer for them, as after a stop on another device"
+    },
+    {
+      "name": "the timer first started on an earlier day",
+      "about": "the person's timer",
+      "says": "the timer was started before today and left running or paused"
+    },
+    {
+      "name": "the person chooses to discard",
+      "says": "in the dialog the person chooses to discard the timer instead of logging its hours"
+    },
+    {
+      "name": "a discard also reads the week again",
+      "open": true,
+      "says": "the pages say a write reads the week once, after it lands; they do not say whether clearing a timer without logging counts as such a write"
+    },
+    {
+      "name": "the timer is marked from an earlier try",
+      "about": "the person's timer",
+      "says": "an earlier try at this stop got no clear answer from the remote system, and the timer still carries the mark of that stop"
+    },
+    {
+      "name": "the earlier try's hours landed",
+      "about": "the remote system's time entries",
       "only": "the timer is marked from an earlier try",
-      "says": "the remote system already holds the hours the earlier try sent" },
-    { "name": "the hours landed before the answer was lost", "only": "the remote system gives no clear answer",
-      "says": "the remote system took the hours, and its answer never arrived" },
-    { "name": "the remote system's time entries already has the record",
-      "says": "the item already has an entry for the day; this is normal, and the hours are added to it" },
-    { "name": "the timer was dealt with on another device while the dialog was open", "fault": true,
-      "says": "a read made while the dialog is open finds the timer stopped or switched elsewhere" },
-    { "name": "another log of this timer is in progress", "fault": true,
-      "says": "the timer's stop is being saved by another request at this moment" },
-    { "name": "another device already logged this timer", "fault": true,
-      "says": "the service answers that the timer was already logged, by a log this screen did not send" },
-    { "name": "the item is closed or no longer assigned", "fault": true, "about": "the remote system's items",
-      "says": "the timer's item no longer takes time: it is closed, or the person is no longer assigned to it" },
-    { "name": "the hours sent are more than 24", "fault": true,
-      "says": "the dialog's hours field holds more than 24 hours, the most one stop may log" },
-    { "name": "the day would pass 24 hours", "fault": true, "about": "the remote system's time entries",
-      "says": "the hours sent, added to what the person's items already hold for the day, come to more than 24" },
-    { "name": "the remote system gives no clear answer", "fault": true,
-      "says": "the write of the hours is sent and no clear answer comes back" }
+      "says": "the remote system already holds the hours the earlier try sent"
+    },
+    {
+      "name": "the hours landed before the answer was lost",
+      "only": "the remote system gives no clear answer",
+      "says": "the remote system took the hours, and its answer never arrived"
+    },
+    {
+      "name": "the remote system's time entries already has the member",
+      "says": "the item already has an entry for the day; this is normal, and the hours are added to it"
+    },
+    {
+      "name": "the timer was dealt with on another device while the dialog was open",
+      "fault": true,
+      "says": "a read made while the dialog is open finds the timer stopped or switched elsewhere"
+    },
+    {
+      "name": "another log of this timer is in progress",
+      "fault": true,
+      "says": "the timer's stop is being saved by another request at this moment"
+    },
+    {
+      "name": "another device already logged this timer",
+      "fault": true,
+      "says": "the service answers that the timer was already logged, by a log this screen did not send"
+    },
+    {
+      "name": "the item is closed or no longer assigned",
+      "fault": true,
+      "about": "the remote system's items",
+      "says": "the timer's item no longer takes time: it is closed, or the person is no longer assigned to it"
+    },
+    {
+      "name": "the hours sent are more than 24",
+      "fault": true,
+      "says": "the dialog's hours field holds more than 24 hours, the most one stop may log"
+    },
+    {
+      "name": "the day would pass 24 hours",
+      "fault": true,
+      "about": "the remote system's time entries",
+      "says": "the hours sent, added to what the person's items already hold for the day, come to more than 24"
+    },
+    {
+      "name": "the remote system gives no clear answer",
+      "fault": true,
+      "says": "the write of the hours is sent and no clear answer comes back"
+    }
   ],
   "parts": {
     "stop the timer": {
       "seq": [
-        { "do": "read the person's timer", "reads": ["the person's timer"],
-          "says": "Stop reads the service's timer first, because this screen's count can be behind a pause or stop on another device." },
-        { "use": "the dialog and the stop", "when": { "not": "no timer is left" } }
+        {
+          "do": "read the person's timer",
+          "reads": [
+            "the person's timer"
+          ],
+          "says": "Stop reads the service's timer first, because this screen's count can be behind a pause or stop on another device."
+        },
+        {
+          "use": "the dialog and the stop",
+          "when": {
+            "not": "no timer is left"
+          }
+        }
       ]
     },
     "the dialog and the stop": {
       "seq": [
-        { "do": "fill the stop dialog", "reads": ["the person's timer"], "changes": ["the stop dialog"],
-          "says": "The dialog shows the item and the hours the timer ran, filled once from the timer just read." },
-        { "choose": [
-            { "when": "the person chooses to discard",
-              "run": { "do": "confirm the discard", "reads": ["the stop dialog"],
-                       "handles": [ { "then": "ask" } ],
-                       "says": "Discard takes two steps: the person is asked a second time." } }
+        {
+          "do": "fill the stop dialog",
+          "reads": [
+            "the person's timer"
           ],
-          "otherwise": { "do": "offer to log the hours", "reads": ["the stop dialog"],
-                         "handles": [
-                           { "when": "the timer was dealt with on another device while the dialog was open", "then": "refuse" },
-                           { "then": "ask" }
-                         ],
-                         "says": "The person checks the hours, may add a note, and confirms or cancels. Nothing is sent before they confirm." } },
+          "changes": [
+            {
+              "place": "the stop dialog",
+              "how": "create"
+            }
+          ],
+          "says": "The dialog shows the item and the hours the timer ran, filled once from the timer just read."
+        },
+        {
+          "choose": [
+            {
+              "when": "the person chooses to discard",
+              "run": {
+                "do": "confirm the discard",
+                "reads": [
+                  "the stop dialog"
+                ],
+                "handles": [
+                  {
+                    "then": "ask"
+                  }
+                ],
+                "says": "Discard takes two steps: the person is asked a second time."
+              }
+            }
+          ],
+          "otherwise": {
+            "do": "offer to log the hours",
+            "reads": [
+              "the stop dialog"
+            ],
+            "handles": [
+              {
+                "when": "the timer was dealt with on another device while the dialog was open",
+                "then": "refuse"
+              },
+              {
+                "then": "ask"
+              }
+            ],
+            "says": "The person checks the hours, may add a note, and confirms or cancels. Nothing is sent before they confirm."
+          }
+        },
         "the service handles the request",
-        { "do": "show the hours logged", "when": { "not": "the person chooses to discard" },
-          "reads": ["the service's answer"],
-          "handles": [ { "then": "tell" } ] },
-        { "do": "read the week again",
-          "when": { "any": [ { "not": "the person chooses to discard" }, "a discard also reads the week again" ] },
-          "reads": ["the remote system's time entries"], "changes": ["the week on the screen"] }
+        {
+          "do": "show the hours logged",
+          "when": {
+            "not": "the person chooses to discard"
+          },
+          "reads": [
+            "the service's answer"
+          ],
+          "handles": [
+            {
+              "then": "tell"
+            }
+          ]
+        },
+        {
+          "do": "read the week again",
+          "when": {
+            "any": [
+              {
+                "not": "the person chooses to discard"
+              },
+              "a discard also reads the week again"
+            ]
+          },
+          "reads": [
+            "the remote system's time entries"
+          ],
+          "changes": [
+            {
+              "place": "the week on the screen",
+              "how": "create"
+            }
+          ]
+        }
       ]
     },
     "the service handles the request": {
       "choose": [
-        { "when": "the person chooses to discard",
-          "run": { "do": "clear the timer without logging",
-                   "changes": [ { "place": "the person's timer", "how": "delete" } ] } }
+        {
+          "when": "the person chooses to discard",
+          "run": {
+            "do": "clear the timer without logging",
+            "changes": [
+              {
+                "place": "the person's timer",
+                "how": "destroy"
+              }
+            ]
+          }
+        }
       ],
       "otherwise": "the service logs the stop"
     },
     "the service logs the stop": {
       "seq": [
-        { "name": "the service takes the stop",
+        {
+          "name": "the service takes the stop",
           "says": "The pages do not say whether the checks come before the mark.",
           "all": [
-            { "do": "check the stop",
-              "reads": ["the person's timer", "the remote system's items", "the remote system's time entries"],
+            {
+              "do": "check the stop",
+              "reads": [
+                "the person's timer",
+                "the remote system's items",
+                "the remote system's time entries"
+              ],
               "handles": [
-                { "when": "another log of this timer is in progress", "then": "refuse" },
-                { "when": "another device already logged this timer", "then": "refuse" },
-                { "when": "the item is closed or no longer assigned", "then": "refuse" },
-                { "when": "the hours sent are more than 24", "then": "refuse" },
-                { "when": "the day would pass 24 hours", "then": "refuse" }
-              ] },
-            { "do": "mark the stop", "when": { "not": "the timer is marked from an earlier try" },
-              "changes": [ { "place": "the person's timer", "how": "set", "later": "stands",
-                             "because": "without a clear answer from the remote system the timer stays marked, so the next try reads the remote system first" } ] }
-          ] },
-        { "do": "read the remote system first", "when": "the timer is marked from an earlier try",
-          "reads": ["the remote system's time entries"] },
-        { "do": "add the hours to the entry", "when": { "not": "the earlier try's hours landed" },
-          "reads": ["the stop dialog"],
-          "changes": [ { "place": "the remote system's time entries", "how": "create", "later": "stands",
-                         "because": "the timer stays marked and the next try reads the remote system first, so hours that landed are not logged twice" } ],
+                {
+                  "when": "another log of this timer is in progress",
+                  "then": "refuse"
+                },
+                {
+                  "when": "another device already logged this timer",
+                  "then": "refuse"
+                },
+                {
+                  "when": "the item is closed or no longer assigned",
+                  "then": "refuse"
+                },
+                {
+                  "when": "the hours sent are more than 24",
+                  "then": "refuse"
+                },
+                {
+                  "when": "the day would pass 24 hours",
+                  "then": "refuse"
+                }
+              ]
+            },
+            {
+              "do": "mark the stop",
+              "when": {
+                "not": "the timer is marked from an earlier try"
+              },
+              "changes": [
+                {
+                  "place": "the person's timer",
+                  "how": "replace",
+                  "later": "stands",
+                  "because": "without a clear answer from the remote system the timer stays marked, so the next try reads the remote system first"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "do": "read the remote system first",
+          "when": "the timer is marked from an earlier try",
+          "reads": [
+            "the remote system's time entries"
+          ]
+        },
+        {
+          "do": "add the hours to the entry",
+          "when": {
+            "not": "the earlier try's hours landed"
+          },
+          "reads": [
+            "the stop dialog"
+          ],
+          "changes": [
+            {
+              "place": "the remote system's time entries",
+              "how": "create",
+              "later": "stands",
+              "because": "the timer stays marked and the next try reads the remote system first, so hours that landed are not logged twice"
+            }
+          ],
           "handles": [
-            { "when": { "all": [ "the remote system gives no clear answer", "the hours landed before the answer was lost" ] }, "then": "fail" },
-            { "when": "the remote system gives no clear answer", "then": "refuse" }
-          ] },
-        { "do": "clear the person's timer",
-          "changes": [ { "place": "the person's timer", "how": "delete" } ] },
-        { "do": "answer with the hours logged",
-          "changes": ["the service's answer"] }
+            {
+              "when": {
+                "all": [
+                  "the remote system gives no clear answer",
+                  "the hours landed before the answer was lost"
+                ]
+              },
+              "then": "fail"
+            },
+            {
+              "when": "the remote system gives no clear answer",
+              "then": "refuse"
+            }
+          ]
+        },
+        {
+          "do": "clear the person's timer",
+          "changes": [
+            {
+              "place": "the person's timer",
+              "how": "destroy"
+            }
+          ]
+        },
+        {
+          "do": "answer with the hours logged",
+          "changes": [
+            {
+              "place": "the service's answer",
+              "how": "create"
+            }
+          ]
+        }
       ]
     }
   },
-  "runs": ["stop the timer"],
+  "runs": [
+    "stop the timer"
+  ],
   "expects": [
-    { "name": "stop reads the service's timer first",
-      "runs": ["read the person's timer"] },
-    { "name": "with no timer left, no dialog opens",
+    {
+      "name": "stop reads the service's timer first",
+      "runs": [
+        "read the person's timer"
+      ]
+    },
+    {
+      "name": "with no timer left, no dialog opens",
       "when": "no timer is left",
-      "never runs": ["fill the stop dialog"],
-      "never changes": ["the stop dialog", "the person's timer", "the remote system's time entries"] },
-    { "name": "the hours are shown to the person before any are logged",
-      "before": "add the hours to the entry", "place": "the stop dialog", "is": "set" },
-    { "name": "the stop is marked before the remote system is written to",
-      "when": { "not": "the timer is marked from an earlier try" },
-      "before": "add the hours to the entry", "place": "the person's timer", "is": "set" },
-    { "name": "a cancel leaves the timer as it was",
+      "never runs": [
+        "fill the stop dialog"
+      ],
+      "never changes": [
+        "the stop dialog",
+        "the person's timer",
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "the hours are shown to the person before any are logged",
+      "before": "add the hours to the entry",
+      "place": "the stop dialog",
+      "is": "created"
+    },
+    {
+      "name": "the stop is marked before the remote system is written to",
+      "when": {
+        "not": "the timer is marked from an earlier try"
+      },
+      "before": "add the hours to the entry",
+      "place": "the person's timer",
+      "is": "replaced"
+    },
+    {
+      "name": "a cancel leaves the timer as it was",
       "on": "declined",
-      "never changes": ["the person's timer", "the remote system's time entries"] },
-    { "name": "a refused stop keeps the timer",
-      "when": { "any": [ "the item is closed or no longer assigned", "the hours sent are more than 24", "the day would pass 24 hours" ] },
+      "never changes": [
+        "the person's timer",
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "a refused stop keeps the timer",
+      "when": {
+        "any": [
+          "the item is closed or no longer assigned",
+          "the hours sent are more than 24",
+          "the day would pass 24 hours"
+        ]
+      },
       "on": "failed",
-      "ends": { "the person's timer": "unchanged" } },
-    { "name": "closed work takes no time",
+      "ends": {
+        "the person's timer": "unchanged"
+      }
+    },
+    {
+      "name": "closed work takes no time",
       "when": "the item is closed or no longer assigned",
-      "never changes": ["the remote system's time entries"] },
-    { "name": "a timer another device logged is not logged again",
+      "never changes": [
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "a timer another device logged is not logged again",
       "when": "another device already logged this timer",
-      "never changes": ["the remote system's time entries"] },
-    { "name": "a timer dealt with elsewhere while the dialog was open sends nothing",
+      "never changes": [
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "a timer dealt with elsewhere while the dialog was open sends nothing",
       "when": "the timer was dealt with on another device while the dialog was open",
-      "never changes": ["the person's timer", "the remote system's time entries"] },
-    { "name": "hours that landed are not logged twice",
+      "never changes": [
+        "the person's timer",
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "hours that landed are not logged twice",
       "when": "the earlier try's hours landed",
-      "never runs": ["add the hours to the entry"],
-      "never changes": ["the remote system's time entries"] },
-    { "name": "without a clear answer the timer stays marked",
-      "when": { "all": [ "the remote system gives no clear answer", { "not": "the timer is marked from an earlier try" } ] },
-      "ends": { "the person's timer": "set" } },
-    { "name": "a logged stop clears the timer",
-      "when": { "not": "the person chooses to discard" },
+      "never runs": [
+        "add the hours to the entry"
+      ],
+      "never changes": [
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "without a clear answer the timer stays marked",
+      "when": {
+        "all": [
+          "the remote system gives no clear answer",
+          {
+            "not": "the timer is marked from an earlier try"
+          }
+        ]
+      },
+      "ends": {
+        "the person's timer": "replaced"
+      }
+    },
+    {
+      "name": "a logged stop clears the timer",
+      "when": {
+        "not": "the person chooses to discard"
+      },
       "on": "success",
-      "ends": { "the person's timer": "deleted" } },
-    { "name": "a discard clears the timer without logging anything",
+      "ends": {
+        "the person's timer": "destroyed"
+      }
+    },
+    {
+      "name": "a discard clears the timer without logging anything",
       "when": "the person chooses to discard",
       "on": "success",
-      "ends": { "the person's timer": "deleted" },
-      "never changes": ["the remote system's time entries"] },
-    { "name": "a log reads the week again after it lands",
-      "when": { "all": [ { "not": "the person chooses to discard" }, { "not": "no timer is left" } ] },
+      "ends": {
+        "the person's timer": "destroyed"
+      },
+      "never changes": [
+        "the remote system's time entries"
+      ]
+    },
+    {
+      "name": "a log reads the week again after it lands",
+      "when": {
+        "all": [
+          {
+            "not": "the person chooses to discard"
+          },
+          {
+            "not": "no timer is left"
+          }
+        ]
+      },
       "on": "success",
-      "runs": ["read the week again"] }
+      "runs": [
+        "read the week again"
+      ]
+    }
   ],
   "rules": [
-    { "rule": "The hours saved are the value in the dialog's field, filled when the dialog opens from the timer just read, and not the live elapsed time. The field's stepper moves in quarter hours.",
-      "about": "fill the stop dialog" },
-    { "rule": "The day sent is today. When the timer first started on an earlier day, the dialog says when it started and offers the days of this week up to today, set to the day it started. One stop logs to one day.",
-      "about": "fill the stop dialog", "when": "the timer first started on an earlier day" },
-    { "rule": "The hours are added to the entry the item already has for the day. An entry is never lowered or deleted.",
-      "about": "add the hours to the entry", "when": "the remote system's time entries already has the record" },
-    { "rule": "A try made again after no clear answer logs the hours the first try recorded, whatever the dialog then holds.",
-      "about": "add the hours to the entry", "when": "the timer is marked from an earlier try" },
-    { "rule": "The confirmation shows the hours the service answers it logged.",
-      "about": "show the hours logged" },
-    { "rule": "When the item is refused, the dialog says why and offers the list of items, so the same hours can be logged to another item. Any such refusal reads the list of items again.",
-      "about": "check the stop", "when": "the item is closed or no longer assigned" },
-    { "rule": "A refusal for the day's total names the hours the day already holds.",
-      "about": "check the stop", "when": "the day would pass 24 hours" },
-    { "rule": "When another device logged the timer first, the dialog says so and keeps what was typed, and the timer and the week are read again.",
-      "about": "check the stop", "when": "another device already logged this timer" }
+    {
+      "rule": "The hours saved are the value in the dialog's field, filled when the dialog opens from the timer just read, and not the live elapsed time. The field's stepper moves in quarter hours.",
+      "about": "fill the stop dialog"
+    },
+    {
+      "rule": "The day sent is today. When the timer first started on an earlier day, the dialog says when it started and offers the days of this week up to today, set to the day it started. One stop logs to one day.",
+      "about": "fill the stop dialog",
+      "when": "the timer first started on an earlier day"
+    },
+    {
+      "rule": "The hours are added to the entry the item already has for the day. An entry is never lowered or deleted.",
+      "about": "add the hours to the entry",
+      "when": "the remote system's time entries already has the member"
+    },
+    {
+      "rule": "A try made again after no clear answer logs the hours the first try recorded, whatever the dialog then holds.",
+      "about": "add the hours to the entry",
+      "when": "the timer is marked from an earlier try"
+    },
+    {
+      "rule": "The confirmation shows the hours the service answers it logged.",
+      "about": "show the hours logged"
+    },
+    {
+      "rule": "When the item is refused, the dialog says why and offers the list of items, so the same hours can be logged to another item. Any such refusal reads the list of items again.",
+      "about": "check the stop",
+      "when": "the item is closed or no longer assigned"
+    },
+    {
+      "rule": "A refusal for the day's total names the hours the day already holds.",
+      "about": "check the stop",
+      "when": "the day would pass 24 hours"
+    },
+    {
+      "rule": "When another device logged the timer first, the dialog says so and keeps what was typed, and the timer and the week are read again.",
+      "about": "check the stop",
+      "when": "another device already logged this timer"
+    }
   ]
 }
