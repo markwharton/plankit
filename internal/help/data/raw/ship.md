@@ -22,11 +22,12 @@ pk ship
 the release when a Release-Tag commit exists; the release half cannot
 be rehearsed before its changelog commit exists.
 
-If the release half fails, ship undoes the changelog commit it made
-in the same run, so the repository is as it was before `pk ship`.
-Fix the cause and run the same command again. A commit that cannot be
-undone stays, and the undo says why; see `pk help changelog`. A
-changelog commit that was pending before ship ran is left alone.
+If the release half fails, ship deletes the release tag, resets the
+merge, undoes the changelog commit and restores the tree. What it
+fetched from origin stays. Fix the cause and run the same command
+again. A commit that cannot be undone stays, and the undo says why;
+see `pk help changelog`. A changelog commit that was pending before
+ship ran is left alone.
 
 ## Deciding the version
 

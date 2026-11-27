@@ -6,7 +6,8 @@
 //
 // Everything that mutates happens under a defer that deletes an
 // unpushed tag, rolls back the merge, and switches back to the source
-// branch, so an aborted release leaves the repository as it found it.
+// branch when the release is aborted. What pre-flight fetched from
+// origin stays.
 // Ceremony prints on stderr; stdout stays empty.
 package release
 
@@ -179,8 +180,7 @@ func run(ctx *cli.Context) error {
 
 	// From here, mutations happen under the rollback defer: an unpushed
 	// tag is deleted, a merged release branch is reset, and the checkout
-	// returns to the source branch, so an aborted release leaves the
-	// repository as it found it.
+	// returns to the source branch.
 	switchBack := func() {
 		if _, err := git.Exec(root, "switch", sourceBranch); err != nil {
 			msg.Warnf(w, "failed to switch back to %s: %v", sourceBranch, err)

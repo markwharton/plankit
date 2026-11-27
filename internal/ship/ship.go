@@ -8,10 +8,10 @@
 // been made, means changelog is done, so ship skips to release;
 // anything else means run both.
 //
-// A ship either completes or leaves the repository as it found it. The
-// release half rolls itself back when it fails, which leaves only the
-// changelog commit, so ship runs pk changelog --undo on the commit this
-// run made. undo owns whether that commit is safe to remove and says
+// When the release half fails, it deletes the release tag, resets the
+// merge and switches back, which leaves only the changelog commit, so
+// ship runs pk changelog --undo on the commit this run made, which
+// restores the tree. What was fetched from origin stays. undo owns whether that commit is safe to remove and says
 // what it did; ship checks nothing and adds nothing. A changelog commit
 // that was pending before ship ran is not this run's to undo: it stays,
 // and a rerun resumes at release.
