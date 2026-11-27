@@ -75,6 +75,28 @@ that round, when the writer was given it at `lab/engine/git.json`. The
 engine accepted it on the first run. Its `on` path is the one thing
 changed since it was written, so that it finds that copy.
 
+`pk-on-git-blind-7.json` beside it is the seventh round's, written for
+changelog, release and ship once the language had named facts. It
+stands on `git-at-code-read.json` beside it, git's design unchanged
+since the code was read. Every example about pk in `LANGUAGE.md` was
+changed to one about a library's lending desk, the named fact's among
+them. The engine accepted the design on the first run: 4,743 plays and
+14 questions. The writer looked one thing up in `engine.py`, when an
+expectation's `when` is judged, which `DESIGN.md` now says. The round
+cost about 132,000 tokens.
+
+The writer named no fact. The conditions of more than one fact it
+repeats are `in changelog or in ship`, five times, and `in release or
+in ship`, twice. A writer drafting from pages does not yet know which
+conditions repeat; pk's design named its three when it was revised.
+
+Its questions are gaps in pk's pages: a preRelease hook that fails,
+what pre-flight fetches, whether preRelease runs before the merge,
+whether `--undo` makes the branch checks, and a commit or a tag that
+cannot be made. Its expectation that changelog creates no tag failed
+where changelog fetches origin's tags: the page said "No git tag is
+created", and meant the release tag.
+
 `data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
 designs written the same way for one flow each of three other systems.
 They are kept because each showed something pk could not: a run made a
