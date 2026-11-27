@@ -77,6 +77,7 @@ matter to it. Everything else follows from that one mechanism:
 | A bad value is fine here | it handles the fault with `accept` |
 | A person is asked first | it handles the fault with `ask`, and the engine plays yes and no |
 | Two flags cannot go together | a fact is possible `only` when another holds |
+| A condition matters in several places | a named fact `means` it, and each place uses its name |
 | Something matters to one run and not another | the fact is possible `only` when `in` that run |
 | A step changes the world | a change `makes` a fact true or false for the rest of the run |
 | A step adds, overwrites or removes | a change says `how`: `create`, `replace` or `destroy` |
@@ -93,6 +94,43 @@ matter to it. Everything else follows from that one mechanism:
 | What an earlier run left | nothing is written. The engine finds it and asks |
 | A rule holds for every run | an expectation, limited by `when` to the plays it is about |
 | The code must do the same | the code is written in this language too, and played beside the design |
+
+## A fact named for others
+
+A condition that matters in several places is named once:
+
+```json
+{ "name": "a release is pending",
+  "means": { "all": [ "the last commit is a release commit",
+                      { "not": "the release is tagged" },
+                      { "not": "the release tag is on another commit" } ] },
+  "says": "a Release-Tag commit whose tag does not exist yet" }
+```
+
+Its name is then used wherever a fact can be: in a `when`, an `only`,
+a choice or an answer. It is never played. Whether it holds follows
+from the facts it names, and a design with named facts plays exactly
+as the same design with each meaning written where its name is used.
+Where the engine puts a condition in words, it keeps the name.
+
+- `means` is a condition, written as a `when` is.
+- It names facts of its own design, facts it has from the layer below,
+  and other named facts. A name that leads back to itself is refused.
+- It carries `name`, `means` and `says`. `fault`, `open`, `about`, `at`
+  and `only` are refused with it, and so is a change that `makes` it:
+  what can be wrong is said by the faults it names.
+- Each design names its own. A description of code can give a name a
+  meaning of its own. `--against` plays facts, not names.
+- It says what a word means, not what a run does, so it needs no test.
+
+A named fact that no condition uses is reported as `unused`, as a fact
+nothing asks about is.
+
+This is Hamilton's named partition. A decision is made by
+`Or{partition(inputs)}` (Figure 2 of Hamilton and Hackler, CSER 2007),
+and the partition is a named function: `{gt(c0,lc0)}` in Figure 10,
+`{is:present(i)}` in Figure 5. Figure 9 lists `is:Null` among a type's
+primitive operations, and Figure 10 uses it by name.
 
 ## The parts of a design
 
@@ -472,7 +510,7 @@ and names it.
 |---|---|
 | The design | `system`, `on` (the paths of the designs one layer down, from this design's own directory), `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
 | A place | `name`, `is` (`one`, `many` or `series`; left out for a place made of the places in it), `kind` (`outside`, `lasting`, `run` or `report`), `in` (a place), `given` (`true` for a place the user of a run supplies), `owner` (a part) |
-| A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `at` (an action, or a list of them), `only` (a fact that must hold for this one to be possible) |
+| A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `at` (an action, or a list of them), `only` (a fact that must hold for this one to be possible), `means` (a condition; the fact is then named for it, and has only `name`, `means` and `says`) |
 | An action | `do` (its name), `when`, `handles`, and either `reads` and `changes`, or `uses` (a run below) with `with`, `makes`, `later`, `because` and `rehearsal` |
 | A read | a place's name, or `{ "place": ..., "when": ... }` |
 | A change | `{ "place": ..., "how": ..., "from": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `create`, `replace` or `destroy`, and `because` says why a change that `stands` may |
@@ -566,8 +604,6 @@ places had a shape. Its rule is at the top of `convert.py`.
 
 About facts:
 
-- Define a fact from other facts. A mode that depends on two flags and
-  a state has to be written out wherever it is used.
 - Say that an action tries again, or that an open fact has more than
   two outcomes.
 - Say that a fact is a state on one layer and a fault on the layer

@@ -848,5 +848,82 @@ class Engine(unittest.TestCase):
                 self.assertIn(reason, str(cm.exception))
 
 
+def named(written=False):
+    """notes(), where putting it on the site is for a note that is not a preview: "publishing", named once, or written out where it is used."""
+    doc = notes()
+    publishing, live = {"not": "preview"}, {"all": ["publishing", {"not": "the site is down"}]}
+    if written:
+        publishing, live = publishing, {"all": [publishing, {"not": "the site is down"}]}
+    else:
+        doc["facts"] += [{"name": "publishing", "means": publishing, "says": "the note is going to the site"},
+                         {"name": "live", "means": live}]
+    put = doc["parts"]["publish"]["seq"][1]
+    put["when"] = publishing if written else "publishing"
+    put["handles"][0]["when"] = {"all": [publishing if written else "publishing", "the site is down"]}
+    doc["rules"][0]["when"] = live if written else "live"
+    return doc
+
+
+def everything(doc):
+    """Every play as the engine plays it, and what it finds."""
+    d = engine.Design(doc)
+    plays = engine.explore_all(d)
+    return (sorted((p.run, tuple(p.given()), p.outcome(), tuple(p.steps), tuple(sorted(p.state.items()))) for p in plays),
+            engine.findings(d, plays))
+
+
+class Named(unittest.TestCase):
+    def test_a_design_with_a_named_fact_plays_as_the_one_with_its_meaning_written_out(self):
+        self.assertEqual(everything(named()), everything(named(written=True)))
+        d = engine.Design(named())
+        self.assertFalse(any("publishing" in p.env or "live" in p.env for p in engine.explore_all(d)))   # a named fact is never played
+        self.assertNotIn("publishing", d.facts)
+        doc = named()
+        doc["rules"][0]["when"] = "preview"                                            # nothing names "live" now
+        self.assertEqual([(f["kind"], f["subject"]) for f in engine.findings(engine.Design(doc), engine.explore_all(engine.Design(doc)))], [("unused", "live")])
+
+    def test_an_answer_is_put_in_words_with_the_name(self):
+        subjects = [t["subject"] for t in engine.tests(engine.Design(named()))]
+        self.assertIn("put on site: refuse, when publishing and the site is down", subjects)
+
+    def test_the_callers_document_is_left_as_it_was(self):
+        doc = named()
+        was = copy.deepcopy(doc)
+        engine.Design(doc)
+        self.assertEqual(doc, was)
+
+    def test_a_description_of_code_can_give_a_name_a_meaning_of_its_own(self):
+        code = named()
+        code["facts"][-2]["means"] = {"not": "the site is down"}                     # the code puts a preview on the site too
+        got = engine.compare(engine.Design(named()), engine.Design(code))
+        self.assertEqual([(f["subject"], f["example"]["given"]) for f in got],                  # the facts are compared, and the name is not
+                         [("put on site: the design refuses, the code skips it", ["the site is down"]),
+                          ("put on site: the design skips it, the code goes ahead", ["preview"])])
+
+    def test_what_a_named_fact_cannot_be(self):
+        def refused(change, reason):
+            doc = named()
+            change(doc)
+            with self.assertRaises(engine.Refused) as cm:
+                engine.Design(doc)
+            self.assertIn(reason, str(cm.exception))
+        for key, value in (("fault", True), ("open", True), ("about", "text"), ("at", "save draft"), ("only", "preview")):
+            with self.subTest(key=key):
+                refused(lambda doc: doc["facts"][-2].update({key: value}),
+                        "the named fact \"publishing\" has \"%s\": a named fact holds when its meaning does" % key)
+        cases = [
+            (lambda doc: doc["facts"][-2].update(means={"all": ["live", "preview"]}), "the named fact \"publishing\" leads back to itself: publishing, live, publishing"),
+            (lambda doc: doc["facts"][-2].update(means="the note is late"), "the named fact \"publishing\" names the fact \"the note is late\", which the design does not list"),
+            (lambda doc: doc["facts"][-2].update(means={"not": "preview", "all": []}), "where a fact is asked for, give a name"),
+            (lambda doc: doc["parts"]["publish"]["seq"][1].update(when={"not": "preview", "all": []}), "where a fact is asked for, give a name"),
+            (lambda doc: doc["facts"].append({"name": "preview", "means": "the site is down"}), "two facts are named \"preview\""),
+            (lambda doc: doc["parts"]["publish"]["seq"][0].update(makes={"publishing": True}), "makes the named fact \"publishing\" true or false: a named fact holds when its meaning does"),
+            (lambda doc: doc["parts"]["publish"]["seq"][0].update(when={"named": ["publishing", "preview"]}), "{\"named\": ...}"),
+        ]
+        for change, reason in cases:
+            with self.subTest(reason=reason):
+                refused(change, reason)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ first and reports where the two differ.
 Standard library only. DESIGN.md beside this file is the reference.
 """
 import argparse
+import copy
 import json
 import os
 import sys
@@ -19,7 +20,7 @@ import textwrap
 KEYS = {
     "design": {"system", "on", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
     "place": {"name", "is", "kind", "in", "given", "owner", "says"},
-    "fact": {"name", "says", "fault", "open", "about", "at", "only"},
+    "fact": {"name", "says", "fault", "open", "about", "at", "only", "means"},
     "action": {"do", "when", "reads", "changes", "handles", "says", "uses", "with", "makes", "later", "because", "rehearsal", "hold"},
     "seq": {"seq", "name", "when", "handles", "says"},
     "all": {"all", "name", "when", "handles", "says"},
@@ -82,6 +83,8 @@ def renamed(c, names):
     if isinstance(c, str):
         return names.get(c, c)
     (k, v), = c.items()
+    if k == "named":
+        return {k: [v[0], renamed(v[1], names)]}
     return {k: renamed(v, names) if k == "not" else [renamed(x, names) for x in v]}
 
 
@@ -92,6 +95,8 @@ def words(c, inner=False):
     if isinstance(c, str):
         return c
     (k, v), = c.items()
+    if k == "named":                       # a named fact is put in words by its name
+        return v[0]
     if k == "not":
         return "not " + words(v, True)
     out = (" and " if k == "all" else " or ").join(words(x, True) for x in v)
@@ -110,6 +115,8 @@ def names_in(c):
         return {c}
     if isinstance(c, dict) and len(c) == 1:
         (k, v), = c.items()
+        if k == "named" and isinstance(v, list) and len(v) == 2:   # the facts a named fact means
+            return names_in(v[1])
         if k == "not":
             return names_in(v)
         if k in ("all", "any") and isinstance(v, list):
@@ -125,6 +132,8 @@ def holds(c, env):
             raise Need(c)
         return env[c]
     (k, v), = c.items()
+    if k == "named":
+        return holds(v[1], env)
     if k == "not":
         return not holds(v, env)
     return all(holds(x, env) for x in v) if k == "all" else any(holds(x, env) for x in v)
@@ -140,6 +149,8 @@ def assume(c, env, want=True):
             return {} if env[c] == want else None
         return {c: want}
     (k, v), = c.items()
+    if k == "named":
+        return assume(v[1], env, want)
     if k == "not":
         return assume(v, env, not want)
     if (k == "all") == want:               # every part must be want
@@ -189,6 +200,7 @@ class Design:
     def __init__(self, doc, root=".", base=None):
         """root is where the files of holds start from. base is the directory of the
         definition's own file, where the definitions it stands on are found."""
+        doc = copy.deepcopy(doc)                # named facts are read into the conditions of this copy; the caller's is left as it was
         only(doc, "design", "the design")
         for k in ("system", "places", "parts", "runs"):
             if k not in doc:
@@ -210,6 +222,8 @@ class Design:
         if not isinstance(self.budget, int) or self.budget < 0:
             raise Refused("\"faults\" is how many things may go wrong in one play: a whole number")
         self.places, self.facts, self.actions, self.inside = {}, {}, {}, {}
+        self.meanings = {}                      # named fact -> its entry; read into each condition that names it, by read_meanings
+        self.named_used = set()                 # the named facts a condition names, directly or in another's meaning
         for low in self.below:                  # one set of names: a definition sees the places and facts of the ones below it
             self.places.update(low.places)
             self.facts.update({n: f for n, f in low.facts.items() if not f.get("run") and not f.get("brings")})
@@ -241,8 +255,14 @@ class Design:
             only(f, "fact", "a fact")
             if "name" not in f:
                 raise Refused("a fact has no name")
-            if f["name"] in self.facts:
+            if f["name"] in self.facts or f["name"] in self.meanings:
                 raise Refused("two facts are named \"%s\"" % f["name"])
+            if "means" in f:                    # a named fact: never played, it holds when its meaning does
+                for k in ("fault", "open", "about", "at", "only"):
+                    if k in f:
+                        raise Refused("the named fact \"%s\" has \"%s\": a named fact holds when its meaning does" % (f["name"], k))
+                self.meanings[f["name"]] = f
+                continue
             if f.get("open") and f.get("fault"):
                 raise Refused("the fact \"%s\" is open and a fault: an open fact is a decision nobody has made yet, not something that goes wrong" % f["name"])
             if "about" in f:
@@ -259,6 +279,7 @@ class Design:
                 f["only"] = f["with"] = brought("unkept", outer[0])
         for r in doc["runs"]:                   # which run it is, is a fact too
             self.facts.setdefault(in_run(r), {"name": in_run(r), "says": "the run is %s" % r, "built in": True, "run": r})
+        self.read_meanings(doc)
         if self.reports() is not None:
             self.check_place(self.reports(), "\"reports\"")
         self.parts = doc["parts"]
@@ -316,6 +337,76 @@ class Design:
     def told(self, h):
         """The places where an answer tells the person: its own, or the design's."""
         return listing(h["tells"]) if "tells" in h else listing(self.reports())
+
+    def read_meanings(self, doc):
+        """The one place a named fact's meaning is read. Each name in a condition becomes
+        {"named": [name, meaning]}, so a play holds the meaning and words keep the name."""
+        for name in self.meanings:
+            if name in self.facts:
+                raise Refused("two facts are named \"%s\"" % name)
+        done = {}
+
+        def meaning(name, seen):
+            if name in seen:
+                raise Refused("the named fact \"%s\" leads back to itself: %s" % (seen[0], ", ".join(seen + [name])))
+            if name not in done:
+                done[name] = cond(self.meanings[name]["means"], seen + [name])
+                names_in(done[name])            # a meaning is a condition, or it is refused here and said why
+            return done[name]
+
+        def cond(c, seen=()):
+            seen = list(seen)
+            if isinstance(c, str):
+                if c in self.meanings:
+                    return {"named": [c, meaning(c, seen)]}
+                if seen and c not in self.facts:
+                    raise Refused("the named fact \"%s\" names the fact \"%s\", which the design does not list" % (seen[-1], c))
+                return c
+            if isinstance(c, dict) and len(c) == 1:
+                (k, v), = c.items()
+                if k == "named":
+                    raise Refused("where a fact is asked for, give a name, {\"not\": ...}, {\"all\": [...]} or {\"any\": [...]}; {\"named\": ...} is the engine's own")
+                if k == "not":
+                    return {k: cond(v, seen)}
+                if k in ("all", "any") and isinstance(v, list):
+                    return {k: [cond(x, seen) for x in v]}
+            return c                            # not a condition; the checks that follow refuse it and say why
+
+        for name in self.meanings:
+            meaning(name, [])
+
+        def named_in(c):
+            if isinstance(c, dict) and len(c) == 1:
+                (k, v), = c.items()
+                return {v[0]} | named_in(v[1]) if k == "named" else set().union(*[named_in(x) for x in (v if isinstance(v, list) else [v])])
+            return set()
+
+        def read(c):
+            c = cond(c)
+            self.named_used |= named_in(c)
+            return c
+
+        def walk(x):
+            if isinstance(x, dict):
+                for k in ("when", "rehearsal"):
+                    if k in x:
+                        x[k] = read(x[k])
+                for f in x.get("makes", {}) if isinstance(x.get("makes"), dict) else {}:
+                    if f in self.meanings:
+                        raise Refused("\"%s\" makes the named fact \"%s\" true or false: a named fact holds when its meaning does" % (x.get("do", x.get("place")), f))
+                for v in x.values():
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+
+        walk(doc["parts"])
+        for f in doc.get("facts", []):
+            if "only" in f and "means" not in f:
+                f["only"] = read(f["only"])
+        for e in doc.get("expects", []) + doc.get("rules", []):
+            if "when" in e:
+                e["when"] = read(e["when"])
 
     def check_place(self, name, where):
         if name not in self.places:
@@ -1119,6 +1210,7 @@ def findings(design, plays):
                     f["shows"].append("When it does not hold, these run and otherwise do not: %s." % ", ".join(sorted(ran[False] - ran[True])))
                 f["example"] = None
     asked = set().union(*[set(p.env) for p in plays]) if plays else set()
+    asked |= design.named_used                     # a named fact is used where a condition names it; it is never played
     for x in design.doc.get("expects", []) + design.doc.get("rules", []):
         asked |= names_in(x.get("when"))
     for fact in design.doc.get("facts", []):
