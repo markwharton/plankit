@@ -6,16 +6,23 @@ design allows and reports each one that leaves a question open. With
 --against it plays a second design, written from the code, beside the
 first and reports where the two differ.
 
-    python3 engine.py DESIGN.json [--root DIR] [--against CODE.json] [--lines | --json]
+    python3 engine.py DESIGN [--root DIR] [--against CODE] [--lines | --json]
+
+A design is written as text in a .design file, or in JSON.
 
 Standard library only. DESIGN.md beside this file is the reference.
 """
 import argparse
 import copy
+import hashlib
 import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import textwrap
+import threading
 
 KEYS = {
     "design": {"system", "on", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
@@ -58,6 +65,10 @@ class Refused(Exception):
     """A design the engine cannot play. The message names what to fix."""
 
 
+class Unreadable(Refused):
+    """A design's text that cannot be read. The message already names the file and the line."""
+
+
 class Need(Exception):
     """A play asked for a fact that has not been decided yet."""
 
@@ -72,6 +83,70 @@ class Failure:
 
     def __init__(self, how, action, handle, cause=()):
         self.how, self.action, self.handle, self.cause = how, action, handle, set(cause)
+
+
+# ---------- reading a design's file ----------
+
+GO_SOURCES = (".go", ".mod", ".html")             # the files a Go tool is built from
+_building = threading.Lock()
+
+
+def source_time(source):
+    """When the newest file a Go tool is built from was last changed."""
+    return max([os.path.getmtime(os.path.join(source, n)) for n in os.listdir(source) if n.endswith(GO_SOURCES)] or [0.0])
+
+
+def go_tool(source, name, binary=None):
+    """The path of a Go tool built from its source directory, built again when a file there is newer;
+    into binary when it is given. One builder, for the syntax tool and for the lab's checker."""
+    source = os.path.abspath(source)
+    if not os.path.isfile(os.path.join(source, "main.go")):
+        raise Refused("%s cannot be built: %s has no main.go" % (name, source))
+    binary = binary or os.path.join(tempfile.gettempdir(), "%s-%s" % (name, hashlib.sha1(source.encode()).hexdigest()[:10]), name)
+    with _building:
+        if not os.path.isfile(binary) or os.path.getmtime(binary) < source_time(source):
+            if not shutil.which("go"):
+                raise Refused("go is not on the PATH, so %s cannot be built from %s: install Go" % (name, source))
+            os.makedirs(os.path.dirname(binary), exist_ok=True)
+            built = subprocess.run(["go", "build", "-o", binary, "."], cwd=source, capture_output=True, text=True)
+            if built.returncode != 0:
+                raise Refused("%s does not build:\n%s" % (name, built.stderr.strip()))
+    return binary
+
+
+def syntax_tool():
+    """The tool that reads a design written as text: the one PK_SYNTAX names, or one built from
+    lab/syntax beside this file. An engine copied on its own needs PK_SYNTAX to read text."""
+    named = os.environ.get("PK_SYNTAX")
+    if named:
+        if not (os.path.isfile(named) and os.access(named, os.X_OK)):
+            raise Refused("PK_SYNTAX names %s, which is not a program" % named)
+        return named
+    source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "syntax")
+    if not os.path.isdir(source):
+        raise Refused("a design written as text is read by lab/syntax, which is not beside this engine: set PK_SYNTAX to a built syntax tool")
+    return go_tool(source, "syntax")
+
+
+def read_text(text, shown):
+    """A design written as text, in form A, read into the document the engine plays. shown names it in a refusal."""
+    out = subprocess.run([syntax_tool(), "read", "A", "-", shown], input=text, capture_output=True, text=True)
+    if out.returncode != 0:
+        raise Unreadable(out.stderr.strip() or "%s: the syntax tool exited %d and said nothing" % (shown, out.returncode))
+    return json.loads(out.stdout)
+
+
+def read_design(path):
+    """A design's file: written as text when it ends .design, and in JSON otherwise. Every reader of a design's file uses this."""
+    with open(path, encoding="utf-8") as f:
+        if path.endswith(".design"):
+            return read_text(f.read(), path)
+        return json.load(f)
+
+
+def accepted_file(path):
+    """The acceptances of the differences a description of code has from its design: beside it, with .accepted.json for its extension."""
+    return os.path.splitext(path)[0] + ".accepted.json"
 
 
 # ---------- facts ----------
@@ -219,8 +294,7 @@ class Design:
             if base is None:
                 raise Refused("the definition stands on \"%s\", and the engine was not given the directory its file is in" % path)
             try:
-                with open(os.path.join(base, path), encoding="utf-8") as f:
-                    low = Design(json.load(f), root, os.path.dirname(os.path.join(base, path)))
+                low = Design(read_design(os.path.join(base, path)), root, os.path.dirname(os.path.join(base, path)))
             except (OSError, ValueError) as e:
                 raise Refused("the definition stands on \"%s\", which cannot be read: %s" % (path, e))
             self.below.append(low)
@@ -1397,11 +1471,13 @@ def main(argv=None):
     try:
         designs = []
         for path in [args.design] + ([args.against] if args.against else []):
-            with open(path, encoding="utf-8") as f:
-                designs.append(Design(json.load(f), args.root, os.path.dirname(os.path.abspath(path))))
-        accepted = read_accepted(args.against[:-len(".json")] + ".accepted.json") if args.against and args.against.endswith(".json") else []
+            designs.append(Design(read_design(path), args.root, os.path.dirname(os.path.abspath(path))))
+        accepted = read_accepted(accepted_file(args.against)) if args.against else []
         r = report(*designs, **({"accepted": accepted} if args.against else {}))
         asked = [f for f in r["findings"] if not f.get("accepted")]
+    except Unreadable as e:
+        print(e, file=sys.stderr)
+        return 2
     except (OSError, ValueError, Refused) as e:
         print("%s: %s" % (path, e), file=sys.stderr)
         return 2

@@ -300,15 +300,19 @@ func (p *printer) design(d *Obj) {
 	}
 	runs, _ := p.take(d, "runs")
 	p.names(0, p.kw("runs"), runs)
-	p.line(0, "")
 	if v, ok := p.take(d, "places"); ok {
-		for _, pl := range p.objs(v, "places") {
+		for i, pl := range p.objs(v, "places") {
+			if i == 0 {
+				p.line(0, "")
+			}
 			p.place(pl)
 		}
 	}
-	p.line(0, "")
 	if v, ok := p.take(d, "facts"); ok {
-		for _, f := range p.objs(v, "facts") {
+		for i, f := range p.objs(v, "facts") {
+			if i == 0 {
+				p.line(0, "")
+			}
 			p.fact(f)
 		}
 	}

@@ -177,3 +177,56 @@ func TestEveryKeywordIsReadAsOneInBothForms(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryDesignFileIsThePrintersText(t *testing.T) {
+	var files []string
+	filepath.WalkDir("..", func(path string, e fs.DirEntry, err error) error {
+		if err == nil && !e.IsDir() && strings.HasSuffix(path, ".design") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	for _, path := range files {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, err := Read(A, path, string(data))
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+		if text, err := Print(A, doc); err != nil || text != string(data) {
+			t.Errorf("%s is not the text the printer writes: run syntax format A on it (%v)", path, err)
+		}
+		other, err := Print(B, doc)
+		if err != nil {
+			t.Fatalf("%s, form B: %v", path, err)
+		}
+		if back, err := Read(B, path, other); err != nil || !reflect.DeepEqual(plain(t, doc), plain(t, back)) {
+			t.Errorf("%s: printed as B and read back, the design differs (%v)", path, err)
+		}
+	}
+}
+
+func TestTheCommandReadsStandardInputAndFormats(t *testing.T) {
+	messy := "SYSTEM x\nRUNS r\n\n\n\nACTION r\n"
+	var out, errs strings.Builder
+	if code := run([]string{"format", "A", "-", "notes.design"}, strings.NewReader(messy), &out, &errs); code != 0 {
+		t.Fatalf("exit %d: %s", code, errs.String())
+	}
+	if want := "SYSTEM x\nRUNS r\n\nACTION r\n"; out.String() != want {
+		t.Errorf("format wrote %q, want %q", out.String(), want)
+	}
+	out.Reset()
+	if code := run([]string{"read", "A", "-", "notes.design"}, strings.NewReader(messy), &out, &errs); code != 0 || !strings.Contains(out.String(), `"system":"x"`) {
+		t.Errorf("read from standard input: exit %d, %q, %s", code, out.String(), errs.String())
+	}
+	errs.Reset()
+	if code := run([]string{"read", "A", "-", "notes.design"}, strings.NewReader("SYSTEM x\nFACT WHEN it rains\n"), &out, &errs); code != 2 || errs.String() != "notes.design:2: a name was expected after FACT, and WHEN is a keyword\n" {
+		t.Errorf("a refusal names the file it was shown as: exit %d, %q", code, errs.String())
+	}
+	errs.Reset()
+	if code := run([]string{"format", "C", "x"}, strings.NewReader(""), &out, &errs); code != 1 {
+		t.Errorf("a form it does not know: exit %d", code)
+	}
+}

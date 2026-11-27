@@ -8,6 +8,8 @@ import copy
 import json
 import os
 import re
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -870,6 +872,68 @@ def everything(doc):
     plays = engine.explore_all(d)
     return (sorted((p.run, tuple(p.given()), p.outcome(), tuple(p.steps), tuple(sorted(p.state.items()))) for p in plays),
             engine.findings(d, plays))
+
+
+def played(d):
+    """What a design does, play by play, and what the engine finds in it."""
+    plays = engine.explore_all(d)
+    return (sorted((p.run, tuple(p.given()), p.outcome(), tuple(p.steps)) for p in plays),
+            [(f["kind"], f["subject"]) for f in engine.findings(d, plays)])
+
+
+class WrittenAsText(unittest.TestCase):
+    def as_text(self, base, name):
+        """name.json in base, printed as name.design by the syntax tool."""
+        out = subprocess.run([engine.syntax_tool(), "print", "A", os.path.join(base, name + ".json")], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        with open(os.path.join(base, name + ".design"), "w", encoding="utf-8") as f:
+            f.write(out.stdout)
+
+    def test_a_design_written_as_text_plays_as_its_json(self):
+        base = tempfile.mkdtemp()
+        top = library()
+        with open(os.path.join(base, "store.json"), "w", encoding="utf-8") as f:
+            json.dump(store(), f)
+        self.as_text(base, "store")
+        top["on"] = ["store.design"]                              # it stands on the layer below written as text too
+        with open(os.path.join(base, "library.json"), "w", encoding="utf-8") as f:
+            json.dump(top, f)
+        self.as_text(base, "library")
+        text = engine.Design(engine.read_design(os.path.join(base, "library.design")), ".", base)
+        self.assertEqual(played(text), played(layers(library())))
+
+    def test_a_refusal_in_the_text_names_the_file_and_the_line(self):
+        base = tempfile.mkdtemp()
+        path = os.path.join(base, "rain.design")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("SYSTEM x\nRUNS r\n\nFACT WHEN it rains\n")
+        with self.assertRaises(engine.Refused) as cm:
+            engine.read_design(path)
+        self.assertEqual(str(cm.exception), "%s:4: a name was expected after FACT, and WHEN is a keyword" % path)
+        with self.assertRaises(engine.Refused) as cm:
+            engine.read_text("SYSTEM x\nFACT WHEN it rains\n", "the editor.design")
+        self.assertEqual(str(cm.exception), "the editor.design:2: a name was expected after FACT, and WHEN is a keyword")
+
+    def test_the_command_names_a_file_the_text_refuses_once(self):
+        base = tempfile.mkdtemp()
+        path = os.path.join(base, "rain.design")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("SYSTEM x\nRUNS r\n\nFACT WHEN it rains\n")
+        out = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "engine.py"), path], capture_output=True, text=True)
+        self.assertEqual((out.returncode, out.stderr), (2, "%s:4: a name was expected after FACT, and WHEN is a keyword\n" % path))
+
+    def test_the_syntax_tool_pk_syntax_names_is_the_one_used(self):
+        was = os.environ.get("PK_SYNTAX")
+        os.environ["PK_SYNTAX"] = "/nowhere/syntax"
+        try:
+            with self.assertRaises(engine.Refused) as cm:
+                engine.read_text("SYSTEM x\n", "x.design")
+            self.assertIn("PK_SYNTAX names /nowhere/syntax, which is not a program", str(cm.exception))
+        finally:
+            if was is None:
+                del os.environ["PK_SYNTAX"]
+            else:
+                os.environ["PK_SYNTAX"] = was
 
 
 class Holds(unittest.TestCase):

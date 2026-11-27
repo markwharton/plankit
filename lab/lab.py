@@ -30,6 +30,7 @@ from urllib.parse import parse_qs, urlparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE = os.path.join(HERE, "lab.html")
 sys.path.insert(0, os.path.join(HERE, "engine"))
+import engine  # noqa: E402  (reads a design's file, and builds the Go tools the lab runs)
 import view as runnable  # noqa: E402  (the engine for designs you can run, and its model for this page)
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.json$")
 HEADER = "X-Control-Lab"
@@ -47,25 +48,15 @@ class LabError(Exception):
 
 class Checker:
     """Runs the control binary. Builds it from its source when it is given
-    a source directory, and builds it again when the source is newer."""
+    a source directory, and builds it again when the source is newer: the
+    engine's one builder of Go tools does the building."""
 
     def __init__(self, binary=None, source=None):
         self.binary, self.source = binary, source
-        self.lock = threading.Lock()
         if not binary and not source:
             raise LabError(500, "name the checker: --control <binary>, or --control-src <the control directory>")
         if source and not os.path.isfile(os.path.join(source, "main.go")):
             raise LabError(500, "%s is not the control directory: it has no main.go" % source)
-        if source and not binary:
-            key = hashlib.sha1(os.path.abspath(source).encode()).hexdigest()[:10]
-            self.binary = os.path.join(tempfile.gettempdir(), "control-lab-" + key, "control")
-
-    def newest_source(self):
-        newest = 0.0
-        for name in os.listdir(self.source):
-            if name.endswith((".go", ".html", ".mod")):
-                newest = max(newest, os.path.getmtime(os.path.join(self.source, name)))
-        return newest
 
     def ready(self):
         """The path of a binary that is at least as new as its source."""
@@ -73,19 +64,14 @@ class Checker:
             if not shutil.which(self.binary) and not os.path.isfile(self.binary):
                 raise LabError(500, "no control binary at %s" % self.binary)
             return self.binary
-        with self.lock:
-            if not os.path.isfile(self.binary) or os.path.getmtime(self.binary) < self.newest_source():
-                if not shutil.which("go"):
-                    raise LabError(500, "go is not on the PATH, so the checker cannot be built: install Go, or pass --control <binary>")
-                os.makedirs(os.path.dirname(self.binary), exist_ok=True)
-                built = subprocess.run(["go", "build", "-o", self.binary, "."], cwd=self.source, capture_output=True, text=True)
-                if built.returncode != 0:
-                    raise LabError(500, "the checker does not build:\n" + built.stderr.strip())
-        return self.binary
+        try:
+            return engine.go_tool(self.source, "control", self.binary)
+        except engine.Refused as e:
+            raise LabError(500, "the checker: %s. A checker already built is named with --control <binary>" % e)
 
     def stamp(self):
         if self.source:
-            return self.newest_source()
+            return engine.source_time(self.source)
         return os.path.getmtime(self.binary) if os.path.isfile(self.binary) else 0.0
 
     def run(self, args):

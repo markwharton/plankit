@@ -14,8 +14,7 @@ REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
 
 
 def load(name):
-    with open(os.path.join(HERE, name), encoding="utf-8") as f:
-        return engine.Design(json.load(f), REPO, HERE)
+    return engine.Design(engine.read_design(os.path.join(HERE, name)), REPO, HERE)
 
 
 class Pk(unittest.TestCase):
