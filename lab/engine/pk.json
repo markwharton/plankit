@@ -105,6 +105,34 @@
       "says": "HEAD carries a Release-Tag trailer"
     },
     {
+      "name": "the release is tagged",
+      "only": {
+        "all": [
+          "the last commit is a release commit",
+          "nothing to release",
+          {
+            "not": "no local version tag"
+          }
+        ]
+      },
+      "says": "the tag HEAD's Release-Tag trailer names exists on HEAD: that release has shipped"
+    },
+    {
+      "name": "the release tag is on another commit",
+      "only": {
+        "all": [
+          "the last commit is a release commit",
+          {
+            "not": "the release is tagged"
+          },
+          {
+            "not": "no local version tag"
+          }
+        ]
+      },
+      "says": "the tag HEAD's Release-Tag trailer names exists, on a commit other than HEAD"
+    },
+    {
       "name": "settings are invalid",
       "fault": true,
       "about": "settings"
@@ -467,8 +495,19 @@
       ],
       "handles": [
         {
-          "when": "the last commit is a release commit",
-          "then": "refuse"
+          "when": {
+            "all": [
+              "the last commit is a release commit",
+              {
+                "not": "the release is tagged"
+              }
+            ]
+          },
+          "then": "refuse",
+          "hold": {
+            "file": "internal/ship/ship_test.go",
+            "test": "TestShipOnAReleasedHeadReportsNothingToDo"
+          }
         }
       ]
     },
@@ -730,6 +769,11 @@
         "origin's tags"
       ],
       "handles": [
+        {
+          "when": "the release tag is on another commit",
+          "then": "refuse",
+          "says": "the release names the way to restage under the next version: pk changelog --undo, then pk changelog"
+        },
         {
           "when": {
             "any": [
@@ -1010,9 +1054,59 @@
     "ship": {
       "name": "ship",
       "seq": [
-        "changelog",
-        "release"
-      ]
+        {
+          "use": "changelog",
+          "when": {
+            "not": {
+              "all": [
+                "the last commit is a release commit",
+                {
+                  "not": "the release is tagged"
+                },
+                {
+                  "not": "the release tag is on another commit"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "use": "release",
+          "when": {
+            "all": [
+              "the last commit is a release commit",
+              {
+                "not": "the release is tagged"
+              },
+              {
+                "not": "the release tag is on another commit"
+              }
+            ]
+          }
+        },
+        {
+          "use": "say release rehearses later",
+          "when": {
+            "all": [
+              "dry run",
+              {
+                "not": {
+                  "all": [
+                    "the last commit is a release commit",
+                    {
+                      "not": "the release is tagged"
+                    },
+                    {
+                      "not": "the release tag is on another commit"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "says": "ship is changelog then release, and carries no state of its own: a Release-Tag commit whose tag does not exist yet is pending, and ship runs changelog only when nothing is pending and release only when something is"
     },
     "read origin's tags": {
       "do": "read origin's tags",
@@ -1042,6 +1136,20 @@
           "says": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2"
         }
       ]
+    },
+    "say release rehearses later": {
+      "do": "say release rehearses later",
+      "changes": [
+        {
+          "place": "message",
+          "how": "create"
+        }
+      ],
+      "says": "the release half cannot be rehearsed before its changelog commit exists, so a dry run with nothing pending previews the section and says so",
+      "hold": {
+        "file": "internal/ship/ship_test.go",
+        "test": "TestDryRunWithoutPendingPreviewsSection"
+      }
     }
   },
   "runs": [

@@ -105,6 +105,34 @@
       "says": "HEAD carries a Release-Tag trailer"
     },
     {
+      "name": "the release is tagged",
+      "only": {
+        "all": [
+          "the last commit is a release commit",
+          "nothing to release",
+          {
+            "not": "no local version tag"
+          }
+        ]
+      },
+      "says": "the tag HEAD's Release-Tag trailer names exists on HEAD: that release has shipped"
+    },
+    {
+      "name": "the release tag is on another commit",
+      "only": {
+        "all": [
+          "the last commit is a release commit",
+          {
+            "not": "the release is tagged"
+          },
+          {
+            "not": "no local version tag"
+          }
+        ]
+      },
+      "says": "the tag HEAD's Release-Tag trailer names exists, on a commit other than HEAD"
+    },
+    {
       "name": "settings are invalid",
       "fault": true,
       "about": "settings"
@@ -1068,7 +1096,10 @@
                 "not": "the Release-Tag trailer is not a version"
               },
               {
-                "not": "tags already has the member"
+                "not": "the release is tagged"
+              },
+              {
+                "not": "the release tag is on another commit"
               }
             ]
           },
@@ -1176,6 +1207,8 @@
                 "not": "the last commit is a release commit"
               },
               "the Release-Tag trailer is not a version",
+              "the release is tagged",
+              "the release tag is on another commit",
               "tags already has the member"
             ]
           },

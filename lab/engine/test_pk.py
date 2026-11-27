@@ -33,7 +33,7 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 146, "release": 66, "ship": 377})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 150, "release": 79, "ship": 350})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [])
 
@@ -45,14 +45,12 @@ class Pk(unittest.TestCase):
             self.assertTrue(mine, fault)
             self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("load settings", "ran"), ("undo", "refused")))}, fault)
 
-    def test_the_code_variant_differs_in_26_places(self):
+    def test_the_code_variant_differs_in_24_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))
         self.assertEqual([f["subject"] for f in got], [
-            "branch checks: the design goes ahead, the code has no such action",            # ship resumes a release already pending
             "branch checks: the design refuses, the code goes ahead",                       # a branch behind origin: changelog makes no check
-            "branch checks: the design refuses, the code has no such action",               # ship resumes a pending release past changelog's refusals
+            "branch checks: the design skips it, the code goes ahead",                     # in ship, a trailer that is not a version: the design counts it pending, the code runs changelog
             "branch checks: the design tells and goes on, the code goes ahead",             # no default named: changelog says nothing
-            "branch checks: the design tells and goes on, the code has no such action",     # ship resumes a pending release, no default named
             "build section: the design goes ahead, the code has no such action",            # no commit is in a visible section: nothing to release
             "commits since tag ends untouched in the design and created in the code",       # the code measures the commits before it reads --bump
             "fetch the tags: the design skips it, the code does its work and then fails",    # a dry run: the design reads origin's tags and fetches nothing

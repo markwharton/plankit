@@ -516,9 +516,9 @@ what a push does with a tag origin already has: git takes it when the
 tag is on the commit pushed, and refuses it otherwise.
 
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- pk's design lists 25 facts and git's lists 8. Before it stood on
+- pk's design lists 27 facts and git's lists 8. Before it stood on
   git, pk's listed 32.
-- The design has 589 plays: 146 of changelog, 66 of release, 377 of
+- The design has 579 plays: 150 of changelog, 79 of release, 350 of
   ship.
 - It reports no questions.
 - git's reset goes on with a commit held elsewhere and with a tree
@@ -526,7 +526,7 @@ tag is on the commit pushed, and refuses it otherwise.
   refuses both. Neither is a fact pk's design lists.
 - `pk-code.json` is what pk's code does, in the code's order and with
   the design's names, written after a cold description of the code
-  (`BLIND-TEST.md`). Played against the design it gives 26 `differs`
+  (`BLIND-TEST.md`). Played against the design it gives 24 `differs`
   findings, each naming the facts that cause it. Eight are decisions
   the code does not follow yet:
   - a dry run fetches the tags;
@@ -541,9 +541,7 @@ tag is on the commit pushed, and refuses it otherwise.
   origin gives a link made from the path. Those ten are the changes
   pk's code needs.
 
-  The other 18 are what the code does that the design does not say:
-  - ship resumes a release already pending, and stops when changelog
-    makes no release commit;
+  The other 16 are what the code does that the design does not say:
   - release reads the branch and the pending release first, and
     fetches only after the checks that need no fetch;
   - release does not refuse a protected branch;
