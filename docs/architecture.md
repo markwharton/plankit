@@ -109,8 +109,9 @@ working branch is checked out again.
 and whether its tag exists, so a pending Release-Tag commit sends it
 straight to release, and a ship with nothing left to do says so rather
 than reporting a pending release. When the release half fails, ship
-runs `pk changelog --undo` on the commit the same run made, so a
-failed ship leaves the repository as it found it. Every release
+deletes the release tag, resets the merge, undoes the changelog commit
+the same run made with `pk changelog --undo`, and restores the tree.
+What it fetched from origin stays. Every release
 command accepts `--dry-run`.
 
 The pushed tag hands off to CI. CI builds the platform binaries,

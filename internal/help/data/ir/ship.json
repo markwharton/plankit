@@ -99,15 +99,7 @@
       "inlines": [
         {
           "type": "text",
-          "text": "If the release half fails, ship undoes the changelog commit it made in the same run, so the repository is as it was before "
-        },
-        {
-          "type": "code",
-          "text": "pk ship"
-        },
-        {
-          "type": "text",
-          "text": ". Fix the cause and run the same command again. A commit that cannot be undone stays, and the undo says why; see "
+          "text": "If the release half fails, ship deletes the release tag, resets the merge, undoes the changelog commit and restores the tree. What it fetched from origin stays. Fix the cause and run the same command again. A commit that cannot be undone stays, and the undo says why; see "
         },
         {
           "type": "code",

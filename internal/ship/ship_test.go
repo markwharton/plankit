@@ -209,8 +209,9 @@ func assertUndone(t *testing.T, dir, bare, workHead, mainBefore, errw string) {
 	}
 }
 
-// TestFailedReleaseUndoesTheChangelogCommit: a ship either completes
-// or leaves the repository as it found it. Each case fails the release
+// TestFailedReleaseUndoesTheChangelogCommit: a ship whose release half
+// fails deletes the release tag, resets the merge, undoes the changelog
+// commit and restores the tree. Each case fails the release
 // half at a different point; the exit code stays the release half's.
 func TestFailedReleaseUndoesTheChangelogCommit(t *testing.T) {
 	cases := []struct {
