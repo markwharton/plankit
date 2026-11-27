@@ -1179,10 +1179,15 @@ def compare(design, code, accepted=None):
             for c in explore(code, run, {k: v for k, v in p.env.items() if k in code.facts}):
                 given = sorted(set(p.given()) | set(c.given()))
                 places = [x for x in shared if p.state[x] != c.state[x]]
-                did = dict(c.steps)
+                did = {}
+                for a, s in c.steps:                       # an action used in two places that ran in one of them ran
+                    if s != "skipped" or a not in did:
+                        did[a] = s
+                ran = {a for a, s in p.steps if s != "skipped"}
                 told = lambda play, a, s: "told" if s == "ran" and play.told.get(a) else s   # a step that ran and told the person did something more
                 parted = [(a, told(p, a, s), told(c, a, did.get(a, "missing"))) for a, s in p.steps
-                          if told(c, a, did.get(a, "missing")) != told(p, a, s) and not (s == "skipped" and a not in did)]   # skipped here and absent there: both do nothing
+                          if told(c, a, did.get(a, "missing")) != told(p, a, s)
+                          and not (s == "skipped" and (a not in did or a in ran))]   # skipped here and absent there, or run elsewhere in the play: nothing differs
                 if parted:
                     a, ds, cs = parted[0]
                     add(("parts", a, ds, cs), "%s: the design %s, the code %s" % (a, DID[ds], DID[cs]),

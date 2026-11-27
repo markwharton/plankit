@@ -488,6 +488,19 @@ class Engine(unittest.TestCase):
         self.assertEqual([f["subject"] for f in got], ["spell check: the design goes ahead, the code has no such action"])   # where it runs, the code lacks it
         self.assertIn("Every play where this happens has: preview.", got[0]["shows"])      # where it is skipped, both do nothing
 
+    def test_an_action_skipped_in_one_place_and_run_in_another_is_no_difference(self):
+        design = notes()
+        design["parts"]["check"] = {"do": "check", "reads": ["text"]}
+        design["parts"]["publish"]["seq"][1:1] = ["check"]
+        design["parts"]["publish"]["seq"].insert(0, {"use": "check", "when": "preview"})   # checked first in a preview, and always after the draft
+        self.assertEqual(engine.compare(engine.Design(design), engine.Design(design)), [])
+        code = notes()
+        code["parts"]["check"] = {"do": "check", "reads": ["text"]}
+        code["parts"]["publish"]["seq"][1:1] = ["check"]                                    # the code checks once, after the draft
+        got = engine.compare(engine.Design(design), engine.Design(code))
+        self.assertEqual([(f["subject"], f["example"]["given"]) for f in got],                 # where the first check is skipped, both check once
+                         [("check: the design goes ahead, the code has no such action", ["preview", "the note is empty"])])   # a preview of an empty note: only the design checks before the draft refuses
+
     def test_a_failure_ends_a_sequence_and_the_parts_beside_it_still_run(self):
         p = play(legs(), "the source is down")
         self.assertEqual((p.outcome(), p.stop.action), ("failed", "stage"))
