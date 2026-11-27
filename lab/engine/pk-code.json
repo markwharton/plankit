@@ -167,8 +167,8 @@
     },
     {
       "name": "origin has no address",
-      "fault": true,
-      "about": "origin address"
+      "about": "origin address",
+      "says": "origin's URL gives no web address; a local path gives a link made from the path"
     },
     {
       "name": "the last version tag is not in the branch's history",
@@ -560,7 +560,7 @@
         {
           "when": "origin has no address",
           "then": "accept",
-          "because": "the section is then written with no link"
+          "because": "the section is written with no link, and changelog says nothing"
         }
       ]
     },

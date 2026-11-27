@@ -33,10 +33,9 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 148, "release": 69, "ship": 312})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 146, "release": 61, "ship": 341})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [
-            ("unanswered", "origin has no address"),                           # changelog accepts it, and a run that reads what changelog left is asked again
             ("unanswered", "origin's tags already has the member")])           # comes up from git's push, and no push action answers it
 
     def test_what_git_goes_on_with_pk_refuses(self):
@@ -47,14 +46,15 @@ class Pk(unittest.TestCase):
             self.assertTrue(mine, fault)
             self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("load settings", "ran"), ("undo", "refused")))}, fault)
 
-    def test_the_code_variant_differs_in_five_places(self):
+    def test_the_code_variant_differs_in_six_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))
         self.assertEqual([f["subject"] for f in got], [
             "branch checks: the design refuses, the code goes ahead",                       # a branch behind origin: changelog makes no check
             "branch checks: the design tells and goes on, the code goes ahead",             # no default named: changelog says nothing
             "fetch the tags: the design skips it, the code does its work and then fails",    # a dry run: the design reads origin's tags and fetches nothing
             "fetch the tags: the design skips it, the code goes ahead",
-            "fetch the tags: the design tells and goes on, the code does its work and then fails"])   # a rejected tag update
+            "fetch the tags: the design tells and goes on, the code does its work and then fails",   # a rejected tag update
+            "write section: the design tells and goes on, the code goes ahead"])           # no web address: changelog says nothing
 
 
 if __name__ == "__main__":
