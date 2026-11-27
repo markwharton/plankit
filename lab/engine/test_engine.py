@@ -131,6 +131,24 @@ def one(d, *given):
     return [p for p in engine.explore_all(d) if p.given() == sorted(given)][0]
 
 
+def desk():
+    """Three runs over the same places: write a draft, check it, then put it on the site. Each reads what the one before left."""
+    def run(do, reads, place, **more):
+        return dict({"do": do, "reads": reads, "changes": [{"place": place, "how": "create", "from": reads[0], "later": "stands", "because": "kept for the next run"}]}, **more)
+    return {
+        "system": "desk", "reports": "message",
+        "places": [{"name": "text", "is": "one", "kind": "outside"}, {"name": "draft", "is": "one", "kind": "lasting"}, {"name": "proof", "is": "one", "kind": "lasting"},
+                   {"name": "site", "is": "one", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}],
+        "facts": [{"name": "the note is long", "fault": True, "about": "text"}],
+        "parts": {
+            "write": run("write", ["text"], "draft", handles=[{"when": "the note is long", "then": "accept", "because": "a long draft can be cut later"}]),
+            "check": run("check", ["draft"], "proof"),
+            "publish": run("publish", ["proof"], "site"),
+        },
+        "runs": ["write", "check", "publish"],
+    }
+
+
 def play(doc, *given):
     d = engine.Design(doc)
     return [p for p in engine.explore_all(d) if p.given() == sorted(given)][0]
@@ -689,6 +707,35 @@ class Engine(unittest.TestCase):
         with self.assertRaises(engine.Refused) as cm:
             engine.Design(library())                       # with no directory given, the definition below cannot be found
         self.assertIn("directory", str(cm.exception))
+
+    def test_what_one_run_accepted_is_asked_again_of_the_run_that_reads_what_it_left(self):
+        d = engine.Design(desk())
+        fs = [f for f in engine.findings(d, engine.explore_all(d))]
+        self.assertEqual([(f["kind"], f["subject"], f["actions"]) for f in fs], [("unanswered", "the note is long", ["check"])])
+        self.assertIn("write can leave draft made with it", " ".join(fs[0]["shows"]))
+        doc = desk()                                       # the run that reads it gives its own answer
+        doc["parts"]["check"]["handles"] = [{"when": "the note is long", "then": "refuse"}]
+        self.assertEqual(kinds(doc), [])
+        doc = desk()                                       # refused where it arises, it is left in nothing
+        doc["parts"]["write"]["handles"][0] = {"when": "the note is long", "then": "refuse"}
+        self.assertEqual(kinds(doc), [])
+
+    def test_it_reaches_a_third_run_through_the_second(self):
+        doc = desk()
+        doc["parts"]["check"]["handles"] = [{"when": "the note is long", "then": "accept", "because": "the proof is marked long"}]
+        d = engine.Design(doc)
+        fs = engine.findings(d, engine.explore_all(d))
+        self.assertEqual([(f["kind"], f["subject"], f["actions"]) for f in fs], [("unanswered", "the note is long", ["publish"])])
+
+    def test_a_fact_no_run_makes_true_is_false_when_a_run_starts(self):
+        doc = notes()
+        doc["facts"].append({"name": "a draft is waiting", "about": "draft"})
+        seq = doc["parts"]["publish"]["seq"]
+        seq[1]["changes"][0]["makes"] = {"a draft is waiting": False}
+        seq.insert(0, {"do": "remind", "when": "a draft is waiting", "changes": [{"place": "message", "how": "create"}]})
+        self.assertEqual([p for p in engine.explore_all(engine.Design(doc)) if p.ran("remind")], [])   # nothing in the model leaves a draft waiting
+        seq[1]["changes"][0]["makes"] = {"a draft is waiting": True}
+        self.assertTrue([p for p in engine.explore_all(engine.Design(doc)) if p.ran("remind")])         # now an earlier run can have left one
 
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [

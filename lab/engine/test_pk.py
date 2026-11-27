@@ -33,12 +33,13 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 90, "release": 44, "ship": 261})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 100, "release": 50, "ship": 283})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [
             ("open", "a rejected tag update fails the fetch"),                 # git's manual does not say, and pk's fetch depends on it
             ("expect", "changelog with --dry-run writes nothing"),
             ("unanswered", "a tag does not name a version"),
+            ("unanswered", "origin has no address"),                           # changelog accepts it, and a run that reads what changelog left is asked again
             ("unanswered", "origin's tags already has the member"),            # comes up from git's push, and no push action answers it
             ("unanswered", "settings are invalid"),
             ("unanswered", "the branch is not the default"),

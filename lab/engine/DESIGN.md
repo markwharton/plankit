@@ -274,6 +274,32 @@ A fact about the world is written once, in the design of the system
 it belongs to. pk's design does not say that a commit adds to a
 branch. git's does.
 
+## A run starts from what earlier runs left
+
+A design lists its `runs`. It does not say in what order they happen.
+A run finds each lasting place as an earlier run left it.
+
+- What an earlier run made true stays true. A fact that changes
+  `make`, and that no run of the model makes true, is false when a run
+  starts. One that some run can make true is undecided at the start,
+  and the engine plays it both ways.
+- A lasting place a run changed after it accepted a fault about a
+  place, or told the person of one and went on, is left made with that
+  fault. A run that reads the place is asked about it again. An
+  `accept` is one run's decision, and another run may need more. The
+  engine plays the runs until nothing new is left.
+- Only a fault `about` a place stays with what was made. It says
+  something of a state, and a state is passed on. A fault at a step is
+  an event of that run, and what a place brings is about one
+  operation.
+- What a run left is gone from a place once the reading run gives the
+  place a new state. It stays under a `create` in a `many` or a
+  `series`.
+
+There is no cycle to check. `release` reads the commit `changelog`
+added, and `changelog` reads the tags `release` added. That is every
+release there has been: each run reads what an earlier one left.
+
 ## How the engine reads a design
 
 - **Answers are tried in the order written.** The first whose `when`
@@ -330,9 +356,10 @@ branch. git's does.
   the world, and does not use up the play's one fault. Any action that
   reads a place can answer one of these about it, whether or not its
   own changes bring it.
-- **A fact a change `makes` starts as any other fact does:** undecided,
-  until a play asks for it or a change makes it. `only` looks at what
-  was so when the run started, and not at what the run made since.
+- **A fact a change `makes` is never listed as free.** It is false at
+  the start of a run unless some run of the model can make it true.
+  `only` looks at what was so when the run started, and not at what
+  the run made since.
 - **Parts in an `all` are played in the order written.** The engine
   asks about their order only where they touch a place one of them
   changes.
@@ -464,18 +491,21 @@ read does not say, it has an open fact.
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
 - pk's design lists 20 facts and git's lists 8. Before it stood on
   git, pk's listed 32.
-- The design has 395 plays: 90 of changelog, 44 of release, 261 of
+- The design has 433 plays: 100 of changelog, 50 of release, 283 of
   ship.
-- It reports 9 questions:
+- It reports 10 questions:
   - git's manual does not say whether a rejected tag update fails the
     fetch, and pk's fetch depends on it.
   - "changelog with --dry-run writes nothing" is broken by fetching
     tags.
-  - Four faults carried into something lasting with no answer: a tag
-    that does not name a version, invalid settings, a branch that is
-    not the default, and an unfit working branch.
+  - Four faults of a run's own, carried into something lasting with no
+    answer: a tag that does not name a version, invalid settings, a
+    branch that is not the default, and an unfit working branch.
   - Origin already has the tag. git's push refuses it, and neither
     push action answers.
+  - Origin has no address. changelog accepts it and writes the section
+    with no link. A run that reads what changelog left is asked again,
+    and none answers.
   - Two asking whether what a fetch brought stands when a later
     failure leaves the run.
 - git's reset goes on with a commit held elsewhere and with a tree

@@ -262,6 +262,10 @@ class Design:
                 raise Refused("the run \"%s\" is not a part" % r)
         for name in self.parts:
             self.inside[name] = set(self.actions_of(name))
+        made = [(f, v) for d in self.layers() for a in d.actions.values()
+                for m in [a.get("makes", {})] + [c.get("makes", {}) for c in a.get("changes", [])] for f, v in m.items()]
+        self.never_true = {f for f, _ in made} - {f for f, v in made if v}   # facts a change makes, that no run of the model makes true
+        self.leaves = {}                        # lasting place -> fault -> the runs that can leave it made with that fault accepted. Set by explore_all.
         self.at = {}                            # action -> the faults that go wrong at it
         for low in self.below:
             for a in low.actions:
@@ -283,6 +287,10 @@ class Design:
         for r in doc.get("rules", []):
             only(r, "rule", "a rule")
             self.check_fact(r.get("when"), "the rule \"%s\"" % r.get("rule"))
+
+    def layers(self):
+        """This design and every one below it."""
+        return [self] + [d for low in self.below for d in low.layers()]
 
     def reports(self):
         return self.doc.get("reports")
@@ -495,6 +503,12 @@ class Design:
     def lasting(self, place):
         return self.places[place]["kind"] == "lasting"
 
+    def travels(self, faults):
+        """Of the faults an action went on with, the ones that stay with what it made. A fault about a place says
+        something of a state, and a state is passed on. A fault at a step is an event of that run, and what a
+        place brings is about one operation: neither says anything of what is left."""
+        return {f for f in faults if self.facts[f].get("about") and not self.facts[f].get("brings")}
+
     def brings(self, c):
         """The facts a change brings with it, by the operation and by what its place holds."""
         p, how, kinds = self.places[c["place"]], c["how"], []
@@ -586,6 +600,8 @@ class Play:
         self.answered, self.open, self.unwritten, self.warned, self.left = set(), [], [], [], []
         self.asked = set()                                 # the faults this play has already put as a question
         self.frames = []                                   # the runs below being played, each for the action that uses it
+        self.rode = {p: set() for p in design.places}      # the faults a place's value was made with, accepted or told
+        self.now.made.update({f: False for f in design.never_true})   # nothing in the model can have left these true
         self.stop = self.exec(run)                         # the failure that reached the run, or None
 
     def exec(self, part):
@@ -703,7 +719,8 @@ class Play:
             if self.holds(f) and f not in self.answered:
                 self.ask(name, f)
         bind = {g: self.place(m) for g, m in a.get("with", {}).items()}
-        frame = {"user": a, "design": d.runs_below[a["uses"]], "places": bind, "saw": [], "did": [],
+        went = d.travels(self.named(fired.get("when"))) if fired and fired["then"] in ("accept", "tell") else set()
+        frame = {"user": a, "design": d.runs_below[a["uses"]], "places": bind, "saw": [], "did": [], "went": went,
                  "facts": {brought(k, g): brought(k, m) for g, m in bind.items() for k in BROUGHT},
                  "rehearsal": "rehearsal" in a and self.holds(a["rehearsal"])}
         outer = self.frames
@@ -743,6 +760,8 @@ class Play:
             if d.places[p]["kind"] == "run" and self.state[p] in ("untouched", "undone") and not d.places[p].get("given"):
                 self.unwritten.append((who, p))
             wrong += [f for f in d.about(p) if holds(f, env)]
+            if self.state[p] == "untouched" or d.places[p].get("is") in ("many", "series"):   # what an earlier run left is still there
+                wrong += [f for f in sorted(d.leaves.get(p, {})) if f not in wrong and holds(f, env)]
         for c in listed_changes:
             for f in d.brings(c):
                 if holds(f, env) and d.is_fault(f):       # a design can list one of these itself, without "fault", where it is normal
@@ -750,9 +769,12 @@ class Play:
         changes = [] if frame and frame["rehearsal"] else listed_changes   # a rehearsal makes no changes, and every answer still applies
         here = [f for f in d.at.get(name, []) if holds(f, env)]   # what goes wrong at this step
         fired = self.fired(a)
+        went = set().union(*[f["went"] for f in self.frames]) if frame else set()   # what was accepted or told, and the action went on
         if fired:
             named = self.named(fired.get("when"))
             then = fired["then"]
+            if then in ("accept", "tell") and not frame:
+                went |= d.travels(named)
             if then != "accept":
                 for t in mine.told(fired):
                     self.state[t] = "created"
@@ -810,6 +832,7 @@ class Play:
                 self.state[t] = "replaced"
             for t in touched:
                 self.rests[t] = set(rests)
+                self.rode[t] = went.union(*[self.rode[r] for r in reads])
                 self.by[t] = who
             self.now.made.update(facts)
         did = [(c["place"], self.state[c["place"]], bool(rests)) for c in changes]
@@ -866,7 +889,21 @@ def explore(design, run, start=None):
 
 
 def explore_all(design):
-    return [p for run in design.doc["runs"] for p in explore(design, run)]
+    """Every play of every run. A run starts from what earlier runs left: a lasting place a run
+    changed after accepting a fault, or telling the person of one, is left made with it, and a run
+    that reads the place is asked about it again. The runs are played until nothing new is left."""
+    design.leaves = {}
+    while True:
+        plays = [p for run in design.doc["runs"] for p in explore(design, run)]
+        leaves = {place: {f: set(runs) for f, runs in faults.items()} for place, faults in design.leaves.items()}
+        for p in plays:
+            for place, faults in p.rode.items():
+                if design.lasting(place) and is_state(p.state[place], "changed"):
+                    for f in faults:
+                        leaves.setdefault(place, {}).setdefault(f, set()).add(p.run)
+        if leaves == design.leaves:
+            return plays
+        design.leaves = leaves
 
 
 # ---------- what the plays show ----------
@@ -992,6 +1029,9 @@ def findings(design, plays):
                           "%s the first to change something lasting with it unanswered: %s." % ("This action is" if len(f["actions"]) == 1 else "These actions are", ", ".join(f["actions"]))]
             if f["rest"]:
                 f["shows"].append("What the run changes then rests on it: %s." % ", ".join(f["rest"]))
+            left = sorted("%s can leave %s made with it" % (run, place) for place, faults in design.leaves.items() for run in faults.get(f["subject"], ()))
+            if left:
+                f["shows"].append("It was accepted by an earlier run and is asked again of the run that reads what was left: %s." % "; ".join(left))
         if f["kind"] == "left-behind":
             f["shows"] = ["%s changes %s." % (" and ".join(f["writers"]), f["subject"]),
                           "The change is still there when a failure leaves the part it is in. The failure comes from: %s." % ", ".join(f["at"]),
@@ -1104,6 +1144,8 @@ def compare(design, code, accepted=None):
             f["runs"].append(run)
         f["places"] += [p for p in places if p not in f["places"]]
 
+    explore_all(design)                            # settle what each run can leave, in both, before playing them side by side
+    explore_all(code)
     for run in design.doc["runs"]:
         if run not in code.doc["runs"]:
             out[run] = {"kind": "differs", "subject": run, "plays": 0, "example": None, "runs": [], "common": set(), "places": [],
