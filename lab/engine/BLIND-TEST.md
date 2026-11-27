@@ -96,3 +96,23 @@ it gave 32 differences. The real ones are in
 `docs/control-findings.md`. About a third are noise: the reader split
 the work into actions the design does not have, and the engine reports
 the first action where two plays part.
+
+`pk-code-on-git-blind.json` beside it is a second description, of
+changelog, release and ship, written once pk's design stood on git's.
+It stands on `git-at-code-read.json` beside it, a copy of git's design
+as the reader was given it. The reader had `LANGUAGE.md` made as for a
+design round, git's design, and a file of pk's names: the places, the
+facts and the names of the parts and actions. Two facts' descriptions
+there were cut back to what the fact is, since each also said what pk
+does about it. The reader read pk's Go source and no tests, pages or
+history. It did not run `--against`, because that would have shown it
+what the design's actions do. The tester ran it, as in a design round.
+The round cost about 180,000 tokens.
+
+Played against `lab/engine/pk.json` it gave 32 differences. Seven are
+ones already known. Twelve are things the code does that had not been
+described, among them ship resuming a release already pending and
+release making its checks before it fetches. Three mix both. Ten are
+noise: the reader's own actions, and messages it wrote as `tell` that
+only report progress. `lab/engine/pk-code.json` was then written again
+from what it found, with the design's names and in the code's order.

@@ -29,6 +29,13 @@
       "note": "What pk's code does, written by a fresh session from the code and the design's names alone."
     },
     {
+      "label": "pk's code on git, described blind",
+      "definition": "blind/pk-code-on-git-blind.json",
+      "root": "../..",
+      "readonly": true,
+      "note": "A second description of pk's code: changelog, release and ship, standing on git's design, written by a fresh session from the code and the design's names alone."
+    },
+    {
       "label": "a data pull, written blind",
       "definition": "blind/data-pull.json",
       "root": "blind",

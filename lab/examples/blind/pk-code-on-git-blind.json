@@ -1,0 +1,1423 @@
+{
+  "system": "pk: changelog, release and ship",
+  "on": [
+    "git-at-code-read.json"
+  ],
+  "reports": "message",
+  "places": [
+    {
+      "name": "settings",
+      "is": "one",
+      "kind": "outside",
+      "says": ".pk.json, read by cli.Policy (internal/cli/repo.go) through config.Load"
+    },
+    {
+      "name": "origin address",
+      "is": "one",
+      "kind": "outside",
+      "says": "git remote get-url origin, through git.ParseRepoURL (internal/git/git.go RepoURL)"
+    },
+    {
+      "name": "working branch",
+      "is": "series",
+      "kind": "lasting",
+      "says": "the branch checked out when the command starts (git.CurrentBranch)"
+    },
+    {
+      "name": "release branch",
+      "is": "series",
+      "kind": "lasting",
+      "says": "release.branch in .pk.json; merge flow only"
+    },
+    {
+      "name": "origin's working branch",
+      "is": "series",
+      "kind": "lasting",
+      "in": "origin"
+    },
+    {
+      "name": "origin's release branch",
+      "is": "series",
+      "kind": "lasting",
+      "in": "origin"
+    },
+    {
+      "name": "changelog file",
+      "is": "one",
+      "kind": "lasting",
+      "in": "working tree",
+      "says": "CHANGELOG.md at the repository root"
+    },
+    {
+      "name": "version files",
+      "is": "one",
+      "kind": "lasting",
+      "in": "working tree",
+      "says": "changelog.versionFiles, each a JSON file whose root version field is stamped"
+    },
+    {
+      "name": "next version",
+      "is": "one",
+      "kind": "run"
+    },
+    {
+      "name": "commits since tag",
+      "is": "one",
+      "kind": "run",
+      "says": "the conventional commits in latestTag..HEAD, or HEAD when there is no version tag"
+    },
+    {
+      "name": "section",
+      "is": "one",
+      "kind": "run"
+    },
+    {
+      "name": "message",
+      "is": "one",
+      "kind": "report",
+      "says": "standard error"
+    },
+    {
+      "name": "standard output",
+      "is": "one",
+      "kind": "report"
+    }
+  ],
+  "facts": [
+    {
+      "name": "dry run",
+      "says": "--dry-run is given"
+    },
+    {
+      "name": "undo",
+      "only": {
+        "not": "in ship"
+      },
+      "says": "--undo is given; pk ship never passes it from the person (it runs changelog --undo itself, see commit the release)"
+    },
+    {
+      "name": "bump",
+      "says": "--bump is given (pk changelog, or pk ship which passes it on)"
+    },
+    {
+      "name": "exclude",
+      "says": "--exclude is given (pk changelog, or pk ship which passes it on)"
+    },
+    {
+      "name": "trunk flow",
+      "says": "release.branch is empty"
+    },
+    {
+      "name": "not a git repository",
+      "fault": true,
+      "says": "cli.Root finds no .git walking up from the project directory"
+    },
+    {
+      "name": "settings are missing",
+      "fault": true,
+      "about": "settings",
+      "says": "no .pk.json: config.ErrNotConfigured, refused with the hint to run pk init"
+    },
+    {
+      "name": "settings are invalid",
+      "fault": true,
+      "about": "settings",
+      "says": ".pk.json cannot be read, has an unknown key, or fails Validate"
+    },
+    {
+      "name": "no branch is checked out",
+      "fault": true,
+      "about": "working branch",
+      "says": "HEAD is detached: git.CurrentBranch returns \"\""
+    },
+    {
+      "name": "the working branch is protected",
+      "fault": true,
+      "about": "working branch",
+      "says": "the branch is one guard.branches lists"
+    },
+    {
+      "name": "the working branch is the release branch",
+      "fault": true,
+      "about": "working branch",
+      "only": {
+        "not": "trunk flow"
+      },
+      "says": "merge flow, and the branch checked out is release.branch"
+    },
+    {
+      "name": "origin names no default branch",
+      "only": "trunk flow",
+      "says": "git ls-remote --symref origin HEAD gives no branch, or fails; CheckTrunkBranch then returns false with no error"
+    },
+    {
+      "name": "the branch is not the default",
+      "fault": true,
+      "about": "working branch",
+      "only": {
+        "all": [
+          "trunk flow",
+          {
+            "not": "origin names no default branch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the working branch is not on origin",
+      "fault": true,
+      "about": "working branch",
+      "says": "git ls-remote --heads origin refs/heads/<branch> prints nothing"
+    },
+    {
+      "name": "the working branch is behind origin",
+      "fault": true,
+      "about": "working branch",
+      "says": "after git fetch origin <branch>, origin/<branch> is not an ancestor of HEAD"
+    },
+    {
+      "name": "the release branch is not on origin",
+      "only": {
+        "not": "trunk flow"
+      },
+      "says": "origin has no release.branch"
+    },
+    {
+      "name": "the release branch does not exist",
+      "fault": true,
+      "only": {
+        "all": [
+          {
+            "not": "trunk flow"
+          },
+          "the release branch is not on origin"
+        ]
+      },
+      "says": "release.branch is neither a local branch nor on origin"
+    },
+    {
+      "name": "origin's release branch is not in the working branch's history",
+      "fault": true,
+      "about": "origin's release branch",
+      "only": {
+        "all": [
+          {
+            "not": "trunk flow"
+          },
+          {
+            "not": "the release branch is not on origin"
+          }
+        ]
+      },
+      "says": "after git fetch origin <release>, origin/<release> is not an ancestor of HEAD"
+    },
+    {
+      "name": "the last commit is a release commit",
+      "about": "working branch",
+      "says": "HEAD carries a Release-Tag trailer"
+    },
+    {
+      "name": "the Release-Tag trailer is not a version",
+      "fault": true,
+      "about": "working branch",
+      "only": "the last commit is a release commit",
+      "says": "the trailer's value does not parse as semver, or does not render back to itself (ErrInvalidTrailer)"
+    },
+    {
+      "name": "no local version tag",
+      "says": "the repository has no version tag"
+    },
+    {
+      "name": "origin has no version tag",
+      "only": "no local version tag",
+      "says": "after git fetch origin --tags there is still no version tag"
+    },
+    {
+      "name": "a tag does not name a version",
+      "about": "tags",
+      "says": "the repository has a tag whose name is not a release version; version.Latest passes it over"
+    },
+    {
+      "name": "the last version tag is not in the branch's history",
+      "fault": true,
+      "says": "TagOutsideHistory: git merge-base --is-ancestor <latest tag> HEAD says no"
+    },
+    {
+      "name": "nothing to release",
+      "says": "no commit in the range is conventional"
+    },
+    {
+      "name": "every commit is excluded",
+      "only": {
+        "all": [
+          "exclude",
+          {
+            "not": "nothing to release"
+          }
+        ]
+      },
+      "says": "no conventional commit remains after --exclude"
+    },
+    {
+      "name": "no commit is in a visible section",
+      "only": {
+        "not": "nothing to release"
+      },
+      "says": "groupCommits leaves no group: every commit's type is hidden or unmapped"
+    },
+    {
+      "name": "the --bump value is not a level",
+      "fault": true,
+      "only": "bump"
+    },
+    {
+      "name": "an --exclude entry matches no commit",
+      "fault": true,
+      "only": "exclude"
+    },
+    {
+      "name": "the changelog file cannot be read",
+      "fault": true,
+      "about": "changelog file",
+      "says": "CHANGELOG.md exists and os.ReadFile fails; a missing file is a new changelog"
+    },
+    {
+      "name": "a version file has no version field",
+      "fault": true,
+      "about": "version files",
+      "says": "a listed file cannot be read, or jsonsplice.Replace finds no root version field"
+    },
+    {
+      "name": "origin has no address",
+      "about": "origin address",
+      "says": "git.RepoURL gives \"\": no origin, or a URL that does not parse"
+    },
+    {
+      "name": "the postVersion command fails",
+      "fault": true
+    },
+    {
+      "name": "the preCommit command fails",
+      "fault": true
+    },
+    {
+      "name": "the preRelease command fails",
+      "fault": true
+    },
+    {
+      "name": "the prePush command fails",
+      "fault": true
+    }
+  ],
+  "parts": {
+    "load settings": {
+      "do": "load settings",
+      "says": "cli.Root then cli.Policy (internal/changelog/changelog.go run, loadConfig)",
+      "reads": [
+        "settings"
+      ],
+      "handles": [
+        {
+          "when": "not a git repository",
+          "then": "refuse"
+        },
+        {
+          "when": "settings are missing",
+          "then": "refuse"
+        },
+        {
+          "when": "settings are invalid",
+          "then": "refuse"
+        }
+      ]
+    },
+    "changelog": {
+      "name": "changelog",
+      "seq": [
+        "load settings",
+        {
+          "choose": [
+            {
+              "when": "undo",
+              "run": "undo"
+            }
+          ],
+          "otherwise": "make changelog"
+        }
+      ]
+    },
+    "undo": {
+      "do": "undo",
+      "says": "internal/changelog/changelog.go undo: git reset --hard HEAD~1, after its checks; with --dry-run the checks are made and nothing is reset",
+      "uses": "reset to the commit before",
+      "with": {
+        "the branch": "working branch"
+      },
+      "rehearsal": "dry run",
+      "makes": {
+        "the last commit is a release commit": false
+      },
+      "handles": [
+        {
+          "when": {
+            "not": "the last commit is a release commit"
+          },
+          "then": "refuse",
+          "says": "ReadReleaseTagTrailer fails: cannot undo: no Release-Tag trailer on HEAD"
+        },
+        {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "refuse",
+          "says": "cannot undo: the trailer is not valid semver"
+        },
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "refuse",
+          "says": "git.CheckCleanTree: cannot undo: working tree is not clean"
+        },
+        {
+          "when": "working branch is held elsewhere",
+          "then": "refuse",
+          "says": "git.Holders: cannot undo: the release commit is also on <refs>"
+        },
+        {
+          "when": "no branch is checked out",
+          "then": "accept",
+          "because": "undo does not refuse a detached HEAD: with no branch of its own, every ref that holds the commit counts as another holder and refuses; with none, HEAD is reset"
+        },
+        {
+          "when": "dry run",
+          "then": "tell",
+          "says": "Would undo release commit <tag>; CHANGELOG.md and version files would be restored"
+        }
+      ]
+    },
+    "make changelog": {
+      "name": "make changelog",
+      "seq": [
+        {
+          "use": "check the tree",
+          "when": {
+            "not": "dry run"
+          }
+        },
+        "branch checks",
+        "measure the commits",
+        "fetch the tags",
+        {
+          "choose": [
+            {
+              "when": "nothing to release",
+              "run": "say nothing to release"
+            }
+          ],
+          "otherwise": "make the release"
+        }
+      ]
+    },
+    "check the tree": {
+      "do": "check the tree",
+      "says": "git.CheckCleanTree: git status --porcelain prints nothing",
+      "reads": [
+        "working tree"
+      ],
+      "handles": [
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "refuse"
+        }
+      ]
+    },
+    "branch checks": {
+      "do": "branch checks",
+      "says": "internal/changelog/changelog.go run lines 99-136: CurrentBranch, guard.branches, CheckTrunkBranch, CheckOnOrigin",
+      "reads": [
+        "working branch",
+        "origin's working branch"
+      ],
+      "handles": [
+        {
+          "when": {
+            "all": [
+              "no branch is checked out",
+              {
+                "not": "dry run"
+              }
+            ]
+          },
+          "then": "refuse",
+          "says": "DetachedHead"
+        },
+        {
+          "when": "no branch is checked out",
+          "then": "accept",
+          "because": "A dry run writes nothing, so it may read the commits from anywhere; the protected, default-branch and on-origin checks are skipped"
+        },
+        {
+          "when": "the working branch is protected",
+          "then": "refuse"
+        },
+        {
+          "when": "the branch is not the default",
+          "then": "refuse",
+          "says": "CheckTrunkBranch, trunk flow only"
+        },
+        {
+          "when": "origin does not answer",
+          "then": "refuse",
+          "says": "CheckOnOrigin: origin did not answer"
+        },
+        {
+          "when": "the working branch is not on origin",
+          "then": "refuse",
+          "says": "CheckOnOrigin: <branch> does not exist on origin"
+        },
+        {
+          "when": "origin names no default branch",
+          "then": "accept",
+          "because": "CheckTrunkBranch returns false with no error when origin advertises no HEAD symref or ls-remote fails, and the check is skipped"
+        }
+      ]
+    },
+    "measure the commits": {
+      "do": "measure the commits",
+      "says": "commitsSinceLastTag: LatestTag (git tag --list, version.Latest), TagOutsideHistory, git log latestTag..HEAD",
+      "reads": [
+        "tags",
+        "working branch"
+      ],
+      "changes": [
+        {
+          "place": "commits since tag",
+          "how": "replace"
+        }
+      ],
+      "handles": [
+        {
+          "when": {
+            "all": [
+              "the last version tag is not in the branch's history",
+              {
+                "not": "no local version tag"
+              }
+            ]
+          },
+          "then": "refuse"
+        },
+        {
+          "when": "a tag does not name a version",
+          "then": "accept",
+          "because": "version.Latest passes over a name that is not a version"
+        }
+      ]
+    },
+    "fetch the tags": {
+      "do": "fetch the tags",
+      "says": "No local version tag: git fetch origin --tags --quiet, then commitsSinceLastTag again. On a failed fetch, git ls-remote --tags origin: when origin lists tags, refuse; otherwise go on as a first release.",
+      "when": "no local version tag",
+      "uses": "fetch tags",
+      "later": "stands",
+      "because": "Nothing deletes fetched tags; a failed run leaves them",
+      "handles": [
+        {
+          "when": "the last version tag is not in the branch's history",
+          "then": "fail",
+          "says": "the second commitsSinceLastTag refuses a fetched tag outside the branch's history"
+        },
+        {
+          "when": "tags already has the member",
+          "then": "fail",
+          "says": "git fetch exits 1 after creating the other tags; ls-remote finds origin's tags: no version tags found locally, with the hint git fetch --tags"
+        },
+        {
+          "when": "tags is given a key twice",
+          "then": "accept",
+          "because": "git fetch accepts it: a remote holds one tag of each name"
+        },
+        {
+          "when": "origin does not answer",
+          "then": "accept",
+          "because": "the fetch fails and ls-remote fails too, so the run goes on as a first release; the code: only when the fetch itself fails does the user hear about it, and only if origin does have tags"
+        },
+        {
+          "when": "origin has no version tag",
+          "then": "tell",
+          "says": "No release yet: the first release covers all N commits"
+        },
+        {
+          "when": {
+            "not": "origin has no version tag"
+          },
+          "then": "tell",
+          "says": "Fetched tags from origin: latest is <tag>"
+        }
+      ]
+    },
+    "say nothing to release": {
+      "do": "say nothing to release",
+      "says": "the run ends with exit 0 and says what it measured",
+      "reads": [
+        "commits since tag"
+      ],
+      "handles": [
+        {
+          "when": {
+            "any": [
+              "nothing to release",
+              "every commit is excluded",
+              "no commit is in a visible section"
+            ]
+          },
+          "then": "tell",
+          "says": "No commits[ since <tag>] / N commits, none conventional / No conventional commits remain after --exclude / No visible commits after grouping"
+        }
+      ]
+    },
+    "make the release": {
+      "seq": [
+        "apply exclude",
+        {
+          "choose": [
+            {
+              "when": "every commit is excluded",
+              "run": "say nothing to release"
+            }
+          ],
+          "otherwise": "version and section"
+        }
+      ]
+    },
+    "apply exclude": {
+      "do": "apply exclude",
+      "says": "applyExclude: drops commits whose short hash is listed; warns of each entry that matched nothing, and goes on",
+      "when": "exclude",
+      "reads": [
+        "commits since tag"
+      ],
+      "changes": [
+        {
+          "place": "commits since tag",
+          "how": "replace"
+        }
+      ],
+      "handles": [
+        {
+          "when": "an --exclude entry matches no commit",
+          "then": "tell",
+          "says": "Warning: --exclude <sha> did not match any commit"
+        }
+      ]
+    },
+    "version and section": {
+      "seq": [
+        "infer version",
+        {
+          "use": "pending release check",
+          "when": {
+            "not": "dry run"
+          }
+        },
+        {
+          "choose": [
+            {
+              "when": "no commit is in a visible section",
+              "run": "say nothing to release"
+            }
+          ],
+          "otherwise": "section out"
+        }
+      ]
+    },
+    "infer version": {
+      "do": "infer version",
+      "says": "resolveBump, then the latest version bumped; says Generating <tag>",
+      "reads": [
+        "commits since tag",
+        "tags"
+      ],
+      "changes": [
+        {
+          "place": "next version",
+          "how": "create"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the --bump value is not a level",
+          "then": "refuse",
+          "says": "cli.Usagef: invalid --bump value (exit 1)"
+        }
+      ]
+    },
+    "pending release check": {
+      "do": "pending release check",
+      "says": "internal/changelog/changelog.go run lines 216-222: refuse when ReadReleaseTagTrailer reads a valid trailer on HEAD",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "accept",
+          "because": "the refusal is taken only when ReadReleaseTagTrailer returns no error; an invalid trailer reads as no pending release"
+        },
+        {
+          "when": "the last commit is a release commit",
+          "then": "refuse",
+          "says": "changelog for <tag> is already pending"
+        }
+      ]
+    },
+    "section out": {
+      "seq": [
+        "build section",
+        {
+          "choose": [
+            {
+              "when": "dry run",
+              "run": "print section"
+            }
+          ],
+          "otherwise": "write release"
+        }
+      ]
+    },
+    "build section": {
+      "do": "build section",
+      "says": "groupCommits with the resolved types, formatSection with today's date",
+      "reads": [
+        "commits since tag",
+        "next version",
+        "settings"
+      ],
+      "changes": [
+        {
+          "place": "section",
+          "how": "create"
+        }
+      ]
+    },
+    "print section": {
+      "do": "print section",
+      "reads": [
+        "section"
+      ],
+      "changes": [
+        {
+          "place": "standard output",
+          "how": "create"
+        }
+      ]
+    },
+    "write release": {
+      "name": "write release",
+      "says": "writeRelease; on its error, git.RestoreTree (reset --hard HEAD, clean -fdq) and the error goes on with the hint: nothing was committed; the tree is clean",
+      "seq": [
+        "stamp versions",
+        "postVersion hook",
+        "write section",
+        "preCommit hook",
+        "commit the release"
+      ]
+    },
+    "stamp versions": {
+      "do": "stamp versions",
+      "says": "updateVersionFile for each changelog.versionFiles entry in turn",
+      "reads": [
+        "version files",
+        "next version"
+      ],
+      "changes": [
+        {
+          "place": "version files",
+          "how": "replace",
+          "later": "undone",
+          "says": "git.RestoreTree in changelog; in ship, changelog --undo's reset"
+        }
+      ],
+      "handles": [
+        {
+          "when": "a version file has no version field",
+          "then": "fail",
+          "says": "failed to update <path>; files earlier in the list are already stamped"
+        }
+      ]
+    },
+    "postVersion hook": {
+      "do": "postVersion hook",
+      "says": "hookio.RunHook with VERSION; nothing runs when the command is empty",
+      "reads": [
+        "next version"
+      ],
+      "handles": [
+        {
+          "when": "the postVersion command fails",
+          "then": "fail",
+          "says": "postVersion hook failed"
+        }
+      ]
+    },
+    "write section": {
+      "do": "write section",
+      "says": "insertSection, then appendRefLink when origin gives a web address",
+      "reads": [
+        "changelog file",
+        "section",
+        "origin address",
+        "next version"
+      ],
+      "changes": [
+        {
+          "place": "changelog file",
+          "how": "replace",
+          "later": "undone",
+          "says": "git.RestoreTree in changelog; in ship, changelog --undo's reset"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the changelog file cannot be read",
+          "then": "refuse",
+          "says": "failed to read CHANGELOG.md"
+        },
+        {
+          "when": "origin has no address",
+          "then": "accept",
+          "because": "repoURL is empty, so no compare link is appended; nothing is said"
+        }
+      ]
+    },
+    "preCommit hook": {
+      "do": "preCommit hook",
+      "says": "hookio.RunHook with VERSION; nothing runs when the command is empty",
+      "reads": [
+        "next version"
+      ],
+      "handles": [
+        {
+          "when": "the preCommit command fails",
+          "then": "fail",
+          "says": "preCommit hook failed"
+        }
+      ]
+    },
+    "commit the release": {
+      "do": "commit the release",
+      "says": "git add CHANGELOG.md and the version files, git add -u, git commit -m 'chore: release <tag>' --trailer 'Release-Tag: <tag>'",
+      "uses": "commit",
+      "with": {
+        "the branch": "working branch"
+      },
+      "makes": {
+        "the last commit is a release commit": true
+      },
+      "later": "undone",
+      "handles": [
+        {
+          "when": "the commit cannot be made",
+          "then": "refuse"
+        }
+      ]
+    },
+    "release": {
+      "name": "release",
+      "seq": [
+        "read the current branch",
+        "load settings",
+        "release branch check",
+        "read the pending release",
+        "pre-flight",
+        {
+          "choose": [
+            {
+              "when": "trunk flow",
+              "run": "say the flow"
+            }
+          ],
+          "otherwise": "merge"
+        },
+        "preRelease hook",
+        "publish"
+      ]
+    },
+    "read the current branch": {
+      "do": "read the current branch",
+      "says": "internal/release/release.go run lines 38-51: cli.Root, git.CurrentBranch, DetachedHead",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "not a git repository",
+          "then": "refuse"
+        },
+        {
+          "when": "no branch is checked out",
+          "then": "refuse"
+        }
+      ]
+    },
+    "release branch check": {
+      "do": "release branch check",
+      "says": "internal/release/release.go run lines 64-70",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "the working branch is the release branch",
+          "then": "refuse",
+          "says": "you're on the release branch; switch to your working branch first"
+        }
+      ]
+    },
+    "read the pending release": {
+      "do": "read the pending release",
+      "says": "ReadReleaseTagTrailer, then ReleaseTagState (internal/release/release.go run lines 72-91)",
+      "reads": [
+        "working branch",
+        "tags"
+      ],
+      "handles": [
+        {
+          "when": {
+            "not": "the last commit is a release commit"
+          },
+          "then": "refuse",
+          "says": "no Release-Tag trailer on HEAD; run pk changelog first"
+        },
+        {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "refuse"
+        },
+        {
+          "when": "tags already has the member",
+          "then": "refuse",
+          "says": "HEAD is already tagged <tag>; nothing to release / tag <tag> already exists on another commit"
+        }
+      ]
+    },
+    "pre-flight": {
+      "name": "pre-flight",
+      "seq": [
+        "check the tree",
+        "check the branch on origin",
+        "fetch the working branch",
+        "check not behind origin",
+        {
+          "use": "release branch on origin",
+          "when": {
+            "not": "trunk flow"
+          }
+        },
+        "check the last tag"
+      ]
+    },
+    "check the branch on origin": {
+      "do": "check the branch on origin",
+      "says": "CheckTrunkBranch in trunk flow, then CheckOnOrigin (internal/release/release.go run lines 106-117)",
+      "reads": [
+        "working branch",
+        "origin's working branch"
+      ],
+      "handles": [
+        {
+          "when": "the branch is not the default",
+          "then": "refuse"
+        },
+        {
+          "when": "origin does not answer",
+          "then": "refuse",
+          "says": "origin did not answer"
+        },
+        {
+          "when": "the working branch is not on origin",
+          "then": "refuse"
+        }
+      ]
+    },
+    "fetch the working branch": {
+      "do": "fetch the working branch",
+      "says": "git fetch origin <branch> --quiet; a failure is OriginUnreachable",
+      "uses": "fetch the branch",
+      "with": {
+        "origin's branch": "origin's working branch"
+      },
+      "later": "stands",
+      "because": "What pre-flight fetched from origin stays (package comment, internal/release/release.go)",
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "remote-tracking branch holds what is kept nowhere",
+          "then": "accept",
+          "because": "the run below accepts it: a fetch makes the remote-tracking branch again"
+        }
+      ]
+    },
+    "check not behind origin": {
+      "do": "check not behind origin",
+      "says": "git merge-base --is-ancestor origin/<branch> HEAD",
+      "reads": [
+        "remote-tracking branch",
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "the working branch is behind origin",
+          "then": "refuse",
+          "says": "local <branch> is behind origin/<branch>; pull first"
+        }
+      ]
+    },
+    "release branch on origin": {
+      "name": "release branch on origin",
+      "seq": [
+        "check the release branch",
+        "fetch the release branch",
+        "check the release branch is contained"
+      ]
+    },
+    "check the release branch": {
+      "do": "check the release branch",
+      "says": "git.RemoteBranchExists(release), then git.BranchExists (internal/release/release.go run lines 137-163)",
+      "reads": [
+        "origin's release branch",
+        "release branch"
+      ],
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "the release branch does not exist",
+          "then": "refuse",
+          "says": "release branch <name> does not exist locally or on origin"
+        },
+        {
+          "when": "the release branch is not on origin",
+          "then": "tell",
+          "says": "<release> exists locally; the release push creates it on origin"
+        }
+      ]
+    },
+    "fetch the release branch": {
+      "do": "fetch the release branch",
+      "says": "git fetch origin <release> --quiet, when origin has it",
+      "when": {
+        "not": "the release branch is not on origin"
+      },
+      "uses": "fetch the branch",
+      "with": {
+        "origin's branch": "origin's release branch"
+      },
+      "later": "stands",
+      "because": "What pre-flight fetched from origin stays (package comment, internal/release/release.go)",
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "remote-tracking branch holds what is kept nowhere",
+          "then": "accept",
+          "because": "the run below accepts it: a fetch makes the remote-tracking branch again"
+        }
+      ]
+    },
+    "check the release branch is contained": {
+      "do": "check the release branch is contained",
+      "says": "git merge-base --is-ancestor origin/<release> HEAD",
+      "when": {
+        "not": "the release branch is not on origin"
+      },
+      "reads": [
+        "remote-tracking branch",
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "origin's release branch is not in the working branch's history",
+          "then": "refuse",
+          "says": "origin/<release> has diverged from <branch>; the release push would be rejected"
+        }
+      ]
+    },
+    "check the last tag": {
+      "do": "check the last tag",
+      "says": "LatestTag, TagOutsideHistory (internal/release/release.go run lines 165-178)",
+      "reads": [
+        "tags",
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "the last version tag is not in the branch's history",
+          "then": "refuse"
+        },
+        {
+          "when": "a tag does not name a version",
+          "then": "accept",
+          "because": "version.Latest passes over a name that is not a version"
+        }
+      ]
+    },
+    "say the flow": {
+      "do": "say the flow",
+      "says": "Trunk flow (no release.branch in .pk.json); On <branch> (default branch on origin), or On <branch> branch",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "origin names no default branch",
+          "then": "tell",
+          "says": "On <branch> branch: doubles as disclosure that the default-branch check could not run"
+        }
+      ]
+    },
+    "merge": {
+      "name": "merge",
+      "seq": [
+        "switch to the release branch",
+        "fast-forward the release branch"
+      ]
+    },
+    "switch to the release branch": {
+      "do": "switch to the release branch",
+      "says": "git switch <release>; then git rev-parse HEAD is kept for the rollback",
+      "when": {
+        "not": "dry run"
+      },
+      "uses": "switch",
+      "with": {
+        "the branch": "release branch"
+      },
+      "later": "undone",
+      "handles": [
+        {
+          "when": "the switch fails",
+          "then": "refuse",
+          "says": "failed to switch to <release> (exit 3)"
+        }
+      ]
+    },
+    "fast-forward the release branch": {
+      "do": "merge",
+      "says": "git merge --ff-only <branch>. In a dry run: git merge-base --is-ancestor <release or origin/release> <branch>, and Would merge",
+      "uses": "fast-forward",
+      "with": {
+        "the branch": "release branch",
+        "the other branch": "working branch"
+      },
+      "rehearsal": "dry run",
+      "later": "undone",
+      "handles": [
+        {
+          "when": "the branch cannot be fast-forwarded",
+          "then": "refuse",
+          "says": "merge failed (or would not be fast-forward); <release> has diverged from <branch>"
+        }
+      ]
+    },
+    "preRelease hook": {
+      "do": "preRelease hook",
+      "says": "hookio.RunHook with VERSION and TAG; runs in a dry run too",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "the preRelease command fails",
+          "then": "fail",
+          "says": "preRelease hook failed"
+        }
+      ]
+    },
+    "publish": {
+      "name": "publish",
+      "when": {
+        "not": "dry run"
+      },
+      "seq": [
+        "tag the release",
+        "prePush hook",
+        "push in trunk flow",
+        "push in merge flow",
+        {
+          "use": "after the push",
+          "when": {
+            "not": "trunk flow"
+          }
+        }
+      ]
+    },
+    "tag the release": {
+      "do": "tag the release",
+      "says": "git.CreateTag: git tag <tag> at HEAD, which is the working branch's tip in either flow",
+      "uses": "tag",
+      "with": {
+        "the branch": "working branch"
+      },
+      "later": "undone",
+      "handles": [
+        {
+          "when": "the tag cannot be created",
+          "then": "refuse"
+        }
+      ]
+    },
+    "prePush hook": {
+      "do": "prePush hook",
+      "says": "hookio.RunHook with VERSION and TAG, the tag ref in existence",
+      "reads": [
+        "tags"
+      ],
+      "handles": [
+        {
+          "when": "the prePush command fails",
+          "then": "fail",
+          "says": "prePush hook failed"
+        }
+      ]
+    },
+    "push in trunk flow": {
+      "do": "push in trunk flow",
+      "says": "git push --atomic origin <branch> <tag>",
+      "when": "trunk flow",
+      "uses": "push the branch and the tag",
+      "with": {
+        "the branch": "working branch",
+        "origin's branch": "origin's working branch"
+      },
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "origin rejects the push",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "origin's tag names the commit pushed",
+              "origin's tags already has the member"
+            ]
+          },
+          "then": "accept",
+          "because": "the run below takes the push: the ref is already what it sends"
+        },
+        {
+          "when": "origin's tags already has the member",
+          "then": "refuse"
+        }
+      ]
+    },
+    "push in merge flow": {
+      "do": "push in merge flow",
+      "says": "git push --atomic origin <release> <tag>",
+      "when": {
+        "not": "trunk flow"
+      },
+      "uses": "push the branch and the tag",
+      "with": {
+        "the branch": "release branch",
+        "origin's branch": "origin's release branch"
+      },
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "origin rejects the push",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "origin's tag names the commit pushed",
+              "origin's tags already has the member"
+            ]
+          },
+          "then": "accept",
+          "because": "the run below takes the push: the ref is already what it sends"
+        },
+        {
+          "when": "origin's tags already has the member",
+          "then": "refuse"
+        }
+      ]
+    },
+    "after the push": {
+      "seq": [
+        "switch back",
+        "push the working branch"
+      ]
+    },
+    "switch back": {
+      "do": "switch back",
+      "says": "git switch <branch>; a failure is a warning",
+      "uses": "switch",
+      "with": {
+        "the branch": "working branch"
+      },
+      "handles": [
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "warn",
+          "says": "failed to switch back to <branch>"
+        },
+        {
+          "when": "the switch fails",
+          "then": "warn",
+          "says": "failed to switch back to <branch>"
+        }
+      ]
+    },
+    "push the working branch": {
+      "do": "push the working branch",
+      "says": "git push origin <branch>; a failure is a warning",
+      "uses": "push the branch",
+      "with": {
+        "the branch": "working branch",
+        "origin's branch": "origin's working branch"
+      },
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "warn",
+          "says": "failed to push <branch>"
+        },
+        {
+          "when": "origin rejects the push",
+          "then": "warn",
+          "says": "failed to push <branch>"
+        }
+      ]
+    },
+    "ship": {
+      "name": "ship",
+      "seq": [
+        "find the pending release",
+        {
+          "choose": [
+            {
+              "when": {
+                "all": [
+                  "the last commit is a release commit",
+                  {
+                    "not": "the Release-Tag trailer is not a version"
+                  },
+                  {
+                    "not": "tags already has the member"
+                  }
+                ]
+              },
+              "run": "resume at release"
+            }
+          ],
+          "otherwise": "changelog then release"
+        }
+      ]
+    },
+    "find the pending release": {
+      "do": "find the pending release",
+      "says": "cli.Root, then pendingRelease: ReadReleaseTagTrailer and ReleaseTagState (internal/ship/ship.go pendingRelease, run lines 58-73)",
+      "reads": [
+        "working branch",
+        "tags"
+      ],
+      "handles": [
+        {
+          "when": "not a git repository",
+          "then": "refuse"
+        },
+        {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "accept",
+          "because": "A trailer that cannot be read or parsed means nothing is staged, which sends ship to the changelog half"
+        }
+      ]
+    },
+    "resume at release": {
+      "seq": [
+        "skip changelog",
+        "release"
+      ]
+    },
+    "skip changelog": {
+      "do": "skip changelog",
+      "says": "Release-Tag <tag> already pending; skipping changelog",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": {
+            "any": [
+              "bump",
+              "exclude"
+            ]
+          },
+          "then": "tell",
+          "says": "Warning: --bump and --exclude apply to changelog, which already ran; ignoring"
+        }
+      ]
+    },
+    "changelog then release": {
+      "seq": [
+        "changelog",
+        {
+          "choose": [
+            {
+              "when": "dry run",
+              "run": "say release rehearses later"
+            },
+            {
+              "when": {
+                "all": [
+                  "the last commit is a release commit",
+                  {
+                    "not": "the Release-Tag trailer is not a version"
+                  },
+                  {
+                    "not": "tags already has the member"
+                  }
+                ]
+              },
+              "run": "release"
+            }
+          ],
+          "otherwise": null
+        }
+      ]
+    },
+    "say release rehearses later": {
+      "do": "say release rehearses later",
+      "says": "Note: release rehearses against the changelog commit; run pk ship to execute both, or pk ship --dry-run again once a release is pending",
+      "handles": [
+        {
+          "when": "dry run",
+          "then": "tell"
+        }
+      ],
+      "changes": [
+        {
+          "place": "message",
+          "how": "create"
+        }
+      ]
+    }
+  },
+  "runs": [
+    "changelog",
+    "release",
+    "ship"
+  ]
+}

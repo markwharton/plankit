@@ -1,0 +1,365 @@
+{
+  "system": "git: the operations pk runs",
+  "reports": "git's message",
+  "places": [
+    {
+      "name": "working tree",
+      "is": "one",
+      "kind": "lasting",
+      "says": "What is checked out. git replaces it whole; a definition above can name the files in it."
+    },
+    {
+      "name": "tags",
+      "is": "many",
+      "kind": "lasting"
+    },
+    {
+      "name": "remote-tracking branch",
+      "is": "one",
+      "kind": "lasting"
+    },
+    {
+      "name": "the branch",
+      "is": "series",
+      "kind": "lasting",
+      "given": true
+    },
+    {
+      "name": "the other branch",
+      "is": "series",
+      "kind": "lasting",
+      "given": true
+    },
+    {
+      "name": "origin",
+      "kind": "lasting"
+    },
+    {
+      "name": "origin's tags",
+      "is": "many",
+      "kind": "lasting",
+      "in": "origin"
+    },
+    {
+      "name": "origin's branch",
+      "is": "series",
+      "kind": "lasting",
+      "in": "origin",
+      "given": true
+    },
+    {
+      "name": "git's message",
+      "is": "one",
+      "kind": "report"
+    }
+  ],
+  "facts": [
+    {
+      "name": "origin does not answer",
+      "fault": true,
+      "about": "origin",
+      "says": "the remote cannot be reached, or does not have what is asked for"
+    },
+    {
+      "name": "the commit cannot be made",
+      "fault": true,
+      "says": "git commit exits non-zero"
+    },
+    {
+      "name": "the branch cannot be fast-forwarded",
+      "fault": true,
+      "says": "the other branch's history does not contain the branch's last commit"
+    },
+    {
+      "name": "the tag cannot be created",
+      "fault": true,
+      "says": "git tag exits non-zero for a reason other than the name being taken"
+    },
+    {
+      "name": "origin rejects the push",
+      "fault": true,
+      "says": "a ref is not a fast-forward of origin's, or origin refuses it for a reason of its own"
+    },
+    {
+      "name": "the switch fails",
+      "fault": true,
+      "says": "git switch exits non-zero for a reason other than local changes"
+    },
+    {
+      "name": "a merge refuses a tree with changes it would overwrite",
+      "open": true,
+      "says": "git merge --ff-only stops when the working tree has uncommitted changes to files the merge changes. The part of the manual read does not say."
+    },
+    {
+      "name": "origin's tag names the commit pushed",
+      "says": "origin already has the tag, on the commit the push sends",
+      "only": "origin's tags already has the member"
+    }
+  ],
+  "parts": {
+    "fetch tags": {
+      "do": "fetch tags",
+      "says": "git fetch origin --tags. An update to a tag that exists locally is rejected without --force; git 2.54 then exits 1, and still creates the other tags.",
+      "reads": [
+        "origin's tags"
+      ],
+      "changes": [
+        {
+          "place": "tags",
+          "how": "create",
+          "many": true,
+          "from": "origin's tags"
+        }
+      ],
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "tags already has the member",
+          "then": "fail",
+          "says": "The update is rejected, the other tags are created, and git exits 1."
+        },
+        {
+          "when": "tags is given a key twice",
+          "then": "accept",
+          "because": "A remote holds one tag of each name."
+        }
+      ]
+    },
+    "fetch the branch": {
+      "do": "fetch the branch",
+      "says": "git fetch origin <branch>.",
+      "reads": [
+        "origin's branch"
+      ],
+      "changes": [
+        {
+          "place": "remote-tracking branch",
+          "how": "replace",
+          "from": "origin's branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "remote-tracking branch holds what is kept nowhere",
+          "then": "accept",
+          "because": "A remote-tracking branch is a copy of origin's branch, and a fetch makes it again."
+        }
+      ]
+    },
+    "commit": {
+      "do": "commit",
+      "says": "git commit: the working tree's changes become a new commit on the branch.",
+      "reads": [
+        "working tree"
+      ],
+      "changes": [
+        {
+          "place": "the branch",
+          "how": "create",
+          "from": "working tree"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the commit cannot be made",
+          "then": "refuse"
+        }
+      ]
+    },
+    "reset to the commit before": {
+      "do": "reset to the commit before",
+      "says": "git reset --hard HEAD~1. The manual: overwrite all files and directories with the version from the commit.",
+      "reads": [
+        "the branch"
+      ],
+      "changes": [
+        {
+          "place": "the branch",
+          "how": "destroy"
+        },
+        {
+          "place": "working tree",
+          "how": "replace",
+          "from": "the branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the branch is held elsewhere",
+          "then": "accept",
+          "because": "reset moves the branch as asked. It does not look for other holders of the commit."
+        },
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "accept",
+          "because": "--hard overwrites all files with the version from the commit."
+        }
+      ]
+    },
+    "switch": {
+      "do": "switch",
+      "says": "git switch <branch>. The manual: the operation is aborted if it leads to loss of local changes.",
+      "reads": [
+        "the branch"
+      ],
+      "changes": [
+        {
+          "place": "working tree",
+          "how": "replace",
+          "from": "the branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "refuse"
+        },
+        {
+          "when": "the switch fails",
+          "then": "refuse"
+        }
+      ]
+    },
+    "fast-forward": {
+      "do": "fast-forward",
+      "says": "git merge --ff-only <other>. The manual: when not possible, refuse to merge and exit with a non-zero status.",
+      "reads": [
+        "the branch",
+        "the other branch"
+      ],
+      "changes": [
+        {
+          "place": "the branch",
+          "how": "create",
+          "from": "the other branch"
+        },
+        {
+          "place": "working tree",
+          "how": "replace",
+          "from": "the branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the branch cannot be fast-forwarded",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "working tree holds what is kept nowhere",
+              "a merge refuses a tree with changes it would overwrite"
+            ]
+          },
+          "then": "refuse"
+        }
+      ]
+    },
+    "tag": {
+      "do": "tag",
+      "says": "git tag <name>. The manual: -f replaces an existing tag instead of failing.",
+      "reads": [
+        "the branch"
+      ],
+      "changes": [
+        {
+          "place": "tags",
+          "how": "create",
+          "from": "the branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "tags already has the member",
+          "then": "refuse"
+        },
+        {
+          "when": "the tag cannot be created",
+          "then": "refuse"
+        }
+      ]
+    },
+    "push the branch and the tag": {
+      "do": "push the branch and the tag",
+      "says": "git push --atomic origin <branch> <tag>: both refs are taken, or neither.",
+      "reads": [
+        "the branch",
+        "tags"
+      ],
+      "changes": [
+        {
+          "place": "origin's branch",
+          "how": "create",
+          "from": "the branch"
+        },
+        {
+          "place": "origin's tags",
+          "how": "create",
+          "from": "tags"
+        }
+      ],
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "origin rejects the push",
+          "then": "refuse"
+        },
+        {
+          "when": "origin's tag names the commit pushed",
+          "then": "accept",
+          "because": "the ref is already what the push sends, so git takes the push"
+        },
+        {
+          "when": "origin's tags already has the member",
+          "then": "refuse",
+          "says": "An update to a tag origin already has on another commit is rejected without --force."
+        }
+      ]
+    },
+    "push the branch": {
+      "do": "push the branch",
+      "says": "git push origin <branch>.",
+      "reads": [
+        "the branch"
+      ],
+      "changes": [
+        {
+          "place": "origin's branch",
+          "how": "create",
+          "from": "the branch"
+        }
+      ],
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "origin rejects the push",
+          "then": "refuse"
+        }
+      ]
+    }
+  },
+  "runs": [
+    "fetch tags",
+    "fetch the branch",
+    "commit",
+    "reset to the commit before",
+    "switch",
+    "fast-forward",
+    "tag",
+    "push the branch and the tag",
+    "push the branch"
+  ]
+}
