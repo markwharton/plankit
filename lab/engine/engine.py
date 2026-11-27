@@ -85,6 +85,24 @@ def renamed(c, names):
     return {k: renamed(v, names) if k == "not" else [renamed(x, names) for x in v]}
 
 
+def words(c, inner=False):
+    """A condition in words, with every "not", "and" and "or" it has."""
+    if c is None:
+        return ""
+    if isinstance(c, str):
+        return c
+    (k, v), = c.items()
+    if k == "not":
+        return "not " + words(v, True)
+    out = (" and " if k == "all" else " or ").join(words(x, True) for x in v)
+    return "(%s)" % out if inner and len(v) > 1 else out
+
+
+def sentence(says):
+    """What a fact says, as one sentence: a capital first, and one full stop."""
+    return says[0].upper() + says[1:].rstrip(".") + "."
+
+
 def names_in(c):
     if c is None:
         return set()
@@ -1024,7 +1042,7 @@ def findings(design, plays):
     for f in out.values():
         if f["kind"] == "unanswered":
             says = design.facts[f["subject"]].get("says", f["subject"])
-            f["shows"] = ["%s." % (says[0].upper() + says[1:]),
+            f["shows"] = [sentence(says),
                           "Nothing answers it at: %s." % ", ".join(f["actions"]) if design.facts[f["subject"]].get("at") else
                           "%s the first to change something lasting with it unanswered: %s." % ("This action is" if len(f["actions"]) == 1 else "These actions are", ", ".join(f["actions"]))]
             if f["rest"]:
@@ -1089,7 +1107,7 @@ def findings(design, plays):
                     add("open", name, p, shows=[], settle="Decide it. Then say what is so wherever the design uses this fact, and take the fact out.")
             if ("open", name) in out:
                 f, says = out[("open", name)], fact.get("says", name)
-                f["shows"] = ["%s." % (says[0].upper() + says[1:]), "The design plays it both ways, and %d plays depend on it." % f["plays"]]
+                f["shows"] = [sentence(says), "The design plays it both ways, and %d plays depend on it." % f["plays"]]
                 if ran[True] - ran[False]:
                     f["shows"].append("When it holds, these run and otherwise do not: %s." % ", ".join(sorted(ran[True] - ran[False])))
                 if ran[False] - ran[True]:
@@ -1189,9 +1207,8 @@ def compare(design, code, accepted=None):
 
 
 def whenever(h):
-    """An answer's condition in words: the facts it names, or "always" for one with no "when"."""
-    names = sorted(names_in(h.get("when")))
-    return "when " + " and ".join(names) if names else "always"
+    """An answer's condition in words, or "always" for one with no "when"."""
+    return "when " + words(h["when"]) if h.get("when") is not None else "always"
 
 
 def tests(design):

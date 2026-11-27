@@ -755,6 +755,22 @@ class Engine(unittest.TestCase):
         missing = {kind: sorted(keys - found[kind] - {"says", "hold"}) for kind, keys in engine.KEYS.items()}
         self.assertEqual({k: v for k, v in missing.items() if v}, {})
 
+    def test_a_statement_is_printed_with_the_whole_of_its_condition(self):
+        doc = notes()
+        doc["parts"]["publish"]["seq"][0]["handles"] = [{"when": {"not": "preview"}, "then": "tell"},
+                                                        {"when": {"all": ["preview", {"any": ["the note is empty", "the site is down"]}]}, "then": "refuse"}]
+        subjects = [t["subject"] for t in engine.tests(engine.Design(doc))]
+        self.assertIn("save draft: tell, when not preview", subjects)                      # a "not" is part of what the answer says
+        self.assertIn("save draft: refuse, when preview and (the note is empty or the site is down)", subjects)
+
+    def test_a_sentence_that_ends_in_a_full_stop_is_printed_with_one(self):
+        doc = notes()
+        doc["facts"][1]["says"] = "The note has no text."
+        del doc["parts"]["publish"]["seq"][0]["handles"]
+        d = engine.Design(doc)
+        shows = engine.findings(d, engine.explore_all(d))[0]["shows"]
+        self.assertEqual(shows[0], "The note has no text.")
+
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [
             (lambda d: d["places"][0].update(colour="red"), '"colour"'),

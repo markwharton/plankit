@@ -12,17 +12,6 @@ SHAPE = {"seq": "join", "all": "include", "choose": "or"}
 STATUS = {"ran": "done", "refused": "refused", "failed": "refused", "warned": "warned", "skipped": "not-run", "declined": "declined"}
 
 
-def words(c):
-    if c is None:
-        return ""
-    if isinstance(c, str):
-        return c
-    (k, v), = c.items()
-    if k == "not":
-        return "not " + words(v)
-    return (" and " if k == "all" else " or ").join(words(x) for x in v)
-
-
 def view_model(d, plays, findings, tests, shown):
     system = d.doc["system"]
     nodes, used, names = [], {system} | set(d.doc["runs"]), {}     # names[run][action] -> the node's name; a run's own name is taken
@@ -51,7 +40,7 @@ def view_model(d, plays, findings, tests, shown):
             reads, writes = d.touches(part)                # for an action that uses a run below, the run's, with the places it was given
             node["reads"] = list(reads)
             node["writes"] = [{"place": place, "mode": how + (", by " + part["uses"] if "uses" in part else ""), "key": "", "records": "", "before": []} for place, how in writes]
-            node["refusals"] = [{"kind": h["then"], "reason": ("when " + words(h["when"]) if h.get("when") is not None else "always") + (", because " + h["because"] if h.get("because") else ""), "to": "" if h["then"] == "accept" else (d.told(h) or [""])[0],
+            node["refusals"] = [{"kind": h["then"], "reason": ("when " + engine.words(h["when"]) if h.get("when") is not None else "always") + (", because " + h["because"] if h.get("because") else ""), "to": "" if h["then"] == "accept" else (d.told(h) or [""])[0],
                                  "held": engine.held(d, h.get("hold")), "test": (h.get("hold") or {}).get("test", "")} for h in part.get("handles", [])]
             node["label"] = ", ".join(w["place"] for w in node["writes"]) + " = " + part["do"] + "(" + ", ".join(node["reads"]) + ")"
             # who answers what: the facts each answer names, the faults the action meets, and the facts that decide whether it runs
@@ -77,7 +66,7 @@ def view_model(d, plays, findings, tests, shown):
             for b in part["choose"]:
                 child = build(b["run"], node["name"], run, None, gates=gates | engine.names_in(b.get("when")))
                 node["children"].append(child)
-                node["branches"].append({"when": words(b.get("when")), "child": child})
+                node["branches"].append({"when": engine.words(b.get("when")), "child": child})
             if part.get("otherwise") is not None:
                 node["otherwise"] = build(part["otherwise"], node["name"], run, None, gates=gates | set().union(*[engine.names_in(b.get("when")) for b in part["choose"]]))
                 node["children"].append(node["otherwise"])
