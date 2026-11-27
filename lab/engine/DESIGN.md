@@ -524,17 +524,40 @@ tag is on the commit pushed, and refuses it otherwise.
 - git's reset goes on with a commit held elsewhere and with a tree
   that holds what is kept nowhere. Both come up to `undo`, which
   refuses both. Neither is a fact pk's design lists.
-- `pk-code.json` is that design changed to what pk's code does where
-  the owner has decided otherwise: a dry run fetches the tags, a
-  rejected update to a tag stops changelog, changelog does not check a
-  branch that is behind origin, and changelog says nothing when origin
-  names no default branch or when the section has no link, and
-  release does not read origin's tags before it tags. Played against
-  the design it gives 8 `differs` findings, each naming the
-  facts that cause it. Its words differ in two more places, which the
-  engine does not play: a pre-release tag counts as the latest version,
-  and a local path as origin gives a link made from the path. Together
-  they are the changes pk's code needs.
+- `pk-code.json` is what pk's code does, in the code's order and with
+  the design's names, written after a cold description of the code
+  (`BLIND-TEST.md`). Played against the design it gives 26 `differs`
+  findings, each naming the facts that cause it. Eight are decisions
+  the code does not follow yet:
+  - a dry run fetches the tags;
+  - a rejected update to a tag stops changelog;
+  - changelog does not check a branch that is behind origin;
+  - changelog says nothing when origin names no default branch, or
+    when the section has no link;
+  - release does not read origin's tags before it tags.
+
+  Its words differ in two more places, which the engine does not play:
+  a pre-release tag counts as the latest version, and a local path as
+  origin gives a link made from the path. Those ten are the changes
+  pk's code needs.
+
+  The other 18 are what the code does that the design does not say:
+  - ship resumes a release already pending, and stops when changelog
+    makes no release commit;
+  - release reads the branch and the pending release first, and
+    fetches only after the checks that need no fetch;
+  - release does not refuse a protected branch;
+  - release checks origin's release branch in merge flow;
+  - release finds a release branch that cannot be fast-forwarded only
+    at the merge;
+  - changelog goes on past a Release-Tag trailer that is not a
+    version, which undo refuses;
+  - changelog says there is nothing to release when no commit is in a
+    visible section or every commit is excluded, and says it before it
+    reads `--bump`;
+  - a missing repository or settings file is refused.
+
+  Each is the owner's to decide.
 
 ## Converting an older design
 

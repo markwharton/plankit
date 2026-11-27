@@ -45,16 +45,34 @@ class Pk(unittest.TestCase):
             self.assertTrue(mine, fault)
             self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("load settings", "ran"), ("undo", "refused")))}, fault)
 
-    def test_the_code_variant_differs_in_eight_places(self):
+    def test_the_code_variant_differs_in_26_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))
         self.assertEqual([f["subject"] for f in got], [
+            "branch checks: the design goes ahead, the code has no such action",            # ship resumes a release already pending
             "branch checks: the design refuses, the code goes ahead",                       # a branch behind origin: changelog makes no check
+            "branch checks: the design refuses, the code has no such action",               # ship resumes a pending release past changelog's refusals
             "branch checks: the design tells and goes on, the code goes ahead",             # no default named: changelog says nothing
+            "branch checks: the design tells and goes on, the code has no such action",     # ship resumes a pending release, no default named
+            "build section: the design goes ahead, the code has no such action",            # no commit is in a visible section: nothing to release
+            "commits since tag ends untouched in the design and created in the code",       # the code measures the commits before it reads --bump
             "fetch the tags: the design skips it, the code does its work and then fails",    # a dry run: the design reads origin's tags and fetches nothing
             "fetch the tags: the design skips it, the code goes ahead",
             "fetch the tags: the design tells and goes on, the code does its work and then fails",   # a rejected tag update
-            "pre-flight: the design refuses, the code goes ahead",                          # origin has the tag on another commit: release does not read origin's tags
+            "fetch the working branch: the design goes ahead, the code has no such action",  # release checks the branch and the pending release before it fetches
+            "fetch the working branch: the design refuses, the code has no such action",
+            "infer version: the design goes ahead, the code has no such action",             # nothing to release is said before --bump and --exclude are read
+            "infer version: the design refuses, the code goes ahead",                       # every commit excluded: nothing to release, and --bump is not read
+            "infer version: the design refuses, the code has no such action",               # the same with nothing to release; and a tag outside history, refused at measure
+            "infer version: the design tells and goes on, the code has no such action",     # an unmatched --exclude is not reached when there is nothing to release
+            "load settings: the design goes ahead, the code has no such action",            # release reads the current branch before the settings
+            "load settings: the design goes ahead, the code refuses",                       # not a git repository, or no settings file
+            "pending release check: the design goes ahead, the code has no such action",    # every commit excluded: nothing to release
+            "pending release check: the design refuses, the code goes ahead",               # a trailer that is not a version is not a pending release
+            "pending release check: the design refuses, the code has no such action",       # every commit excluded: said before the pending check
+            "pre-flight: the design goes ahead, the code refuses",                          # merge flow: origin's release branch diverged, or no release branch anywhere
+            "pre-flight: the design refuses, the code goes ahead",                          # origin has the tag on another commit; a protected branch; a release branch that cannot be fast-forwarded, found at the merge
             "pre-flight: the design refuses, the code tells and goes on",                   # the same, where origin also names no default branch
+            "undo: the design goes ahead, the code refuses",                                # undo refuses a trailer that is not a version
             "write section: the design tells and goes on, the code goes ahead"])           # no web address: changelog says nothing
 
 

@@ -130,7 +130,7 @@
       "name": "the working branch is behind origin",
       "fault": true,
       "about": "working branch",
-      "says": "origin's tip of the branch, read without a fetch, is not in the branch's history"
+      "says": "origin's tip of the branch is not in the branch's history: changelog reads it with no fetch and makes no check; release reads it after fetching"
     },
     {
       "name": "origin names no default branch",
@@ -197,6 +197,83 @@
     {
       "name": "an --exclude entry matches no commit",
       "fault": true
+    },
+    {
+      "name": "not a git repository",
+      "fault": true,
+      "says": "no git repository encloses the project directory"
+    },
+    {
+      "name": "settings are missing",
+      "fault": true,
+      "about": "settings",
+      "says": "there is no .pk.json"
+    },
+    {
+      "name": "the working branch is the release branch",
+      "fault": true,
+      "about": "working branch",
+      "only": {
+        "not": "trunk flow"
+      },
+      "says": "merge flow, and the branch checked out is release.branch"
+    },
+    {
+      "name": "the Release-Tag trailer is not a version",
+      "fault": true,
+      "about": "working branch",
+      "only": "the last commit is a release commit",
+      "says": "HEAD's Release-Tag trailer does not name a version"
+    },
+    {
+      "name": "every commit is excluded",
+      "only": {
+        "not": "nothing to release"
+      },
+      "says": "no conventional commit remains after --exclude"
+    },
+    {
+      "name": "no commit is in a visible section",
+      "only": {
+        "not": "nothing to release"
+      },
+      "says": "every commit's type is hidden or has no section"
+    },
+    {
+      "name": "the release branch is not on origin",
+      "only": {
+        "not": "trunk flow"
+      },
+      "says": "origin has no release.branch"
+    },
+    {
+      "name": "the release branch does not exist",
+      "fault": true,
+      "only": {
+        "all": [
+          {
+            "not": "trunk flow"
+          },
+          "the release branch is not on origin"
+        ]
+      },
+      "says": "release.branch is neither a local branch nor on origin"
+    },
+    {
+      "name": "origin's release branch is not in the working branch's history",
+      "fault": true,
+      "about": "origin's release branch",
+      "only": {
+        "all": [
+          {
+            "not": "trunk flow"
+          },
+          {
+            "not": "the release branch is not on origin"
+          }
+        ]
+      },
+      "says": "after a fetch of the release branch, origin's tip of it is not in the working branch's history"
     }
   ],
   "parts": {
@@ -246,6 +323,10 @@
           "then": "refuse"
         },
         {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "refuse"
+        },
+        {
           "when": {
             "any": [
               "the branch is not the default",
@@ -269,8 +350,7 @@
           "use": "fetch the tags",
           "when": "no local version tag"
         },
-        "infer version",
-        "pending release check",
+        "measure the commits",
         {
           "choose": [
             {
@@ -280,15 +360,41 @@
           ],
           "otherwise": {
             "seq": [
-              "build section",
+              "infer version",
               {
                 "choose": [
                   {
-                    "when": "dry run",
-                    "run": "print section"
+                    "when": "every commit is excluded",
+                    "run": "say nothing to release"
                   }
                 ],
-                "otherwise": "write release"
+                "otherwise": {
+                  "seq": [
+                    "pending release check",
+                    {
+                      "choose": [
+                        {
+                          "when": "no commit is in a visible section",
+                          "run": "say nothing to release"
+                        }
+                      ],
+                      "otherwise": {
+                        "seq": [
+                          "build section",
+                          {
+                            "choose": [
+                              {
+                                "when": "dry run",
+                                "run": "print section"
+                              }
+                            ],
+                            "otherwise": "write release"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
               }
             ]
           }
@@ -374,15 +480,13 @@
       "handles": [
         {
           "when": "origin does not answer",
-          "then": "refuse",
-          "hold": {
-            "file": "internal/changelog/changelog_test.go",
-            "test": "TestNoLocalTagsButOriginHasThem"
-          }
+          "then": "accept",
+          "because": "the fetch fails, the ls-remote of origin's tags fails too, and the run goes on as a first release without a word"
         },
         {
           "when": "tags already has the member",
-          "then": "fail"
+          "then": "fail",
+          "says": "the fetch exits 1 after creating the other tags; ls-remote finds origin's tags, and pk refuses and says to fetch them"
         },
         {
           "when": "tags is given a key twice",
@@ -397,14 +501,9 @@
     "infer version": {
       "do": "infer version",
       "reads": [
-        "tags",
-        "working branch"
+        "commits since tag"
       ],
       "changes": [
-        {
-          "place": "commits since tag",
-          "how": "create"
-        },
         {
           "place": "next version",
           "how": "create"
@@ -412,20 +511,24 @@
       ],
       "handles": [
         {
-          "when": "the last version tag is not in the branch's history",
-          "then": "refuse",
-          "hold": {
-            "file": "internal/changelog/changelog_test.go",
-            "test": "TestTagOutsideHistoryIsRefused"
-          }
+          "when": "an --exclude entry matches no commit",
+          "then": "tell"
         },
         {
-          "when": "the --bump value is not a level",
+          "when": {
+            "all": [
+              "the --bump value is not a level",
+              {
+                "not": "every commit is excluded"
+              }
+            ]
+          },
           "then": "refuse"
         },
         {
-          "when": "an --exclude entry matches no commit",
-          "then": "tell"
+          "when": "the --bump value is not a level",
+          "then": "accept",
+          "because": "when every commit is excluded the run says nothing to release before it reads --bump"
         }
       ]
     },
@@ -438,6 +541,11 @@
         "working branch"
       ],
       "handles": [
+        {
+          "when": "the Release-Tag trailer is not a version",
+          "then": "accept",
+          "because": "the check refuses only a trailer it can read as a version"
+        },
         {
           "when": "the last commit is a release commit",
           "then": "refuse"
@@ -602,8 +710,24 @@
     "release": {
       "name": "release",
       "seq": [
+        "read the current branch",
         "load settings",
+        "read the pending release",
+        "check the branch on origin",
         "fetch the working branch",
+        {
+          "use": "fetch the release branch",
+          "when": {
+            "all": [
+              {
+                "not": "trunk flow"
+              },
+              {
+                "not": "the release branch is not on origin"
+              }
+            ]
+          }
+        },
         "pre-flight",
         {
           "use": "merge",
@@ -689,60 +813,24 @@
       "do": "pre-flight",
       "reads": [
         "working branch",
-        "settings",
-        "working tree",
-        {
-          "place": "release branch",
-          "when": {
-            "not": "trunk flow"
-          }
-        },
-        "tags",
-        "remote-tracking branch"
+        "remote-tracking branch",
+        "release branch",
+        "tags"
       ],
       "handles": [
         {
           "when": {
             "any": [
-              {
-                "not": "the last commit is a release commit"
-              },
-              "working tree holds what is kept nowhere",
-              "no branch is checked out",
-              "the working branch is protected",
-              "the working branch is not on origin",
               "the working branch is behind origin",
-              "the last version tag is not in the branch's history",
-              {
-                "all": [
-                  {
-                    "not": "trunk flow"
-                  },
-                  "the branch cannot be fast-forwarded"
-                ]
-              }
+              "the release branch does not exist",
+              "origin's release branch is not in the working branch's history",
+              "the last version tag is not in the branch's history"
             ]
           },
           "then": "refuse",
           "hold": {
             "file": "internal/release/release_test.go",
             "test": "TestRefusals"
-          }
-        },
-        {
-          "when": {
-            "all": [
-              "the branch is not the default",
-              {
-                "not": "origin names no default branch"
-              }
-            ]
-          },
-          "then": "refuse",
-          "says": "trunk flow refuses to run on any branch but the default branch",
-          "hold": {
-            "file": "internal/release/release_test.go",
-            "test": "TestTrunkFlowRefusesNonDefaultBranch"
           }
         },
         {
@@ -822,17 +910,13 @@
       "later": "undone",
       "handles": [
         {
-          "when": {
-            "any": [
-              "tags already has the member",
-              "the tag cannot be created"
-            ]
-          },
-          "then": "refuse",
-          "hold": {
-            "file": "internal/release/release_test.go",
-            "test": "TestRefusals"
-          }
+          "when": "the tag cannot be created",
+          "then": "refuse"
+        },
+        {
+          "when": "tags already has the member",
+          "then": "accept",
+          "because": "read the pending release refuses a tag already made, before the tag"
         }
       ]
     },
@@ -975,10 +1059,41 @@
     },
     "ship": {
       "name": "ship",
-      "seq": [
-        "changelog",
-        "release"
-      ]
+      "choose": [
+        {
+          "when": {
+            "all": [
+              "the last commit is a release commit",
+              {
+                "not": "the Release-Tag trailer is not a version"
+              },
+              {
+                "not": "tags already has the member"
+              }
+            ]
+          },
+          "run": "release"
+        }
+      ],
+      "otherwise": {
+        "seq": [
+          "changelog",
+          {
+            "choose": [
+              {
+                "when": "dry run",
+                "run": "say release rehearses later"
+              },
+              {
+                "when": "the last commit is a release commit",
+                "run": "release"
+              }
+            ],
+            "otherwise": null
+          }
+        ]
+      },
+      "says": "a release already pending is resumed at release; after a changelog that made no release commit, ship stops"
     },
     "load settings": {
       "do": "load settings",
@@ -987,11 +1102,156 @@
       ],
       "handles": [
         {
+          "when": "not a git repository",
+          "then": "refuse"
+        },
+        {
+          "when": "settings are missing",
+          "then": "refuse",
+          "says": "pk names pk init"
+        },
+        {
           "when": "settings are invalid",
           "then": "refuse",
           "says": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2"
         }
       ]
+    },
+    "measure the commits": {
+      "do": "measure the commits",
+      "says": "the latest version tag and the commits since it; after a fetch of the tags, measured again",
+      "reads": [
+        "tags",
+        "working branch"
+      ],
+      "changes": [
+        {
+          "place": "commits since tag",
+          "how": "create"
+        }
+      ],
+      "handles": [
+        {
+          "when": "the last version tag is not in the branch's history",
+          "then": "refuse",
+          "hold": {
+            "file": "internal/changelog/changelog_test.go",
+            "test": "TestTagOutsideHistoryIsRefused"
+          }
+        }
+      ]
+    },
+    "read the current branch": {
+      "do": "read the current branch",
+      "reads": [
+        "working branch"
+      ],
+      "handles": [
+        {
+          "when": "not a git repository",
+          "then": "refuse"
+        },
+        {
+          "when": "no branch is checked out",
+          "then": "refuse"
+        }
+      ]
+    },
+    "read the pending release": {
+      "do": "read the pending release",
+      "reads": [
+        "settings",
+        "working branch",
+        "tags"
+      ],
+      "handles": [
+        {
+          "when": "the working branch is the release branch",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "any": [
+              {
+                "not": "the last commit is a release commit"
+              },
+              "the Release-Tag trailer is not a version",
+              "tags already has the member"
+            ]
+          },
+          "then": "refuse",
+          "says": "no trailer, a trailer that is not a version, or its tag already made, on HEAD or another commit"
+        }
+      ]
+    },
+    "check the branch on origin": {
+      "do": "check the branch on origin",
+      "reads": [
+        "working tree",
+        "working branch",
+        "origin's working branch"
+      ],
+      "handles": [
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "refuse"
+        },
+        {
+          "when": {
+            "all": [
+              "the branch is not the default",
+              {
+                "not": "origin names no default branch"
+              }
+            ]
+          },
+          "then": "refuse",
+          "hold": {
+            "file": "internal/release/release_test.go",
+            "test": "TestTrunkFlowRefusesNonDefaultBranch"
+          }
+        },
+        {
+          "when": {
+            "any": [
+              "origin does not answer",
+              "the working branch is not on origin"
+            ]
+          },
+          "then": "refuse"
+        }
+      ]
+    },
+    "fetch the release branch": {
+      "do": "fetch the release branch",
+      "uses": "fetch the branch",
+      "with": {
+        "origin's branch": "origin's release branch"
+      },
+      "says": "the code fetches it after the behind check and the check that the release branch exists; the language has one remote-tracking branch, so the order plays the same",
+      "handles": [
+        {
+          "when": "origin does not answer",
+          "then": "refuse"
+        },
+        {
+          "when": "remote-tracking branch holds what is kept nowhere",
+          "then": "accept",
+          "because": "a remote-tracking branch is a copy of origin's branch, and the next fetch makes it again"
+        }
+      ],
+      "later": "stands",
+      "because": "what pre-flight fetched from origin stays"
+    },
+    "say release rehearses later": {
+      "do": "say release rehearses later",
+      "changes": [
+        {
+          "place": "message",
+          "how": "create"
+        }
+      ],
+      "says": "a dry changelog makes no release commit, so the release half has nothing to rehearse; ship says so and stops"
     }
   },
   "runs": [
