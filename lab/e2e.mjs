@@ -178,6 +178,8 @@ async function main() {
   check("Ring draws facts on a third arc", /facts: a red ring is a fault/.test(await text("#stage")) && (await js("return document.querySelectorAll('#ring-svg [data-hover=\"origin rejects the push\"]').length")) === 1);
   await js("document.querySelector('#ring-svg [data-hover=\"origin rejects the push\"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));");
   check("Ring: clicking a fact says who answers it", /Answered by push in trunk flow \(refuse\)/.test(await text("#controls")), await text("#controls"));
+  await js("document.querySelector('#ring-svg [data-hover=\"a release is pending\"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));");
+  check("Ring: clicking a named fact says what it means", /Named for: the last commit is a release commit and not the release is tagged and not the release tag is on another commit/.test(await text("#controls")), await text("#controls"));
   await shot("runnable-ring");
   await click("#c-view button", "Rail");
   await click("#c-run button", "ship");

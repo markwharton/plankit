@@ -133,6 +133,40 @@
       "says": "the tag HEAD's Release-Tag trailer names exists, on a commit other than HEAD"
     },
     {
+      "name": "a release is pending",
+      "means": {
+        "all": [
+          "the last commit is a release commit",
+          {
+            "not": "the release is tagged"
+          },
+          {
+            "not": "the release tag is on another commit"
+          }
+        ]
+      },
+      "says": "a Release-Tag commit whose tag does not exist yet"
+    },
+    {
+      "name": "origin has the tag on another commit",
+      "means": {
+        "all": [
+          "origin's tags already has the member",
+          {
+            "not": "origin's tag names the commit pushed"
+          }
+        ]
+      },
+      "says": "origin has the release tag, on a commit other than the one the release pushes"
+    },
+    {
+      "name": "merge flow",
+      "means": {
+        "not": "trunk flow"
+      },
+      "says": "release.branch is set"
+    },
+    {
       "name": "settings are invalid",
       "fault": true,
       "about": "settings"
@@ -674,9 +708,7 @@
         "pre-flight",
         {
           "use": "merge",
-          "when": {
-            "not": "trunk flow"
-          }
+          "when": "merge flow"
         },
         "preRelease hook",
         {
@@ -710,9 +742,7 @@
               {
                 "not": "dry run"
               },
-              {
-                "not": "trunk flow"
-              }
+              "merge flow"
             ]
           }
         },
@@ -723,9 +753,7 @@
               {
                 "not": "dry run"
               },
-              {
-                "not": "trunk flow"
-              }
+              "merge flow"
             ]
           }
         }
@@ -760,9 +788,7 @@
         "working tree",
         {
           "place": "release branch",
-          "when": {
-            "not": "trunk flow"
-          }
+          "when": "merge flow"
         },
         "tags",
         "remote-tracking branch",
@@ -788,9 +814,7 @@
               "the last version tag is not in the branch's history",
               {
                 "all": [
-                  {
-                    "not": "trunk flow"
-                  },
+                  "merge flow",
                   "the branch cannot be fast-forwarded"
                 ]
               }
@@ -803,14 +827,7 @@
           }
         },
         {
-          "when": {
-            "all": [
-              "origin's tags already has the member",
-              {
-                "not": "origin's tag names the commit pushed"
-              }
-            ]
-          },
+          "when": "origin has the tag on another commit",
           "then": "refuse",
           "says": "pre-flight reads origin's tags without a fetch and refuses a tag of the release's name on another commit"
         },
@@ -946,14 +963,7 @@
             "any": [
               "origin does not answer",
               "origin rejects the push",
-              {
-                "all": [
-                  "origin's tags already has the member",
-                  {
-                    "not": "origin's tag names the commit pushed"
-                  }
-                ]
-              }
+              "origin has the tag on another commit"
             ]
           },
           "then": "refuse",
@@ -989,14 +999,7 @@
             "any": [
               "origin does not answer",
               "origin rejects the push",
-              {
-                "all": [
-                  "origin's tags already has the member",
-                  {
-                    "not": "origin's tag names the commit pushed"
-                  }
-                ]
-              }
+              "origin has the tag on another commit"
             ]
           },
           "then": "refuse",
@@ -1057,32 +1060,12 @@
         {
           "use": "changelog",
           "when": {
-            "not": {
-              "all": [
-                "the last commit is a release commit",
-                {
-                  "not": "the release is tagged"
-                },
-                {
-                  "not": "the release tag is on another commit"
-                }
-              ]
-            }
+            "not": "a release is pending"
           }
         },
         {
           "use": "release",
-          "when": {
-            "all": [
-              "the last commit is a release commit",
-              {
-                "not": "the release is tagged"
-              },
-              {
-                "not": "the release tag is on another commit"
-              }
-            ]
-          }
+          "when": "a release is pending"
         },
         {
           "use": "say release rehearses later",
@@ -1090,17 +1073,7 @@
             "all": [
               "dry run",
               {
-                "not": {
-                  "all": [
-                    "the last commit is a release commit",
-                    {
-                      "not": "the release is tagged"
-                    },
-                    {
-                      "not": "the release tag is on another commit"
-                    }
-                  ]
-                }
+                "not": "a release is pending"
               }
             ]
           }

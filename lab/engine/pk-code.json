@@ -133,6 +133,24 @@
       "says": "the tag HEAD's Release-Tag trailer names exists, on a commit other than HEAD"
     },
     {
+      "name": "a release is pending",
+      "means": {
+        "all": [
+          "the last commit is a release commit",
+          {
+            "not": "the Release-Tag trailer is not a version"
+          },
+          {
+            "not": "the release is tagged"
+          },
+          {
+            "not": "the release tag is on another commit"
+          }
+        ]
+      },
+      "says": "a Release-Tag trailer that reads as a version, on a commit whose tag does not exist yet"
+    },
+    {
       "name": "settings are invalid",
       "fault": true,
       "about": "settings"
@@ -1089,20 +1107,7 @@
       "name": "ship",
       "choose": [
         {
-          "when": {
-            "all": [
-              "the last commit is a release commit",
-              {
-                "not": "the Release-Tag trailer is not a version"
-              },
-              {
-                "not": "the release is tagged"
-              },
-              {
-                "not": "the release tag is on another commit"
-              }
-            ]
-          },
+          "when": "a release is pending",
           "run": "release"
         }
       ],

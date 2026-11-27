@@ -544,7 +544,11 @@ A play that ends with a warning counts as a success.
 `pk.json` is pk's changelog, release and ship, standing on `git.json`,
 a design of the git operations pk runs. Each statement that stands for
 one of the 21 the checker's definition of pk keeps in words carries
-that sentence. Held by `lab/engine/test_pk.py`.
+that sentence. Held by `lab/engine/test_pk.py`. It names three
+conditions it uses in several places: "a release is pending", "origin
+has the tag on another commit" and "merge flow". `pk-code.json` gives
+"a release is pending" the code's own meaning, which also asks that
+the trailer reads as a version.
 
 `git.json` was written from git's manual for each operation, and from
 pk's code for which commands it runs. Where the part of the manual
