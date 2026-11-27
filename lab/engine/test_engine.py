@@ -467,6 +467,13 @@ class Engine(unittest.TestCase):
         self.assertEqual([f["subject"] for f in got], ["save draft: the design goes ahead, the code refuses"])
         self.assertIn("Every play where this happens has: the disk is full.", got[0]["shows"])
 
+    def test_an_action_the_design_skips_and_the_code_lacks_is_no_difference(self):
+        design, code = notes(), notes()
+        design["parts"]["publish"]["seq"].insert(0, {"do": "spell check", "when": "preview", "reads": ["text"]})
+        got = engine.compare(engine.Design(design), engine.Design(code))
+        self.assertEqual([f["subject"] for f in got], ["spell check: the design goes ahead, the code has no such action"])   # where it runs, the code lacks it
+        self.assertIn("Every play where this happens has: preview.", got[0]["shows"])      # where it is skipped, both do nothing
+
     def test_a_failure_ends_a_sequence_and_the_parts_beside_it_still_run(self):
         p = play(legs(), "the source is down")
         self.assertEqual((p.outcome(), p.stop.action), ("failed", "stage"))

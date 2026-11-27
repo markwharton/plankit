@@ -1175,7 +1175,8 @@ def compare(design, code, accepted=None):
                 given = sorted(set(p.given()) | set(c.given()))
                 places = [x for x in shared if p.state[x] != c.state[x]]
                 did = dict(c.steps)
-                parted = [(a, s, did.get(a, "missing")) for a, s in p.steps if did.get(a, "missing") != s]
+                parted = [(a, s, did.get(a, "missing")) for a, s in p.steps
+                          if did.get(a, "missing") != s and not (s == "skipped" and a not in did)]   # skipped here and absent there: both do nothing
                 if parted:
                     a, ds, cs = parted[0]
                     add(("parts", a, ds, cs), "%s: the design %s, the code %s" % (a, DID[ds], DID[cs]),
