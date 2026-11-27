@@ -15,7 +15,7 @@ REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
 
 def load(name):
     with open(os.path.join(HERE, name), encoding="utf-8") as f:
-        return engine.Design(json.load(f), REPO)
+        return engine.Design(json.load(f), REPO, HERE)
 
 
 class Pk(unittest.TestCase):
@@ -33,19 +33,32 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        # 364 plays before places had a shape. Each fact a place brings is played both ways where a change brings it.
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 101, "release": 62, "ship": 301})
-        found = engine.findings(d, plays)
-        # Converted by convert.py, the design asks eight things more: what happens to what was there in each of
-        # the seven lasting places it replaces, and whether a fetched tag is one the repository already has.
-        self.assertEqual(collections.Counter(f["kind"] for f in found), {"expect": 1, "unanswered": 13, "left-behind": 2})
-        brought = sorted(f["subject"] for f in found if f["subject"].endswith(("holds what is kept nowhere", "already has the member")))
-        self.assertEqual(brought, ["changelog file holds what is kept nowhere", "origin holds what is kept nowhere", "release branch holds what is kept nowhere",
-                                   "release commit holds what is kept nowhere", "remote-tracking branches holds what is kept nowhere", "tags already has the member",
-                                   "version files holds what is kept nowhere", "working tree holds what is kept nowhere"])
-        self.assertIn(("expect", "changelog with --dry-run writes nothing"), [(f["kind"], f["subject"]) for f in found])
-        self.assertIn(("unanswered", "settings are invalid"), [(f["kind"], f["subject"]) for f in found])
-        self.assertNotIn(("unanswered", "the tree is dirty"), [(f["kind"], f["subject"]) for f in found])   # --undo refuses a dirty tree
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 90, "release": 44, "ship": 261})
+        found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
+        self.assertEqual(found, [
+            ("open", "a rejected tag update fails the fetch"),                 # git's manual does not say, and pk's fetch depends on it
+            ("expect", "changelog with --dry-run writes nothing"),
+            ("unanswered", "a tag does not name a version"),
+            ("unanswered", "origin's tags already has the member"),            # comes up from git's push, and no push action answers it
+            ("unanswered", "settings are invalid"),
+            ("unanswered", "the branch is not the default"),
+            ("unanswered", "the working branch is unfit"),
+            ("left-behind", "remote-tracking branch"),
+            ("left-behind", "tags")])
+
+    def test_what_git_goes_on_with_pk_refuses(self):
+        d = load("pk.json")
+        plays = engine.explore(d, "changelog")
+        for fault in ("working branch is held elsewhere", "working tree holds what is kept nowhere"):   # git's reset accepts both
+            mine = [p for p in plays if p.env.get("undo") and p.env.get(fault)]
+            self.assertTrue(mine, fault)
+            self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("undo", "refused"),))}, fault)
+
+    def test_a_bad_tag_is_asked_about_where_the_tags_were_fetched(self):
+        d = load("pk.json")
+        fetched = [p for p in engine.explore(d, "changelog") if p.env.get("no local tags") and p.env.get("a tag does not name a version")]
+        self.assertTrue(fetched)                           # a fetch adds tags: what can be wrong with a tag still stands
+        self.assertTrue(any(("stamp versions", "a tag does not name a version") in p.open for p in fetched))
 
     def test_the_code_variant_differs_in_two_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))

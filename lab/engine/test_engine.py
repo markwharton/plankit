@@ -5,8 +5,10 @@
 Each test has the design that must be reported and the one that must not.
 """
 import copy
+import json
 import os
 import re
+import tempfile
 import unittest
 
 import engine
@@ -82,6 +84,51 @@ def pipeline():
         ]}},
         "runs": ["post"],
     }
+
+
+def store():
+    """The layer below: a store that puts a thing away on whatever shelf its user gives it."""
+    return {
+        "system": "store", "reports": "the store's message",
+        "places": [{"name": "the shelf", "is": "many", "kind": "lasting", "given": True}, {"name": "the store's message", "is": "one", "kind": "report"}],
+        "facts": [{"name": "the store is closed", "fault": True, "says": "the store does not take anything now"}],
+        "parts": {"put away": {"do": "put away", "changes": [{"place": "the shelf", "how": "create"}],
+                               "handles": [{"when": "the store is closed", "then": "refuse"},
+                                           {"when": "the shelf already has the member", "then": "accept", "because": "a second copy is shelved beside the first"}]}},
+        "runs": ["put away"],
+    }
+
+
+def library():
+    """A library that stands on the store: returning a book puts it away on the library's own shelf."""
+    return {
+        "system": "library", "on": ["store.json"], "reports": "message",
+        "places": [{"name": "books", "is": "many", "kind": "lasting"}, {"name": "desk", "is": "one", "kind": "lasting"}, {"name": "message", "is": "one", "kind": "report"}],
+        "facts": [{"name": "the desk is shut", "fault": True, "says": "nobody is at the desk"}],
+        "parts": {"return a book": {"seq": [
+            {"do": "shelve it", "uses": "put away", "with": {"the shelf": "books"}, "later": "undone",
+             "handles": [{"when": "the store is closed", "then": "refuse"}, {"when": "books already has the member", "then": "refuse"}]},
+            {"do": "note it at the desk", "changes": [{"place": "desk", "how": "create", "later": "stands", "because": "a note is kept"}],
+             "handles": [{"when": "the desk is shut", "then": "refuse"}]},
+        ]}},
+        "runs": ["return a book"],
+    }
+
+
+def layers(top, below=None):
+    """A definition written beside the one it stands on, as the engine reads them from files."""
+    base = tempfile.mkdtemp()
+    with open(os.path.join(base, "store.json"), "w", encoding="utf-8") as f:
+        json.dump(store() if below is None else below, f)
+    return engine.Design(top, base, base)
+
+
+def found(d):
+    return [(f["kind"], f["subject"]) for f in engine.findings(d, engine.explore_all(d))]
+
+
+def one(d, *given):
+    return [p for p in engine.explore_all(d) if p.given() == sorted(given)][0]
 
 
 def play(doc, *given):
@@ -557,6 +604,91 @@ class Engine(unittest.TestCase):
             page = f.read()
         table = page[page.index("<!-- brought"):page.index("<!-- /brought -->")]
         self.assertEqual(sorted(re.findall(r"`(<place> [^`]+)`", table)), sorted(name % "<place>" for name, _ in engine.BROUGHT.values()))
+
+    def test_an_action_can_use_a_run_of_the_definition_below(self):
+        d = layers(library())
+        self.assertEqual(found(d), [])
+        p = one(d)
+        self.assertEqual((p.steps, p.state["books"], p.state["the shelf"]), ([("shelve it", "ran"), ("note it at the desk", "ran")], "created", "untouched"))
+        self.assertEqual((one(d, "the store is closed").steps, one(d, "books already has the member").steps), ([("shelve it", "refused")], [("shelve it", "refused")]))
+
+    def test_a_failure_from_below_that_nothing_answers_is_a_question(self):
+        doc = library()
+        del doc["parts"]["return a book"]["seq"][0]["handles"][0]
+        d = layers(doc)
+        self.assertEqual(found(d), [("unanswered", "the store is closed")])
+        p = one(d, "the store is closed")
+        self.assertEqual((p.outcome(), p.stop.action, p.steps), ("failed", "shelve it", [("shelve it", "failed")]))   # the run below refused, and it fails here
+
+    def test_what_the_run_below_accepted_is_asked_again(self):
+        doc = library()
+        del doc["parts"]["return a book"]["seq"][0]["handles"][1]
+        d = layers(doc)
+        self.assertEqual(found(d), [("unanswered", "books already has the member")])       # named for the place given, and the store's reason is not this one's
+        doc["parts"]["return a book"]["seq"][0]["handles"].append({"when": "books already has the member", "then": "accept", "because": "the library keeps two copies"})
+        self.assertEqual(found(layers(doc)), [])
+
+    def test_a_rehearsal_makes_no_changes_and_every_answer_still_applies(self):
+        doc = library()
+        doc["facts"] += [{"name": "dry run", "says": "--dry-run is given"}, {"name": "a book is back", "about": "books"}]
+        doc["parts"]["return a book"]["seq"][0].update(rehearsal="dry run", makes={"a book is back": True})
+        doc["parts"]["return a book"]["seq"][1]["when"] = "a book is back"
+        d = layers(doc)
+        p = one(d, "dry run")
+        self.assertEqual((p.state["books"], p.steps[0], p.now.made.get("a book is back")), ("untouched", ("shelve it", "ran"), None))
+        self.assertEqual(one(d).state["books"], "created")
+        del doc["parts"]["return a book"]["seq"][0]["handles"][0]                          # the store's own refusal still applies in a rehearsal
+        self.assertEqual(one(layers(doc), "dry run", "the store is closed").steps, [("shelve it", "failed")])
+
+    def test_an_action_that_uses_a_run_says_what_it_makes_and_what_happens_later(self):
+        doc = library()
+        doc["facts"].append({"name": "a book is back", "about": "books"})
+        doc["parts"]["return a book"]["seq"][0]["makes"] = {"a book is back": True}
+        doc["rules"] = [{"rule": "a returned book can be lent again", "about": "note it at the desk", "when": "a book is back"}]
+        d = layers(doc)
+        self.assertEqual(one(d).now["a book is back"], True)
+        self.assertEqual(one(d, "the desk is shut").state["books"], "undone")            # the failure leaves the sequence, and the shelving is undone
+        doc = library()
+        del doc["parts"]["return a book"]["seq"][0]["later"]
+        self.assertEqual(found(layers(doc)), [("left-behind", "books")])
+        doc["parts"]["return a book"]["seq"][0]["later"] = "stands"
+        self.assertEqual(found(layers(doc)), [("unexplained", "shelve it: what it changed stands")])
+
+    def test_a_given_place_is_supplied_by_whoever_uses_the_run(self):
+        doc = store()
+        doc["places"].append({"name": "the slip", "is": "one", "kind": "run", "given": True})
+        doc["parts"]["put away"]["reads"] = ["the slip"]
+        self.assertEqual(kinds(doc), [])                   # played alone, a given place is not one the run forgot to write
+
+    def test_a_fault_can_go_wrong_at_an_action_that_uses_a_run(self):
+        doc = library()
+        doc["facts"].append({"name": "the book is the wrong one", "fault": True, "at": "shelve it", "says": "the store shelves what it is handed"})
+        self.assertEqual(found(layers(doc)), [("unanswered", "the book is the wrong one")])   # the store knows nothing of it, so it is asked here
+        doc["parts"]["return a book"]["seq"][0]["handles"].append({"when": "the book is the wrong one", "then": "refuse"})
+        self.assertEqual(found(layers(doc)), [])
+
+    def test_a_definition_that_misuses_the_one_below_is_refused_with_the_reason(self):
+        cases = [
+            (lambda d: d["parts"]["return a book"]["seq"][0].update(uses="burn"), '"burn", which is not a run'),
+            (lambda d: d["parts"]["return a book"]["seq"][0].update(reads=["desk"]), "states no reads and no changes"),
+            (lambda d: d["parts"]["return a book"]["seq"][0].update({"with": {}}), 'which place is "the shelf"'),
+            (lambda d: d["parts"]["return a book"]["seq"][0].update({"with": {"the shelf": "desk"}}), "holds many"),
+            (lambda d: d["parts"]["return a book"]["seq"][0].update({"with": {"the shelf": "books", "the store's message": "message"}}), "not a given place"),
+            (lambda d: d["places"].append({"name": "the shelf", "is": "many", "kind": "lasting"}), 'two places are named "the shelf"'),
+            (lambda d: d["facts"].append({"name": "the store is closed", "fault": True}), 'two facts are named "the store is closed"'),
+            (lambda d: d.update(on=["cellar.json"]), '"cellar.json"'),
+        ]
+        layers(library())
+        for change, reason in cases:
+            with self.subTest(reason=reason):
+                doc = library()
+                change(doc)
+                with self.assertRaises(engine.Refused) as cm:
+                    layers(doc)
+                self.assertIn(reason, str(cm.exception))
+        with self.assertRaises(engine.Refused) as cm:
+            engine.Design(library())                       # with no directory given, the definition below cannot be found
+        self.assertIn("directory", str(cm.exception))
 
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [

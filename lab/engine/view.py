@@ -48,8 +48,9 @@ def view_model(d, plays, findings, tests, shown):
         if "do" in part:
             node["name"] = run if top else unique(part["do"], run)
             names[run][part["do"]] = node["name"]
-            node["reads"] = [r["place"] if isinstance(r, dict) else r for r in part.get("reads", [])]
-            node["writes"] = [{"place": c["place"], "mode": c["how"], "key": "", "records": "", "before": []} for c in part.get("changes", [])]
+            reads, writes = d.touches(part)                # for an action that uses a run below, the run's, with the places it was given
+            node["reads"] = list(reads)
+            node["writes"] = [{"place": place, "mode": how + (", by " + part["uses"] if "uses" in part else ""), "key": "", "records": "", "before": []} for place, how in writes]
             node["refusals"] = [{"kind": h["then"], "reason": ("when " + words(h["when"]) if h.get("when") is not None else "always") + (", because " + h["because"] if h.get("because") else ""), "to": "" if h["then"] == "accept" else (d.told(h) or [""])[0],
                                  "held": engine.held(d, h.get("hold")), "test": (h.get("hold") or {}).get("test", "")} for h in part.get("handles", [])]
             node["label"] = ", ".join(w["place"] for w in node["writes"]) + " = " + part["do"] + "(" + ", ".join(node["reads"]) + ")"
@@ -58,8 +59,10 @@ def view_model(d, plays, findings, tests, shown):
             meets = [f for p in node["reads"] for f in d.about(p)]
             for c in part.get("changes", []):
                 meets += d.brings(c) + (d.about(c["from"]) if "from" in c else [])
+            if "uses" in part:
+                meets += [f for f in d.comes_up(part) if d.is_fault(f)]
             node["meets"] = sorted(set(meets) | {f for a in node["answers"] for f in a["facts"] if d.is_fault(f)})
-            own = set(gates)
+            own = set(gates) | engine.names_in(part.get("rehearsal"))
             for it in part.get("reads", []) + part.get("changes", []):
                 if isinstance(it, dict):
                     own |= engine.names_in(it.get("when"))
@@ -93,7 +96,7 @@ def view_model(d, plays, findings, tests, shown):
     places = [{"name": p["name"], "owner": p.get("owner", ""), "kind": kinds[p["kind"]], "keyed": p.get("is") == "many", "onExisting": "",
                "invalid": "; ".join(d.facts[f].get("says", f) for f in d.about(p["name"])),
                "writers": [n["name"] for n in leaves if any(w["place"] == p["name"] for w in n["writes"])],
-               "readers": [n["name"] for n in leaves if p["name"] in n["reads"]], "writesFromOutside": [], "findings": []} for p in d.doc["places"]]
+               "readers": [n["name"] for n in leaves if p["name"] in n["reads"]], "writesFromOutside": [], "findings": []} for p in d.places.values()]
 
     def old(place, state, rests):
         """A place's state in the words the page colours."""
@@ -106,7 +109,7 @@ def view_model(d, plays, findings, tests, shown):
     runs = []
     for run in d.doc["runs"]:
         mine = [p for p in plays if p.run == run]
-        touched = [p["name"] for p in d.doc["places"] if any(p["name"] in n["reads"] or any(w["place"] == p["name"] for w in n["writes"])
+        touched = [p["name"] for p in d.places.values() if any(p["name"] in n["reads"] or any(w["place"] == p["name"] for w in n["writes"])
                                                            for n in leaves if n["name"] in names[run].values())]
         rv = {"run": run, "paths": [], "traces": [], "baselines": [], "faults": []}
         flags_of = lambda p: tuple(f for f in p.given() if not d.is_fault(f))
@@ -167,10 +170,10 @@ def view_model(d, plays, findings, tests, shown):
                        "baseline": "the code as it is: the test passes.", "unwritten": False, "run": ""} for t in tests if not t["held"]]}
 
 
-def check(doc, root, shown):
-    """What the lab's server returns for a design in this form."""
+def check(doc, root, shown, base=None):
+    """What the lab's server returns for a design in this form. base is the directory of the design's file."""
     try:
-        d = engine.Design(doc, root)
+        d = engine.Design(doc, root, base)
         plays = engine.explore_all(d)
     except engine.Refused as e:
         return {"ok": False, "refused": ["%s: %s" % (shown, e)]}

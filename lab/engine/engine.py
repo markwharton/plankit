@@ -17,10 +17,10 @@ import sys
 import textwrap
 
 KEYS = {
-    "design": {"system", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
-    "place": {"name", "is", "kind", "in", "owner", "says"},
+    "design": {"system", "on", "reports", "faults", "places", "facts", "parts", "runs", "expects", "rules"},
+    "place": {"name", "is", "kind", "in", "given", "owner", "says"},
     "fact": {"name", "says", "fault", "open", "about", "at", "only"},
-    "action": {"do", "when", "reads", "changes", "handles", "says"},
+    "action": {"do", "when", "reads", "changes", "handles", "says", "uses", "with", "makes", "later", "because", "rehearsal", "hold"},
     "seq": {"seq", "name", "when", "handles", "says"},
     "all": {"all", "name", "when", "handles", "says"},
     "choose": {"choose", "otherwise", "name", "when", "handles", "says"},
@@ -66,13 +66,24 @@ class Need(Exception):
 
 class Failure:
     """What an action returns to the part that holds it when it refuses,
-    fails, or a person says no. how is "failed" or "declined"."""
+    fails, or a person says no. how is "failed" or "declined". cause is
+    the faults its answer named that were so."""
 
-    def __init__(self, how, action, handle):
-        self.how, self.action, self.handle = how, action, handle
+    def __init__(self, how, action, handle, cause=()):
+        self.how, self.action, self.handle, self.cause = how, action, handle, set(cause)
 
 
 # ---------- facts ----------
+
+def renamed(c, names):
+    """A condition with each fact named in names given its other name."""
+    if c is None or not names:
+        return c
+    if isinstance(c, str):
+        return names.get(c, c)
+    (k, v), = c.items()
+    return {k: renamed(v, names) if k == "not" else [renamed(x, names) for x in v]}
+
 
 def names_in(c):
     if c is None:
@@ -157,16 +168,33 @@ def yes_at(action):
 
 
 class Design:
-    def __init__(self, doc, root="."):
+    def __init__(self, doc, root=".", base=None):
+        """root is where the files of holds start from. base is the directory of the
+        definition's own file, where the definitions it stands on are found."""
         only(doc, "design", "the design")
         for k in ("system", "places", "parts", "runs"):
             if k not in doc:
                 raise Refused("the design has no \"%s\"" % k)
         self.doc, self.root = doc, root
+        self.below, self.runs_below = [], {}    # the definitions one layer down, and which of them has each run
+        for path in doc.get("on", []):
+            if base is None:
+                raise Refused("the definition stands on \"%s\", and the engine was not given the directory its file is in" % path)
+            try:
+                with open(os.path.join(base, path), encoding="utf-8") as f:
+                    low = Design(json.load(f), root, os.path.dirname(os.path.join(base, path)))
+            except (OSError, ValueError) as e:
+                raise Refused("the definition stands on \"%s\", which cannot be read: %s" % (path, e))
+            self.below.append(low)
+            self.runs_below.update(low.runs_below)
+            self.runs_below.update({r: low for r in low.doc["runs"]})
         self.budget = doc.get("faults", 1)
         if not isinstance(self.budget, int) or self.budget < 0:
             raise Refused("\"faults\" is how many things may go wrong in one play: a whole number")
         self.places, self.facts, self.actions, self.inside = {}, {}, {}, {}
+        for low in self.below:                  # one set of names: a definition sees the places and facts of the ones below it
+            self.places.update(low.places)
+            self.facts.update({n: f for n, f in low.facts.items() if not f.get("run") and not f.get("brings")})
         for p in doc["places"]:
             only(p, "place", "a place")
             if p.get("kind") not in KINDS:
@@ -205,7 +233,7 @@ class Design:
         for p in self.places.values():          # what each place brings, by what it holds and how long it lasts
             for kind in (("has", "twice", "anothers") if p.get("is") == "many" else ()) + (("unkept", "held") if p["kind"] == "lasting" else ()):
                 name = brought(kind, p["name"])
-                self.facts.setdefault(name, {"name": name, "fault": True, "about": p["name"], "says": BROUGHT[kind][1], "built in": True})
+                self.facts.setdefault(name, {"name": name, "fault": True, "about": p["name"], "says": BROUGHT[kind][1], "built in": True, "brings": kind})
         for name, chain in self.within.items():  # a place in another holds something unkept only when the place it is in does
             outer = [c for c in chain if self.places[c]["kind"] == "lasting"]
             f = self.facts.get(brought("unkept", name))
@@ -235,8 +263,15 @@ class Design:
         for name in self.parts:
             self.inside[name] = set(self.actions_of(name))
         self.at = {}                            # action -> the faults that go wrong at it
+        for low in self.below:
+            for a in low.actions:
+                if a in self.actions:
+                    raise Refused("the action \"%s\" has the name of an action in a definition below" % a)
+            self.at.update(low.at)
         for f in self.facts.values():
             for a in listing(f.get("at")):
+                if any(f["name"] in low.facts for low in self.below):
+                    continue                    # a fact of a definition below was checked there
                 if a not in self.actions:
                     raise Refused("the fact \"%s\" goes wrong at \"%s\", which is not an action" % (f["name"], a))
                 self.at.setdefault(a, []).append(f["name"])
@@ -302,6 +337,12 @@ class Design:
             self.actions[name] = part
             where = "the action \"%s\"" % name
             self.check_fact(part.get("when"), where)
+            if "uses" in part:
+                self.check_uses(part, where)
+            else:
+                for k in ("with", "makes", "later", "because", "rehearsal"):
+                    if k in part:
+                        raise Refused("%s: \"%s\" is for an action that uses a run of a definition below" % (where, k))
             for r in part.get("reads", []):
                 if isinstance(r, dict):
                     only(r, "read", where)
@@ -326,7 +367,7 @@ class Design:
                     self.check_place(c["from"], where)
                 if c.get("many") and not (c["how"] == "create" and self.places[c["place"]].get("is") == "many"):
                     raise Refused("%s: \"many\" is for a create in a place that holds many, and \"%s\" is not one" % (where, c["place"]))
-            if not part.get("reads") and not part.get("changes"):
+            if not part.get("reads") and not part.get("changes") and "uses" not in part:
                 raise Refused("%s reads nothing and changes nothing" % where)
             for h in part.get("handles", []):
                 only(h, "handle", where + ", an answer")
@@ -358,6 +399,59 @@ class Design:
                 self.check_part(part["otherwise"], where)
         else:
             raise Refused("%s is not an action (\"do\"), a sequence (\"seq\"), parts in no order (\"all\"), a choice (\"choose\") or a use of a part (\"use\")" % where)
+
+    def check_uses(self, part, where):
+        """An action that uses a run of a definition below: the run is one, each given place it touches is bound, and it states no reads or changes of its own."""
+        if "reads" in part or "changes" in part:
+            raise Refused("%s uses a run, so it states no reads and no changes: the run below has them" % where)
+        if part["uses"] not in self.runs_below:
+            raise Refused("%s uses \"%s\", which is not a run of a definition this one stands on" % (where, part["uses"]))
+        low, bind = self.runs_below[part["uses"]], part.get("with", {})
+        for given, mine in bind.items():
+            if not low.places.get(given, {}).get("given"):
+                raise Refused("%s: \"%s\" is not a given place of the definition below" % (where, given))
+            self.check_place(mine, where)
+            if self.places[mine].get("is") != low.places[given].get("is"):
+                raise Refused("%s: \"%s\" holds %s, and \"%s\", given for it, does not" % (where, given, low.places[given].get("is"), mine))
+        reads, writes = low.touches_of(part["uses"])
+        for place in reads + [w for w, _ in writes]:
+            if low.places[place].get("given") and place not in bind:
+                raise Refused("%s uses \"%s\" and does not say which place is \"%s\": give it in \"with\"" % (where, part["uses"], place))
+        for fact, value in part.get("makes", {}).items():
+            if not isinstance(value, bool) or fact not in self.facts:
+                raise Refused("%s makes the fact \"%s\" true or false, and the definition must list it" % (where, fact))
+        if part.get("later") not in (None, "undone", "stands"):
+            raise Refused("%s: when a failure leaves its part what it changed is \"undone\" or \"stands\"" % where)
+        self.check_fact(part.get("rehearsal"), where)
+
+    def touches(self, a):
+        """The places an action reads, and the ones it changes with how. For one that uses a run, the run's, with the places it was given."""
+        if "uses" not in a:
+            return ([r["place"] if isinstance(r, dict) else r for r in a.get("reads", [])] + [c["from"] for c in a.get("changes", []) if "from" in c],
+                    [(c["place"], c["how"]) for c in a.get("changes", [])])
+        bind = a.get("with", {})
+        reads, writes = self.runs_below[a["uses"]].touches_of(a["uses"])
+        return [bind.get(p, p) for p in reads], [(bind.get(p, p), how) for p, how in writes]
+
+    def touches_of(self, part):
+        reads, writes = [], []
+        for name in self.actions_of(part):
+            r, w = self.touches(self.actions[name])
+            reads += [p for p in r if p not in reads]
+            writes += [x for x in w if x not in writes]
+        return reads, writes
+
+    def comes_up(self, a):
+        """The facts that can come up to an action that uses a run: each one the run's answers name, with the places it was given."""
+        low, bind = self.runs_below[a["uses"]], a.get("with", {})
+        names = {brought(k, g): brought(k, m) for g, m in bind.items() for k in BROUGHT}
+        out = []
+        for n in low.actions_of(a["uses"]):
+            act = low.actions[n]
+            for name in [names.get(x, x) for h in act.get("handles", []) for x in sorted(names_in(h.get("when")))] + (low.comes_up(act) if "uses" in act else []):
+                if name not in out and not self.facts[name].get("open"):
+                    out.append(name)
+        return out
 
     def check_part_answers(self, part, where):
         for h in part.get("handles", []):
@@ -451,12 +545,12 @@ class Design:
 
 # ---------- playing one run ----------
 
-def listed(items, env):
+def listed(items, play):
     """The reads or changes that apply in this play, each as an object."""
     out = []
     for it in items:
         it = it if isinstance(it, dict) else {"place": it}
-        if holds(it.get("when"), env):
+        if play.holds(it.get("when")):
             out.append(it)
     return out
 
@@ -491,6 +585,7 @@ class Play:
         self.saw, self.did = {}, {}                        # action -> what it read and what it changed, with the states
         self.answered, self.open, self.unwritten, self.warned, self.left = set(), [], [], [], []
         self.asked = set()                                 # the faults this play has already put as a question
+        self.frames = []                                   # the runs below being played, each for the action that uses it
         self.stop = self.exec(run)                         # the failure that reached the run, or None
 
     def exec(self, part):
@@ -516,13 +611,26 @@ class Play:
                     self.left.append(dict(e, at=failure.action))
         return failure
 
+    def holds(self, c):
+        """Whether a condition holds now. In a run below, a fact a given place brings is the one its bound place brings."""
+        return holds(renamed(c, self.frames[-1]["facts"]) if self.frames else c, self.now)
+
+    def place(self, name):
+        return self.frames[-1]["places"].get(name, name) if self.frames else name
+
+    def named(self, c):
+        """The faults a condition names that are so in this play."""
+        names = names_in(renamed(c, self.frames[-1]["facts"]) if self.frames else c)
+        return {n for n in names if self.now.get(n) and self.d.is_fault(n)}
+
     def play(self, part):
-        d, env = self.d, self.now
+        d = self.frames[-1]["design"] if self.frames else self.d
         if isinstance(part, str):
             part = {"use": part}
-        if not holds(part.get("when"), env):
-            for a in d.actions_of(part):
-                self.steps.append((a, "skipped"))
+        if not self.holds(part.get("when")):
+            if not self.frames:
+                for a in d.actions_of(part):
+                    self.steps.append((a, "skipped"))
             return None
         if "use" in part:
             return self.exec(d.parts[part["use"]])
@@ -537,49 +645,44 @@ class Play:
             return self.answer(part, failures[0]) if failures else None
         if "choose" in part:
             for b in part["choose"]:
-                if holds(b.get("when"), env):
+                if self.holds(b.get("when")):
                     return self.answer(part, self.exec(b["run"]))
             return self.answer(part, self.exec(part["otherwise"])) if part.get("otherwise") is not None else None
-        return self.act(part)
+        return self.use(part) if "uses" in part else self.act(part)
 
     def answer(self, part, failure):
         """A part's own answer to a failure one of its children returned. Answered, the failure stops here."""
         if not failure:
             return None
+        d = self.frames[-1]["design"] if self.frames else self.d
         for h in part.get("handles", []):
-            if holds(h.get("when"), self.now):
-                self.answered |= {n for n in names_in(h.get("when")) if self.now.get(n) and self.d.is_fault(n)}
+            if self.holds(h.get("when")):
+                if not self.frames:
+                    self.answered |= self.named(h.get("when"))
                 if h["then"] != "accept":
-                    for t in self.d.told(h):
+                    for t in d.told(h):
                         self.state[t] = "created"
-                    self.warned.append(self.d.called(part))
+                    if not self.frames:
+                        self.warned.append(d.called(part))
                 return None
         return failure
 
-    def act(self, a):
-        d, env, name = self.d, self.now, a["do"]
-        self.before[name] = dict(self.state)
-        reads = [r["place"] for r in listed(a.get("reads", []), env)]
-        changes = listed(a.get("changes", []), env)
-        reads += [c["from"] for c in changes if "from" in c and c["from"] not in reads]   # what a change comes from is read
-        self.saw[name] = [(p, self.state[p], bool(self.rests[p])) for p in reads]
-        wrong = []                                    # what is wrong here, in this play
-        for p in reads:
-            if d.places[p]["kind"] == "run" and self.state[p] in ("untouched", "undone"):
-                self.unwritten.append((name, p))
-            wrong += [f for f in d.about(p) if holds(f, env)]
-        for c in changes:
-            for f in d.brings(c):
-                if holds(f, env) and d.is_fault(f):       # a design can list one of these itself, without "fault", where it is normal
-                    wrong.append(f)
-        here = [f for f in d.at.get(name, []) if holds(f, env)]   # what goes wrong at this step
-        fired = None
+    def fired(self, a):
         for h in a.get("handles", []):
-            if holds(h.get("when"), env):
-                fired = h
-                break
+            if self.holds(h.get("when")):
+                return h
+        return None
+
+    def use(self, a):
+        """An action that uses a run of a definition below. Its own answers are tried first, as any
+        action's are. Then the run is played with the places it was given. A failure the run returns,
+        and a fault the run went on with, come up to this action: unanswered here, each is a question."""
+        d, name = self.d, a["do"]
+        if not self.frames:
+            self.before[name] = dict(self.state)
+        fired = self.fired(a)
         if fired:
-            self.answered |= {n for n in names_in(fired.get("when")) if env.get(n) and d.is_fault(n)}
+            self.answered |= self.named(fired.get("when"))
             then = fired["then"]
             if then != "accept":
                 for t in d.told(fired):
@@ -591,20 +694,94 @@ class Play:
                 self.warned.append(name)
                 self.steps.append((name, "warned"))
                 return None
-            if then == "ask" and not holds(yes_at(name), env):
+            if then == "ask" and not self.holds(yes_at(name)):
                 self.steps.append((name, "declined"))
                 if fired.get("no", "stop") == "skip":
                     return None
                 return Failure("declined", name, fired)
+        for f in d.at.get(name, []):                       # what goes wrong at this step, which the run below knows nothing of
+            if self.holds(f) and f not in self.answered:
+                self.ask(name, f)
+        bind = {g: self.place(m) for g, m in a.get("with", {}).items()}
+        frame = {"user": a, "design": d.runs_below[a["uses"]], "places": bind, "saw": [], "did": [],
+                 "facts": {brought(k, g): brought(k, m) for g, m in bind.items() for k in BROUGHT},
+                 "rehearsal": "rehearsal" in a and self.holds(a["rehearsal"])}
+        outer = self.frames
+        self.frames = outer + [frame]
+        failure = self.exec(frame["design"].parts[a["uses"]])
+        self.frames = outer
+        self.saw[name], self.did[name] = frame["saw"], frame["did"]
+        if failure:
+            if fired and fired["then"] == "accept" and failure.cause & self.answered:
+                self.steps.append((name, "ran"))           # the run below refused, and this action said that is fine
+                return None
+            for fault in sorted(failure.cause - self.answered):
+                self.ask(name, fault)
+            self.steps.append((name, "failed"))
+            return Failure(failure.how, name, failure.handle, failure.cause)
+        if not frame["rehearsal"]:
+            self.now.made.update(a.get("makes", {}))
+        if fired and fired["then"] == "fail":
+            self.steps.append((name, "failed"))
+            return Failure("failed", name, fired)
+        self.steps.append((name, "ran"))
+        return None
+
+    def act(self, a):
+        d, env, name = self.d, self.now, a["do"]
+        frame = self.frames[-1] if self.frames else None
+        who = self.frames[0]["user"]["do"] if frame else name        # the action of the run being played that a question is put to
+        mine = frame["design"] if frame else d
+        if not frame:
+            self.before[name] = dict(self.state)
+        reads = [self.place(r["place"]) for r in listed(a.get("reads", []), self)]
+        listed_changes = [dict(c, place=self.place(c["place"]), **({"from": self.place(c["from"])} if "from" in c else {})) for c in listed(a.get("changes", []), self)]
+        reads += [c["from"] for c in listed_changes if "from" in c and c["from"] not in reads]   # what a change comes from is read
+        saw = [(p, self.state[p], bool(self.rests[p])) for p in reads]
+        wrong = []                                    # what is wrong here, in this play
+        for p in reads:
+            if d.places[p]["kind"] == "run" and self.state[p] in ("untouched", "undone") and not d.places[p].get("given"):
+                self.unwritten.append((who, p))
+            wrong += [f for f in d.about(p) if holds(f, env)]
+        for c in listed_changes:
+            for f in d.brings(c):
+                if holds(f, env) and d.is_fault(f):       # a design can list one of these itself, without "fault", where it is normal
+                    wrong.append(f)
+        changes = [] if frame and frame["rehearsal"] else listed_changes   # a rehearsal makes no changes, and every answer still applies
+        here = [f for f in d.at.get(name, []) if holds(f, env)]   # what goes wrong at this step
+        fired = self.fired(a)
+        if fired:
+            named = self.named(fired.get("when"))
+            then = fired["then"]
+            if then != "accept":
+                for t in mine.told(fired):
+                    self.state[t] = "created"
+            if not frame:
+                self.answered |= named
+            elif then in ("accept", "tell", "warn"):   # an answer in a run below is that run's own: what it went on with comes up
+                wrong += sorted(named - set(wrong))
+            if then == "refuse":
+                self.note(name, "refused", saw, [])
+                return Failure("failed", who, fired, named)
+            if then == "warn":
+                if not frame:
+                    self.warned.append(name)
+                self.note(name, "warned", saw, [])
+                return None
+            if then == "ask" and not holds(yes_at(name), env):
+                self.note(name, "declined", saw, [])
+                if fired.get("no", "stop") == "skip":
+                    return None
+                return Failure("declined", who, fired, named)
         for f in here:                                # a fault at this step is asked here, whatever the step changes
             if f not in self.answered:
-                self.ask(name, f)
+                self.ask(who, f)
         # what is read carries its faults into what is made from it. One becomes a question
         # when something lasting, or a report, is changed while nothing has answered it.
         rests = (set(wrong) | set(here)).union(*[self.rests[p] for p in reads]) - self.answered
         if any(d.places[c["place"]]["kind"] in ("lasting", "report") for c in changes):
             for f in [f for f in wrong if f in rests] + sorted(rests - set(wrong)):
-                self.ask(name, f)
+                self.ask(who, f)
         for c in changes:
             p, how, src = c["place"], c["how"], c.get("from")
             touched = [p] + d.within[p]                 # what is done to a place is done to each place it is in
@@ -625,21 +802,32 @@ class Play:
                 if d.lasting(p):
                     facts[brought("held", src)] = True
             facts.update(c.get("makes", {}))
-            self.effects.append({"place": p, "action": name, "later": c.get("later"), "was": {t: self.state[t] for t in touched},
+            later = c.get("later") or (self.frames[0]["user"].get("later") if frame else None)   # the action that uses the run says it for a change that does not
+            self.effects.append({"place": p, "action": who, "later": later, "was": {t: self.state[t] for t in touched},
                                  "rested": {t: self.rests[t] for t in touched}, "made": {f: self.now.made.get(f) for f in facts}})
             self.state[p] = HOWS[how]
             for t in touched[1:]:
                 self.state[t] = "replaced"
             for t in touched:
                 self.rests[t] = set(rests)
-                self.by[t] = name
+                self.by[t] = who
             self.now.made.update(facts)
-        self.did[name] = [(c["place"], self.state[c["place"]], bool(rests)) for c in changes]
+        did = [(c["place"], self.state[c["place"]], bool(rests)) for c in changes]
         if fired and fired["then"] == "fail":         # it did its work, and then returns the failure
-            self.steps.append((name, "failed"))
-            return Failure("failed", name, fired)
-        self.steps.append((name, "ran"))
+            self.note(name, "failed", saw, did)
+            return Failure("failed", who, fired, self.named(fired.get("when")))
+        self.note(name, "ran", saw, did)
         return None
+
+    def note(self, name, status, saw, did):
+        """Records a step. In a run below, what was read and changed goes to the action that uses the run, and the step is its own."""
+        if self.frames:
+            for f in self.frames:
+                f["saw"] += [x for x in saw if x[0] not in [y[0] for y in f["saw"]]]
+                f["did"] = [x for x in f["did"] if x[0] not in [y[0] for y in did]] + did
+        else:
+            self.saw[name], self.did[name] = saw, did
+            self.steps.append((name, status))
 
     def ask(self, action, fault):
         if fault not in self.asked:
@@ -719,12 +907,8 @@ def is_state(got, want):
 
 def reach(design, part):
     """The places the actions of a part read, and the ones they change."""
-    r, c = set(), set()
-    for a in design.actions_of(part):
-        act = design.actions[a]
-        r |= {x["place"] if isinstance(x, dict) else x for x in act.get("reads", [])} | {x["from"] for x in act.get("changes", []) if "from" in x}
-        c |= {x["place"] for x in act.get("changes", [])}
-    return r, c
+    reads, writes = design.touches_of(part)
+    return set(reads), {p for p, _ in writes}
 
 
 def walk(design, visit):
@@ -844,6 +1028,9 @@ def findings(design, plays):
             if h["then"] == "accept" and not h.get("because"):
                 add("unexplained", "%s: accept, %s" % (name, whenever(h)), None,
                     shows=["%s goes on with something wrong, and the design does not say why that is fine." % name], settle='Give the answer a "because".')
+        if a.get("later") == "stands" and not a.get("because"):
+            add("unexplained", "%s: what it changed stands" % name, None,
+                shows=["What the run below changed stays when a failure leaves its part, and the design does not say why that is fine."], settle='Give the action a "because".')
         for c in a.get("changes", []):
             if c.get("later") == "stands" and not c.get("because"):
                 add("unexplained", "%s: its change to %s stands" % (name, c["place"]), None,
@@ -853,7 +1040,7 @@ def findings(design, plays):
             f = add("silent", "the design", None, shows=[], quiet=[],
                     settle='Name the place where a person learns of a failure once, as "reports" at the top of the design.')
             f["quiet"].append(name)
-    for fact in design.doc.get("facts", []):       # a decision nobody has made: played both ways, and asked
+    for fact in design.facts.values():             # a decision nobody has made, here or below: played both ways, and asked
         name = fact["name"]
         if fact.get("open"):
             ran = {v: {a for p in plays if p.env.get(name) is v for a, s in p.steps if s == "ran"} for v in (True, False)}
@@ -971,6 +1158,8 @@ def tests(design):
     for name, a in design.actions.items():
         for h in a.get("handles", []):
             out.append({"what": "answer", "subject": "%s: %s, %s" % (name, h["then"], whenever(h)), "held": held(design, h.get("hold"))})
+        if a.get("later"):
+            out.append({"what": "recovery", "subject": "%s: what it changed %s when a failure leaves its part" % (name, "is undone" if a["later"] == "undone" else "stands"), "held": held(design, a.get("hold"))})
         for c in a.get("changes", []):
             if c.get("later"):
                 out.append({"what": "recovery", "subject": "%s: its change to %s %s when a failure leaves its part" % (name, c["place"], "is undone" if c["later"] == "undone" else "stands"), "held": held(design, c.get("hold"))})
@@ -1038,7 +1227,7 @@ def main(argv=None):
         designs = []
         for path in [args.design] + ([args.against] if args.against else []):
             with open(path, encoding="utf-8") as f:
-                designs.append(Design(json.load(f), args.root))
+                designs.append(Design(json.load(f), args.root, os.path.dirname(os.path.abspath(path))))
         accepted = read_accepted(args.against[:-len(".json")] + ".accepted.json") if args.against and args.against.endswith(".json") else []
         r = report(*designs, **({"accepted": accepted} if args.against else {}))
         asked = [f for f in r["findings"] if not f.get("accepted")]

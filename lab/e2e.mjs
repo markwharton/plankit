@@ -164,7 +164,7 @@ async function main() {
   await click("#c-run button", "release");
   await click("#c-path button", "given → the last commit is a release commit");
   await click("#c-brk button", "origin rejects the push");
-  check("a fault of a runnable design reads as the engine played it", /Verdict: refused/.test(await text("#readout")) && /push stops the run/.test(await text("#readout")), await text("#readout"));
+  check("a fault of a runnable design reads as the engine played it", /Verdict: refused/.test(await text("#readout")) && /push in merge flow stops the run/.test(await text("#readout")), await text("#readout"));
   await click("#c-view button", "Bus");
   await shot("runnable-bus");
   await click("#c-view button", "Rail");
@@ -172,12 +172,12 @@ async function main() {
   await click("#c-view button", "Grid");
   await click("#g-a");
   const answers = await text("#stage");
-  check("Grid shows who answers what", /the tree is dirty/.test(answers) && /refuse/.test(answers) && /warn/.test(answers) && /accept/.test(answers), answers.slice(0, 200));
+  check("Grid shows who answers what", /working tree holds what is kept nowhere/.test(answers) && /refuse/.test(answers) && /warn/.test(answers) && /accept/.test(answers), answers.slice(0, 200));
   await shot("runnable-grid-answers");
   await click("#c-view button", "Ring");
   check("Ring draws facts on a third arc", /facts: a red ring is a fault/.test(await text("#stage")) && (await js("return document.querySelectorAll('#ring-svg [data-hover=\"origin rejects the push\"]').length")) === 1);
   await js("document.querySelector('#ring-svg [data-hover=\"origin rejects the push\"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));");
-  check("Ring: clicking a fact says who answers it", /Answered by push \(refuse\)/.test(await text("#controls")), await text("#controls"));
+  check("Ring: clicking a fact says who answers it", /Answered by push in trunk flow \(refuse\)/.test(await text("#controls")), await text("#controls"));
   await shot("runnable-ring");
   await click("#c-view button", "Rail");
   await click("#c-run button", "ship");

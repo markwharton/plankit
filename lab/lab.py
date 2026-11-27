@@ -278,7 +278,7 @@ def check_scenario(checker, sc, text=None):
         if text is not None or not os.path.isfile(sc.definition):
             return {"ok": False, "refused": ["%s: %s" % (sc.shown(), e)]}
     if isinstance(doc, dict) and "parts" in doc:
-        return runnable.check(doc, sc.root, sc.shown())
+        return runnable.check(doc, sc.root, sc.shown(), os.path.dirname(sc.definition))   # and where the definitions it stands on are
     work = None
     try:
         definition = sc.definition

@@ -98,7 +98,7 @@ matter to it. Everything else follows from that one mechanism:
 |---|---|
 | Place | Something that holds data. It says what it holds (`one` state, `many` members, or a `series` of them), where its value lives (`outside` the system, `lasting`, within one `run`, or a `report` to a person), and the place it is `in`, when it is part of another. A place can name the part that owns it. |
 | Fact | A name, what it `says` in words, whether it is a `fault` or still `open`, the place it is `about`, and what it is possible `only` with. |
-| Action | One thing a run does: the places it `reads`, the `changes` it makes, and what it `handles`. |
+| Action | One thing a run does: the places it `reads`, the `changes` it makes, and what it `handles`. Or it `uses` a run of a design one layer down, and that run has the reads and the changes. |
 | Change | A place and what is done to it: `create`, `replace` or `destroy`. It can say the place its content comes `from`, what happens `later` if a failure leaves the part it is in, and what facts it `makes` true or false. |
 | Answer | An entry of `handles`: `when` a fact holds, `then` one of six things. |
 | Sequence, choice, `all` | Parts in order, each needing the ones before; one part chosen by a fact; parts that do not depend on each other. |
@@ -216,6 +216,64 @@ a copy of what is removed.
   refused a working tree that holds what is kept nowhere has answered
   for the version files.
 
+## Layers
+
+A design stands `on` the designs one layer down. pk stands on git.
+What is a single action on one layer is a whole run on the layer
+below.
+
+- A design sees the places and the facts of the designs it is on, by
+  name. It cannot use one of their names for something else.
+- A place here can be `in` a place below. The changelog file is in
+  git's working tree.
+- A place below can be `given`: its runs act on it, and whoever uses a
+  run says which of their own places it is.
+- An action `uses` a run below, `with` its own places for that run's
+  `given` places: `{ "do": "fast-forward the release branch", "uses":
+  "fast-forward", "with": { "the branch": "release branch", "the other
+  branch": "working branch" } }`. The place given has the same shape.
+
+An action that uses a run states no reads and no changes. Its own
+answers are tried first, as any action's are, so it can refuse before
+the run below does anything. Then the run is played. What comes up to
+the action:
+
+1. Each failure the run below returns, as the fault that caused it.
+2. Each fault the run below accepted, warned of, or told the person
+   and went on with. An answer in a run below is that run's own.
+3. Each fact the run's places bring. One about a `given` place is
+   named with the place it was given.
+
+The action answers each in its `handles`. One it does not answer is a
+question for the owner, and an unanswered failure fails the action.
+
+| The action answers what came up with | Meaning |
+|---|---|
+| `refuse` | It refuses before the run below is played, and the failure goes to its own parent. |
+| `warn` | The person is told, the run below is not played, and the run goes on. |
+| `accept` | The run goes on, the person is not told, and the answer says `because`. |
+| `tell` | The person is told, and the run goes on. |
+
+Since it states no changes, an action that uses a run carries what a
+change would:
+
+- `makes`: the facts it makes true or false when the run completes.
+- `later`: what happens to what the run changed, when a failure leaves
+  a part that contains the action. A change below that says its own
+  `later` keeps it.
+- `rehearsal`: a fact. When it holds, the run below makes no changes,
+  and every answer still applies. Use it for a step whose checks still
+  run in a rehearsal. Use a false `when` for a step a rehearsal leaves
+  out whole.
+
+A fault can go wrong `at` an action that uses a run. It is asked
+there. That is where a design says something its layer knows and the
+layer below does not.
+
+A fact about the world is written once, in the design of the system
+it belongs to. pk's design does not say that a commit adds to a
+branch. git's does.
+
 ## How the engine reads a design
 
 - **Answers are tried in the order written.** The first whose `when`
@@ -315,9 +373,9 @@ Each finding is one question for the owner.
 
 | Finding | The question |
 |---|---|
-| `open` | The design uses a fact nobody has decided. What is so? The finding says what runs only one way. |
+| `open` | The design, or one below it, uses a fact nobody has decided. What is so? The finding says what runs only one way. |
 | `expect` | A play breaks something the design says must hold. Which is wrong? |
-| `unanswered` | Something lasting is changed while a fault that no answer covers is carried into it, or a fault goes wrong at a step and nothing there answers it. What should happen? The finding names the action, and what the run then changes on the strength of it. |
+| `unanswered` | Something lasting is changed while a fault that no answer covers is carried into it; or a fault goes wrong at a step and nothing there answers it; or a failure or a fault comes up from a run below and the action that uses the run has no answer. What should happen? The finding names the action, and what the run then changes on the strength of it. |
 | `left-behind` | A failure left a part after a lasting place was changed in it. Is the change undone, or does it stand? |
 | `reads-unwritten` | An action reads a value nothing has written by then. Was its writer skipped? |
 | `order` | Two parts in no stated order touch a place one of them changes. Which runs first? |
@@ -366,10 +424,10 @@ and names it.
 
 | Object | Keys |
 |---|---|
-| The design | `system`, `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
-| A place | `name`, `is` (`one`, `many` or `series`; left out for a place made of the places in it), `kind` (`outside`, `lasting`, `run` or `report`), `in` (a place), `owner` (a part) |
+| The design | `system`, `on` (the paths of the designs one layer down, from this design's own directory), `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
+| A place | `name`, `is` (`one`, `many` or `series`; left out for a place made of the places in it), `kind` (`outside`, `lasting`, `run` or `report`), `in` (a place), `given` (`true` for a place the user of a run supplies), `owner` (a part) |
 | A fact | `name`, `says`, `fault` (`true` when it means something is wrong), `open` (`true` when it is a decision nobody has made), `about` (a place), `at` (an action, or a list of them), `only` (a fact that must hold for this one to be possible) |
-| An action | `do` (its name), `when`, `reads`, `changes`, `handles` |
+| An action | `do` (its name), `when`, `handles`, and either `reads` and `changes`, or `uses` (a run below) with `with`, `makes`, `later`, `because` and `rehearsal` |
 | A read | a place's name, or `{ "place": ..., "when": ... }` |
 | A change | `{ "place": ..., "how": ..., "from": ..., "when": ..., "later": ..., "because": ..., "makes": { fact: true or false }, "many": true }`. `how` is `create`, `replace` or `destroy`, and `because` says why a change that `stands` may |
 | An answer | `{ "when": ..., "then": ... }` (`when` left out for one that always applies), with `because` (why, for an `accept`), `tells` (a place or a list of places, when it is not the design's `reports`) and, for `ask`, `no` (`stop` or `skip`) |
@@ -394,29 +452,35 @@ A play that ends with a warning counts as a success.
 
 ## What it found on pk
 
-`pk.json` is pk's changelog, release and ship in this form, written
-from the 21 statements the checker's definition of pk keeps in words.
-Each statement in the design carries the sentence it stands for. Held
-by `lab/engine/test_pk.py`.
+`pk.json` is pk's changelog, release and ship, standing on `git.json`,
+a design of the git operations pk runs. Each statement that stands for
+one of the 21 the checker's definition of pk keeps in words carries
+that sentence. Held by `lab/engine/test_pk.py`.
 
-It was written before places had a shape, and `convert.py` converted
-it. The conversion cannot tell an add from an overwrite on a place
-that was not keyed, so the design now asks about each lasting place it
-replaces.
+`git.json` was written from git's manual for each operation, and from
+pk's code for which commands it runs. Where the part of the manual
+read does not say, it has an open fact.
 
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- The design has 464 plays: 101 of changelog, 62 of release, 301 of
+- pk's design lists 20 facts and git's lists 8. Before it stood on
+  git, pk's listed 32.
+- The design has 395 plays: 90 of changelog, 44 of release, 261 of
   ship.
-- It reports 16 questions:
+- It reports 9 questions:
+  - git's manual does not say whether a rejected tag update fails the
+    fetch, and pk's fetch depends on it.
   - "changelog with --dry-run writes nothing" is broken by fetching
     tags.
-  - Five faults carried into something lasting with no answer.
-  - Seven asking what happens to what was there, one for each lasting
-    place the design replaces.
-  - One asking whether a fetched tag is one the repository already
-    has.
+  - Four faults carried into something lasting with no answer: a tag
+    that does not name a version, invalid settings, a branch that is
+    not the default, and an unfit working branch.
+  - Origin already has the tag. git's push refuses it, and neither
+    push action answers.
   - Two asking whether what a fetch brought stands when a later
     failure leaves the run.
+- git's reset goes on with a commit held elsewhere and with a tree
+  that holds what is kept nowhere. Both come up to `undo`, which
+  refuses both. Neither is a fact pk's design lists.
 - `pk-code.json` is that design changed in one place to what an
   earlier description of pk's code says the code does. Played against
   the design it gives 2 `differs` findings, each naming the facts that
