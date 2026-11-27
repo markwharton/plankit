@@ -128,12 +128,17 @@ def syntax_tool():
     return go_tool(source, "syntax")
 
 
-def read_text(text, shown):
-    """A design written as text, in form A, read into the document the engine plays. shown names it in a refusal."""
-    out = subprocess.run([syntax_tool(), "read", "A", "-", shown], input=text, capture_output=True, text=True)
+def syntax(command, text, shown):
+    """What the syntax tool writes for a design's text, in form A: read gives its JSON, format its text as the printer writes it."""
+    out = subprocess.run([syntax_tool(), command, "A", "-", shown], input=text, capture_output=True, text=True)
     if out.returncode != 0:
         raise Unreadable(out.stderr.strip() or "%s: the syntax tool exited %d and said nothing" % (shown, out.returncode))
-    return json.loads(out.stdout)
+    return out.stdout
+
+
+def read_text(text, shown):
+    """A design written as text, in form A, read into the document the engine plays. shown names it in a refusal."""
+    return json.loads(syntax("read", text, shown))
 
 
 def read_design(path):

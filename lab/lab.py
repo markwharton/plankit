@@ -32,7 +32,7 @@ PAGE = os.path.join(HERE, "lab.html")
 sys.path.insert(0, os.path.join(HERE, "engine"))
 import engine  # noqa: E402  (reads a design's file, and builds the Go tools the lab runs)
 import view as runnable  # noqa: E402  (the engine for designs you can run, and its model for this page)
-NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.json$")
+NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.(json|design)$")
 HEADER = "X-Control-Lab"
 
 
@@ -117,8 +117,17 @@ def read_json(path):
         return None
 
 
-def accepted_beside(path):
-    return path[:-len(".json")] + ".accepted.json" if path.endswith(".json") else path + ".accepted.json"
+def read_doc(path):
+    """A definition's document: a design written as text read by the engine, anything else as JSON. None when it cannot be read."""
+    if path.endswith(".design"):
+        try:
+            return engine.read_design(path)
+        except (OSError, ValueError, engine.Refused):
+            return None
+    return read_json(path)
+
+
+accepted_beside = engine.accepted_file                # one rule for where a file's acceptances are
 
 
 class Scenario:
@@ -156,7 +165,7 @@ class Scenario:
                     walk(v)
 
         for path in [self.definition] + self.descriptions:
-            walk(read_json(path))
+            walk(read_doc(path))
         return files + sorted(seen)
 
     def stamp(self):
@@ -188,6 +197,10 @@ def scan_directory(directory, readonly=False):
             if isinstance(d, dict) and "system" in d:
                 path = os.path.join(base, n)
                 found.append(Scenario(path, descriptions, base, label=os.path.relpath(path, directory), readonly=readonly))
+        for n in sorted(names):                         # a design written as text
+            if n.endswith(".design"):
+                path = os.path.join(base, n)
+                found.append(Scenario(path, [], base, label=os.path.relpath(path, directory), readonly=readonly))
     return found
 
 
@@ -258,7 +271,12 @@ def check_scenario(checker, sc, text=None):
                 text_now = f.read()
         else:
             text_now = text
-        doc = json.loads(text_now)
+        if sc.definition.endswith(".design"):
+            doc = engine.read_text(text_now, sc.shown())
+        else:
+            doc = json.loads(text_now)
+    except engine.Refused as e:
+        return {"ok": False, "refused": [str(e)]}
     except (OSError, ValueError) as e:
         doc = None
         if text is not None or not os.path.isfile(sc.definition):
@@ -429,6 +447,13 @@ def make_handler(library, checker):
                 return self.send(200, result(sc, body["text"]))
             if self.path == "/api/save":
                 return self.send(200, self.save(sc, body))
+            if self.path == "/api/format":
+                if not sc.definition.endswith(".design"):
+                    raise LabError(400, "the server formats a design written as text; the page formats JSON")
+                try:
+                    return self.send(200, {"text": engine.syntax("format", body["text"], sc.shown())})
+                except engine.Refused as e:
+                    return self.send(200, {"refused": [str(e)]})
             raise LabError(404, "nothing at %s" % self.path)
 
         def save(self, sc, body):
@@ -439,7 +464,7 @@ def make_handler(library, checker):
                 target = sc.definition
             else:
                 if not isinstance(name, str) or not NAME.match(name) or name.endswith(".accepted.json"):
-                    raise LabError(400, "a new file's name is letters, digits, dots, dashes and underscores, ends .json, and has no directory")
+                    raise LabError(400, "a new file's name is letters, digits, dots, dashes and underscores, ends .json or .design, and has no directory")
                 target = os.path.join(os.path.dirname(sc.definition), name)
                 if os.path.exists(target):
                     raise LabError(409, "%s exists: choose another name, or open it and save there" % name)

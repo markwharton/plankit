@@ -7,6 +7,7 @@ Each test names what must hold and includes the case that must fail.
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
@@ -171,6 +172,32 @@ class LabServer(unittest.TestCase):
         _, res = self.call("/api/check", {"id": sc["id"], "text": json.dumps(doc)})
         self.assertFalse(res["ok"])
         self.assertIn("colour", res["refused"][0])
+
+    def test_a_design_written_as_text_is_listed_played_refused_formatted_and_saved(self):
+        printed = subprocess.run([lab.engine.syntax_tool(), "print", "A", os.path.join(self.designs, "notes", "notes.json")], capture_output=True, text=True)
+        self.assertEqual(printed.returncode, 0, printed.stderr)
+        text = printed.stdout
+        path = os.path.join(self.designs, "notes", "written.design")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        try:
+            sc = self.scenario("notes/written.design")
+            _, res = self.call("/api/model?id=" + sc["id"])
+            self.assertTrue(res["ok"], res.get("refused"))
+            _, json_res = self.call("/api/model?id=" + self.scenario("notes/notes.json")["id"])
+            self.assertEqual(self.verdicts(res), self.verdicts(json_res))           # written as text, it plays as its JSON
+            broken = text + "\nFACT WHEN it rains\n"
+            _, res = self.call("/api/check", {"id": sc["id"], "text": broken})
+            self.assertEqual(res["refused"], ["written.design:%d: a name was expected after FACT, and WHEN is a keyword" % broken.count("\n")])      # named as the lab shows it
+            _, res = self.call("/api/format", {"id": sc["id"], "text": text.replace("\n\n", "\n\n\n")})
+            self.assertEqual(res["text"], text)
+            _, res = self.call("/api/save", {"id": sc["id"], "text": text, "name": "copy.design"})
+            self.assertEqual(res["saved"], "copy.design")
+            self.scenario("notes/copy.design")
+        finally:
+            for name in ("written.design", "copy.design"):
+                if os.path.exists(os.path.join(self.designs, "notes", name)):
+                    os.remove(os.path.join(self.designs, "notes", name))
 
     def test_a_named_fact_is_listed_with_its_meaning(self):
         sc = self.scenario("notes/notes.json")

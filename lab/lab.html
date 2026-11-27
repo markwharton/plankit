@@ -167,7 +167,7 @@ input[type="range"] { width: min(420px, 100%); accent-color: var(--cyan); }
       </div>
       <div class="row" style="margin-bottom:8px">
         <button type="button" id="b-save" class="go">Save</button>
-        <input type="text" id="saveas" placeholder="new-name.json" aria-label="Name for a new file" style="flex:1;min-width:120px">
+        <input type="text" id="saveas" placeholder="new-name.json or .design" aria-label="Name for a new file" style="flex:1;min-width:120px">
         <button type="button" id="b-saveas">Save as new</button>
       </div>
       <textarea id="ed" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Definition file text"></textarea>
@@ -900,9 +900,16 @@ $("ed").addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (!$("b-save").disabled) save(); }
 });
 $("b-save").addEventListener("click", () => save());
-$("b-saveas").addEventListener("click", () => { const n = $("saveas").value.trim(); if (!n) { toast("Give the new file a name ending .json"); $("saveas").focus(); return; } save(n); });
+$("b-saveas").addEventListener("click", () => { const n = $("saveas").value.trim(); if (!n) { toast("Give the new file a name ending .json or .design"); $("saveas").focus(); return; } save(n); });
 $("b-rev").addEventListener("click", () => { $("ed").value = A.disk; edited(); });
-$("b-fmt").addEventListener("click", () => { try { $("ed").value = JSON.stringify(JSON.parse($("ed").value), null, 2) + "\n"; edited(); } catch (e) { toast("Not valid JSON yet: " + e.message); } });
+$("b-fmt").addEventListener("click", async () => {
+  const sc = scenario();
+  if (sc && sc.file.endsWith(".design")) {                     /* a design written as text: the server writes it as the printer does */
+    try { const r = await api("/api/format", { id: sc.id, text: $("ed").value }); if (r.refused) { toast(r.refused[0]); return; } $("ed").value = r.text; edited(); } catch (e) { toast(e.message); }
+    return;
+  }
+  try { $("ed").value = JSON.stringify(JSON.parse($("ed").value), null, 2) + "\n"; edited(); } catch (e) { toast("Not valid JSON yet: " + e.message); }
+});
 $("b-new").addEventListener("click", () => { $("ed").value = JSON.stringify(STARTER, null, 2) + "\n"; edited(); toast("A starter design. Name it and choose Save as new to keep it."); });
 $("b-snap").addEventListener("click", () => {
   const res = shownRes(); if (!res) { toast("Nothing to snapshot: the checker refuses this file"); return; }

@@ -166,6 +166,8 @@ def check(doc, root, shown, base=None):
     try:
         d = engine.Design(doc, root, base)
         plays = engine.explore_all(d)
+    except engine.Unreadable as e:                 # a layer below that cannot be read names its own file and line
+        return {"ok": False, "refused": [str(e)]}
     except engine.Refused as e:
         return {"ok": False, "refused": ["%s: %s" % (shown, e)]}
     fs, ts = engine.findings(d, plays), engine.tests(d)
