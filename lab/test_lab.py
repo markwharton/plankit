@@ -172,6 +172,18 @@ class LabServer(unittest.TestCase):
         self.assertFalse(res["ok"])
         self.assertIn("colour", res["refused"][0])
 
+    def test_a_named_fact_is_listed_with_its_meaning(self):
+        sc = self.scenario("notes/notes.json")
+        _, src = self.call("/api/source?id=" + sc["id"])
+        doc = json.loads(src["text"])
+        doc["facts"].append({"name": "publishing", "means": {"not": "preview"}, "says": "the note is going to the site"})
+        doc["parts"]["publish"]["seq"][1]["when"] = "publishing"
+        _, res = self.call("/api/check", {"id": sc["id"], "text": json.dumps(doc)})
+        self.assertTrue(res["ok"], res.get("refused"))
+        got = [f for f in res["model"]["facts"] if f["name"] == "publishing"]
+        self.assertEqual(got, [{"name": "publishing", "fault": False, "open": False, "about": "", "says": "the note is going to the site", "named": True, "means": "not preview"}])
+        self.assertTrue(all(not f.get("named") for f in res["model"]["facts"] if f["name"] != "publishing"))
+
     def test_the_description_prompt_is_read_from_the_readme(self):
         _, got = self.call("/api/prompts")
         text = got["description"]["text"]

@@ -151,6 +151,8 @@ def view_model(d, plays, findings, tests, shown):
     met = {f for n in leaves for f in n.get("meets", []) + n.get("asks", []) + [x for a in n.get("answers", []) for x in a["facts"]]}
     facts = [{"name": f["name"], "fault": bool(f.get("fault")), "open": bool(f.get("open")), "about": f.get("about", ""), "says": f.get("says", "")}
              for f in d.facts.values() if not f.get("run") and (not f.get("built in") or f["name"] in met)]
+    facts += [{"name": n, "fault": False, "open": False, "about": "", "says": m.get("says", ""), "named": True, "means": engine.words(m["means"])}
+              for n, m in d.meanings.items()]                    # a named fact, listed with its meaning; it is never played
     return {"system": system, "definition": shown, "descriptions": [], "nodes": nodes, "places": places, "runs": runs, "facts": facts,
             "labels": {"path": "Given", "break": "Wrong", "check": "the engine"},
             "findings": [{"check": f["kind"], "subject": f["subject"], "message": " ".join(f["shows"]) + " " + engine.seen_in(f) + " To settle it: " + f["settle"], "accepted": False} for f in findings],
