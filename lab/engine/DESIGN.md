@@ -256,6 +256,14 @@ question for the owner, and an unanswered failure fails the action.
 | `accept` | The run goes on, the person is not told, and the answer says `because`. |
 | `tell` | The person is told, and the run goes on. |
 
+The engine tries the action's answers first, so a fault the action
+answers never reaches the run below in that play. The end is the same
+as if the run below had met the fault and failed. With `refuse`,
+nothing below is changed and the failure goes to the parent. With
+`warn`, nothing below is changed, the person is told, and the run goes
+on. So write the answer for what the source says happens when the
+step fails, whichever layer notices.
+
 Since it states no changes, an action that uses a run carries what a
 change would:
 
@@ -282,8 +290,9 @@ A design lists its `runs`. It does not say in what order they happen.
 A run finds each lasting place as an earlier run left it.
 
 - What an earlier run made true stays true. A fact that changes
-  `make`, and that no run of the model makes true, is false when a run
-  starts. One that some run can make true is undecided at the start,
+  `make` is listed under `facts` like any other, with its name and
+  what it says. One that no run of the model makes true is false when
+  a run starts. One that some run can make true is undecided at the start,
   and the engine plays it both ways.
 - A lasting place a run changed after it accepted a fault about a
   place, or told the person of one and went on, is left made with that
@@ -358,10 +367,17 @@ release there has been: each run reads what an earlier one left.
   the world, and does not use up the play's one fault. Any action that
   reads a place can answer one of these about it, whether or not its
   own changes bring it.
-- **A fact a change `makes` is never listed as free.** It is false at
-  the start of a run unless some run of the model can make it true.
-  `only` looks at what was so when the run started, and not at what
-  the run made since.
+- **A fact a change `makes` is listed like any other, and is not
+  decided freely.** It is false at the start of a run unless some run
+  of the model can make it true. `only` looks at what was so when the
+  run started, and not at what the run made since.
+- **Where a use and the part it names both have a `when`, both must
+  hold.**
+- **An answer can be about any fact.** Its `when` takes a flag or a
+  state as well as a fault. An action can tell the person of a state,
+  or refuse under a flag.
+- **`about` names one place.** A fault that relates two places is
+  about the one whose state the action reads, or is a fault at a step.
 - **Parts in an `all` are played in the order written.** The engine
   asks about their order only where they touch a place one of them
   changes.
@@ -552,6 +568,10 @@ About places:
   play, so an import where some names are already there and some are
   not is one play or the other.
 - Say that a `many` is empty. "No local tags" is a fact listed by hand.
+- Replace a `many` as a whole. A `replace` there is read as replacing
+  a member, and the engine asks whose member it is.
+- Say that a step changes something whose place or operation is not
+  known, such as whatever a hook changes.
 - Say that two names are one place, such as the branch that is checked
   out and the branch a release starts from.
 - Say that a value is bad in a way that depends on how it was
@@ -679,3 +699,6 @@ python3 engine.py pk.json --root ../.. --lines              # one line for each 
 python3 -m unittest test_engine test_convert test_pk        # the engine's tests, the converter's, and what this page says of pk
 python3 convert.py OLD.json                                 # rewrites a design written before places had a shape
 ```
+
+The engine exits 0 when it has no question for the owner. It exits 2
+when it has one, or when it cannot play the design.
