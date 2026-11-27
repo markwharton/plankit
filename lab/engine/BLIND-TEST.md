@@ -138,3 +138,4 @@ release making its checks before it fetches. Three mix both. Ten are
 noise: the reader's own actions, and messages it wrote as `tell` that
 only report progress. `lab/engine/pk-code.json` was then written again
 from what it found, with the design's names and in the code's order.
+It is now written as text, as `lab/engine/pk-code.design`.

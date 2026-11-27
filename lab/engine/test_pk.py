@@ -22,7 +22,7 @@ class Pk(unittest.TestCase):
         with open(os.path.join(REPO, "definition", "pk.json"), encoding="utf-8") as f:
             words = [u["what"] for u in json.load(f)["unsaid"]]
         stated = {}
-        for s, how in engine.said(load("pk.json")):
+        for s, how in engine.said(load("pk.design")):
             if s in words:
                 stated[s] = "played" if how == "played" or stated.get(s) == "played" else "words"
         self.assertEqual(len(words), 21)
@@ -30,14 +30,14 @@ class Pk(unittest.TestCase):
         self.assertEqual([w for w in words if w not in stated], [])
 
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
-        d = load("pk.json")
+        d = load("pk.design")
         plays = engine.explore_all(d)
         self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 150, "release": 79, "ship": 350})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [])
 
     def test_what_git_goes_on_with_pk_refuses(self):
-        d = load("pk.json")
+        d = load("pk.design")
         plays = engine.explore(d, "changelog")
         for fault in ("working branch is held elsewhere", "working tree holds what is kept nowhere"):   # git's reset accepts both
             mine = [p for p in plays if p.env.get("undo") and p.env.get(fault)]
@@ -45,7 +45,7 @@ class Pk(unittest.TestCase):
             self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("load settings", "ran"), ("undo", "refused")))}, fault)
 
     def test_the_code_variant_differs_in_24_places(self):
-        got = engine.compare(load("pk.json"), load("pk-code.json"))
+        got = engine.compare(load("pk.design"), load("pk-code.design"))
         self.assertEqual([f["subject"] for f in got], [
             "branch checks: the design refuses, the code goes ahead",                       # a branch behind origin: changelog makes no check
             "branch checks: the design skips it, the code goes ahead",                     # in ship, a trailer that is not a version: the design counts it pending, the code runs changelog

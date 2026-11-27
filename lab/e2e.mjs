@@ -193,16 +193,19 @@ async function main() {
   await open("pk on git, written blind from its pages");
   await click("#c-panel button", "Findings");
   check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
-  await open("notes/notes.json");
-  const note = JSON.parse(readFileSync(join(designs, "notes", "notes.json"), "utf8"));
-  delete note.parts.publish.seq[0].handles;
-  await type(JSON.stringify(note, null, 2));
+  await open("notes/notes.design");
+  const note = readFileSync(join(designs, "notes", "notes.design"), "utf8");
+  await type(note.replace("        REFUSE WHEN the note is empty\n", ""));
   await until(async () => (await text("#state")) === "Draft: not saved" && /passed/.test(await text("#c-brk")), "the runnable draft to be played");
   await click("#c-brk button", "the note is empty");
   check("an edit to a runnable design is played at once", /nothing answers it/.test(await text("#readout")) && /draft, site/.test(await text("#readout")), await text("#readout"));
-  await type(JSON.stringify(Object.assign({ colour: "blue" }, note)));
+  await type(note + "\nCOLOUR blue\n");
   await until(async () => (await text("#state")) === "The checker refuses this text", "the engine's refusal");
-  check("the engine's reason for refusing is shown", /colour/.test(await text("#edstatus")), await text("#edstatus"));
+  check("the engine's reason for refusing is shown, with its line", /notes\.design:\d+: .*COLOUR/.test(await text("#edstatus")), await text("#edstatus"));
+  await type(note.replace("\n\n", "\n\n\n\n"));
+  await click("#b-fmt");
+  await until(async () => (await js("return document.getElementById('ed').value")) === note, "the design to be formatted");
+  check("Format writes a design as the printer does", true);
   await click("#b-rev");
 
   check("the page threw no error", errors.length === 0, errors.join("\n        "));

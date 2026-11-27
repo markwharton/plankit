@@ -1,0 +1,472 @@
+SYSTEM pk: changelog, release and ship
+ON git.design
+REPORTS message
+RUNS
+    changelog
+    release
+    ship
+
+PLACE settings ONE OUTSIDE
+PLACE origin address ONE OUTSIDE
+PLACE working branch SERIES LASTING
+PLACE release branch SERIES LASTING
+PLACE origin's working branch SERIES LASTING IN origin
+PLACE origin's release branch SERIES LASTING IN origin
+PLACE changelog file ONE LASTING IN working tree
+PLACE version files ONE LASTING IN working tree
+PLACE next version ONE RUN
+PLACE commits since tag ONE RUN
+PLACE section ONE RUN
+PLACE message ONE REPORT
+PLACE standard output ONE REPORT
+
+FACT dry run
+    SAYS --dry-run is given
+FACT undo ONLY NOT in ship
+    SAYS --undo is given
+FACT nothing to release
+    SAYS no commit since the last version tag is one the changelog lists
+FACT no local version tag
+    SAYS the repository has no version tag
+FACT trunk flow
+    SAYS release.branch is empty
+FACT the last commit is a release commit ABOUT working branch
+    SAYS HEAD carries a Release-Tag trailer
+FACT the release is tagged ONLY the last commit is a release commit AND nothing to release AND NOT no local version tag
+    SAYS the tag HEAD's Release-Tag trailer names exists on HEAD: that release has shipped
+FACT the release tag is on another commit ONLY the last commit is a release commit AND NOT the release is tagged AND NOT no local version tag
+    SAYS the tag HEAD's Release-Tag trailer names exists, on a commit other than HEAD
+FACT a release is pending MEANS the last commit is a release commit AND NOT the release is tagged AND NOT the release tag is on another commit
+    SAYS a Release-Tag commit whose tag does not exist yet
+FACT origin has the tag on another commit MEANS origin's tags already has the member AND NOT origin's tag names the commit pushed
+    SAYS origin has the release tag, on a commit other than the one the release pushes
+FACT merge flow MEANS NOT trunk flow
+    SAYS release.branch is set
+FAULT settings are invalid ABOUT settings
+FAULT no branch is checked out ABOUT working branch
+    SAYS HEAD is detached
+FAULT the working branch is protected ABOUT working branch
+    SAYS the branch is one guard.branches lists
+FAULT the working branch is not on origin ABOUT working branch
+FAULT the working branch is behind origin ABOUT working branch
+    SAYS origin's tip of the branch, read without a fetch, is not in the branch's history
+FACT origin names no default branch ONLY trunk flow
+    SAYS origin advertises no HEAD, so the default-branch check cannot run
+FAULT the branch is not the default ABOUT working branch ONLY trunk flow AND NOT origin names no default branch
+FACT a tag does not name a version ABOUT tags
+    SAYS the repository has a tag whose name is not a release version, a pre-release tag among them
+FAULT the changelog file cannot be read ABOUT changelog file
+FAULT a version file has no version field ABOUT version files
+FACT origin has no address ABOUT origin address
+    SAYS origin's URL gives no web address, a local path among them, so the section is written with no link
+FAULT the last version tag is not in the branch's history
+FAULT the postVersion command fails
+FAULT the preCommit command fails
+FAULT the preRelease command fails
+FAULT the prePush command fails
+FAULT the --bump value is not a level
+FAULT an --exclude entry matches no commit
+FAULT origin's last version tag names a commit the clone does not have ONLY dry run
+    AT read origin's tags
+
+SEQ changelog
+    load settings
+    CHOOSE
+        WHEN undo
+            undo
+        OTHERWISE
+            make changelog
+
+ACTION undo
+    USES reset to the commit before
+        WITH the branch = working branch
+    MAKES NOT the last commit is a release commit
+    REHEARSAL dry run
+    REFUSE WHEN working branch is held elsewhere
+        SAYS --undo refuses a commit that is pushed, tagged or merged
+        HOLD internal/changelog/changelog_test.go TestUndoRefusesACommitSomethingElseHolds
+    REFUSE WHEN working tree holds what is kept nowhere
+    REFUSE WHEN NOT the last commit is a release commit
+    ACCEPT
+        WHEN ANY
+            the branch is not the default
+            no branch is checked out
+            the working branch is protected
+            the working branch is not on origin
+            the working branch is behind origin
+        BECAUSE undo removes only a commit that nothing else holds, so the branch it is on does not matter
+    SAYS --undo unwinds the release commit and restores the changelog file and the version files
+
+SEQ make changelog
+    branch checks
+    fetch the tags WHEN no local version tag AND NOT dry run
+    read origin's tags WHEN no local version tag AND dry run
+    infer version
+    pending release check
+    CHOOSE
+        WHEN nothing to release
+            say nothing to release
+        OTHERWISE
+            SEQ
+                build section
+                CHOOSE
+                    WHEN dry run
+                        print section
+                    OTHERWISE
+                        write release
+
+ACTION branch checks
+    READS
+        settings
+        working tree
+        working branch
+        origin
+    REFUSE WHEN NOT dry run AND (working tree holds what is kept nowhere OR no branch is checked out)
+        HOLD internal/changelog/changelog_test.go TestRefusals
+    REFUSE
+        WHEN ANY
+            the working branch is protected
+            the working branch is not on origin
+            the working branch is behind origin
+            origin does not answer
+        HOLD internal/changelog/changelog_test.go TestRefusals
+    REFUSE WHEN the branch is not the default
+        HOLD internal/changelog/changelog_test.go TestTrunkFlowRefusesNonDefaultBranch
+    ACCEPT WHEN working tree holds what is kept nowhere OR no branch is checked out
+        BECAUSE a dry run writes nothing, so it may read the commits from anywhere
+    TELL WHEN origin names no default branch
+        SAYS the run says the default-branch check could not run, and goes on
+
+ACTION fetch the tags
+    USES fetch tags
+    LATER STANDS
+    REFUSE WHEN origin does not answer
+        HOLD internal/changelog/changelog_test.go TestNoLocalTagsButOriginHasThem
+    TELL WHEN tags already has the member
+        SAYS pk tells the person which tag git refused, and goes on
+    ACCEPT WHEN tags is given a key twice
+        BECAUSE git's reason stands: a remote holds one tag of each name.
+    SAYS with no local tags, changelog fetches origin's tags first and measures from the latest
+    BECAUSE the tags fetched are origin's, and a later run would fetch them again
+
+ACTION infer version
+    READS tags
+    READS origin's tags WHEN no local version tag AND dry run
+    READS working branch
+    CREATE commits since tag
+    CREATE next version
+    REFUSE WHEN the last version tag is not in the branch's history
+        HOLD internal/changelog/changelog_test.go TestTagOutsideHistoryIsRefused
+    REFUSE WHEN the --bump value is not a level
+    TELL WHEN an --exclude entry matches no commit
+
+ACTION pending release check WHEN NOT dry run
+    READS working branch
+    REFUSE WHEN the last commit is a release commit AND NOT the release is tagged
+        HOLD internal/ship/ship_test.go TestShipOnAReleasedHeadReportsNothingToDo
+
+ACTION say nothing to release
+    CREATE message
+
+ACTION build section
+    READS
+        settings
+        commits since tag
+        next version
+    CREATE section
+
+ACTION print section
+    READS section
+    CREATE standard output
+
+SEQ write release
+    stamp versions
+    postVersion hook
+    write section
+    preCommit hook
+    commit the release
+
+ACTION stamp versions
+    READS
+        settings
+        next version
+        version files
+    REPLACE version files
+        LATER UNDONE
+        SAYS when a version file or a hook fails, nothing is committed and the tree goes back to how the run found it
+        HOLD internal/changelog/changelog_test.go TestARefusedReleasePutsTheWholeTreeBack
+    REFUSE WHEN a version file has no version field
+
+ACTION postVersion hook
+    READS
+        settings
+        next version
+    REFUSE WHEN the postVersion command fails
+        HOLD internal/changelog/changelog_test.go TestFailingHookAborts
+
+ACTION write section
+    READS
+        section
+        changelog file
+        commits since tag
+        next version
+        origin address
+    REPLACE changelog file
+        LATER UNDONE
+    REFUSE WHEN the changelog file cannot be read
+        HOLD internal/changelog/changelog_test.go TestAChangelogThatIsThereMustBeReadable
+    TELL WHEN origin has no address
+        SAYS changelog says the section has no link, and why
+
+ACTION preCommit hook
+    READS
+        settings
+        next version
+    REFUSE WHEN the preCommit command fails
+
+ACTION commit the release
+    USES commit
+        WITH the branch = working branch
+    MAKES the last commit is a release commit
+    LATER UNDONE
+    REFUSE WHEN the commit cannot be made
+    SAYS pk ship runs changelog and then release, and when the release half fails it undoes the changelog commit it made
+    HOLD internal/ship/ship_test.go TestFailedReleaseUndoesTheChangelogCommit
+
+SEQ release
+    load settings
+    fetch the working branch
+    pre-flight
+    merge WHEN merge flow
+    preRelease hook
+    tag the release WHEN NOT dry run
+    prePush hook WHEN NOT dry run
+    CHOOSE WHEN NOT dry run
+        WHEN trunk flow
+            push in trunk flow
+        OTHERWISE
+            push in merge flow
+    switch back WHEN NOT dry run AND merge flow
+    push the working branch WHEN NOT dry run AND merge flow
+    SAYS in trunk flow there is no merge: the release tags and pushes the default branch
+
+ACTION fetch the working branch
+    USES fetch the branch
+        WITH origin's branch = origin's working branch
+    LATER STANDS
+    REFUSE WHEN origin does not answer
+    ACCEPT WHEN remote-tracking branch holds what is kept nowhere
+        BECAUSE pre-flight fetches, which brings it up to date
+    BECAUSE a remote-tracking branch is a copy of origin's branch, and the next fetch makes it again
+
+ACTION pre-flight
+    READS
+        working branch
+        settings
+        working tree
+    READS release branch WHEN merge flow
+    READS
+        tags
+        remote-tracking branch
+        origin's tags
+    REFUSE WHEN the release tag is on another commit
+        SAYS the release names the way to restage under the next version: pk changelog --undo, then pk changelog
+    REFUSE
+        WHEN ANY
+            NOT the last commit is a release commit
+            working tree holds what is kept nowhere
+            no branch is checked out
+            the working branch is protected
+            the working branch is not on origin
+            the working branch is behind origin
+            the last version tag is not in the branch's history
+            merge flow AND the branch cannot be fast-forwarded
+        HOLD internal/release/release_test.go TestRefusals
+    REFUSE WHEN origin has the tag on another commit
+        SAYS pre-flight reads origin's tags without a fetch and refuses a tag of the release's name on another commit
+    REFUSE WHEN the branch is not the default
+        SAYS trunk flow refuses to run on any branch but the default branch
+        HOLD internal/release/release_test.go TestTrunkFlowRefusesNonDefaultBranch
+    TELL WHEN origin names no default branch
+        SAYS the run says the default-branch check could not run, and goes on
+
+SEQ merge
+    ACTION switch to the release branch
+        USES switch
+            WITH the branch = release branch
+        LATER UNDONE
+        REHEARSAL dry run
+        REFUSE WHEN the switch fails
+        HOLD internal/release/release_test.go TestRejectedPushRollsEverythingBack
+    ACTION fast-forward the release branch
+        USES fast-forward
+            WITH the branch = release branch
+            WITH the other branch = working branch
+        LATER UNDONE
+        REHEARSAL dry run
+        REFUSE WHEN the branch cannot be fast-forwarded
+            HOLD internal/release/release_test.go TestDivergedReleaseBranchRefused
+    SAYS a release dry run rehearses the merge against origin's release branch when there is no local one
+    SAYS a failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out
+
+ACTION preRelease hook
+    READS
+        settings
+        working branch
+    REFUSE WHEN the preRelease command fails
+
+ACTION tag the release
+    USES tag
+        WITH the branch = working branch
+    LATER UNDONE
+    REFUSE WHEN tags already has the member OR the tag cannot be created
+        HOLD internal/release/release_test.go TestRefusals
+
+ACTION prePush hook
+    READS
+        settings
+        working branch
+    REFUSE WHEN the prePush command fails
+        HOLD internal/release/release_test.go TestFailingPrePushCleansUp
+
+ACTION push in trunk flow
+    USES push the branch and the tag
+        WITH the branch = working branch
+        WITH origin's branch = origin's working branch
+    LATER STANDS
+    REFUSE WHEN origin does not answer OR origin rejects the push OR origin has the tag on another commit
+        HOLD internal/release/release_test.go TestRejectedPushRollsEverythingBack
+    ACCEPT WHEN origin's tags already has the member AND origin's tag names the commit pushed
+        BECAUSE origin already has the tag on the commit the release pushes, so git takes the push
+    BECAUSE once the branch and the tag are on origin the release stands
+
+ACTION push in merge flow
+    USES push the branch and the tag
+        WITH the branch = release branch
+        WITH origin's branch = origin's release branch
+    LATER STANDS
+    REFUSE WHEN origin does not answer OR origin rejects the push OR origin has the tag on another commit
+        HOLD internal/release/release_test.go TestRejectedPushRollsEverythingBack
+    ACCEPT WHEN origin's tags already has the member AND origin's tag names the commit pushed
+        BECAUSE origin already has the tag on the commit the release pushes, so git takes the push
+    SAYS the release branch and the tag are pushed together
+    BECAUSE once the release branch and the tag are on origin the release stands
+
+ACTION switch back
+    USES switch
+        WITH the branch = working branch
+    WARN WHEN the switch fails
+        SAYS once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is a warning
+
+ACTION push the working branch
+    USES push the branch
+        WITH the branch = working branch
+        WITH origin's branch = origin's working branch
+    WARN WHEN origin does not answer OR origin rejects the push
+
+SEQ ship
+    changelog WHEN NOT a release is pending
+    release WHEN a release is pending
+    say release rehearses later WHEN dry run AND NOT a release is pending
+    SAYS ship is changelog then release, and carries no state of its own: a Release-Tag commit whose tag does not exist yet is pending, and ship runs changelog only when nothing is pending and release only when something is
+
+ACTION read origin's tags
+    READS origin's tags
+    REFUSE WHEN origin does not answer
+    REFUSE WHEN origin's last version tag names a commit the clone does not have
+
+ACTION load settings
+    READS settings
+    REFUSE WHEN settings are invalid
+        SAYS An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2
+
+ACTION say release rehearses later
+    CREATE message
+    SAYS the release half cannot be rehearsed before its changelog commit exists, so a dry run with nothing pending previews the section and says so
+    HOLD internal/ship/ship_test.go TestDryRunWithoutPendingPreviewsSection
+
+EXPECT changelog with --dry-run writes nothing
+    IN changelog
+    WHEN dry run
+    NEVER CHANGES
+        working tree
+        tags
+        origin
+        remote-tracking branch
+        release branch
+        working branch
+    SAYS changelog with --dry-run prints the section to standard output and writes nothing
+    HOLD internal/changelog/changelog_test.go TestDryRunPrintsSectionToStdout
+
+EXPECT --undo with --dry-run changes nothing
+    IN changelog
+    WHEN undo AND dry run
+    NEVER CHANGES
+        working tree
+        tags
+        origin
+        remote-tracking branch
+        release branch
+        working branch
+    SAYS --undo with --dry-run makes the same checks and changes nothing
+    HOLD internal/changelog/changelog_test.go TestUndoWithDryRunChangesNothing
+
+EXPECT a release dry run merges nothing, tags nothing and pushes nothing
+    IN release
+    WHEN dry run
+    NEVER CHANGES
+        release branch
+        working tree
+        tags
+        origin
+    SAYS release with --dry-run merges nothing, tags nothing and pushes nothing
+    HOLD internal/release/release_test.go TestDryRunTouchesNothing
+
+EXPECT a release ends with the tag and the branches on origin
+    IN release
+    WHEN NOT dry run
+    ON SUCCESS
+    ENDS origin CHANGED
+    ENDS tags CREATED
+    SAYS a release ends on the working branch, with the tag, the release branch and the working branch all on origin
+    HOLD internal/release/release_test.go TestMergeFlowReleases
+
+EXPECT preRelease runs before the tag exists
+    IN release
+    BEFORE preRelease hook PLACE tags IS UNTOUCHED
+    SAYS preRelease runs before the tag exists, and prePush runs with the tag in existence
+    HOLD internal/release/release_test.go TestHooks
+
+EXPECT prePush runs with the tag in existence
+    IN release
+    BEFORE prePush hook PLACE tags IS CREATED
+    HOLD internal/release/release_test.go TestHooks
+
+RULE a breaking change bumps major, a feat bumps minor, and anything else bumps patch
+    ABOUT infer version
+    SAYS a breaking change bumps major, a feat bumps minor, and anything else bumps patch
+    HOLD internal/changelog/changelog_test.go TestBumpInference
+
+RULE --bump overrides the inferred version, and the run names the override
+    ABOUT infer version
+    SAYS --bump overrides the inferred version, and the run names the override
+    HOLD internal/changelog/changelog_test.go TestBumpOverrideAndValidation
+
+RULE --exclude drops commits before the version is inferred
+    ABOUT infer version
+    SAYS --exclude drops commits before the version is inferred
+    HOLD internal/changelog/changelog_test.go TestExcludeAffectsBump
+
+RULE with no version tag, the first release covers the whole history
+    ABOUT infer version
+    SAYS with no version tag, the first release covers the whole history
+    HOLD internal/changelog/changelog_test.go TestFirstReleaseCoversAllHistory
+
+RULE a preRelease hook that commits produces a commit the tag then covers
+    ABOUT preRelease hook
+    SAYS a preRelease hook that commits produces a commit the tag then covers
+
+RULE version inference passes over a tag that is not a release version, a pre-release tag among them
+    ABOUT infer version
+    WHEN a tag does not name a version
+    HOLD internal/changelog/changelog_test.go TestANonVersionTagIsNotARelease

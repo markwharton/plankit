@@ -7,7 +7,6 @@ Each test names what must hold and includes the case that must fail.
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 import threading
 import time
@@ -157,34 +156,34 @@ class LabServer(unittest.TestCase):
             self.assertGreaterEqual(len(res["model"]["runs"]), 1)
 
     def test_a_design_you_can_run_is_played_by_the_new_engine(self):
-        sc = self.scenario("notes/notes.json")
+        sc = self.scenario("notes/notes.design")
         _, res = self.call("/api/model?id=" + sc["id"])
         self.assertTrue(res["ok"])
         self.assertEqual(res["model"]["labels"]["break"], "Wrong")
         self.assertEqual(sorted((f["place"], f["verdict"]) for f in res["model"]["runs"][0]["faults"]), [("the note is empty", "refused"), ("the site is down", "refused")])
         _, src = self.call("/api/source?id=" + sc["id"])
-        doc = json.loads(src["text"])
-        del doc["parts"]["publish"]["seq"][0]["handles"]
-        _, res = self.call("/api/check", {"id": sc["id"], "text": json.dumps(doc)})
+        text = src["text"].replace("        REFUSE WHEN the note is empty\n", "")
+        self.assertNotEqual(text, src["text"])
+        _, res = self.call("/api/check", {"id": sc["id"], "text": text})
         self.assertIn(("the note is empty", "passed"), [(f["place"], f["verdict"]) for f in res["model"]["runs"][0]["faults"]])
         self.assertTrue(any(l.startswith("unanswered  the note is empty") for l in res["check"]["lines"]))
-        doc["colour"] = "blue"
-        _, res = self.call("/api/check", {"id": sc["id"], "text": json.dumps(doc)})
+        _, res = self.call("/api/check", {"id": sc["id"], "text": text + "\nCOLOUR blue\n"})
         self.assertFalse(res["ok"])
-        self.assertIn("colour", res["refused"][0])
+        self.assertIn("COLOUR", res["refused"][0])
 
     def test_a_design_written_as_text_is_listed_played_refused_formatted_and_saved(self):
-        printed = subprocess.run([lab.engine.syntax_tool(), "print", "A", os.path.join(self.designs, "notes", "notes.json")], capture_output=True, text=True)
-        self.assertEqual(printed.returncode, 0, printed.stderr)
-        text = printed.stdout
+        with open(os.path.join(self.designs, "notes", "notes.design"), encoding="utf-8") as f:
+            text = f.read()
         path = os.path.join(self.designs, "notes", "written.design")
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
+        with open(os.path.join(self.designs, "notes", "written.json"), "w", encoding="utf-8") as f:
+            json.dump(lab.engine.read_text(text, "notes.design"), f)              # the same design, in JSON
         try:
             sc = self.scenario("notes/written.design")
             _, res = self.call("/api/model?id=" + sc["id"])
             self.assertTrue(res["ok"], res.get("refused"))
-            _, json_res = self.call("/api/model?id=" + self.scenario("notes/notes.json")["id"])
+            _, json_res = self.call("/api/model?id=" + self.scenario("notes/written.json")["id"])
             self.assertEqual(self.verdicts(res), self.verdicts(json_res))           # written as text, it plays as its JSON
             broken = text + "\nFACT WHEN it rains\n"
             _, res = self.call("/api/check", {"id": sc["id"], "text": broken})
@@ -195,17 +194,16 @@ class LabServer(unittest.TestCase):
             self.assertEqual(res["saved"], "copy.design")
             self.scenario("notes/copy.design")
         finally:
-            for name in ("written.design", "copy.design"):
+            for name in ("written.design", "written.json", "copy.design"):
                 if os.path.exists(os.path.join(self.designs, "notes", name)):
                     os.remove(os.path.join(self.designs, "notes", name))
 
     def test_a_named_fact_is_listed_with_its_meaning(self):
-        sc = self.scenario("notes/notes.json")
+        sc = self.scenario("notes/notes.design")
         _, src = self.call("/api/source?id=" + sc["id"])
-        doc = json.loads(src["text"])
-        doc["facts"].append({"name": "publishing", "means": {"not": "preview"}, "says": "the note is going to the site"})
-        doc["parts"]["publish"]["seq"][1]["when"] = "publishing"
-        _, res = self.call("/api/check", {"id": sc["id"], "text": json.dumps(doc)})
+        text = src["text"].replace("FAULT the site is down\n", "FACT publishing MEANS NOT preview\n    SAYS the note is going to the site\nFAULT the site is down\n")
+        text = text.replace("    ACTION put on site\n", "    ACTION put on site WHEN publishing\n")
+        _, res = self.call("/api/check", {"id": sc["id"], "text": text})
         self.assertTrue(res["ok"], res.get("refused"))
         got = [f for f in res["model"]["facts"] if f["name"] == "publishing"]
         self.assertEqual(got, [{"name": "publishing", "fault": False, "open": False, "about": "", "says": "the note is going to the site", "named": True, "means": "not preview"}])

@@ -1,0 +1,119 @@
+SYSTEM git: the operations pk runs
+REPORTS git's message
+RUNS
+    fetch tags
+    fetch the branch
+    commit
+    reset to the commit before
+    switch
+    fast-forward
+    tag
+    push the branch and the tag
+    push the branch
+
+PLACE working tree ONE LASTING
+    SAYS What is checked out. git replaces it whole; a definition above can name the files in it.
+PLACE tags MANY LASTING
+PLACE remote-tracking branch ONE LASTING
+PLACE the branch SERIES LASTING GIVEN
+PLACE the other branch SERIES LASTING GIVEN
+PLACE origin LASTING
+PLACE origin's tags MANY LASTING IN origin
+PLACE origin's branch SERIES LASTING IN origin GIVEN
+PLACE git's message ONE REPORT
+
+FAULT origin does not answer ABOUT origin
+    SAYS the remote cannot be reached, or does not have what is asked for
+FAULT the commit cannot be made
+    SAYS git commit exits non-zero
+FAULT the branch cannot be fast-forwarded
+    SAYS the other branch's history does not contain the branch's last commit
+FAULT the tag cannot be created
+    SAYS git tag exits non-zero for a reason other than the name being taken
+FAULT origin rejects the push
+    SAYS a ref is not a fast-forward of origin's, or origin refuses it for a reason of its own
+FAULT the switch fails
+    SAYS git switch exits non-zero for a reason other than local changes
+OPEN a merge refuses a tree with changes it would overwrite
+    SAYS git merge --ff-only stops when the working tree has uncommitted changes to files the merge changes. The part of the manual read does not say.
+FACT origin's tag names the commit pushed ONLY origin's tags already has the member
+    SAYS origin already has the tag, on the commit the push sends
+
+ACTION fetch tags
+    READS origin's tags
+    CREATE tags MANY FROM origin's tags
+    REFUSE WHEN origin does not answer
+    FAIL WHEN tags already has the member
+        SAYS The update is rejected, the other tags are created, and git exits 1.
+    ACCEPT WHEN tags is given a key twice
+        BECAUSE A remote holds one tag of each name.
+    SAYS git fetch origin --tags. An update to a tag that exists locally is rejected without --force; git 2.54 then exits 1, and still creates the other tags.
+
+ACTION fetch the branch
+    READS origin's branch
+    REPLACE remote-tracking branch FROM origin's branch
+    REFUSE WHEN origin does not answer
+    ACCEPT WHEN remote-tracking branch holds what is kept nowhere
+        BECAUSE A remote-tracking branch is a copy of origin's branch, and a fetch makes it again.
+    SAYS git fetch origin <branch>.
+
+ACTION commit
+    READS working tree
+    CREATE the branch FROM working tree
+    REFUSE WHEN the commit cannot be made
+    SAYS git commit: the working tree's changes become a new commit on the branch.
+
+ACTION reset to the commit before
+    READS the branch
+    DESTROY the branch
+    REPLACE working tree FROM the branch
+    ACCEPT WHEN the branch is held elsewhere
+        BECAUSE reset moves the branch as asked. It does not look for other holders of the commit.
+    ACCEPT WHEN working tree holds what is kept nowhere
+        BECAUSE --hard overwrites all files with the version from the commit.
+    SAYS git reset --hard HEAD~1. The manual: overwrite all files and directories with the version from the commit.
+
+ACTION switch
+    READS the branch
+    REPLACE working tree FROM the branch
+    REFUSE WHEN working tree holds what is kept nowhere
+    REFUSE WHEN the switch fails
+    SAYS git switch <branch>. The manual: the operation is aborted if it leads to loss of local changes.
+
+ACTION fast-forward
+    READS
+        the branch
+        the other branch
+    CREATE the branch FROM the other branch
+    REPLACE working tree FROM the branch
+    REFUSE WHEN the branch cannot be fast-forwarded
+    REFUSE WHEN working tree holds what is kept nowhere AND a merge refuses a tree with changes it would overwrite
+    SAYS git merge --ff-only <other>. The manual: when not possible, refuse to merge and exit with a non-zero status.
+
+ACTION tag
+    READS the branch
+    CREATE tags FROM the branch
+    REFUSE WHEN tags already has the member
+    REFUSE WHEN the tag cannot be created
+    SAYS git tag <name>. The manual: -f replaces an existing tag instead of failing.
+
+ACTION push the branch and the tag
+    READS
+        the branch
+        tags
+    CREATE origin's branch FROM the branch
+    CREATE origin's tags FROM tags
+    REFUSE WHEN origin does not answer
+    REFUSE WHEN origin rejects the push
+    ACCEPT WHEN origin's tag names the commit pushed
+        BECAUSE the ref is already what the push sends, so git takes the push
+    REFUSE WHEN origin's tags already has the member
+        SAYS An update to a tag origin already has on another commit is rejected without --force.
+    SAYS git push --atomic origin <branch> <tag>: both refs are taken, or neither.
+
+ACTION push the branch
+    READS the branch
+    CREATE origin's branch FROM the branch
+    REFUSE WHEN origin does not answer
+    REFUSE WHEN origin rejects the push
+    SAYS git push origin <branch>.

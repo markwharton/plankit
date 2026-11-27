@@ -1,0 +1,29 @@
+SYSTEM notes
+REPORTS message
+RUNS publish
+
+PLACE text ONE OUTSIDE
+PLACE draft ONE LASTING
+PLACE site ONE LASTING
+PLACE message ONE REPORT
+
+FACT preview
+    SAYS --preview is given
+FAULT the note is empty ABOUT text
+FAULT the site is down
+    SAYS the site does not answer
+
+SEQ publish
+    ACTION save draft
+        READS text
+        CREATE draft
+            LATER UNDONE
+        REFUSE WHEN the note is empty
+    ACTION put on site
+        READS draft
+        CREATE site
+        REFUSE WHEN the site is down
+
+RULE a preview shows the note as it will appear
+    ABOUT put on site
+    WHEN preview

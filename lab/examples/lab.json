@@ -2,7 +2,7 @@
   "scenarios": [
     {
       "label": "pk, as a design you can run",
-      "definition": "../engine/pk.json",
+      "definition": "../engine/pk.design",
       "root": "../..",
       "readonly": true,
       "note": "The new engine: pk changelog, release and ship, played for every choice of facts."

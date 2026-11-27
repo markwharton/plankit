@@ -79,7 +79,7 @@ Files under `designs/` can be saved.
 | `lab.py` | The server: finds designs, runs the checker, saves a file. |
 | `lab.html` | The page: the editor, the five views and the panels. |
 | `examples/` | The ten stages of the contacts design, and `lab.json`, which also lists the checker's trials and `definition/pk.json`. |
-| `designs/` | Designs you can save. It starts with a copy of the contacts design. |
+| `designs/` | Designs you can save. It starts with a copy of the contacts design, and a design written as text, `notes/notes.design`. |
 | `engine/` | The engine that plays a design you can run, its reference `DESIGN.md`, pk's design, and `BLIND-TEST.md`. |
 | `test_lab.py` | Tests of the server against the real checker and the engine. |
 | `e2e.mjs` | A test of the page in headless Chrome. |

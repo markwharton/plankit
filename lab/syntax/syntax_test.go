@@ -33,8 +33,8 @@ func designs(t *testing.T) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) < 16 {
-		t.Fatalf("found %d designs under lab/, expected at least 16", len(out))
+	if len(out) < 12 {
+		t.Fatalf("found %d designs in JSON under lab/, expected at least 12", len(out))
 	}
 	return out
 }
@@ -186,6 +186,9 @@ func TestEveryDesignFileIsThePrintersText(t *testing.T) {
 		}
 		return nil
 	})
+	if len(files) < 4 {
+		t.Fatalf("found %d designs written as text under lab/, expected at least 4", len(files))
+	}
 	for _, path := range files {
 		data, err := os.ReadFile(path)
 		if err != nil {
