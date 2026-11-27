@@ -33,19 +33,15 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 100, "release": 50, "ship": 283})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 92, "release": 50, "ship": 255})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [
-            ("open", "a rejected tag update fails the fetch"),                 # git's manual does not say, and pk's fetch depends on it
-            ("expect", "changelog with --dry-run writes nothing"),
             ("unanswered", "a tag does not name a version"),
             ("unanswered", "origin has no address"),                           # changelog accepts it, and a run that reads what changelog left is asked again
             ("unanswered", "origin's tags already has the member"),            # comes up from git's push, and no push action answers it
             ("unanswered", "settings are invalid"),
             ("unanswered", "the branch is not the default"),
-            ("unanswered", "the working branch is unfit"),
-            ("left-behind", "remote-tracking branch"),
-            ("left-behind", "tags")])
+            ("unanswered", "the working branch is unfit")])
 
     def test_what_git_goes_on_with_pk_refuses(self):
         d = load("pk.json")
@@ -57,14 +53,18 @@ class Pk(unittest.TestCase):
 
     def test_a_bad_tag_is_asked_about_where_the_tags_were_fetched(self):
         d = load("pk.json")
-        fetched = [p for p in engine.explore(d, "changelog") if p.env.get("no local tags") and p.env.get("a tag does not name a version")]
+        fetched = [p for p in engine.explore(d, "changelog") if p.env.get("no local version tag") and p.env.get("a tag does not name a version")]
         self.assertTrue(fetched)                           # a fetch adds tags: what can be wrong with a tag still stands
         self.assertTrue(any(("stamp versions", "a tag does not name a version") in p.open for p in fetched))
 
-    def test_the_code_variant_differs_in_two_places(self):
+    def test_the_code_variant_differs_in_six_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))
         self.assertEqual([f["subject"] for f in got], [
-            "branch checks: the design refuses, the code goes ahead",
+            "branch checks: the design refuses, the code goes ahead",                       # the code skips the trunk check when origin names no default
+            "fetch the tags: the design goes ahead, the code does its work and then fails",  # a rejected tag update: the design tells and goes on
+            "fetch the tags: the design skips it, the code does its work and then fails",    # a dry run: the design reads origin's tags and fetches nothing
+            "fetch the tags: the design skips it, the code goes ahead",
+            "fetch the tags: the design skips it, the code refuses",
             "pre-flight: the design refuses, the code goes ahead"])
 
 

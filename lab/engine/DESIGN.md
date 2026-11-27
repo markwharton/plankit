@@ -510,18 +510,15 @@ that sentence. Held by `lab/engine/test_pk.py`.
 
 `git.json` was written from git's manual for each operation, and from
 pk's code for which commands it runs. Where the part of the manual
-read does not say, it has an open fact.
+read does not say, it has an open fact. Whether a rejected update to a
+tag fails the fetch was settled by running git 2.54: it does.
 
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- pk's design lists 20 facts and git's lists 8. Before it stood on
+- pk's design lists 21 facts and git's lists 7. Before it stood on
   git, pk's listed 32.
-- The design has 433 plays: 100 of changelog, 50 of release, 283 of
+- The design has 397 plays: 92 of changelog, 50 of release, 255 of
   ship.
-- It reports 10 questions:
-  - git's manual does not say whether a rejected tag update fails the
-    fetch, and pk's fetch depends on it.
-  - "changelog with --dry-run writes nothing" is broken by fetching
-    tags.
+- It reports 6 questions:
   - Four faults of a run's own, carried into something lasting with no
     answer: a tag that does not name a version, invalid settings, a
     branch that is not the default, and an unfit working branch.
@@ -530,15 +527,16 @@ read does not say, it has an open fact.
   - Origin has no address. changelog accepts it and writes the section
     with no link. A run that reads what changelog left is asked again,
     and none answers.
-  - Two asking whether what a fetch brought stands when a later
-    failure leaves the run.
 - git's reset goes on with a commit held elsewhere and with a tree
   that holds what is kept nowhere. Both come up to `undo`, which
   refuses both. Neither is a fact pk's design lists.
-- `pk-code.json` is that design changed in one place to what an
-  earlier description of pk's code says the code does. Played against
-  the design it gives 2 `differs` findings, each naming the facts that
-  cause it.
+- `pk-code.json` is that design changed to what pk's code does. In
+  one place it follows an earlier description of the code. In two it
+  keeps what the code does today where the owner has decided
+  otherwise: a dry run fetches the tags, and a rejected update to a tag
+  stops changelog. Played against the design it gives 6 `differs`
+  findings, each naming the facts that cause it: 2 from the first, and
+  4 from the two decisions, which are the changes pk's code needs.
 
 ## Converting an older design
 
@@ -567,7 +565,8 @@ About places:
 - Play a run member by member. A fact holds for the whole place in a
   play, so an import where some names are already there and some are
   not is one play or the other.
-- Say that a `many` is empty. "No local tags" is a fact listed by hand.
+- Say that a `many` has no member of a kind. "No local version tag" is
+  a fact listed by hand.
 - Replace a `many` as a whole. A `replace` there is read as replacing
   a member, and the engine asks whose member it is.
 - Say that a step changes something whose place or operation is not

@@ -92,8 +92,8 @@
       "says": "no commit since the last version tag is one the changelog lists"
     },
     {
-      "name": "no local tags",
-      "says": "the repository has no tags"
+      "name": "no local version tag",
+      "says": "the repository has no version tag"
     },
     {
       "name": "trunk flow",
@@ -223,7 +223,7 @@
         "branch checks",
         {
           "use": "fetch the tags",
-          "when": "no local tags"
+          "when": "no local version tag"
         },
         "infer version",
         "pending release check",
@@ -309,8 +309,7 @@
         },
         {
           "when": "tags already has the member",
-          "then": "accept",
-          "because": "The fetch runs only when the repository has no tags."
+          "then": "fail"
         },
         {
           "when": "tags is given a key twice",
@@ -318,7 +317,9 @@
           "because": "git's reason stands: a remote holds one tag of each name."
         }
       ],
-      "says": "with no local tags, changelog fetches origin's tags first and measures from the latest"
+      "says": "with no local tags, changelog fetches origin's tags first and measures from the latest",
+      "later": "stands",
+      "because": "the tags fetched are origin's, and a later run would fetch them again"
     },
     "infer version": {
       "do": "infer version",
@@ -606,7 +607,9 @@
           "then": "accept",
           "because": "pre-flight fetches, which brings it up to date"
         }
-      ]
+      ],
+      "later": "stands",
+      "because": "a remote-tracking branch is a copy of origin's branch, and the next fetch makes it again"
     },
     "pre-flight": {
       "do": "pre-flight",

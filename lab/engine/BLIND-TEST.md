@@ -70,9 +70,10 @@ for pk's changelog and release.
 
 `pk-on-git-blind.json` beside it is the sixth round's, written for the
 same two commands once a design could stand on another. It stands on
-`lab/engine/git.json`, which the writer was given. The engine accepted
-it on the first run. Its `on` path is the one thing changed since it
-was written, so that it finds git's design from where it is kept.
+`git-at-round-6.json` beside it, a copy of git's design as it was in
+that round, when the writer was given it at `lab/engine/git.json`. The
+engine accepted it on the first run. Its `on` path is the one thing
+changed since it was written, so that it finds that copy.
 
 `data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
 designs written the same way for one flow each of three other systems.

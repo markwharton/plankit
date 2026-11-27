@@ -86,11 +86,6 @@
       "says": "git switch exits non-zero for a reason other than local changes"
     },
     {
-      "name": "a rejected tag update fails the fetch",
-      "open": true,
-      "says": "git fetch --tags exits non-zero when it rejects an update to a tag that exists locally. The manual says the update is rejected, and the part read does not say what the exit status is."
-    },
-    {
       "name": "a merge refuses a tree with changes it would overwrite",
       "open": true,
       "says": "git merge --ff-only stops when the working tree has uncommitted changes to files the merge changes. The part of the manual read does not say."
@@ -99,7 +94,7 @@
   "parts": {
     "fetch tags": {
       "do": "fetch tags",
-      "says": "git fetch origin --tags. Since git 2.20 an update to a tag that exists locally is rejected without --force.",
+      "says": "git fetch origin --tags. An update to a tag that exists locally is rejected without --force; git 2.54 then exits 1, and still creates the other tags.",
       "reads": [
         "origin's tags"
       ],
@@ -117,18 +112,9 @@
           "then": "refuse"
         },
         {
-          "when": {
-            "all": [
-              "tags already has the member",
-              "a rejected tag update fails the fetch"
-            ]
-          },
-          "then": "fail"
-        },
-        {
           "when": "tags already has the member",
-          "then": "tell",
-          "says": "The update is rejected and the local tag is left as it is."
+          "then": "fail",
+          "says": "The update is rejected, the other tags are created, and git exits 1."
         },
         {
           "when": "tags is given a key twice",

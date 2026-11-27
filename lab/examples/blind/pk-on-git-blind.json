@@ -1,6 +1,6 @@
 {
   "system": "pk: changelog and release",
-  "on": ["../../engine/git.json"],
+  "on": ["git-at-round-6.json"],
   "reports": "pk's message",
   "places": [
     {

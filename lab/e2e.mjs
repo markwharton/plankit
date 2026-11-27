@@ -187,7 +187,7 @@ async function main() {
   await until(async () => /Describe what the code does/.test(await text("#panel") || ""), "the runnable prompts");
   check("a runnable design offers its own prompts", /Write a design from what a system should do/.test(await text("#panel")));
   await click("#c-panel button", "Findings");
-  check("its questions are listed", /left-behind/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
+  check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
   await open("notes/notes.json");
   const note = JSON.parse(readFileSync(join(designs, "notes", "notes.json"), "utf8"));
   delete note.parts.publish.seq[0].handles;
