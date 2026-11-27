@@ -1,0 +1,16 @@
+{
+  "system": "a store one layer down",
+  "reports": "store message",
+  "places": [
+    {"name": "shelf", "is": "many", "kind": "lasting", "given": true},
+    {"name": "store message", "is": "one", "kind": "report"}
+  ],
+  "facts": [
+    {"name": "the store is closed", "fault": true, "says": "the store does not open"}
+  ],
+  "parts": {
+    "put away": {"do": "put away", "reads": ["shelf"], "changes": [{"place": "shelf", "how": "create", "many": true}],
+                 "handles": [{"when": "the store is closed", "then": "refuse"}]}
+  },
+  "runs": ["put away"]
+}

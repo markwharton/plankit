@@ -872,6 +872,37 @@ def everything(doc):
             engine.findings(d, plays))
 
 
+class TextSyntax(unittest.TestCase):
+    def test_the_text_syntax_fixture_uses_every_key_the_engine_reads(self):
+        """lab/syntax round-trips this design through its text forms, so a key the engine
+        gains fails here until the fixture uses it, and there until the syntax prints it."""
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "syntax", "testdata", "every-key.json")
+        seen, was = {}, engine.only
+        def recording(obj, kind, where):
+            if isinstance(obj, dict):
+                seen.setdefault(kind, set()).update(obj)
+            return was(obj, kind, where)
+        engine.only = recording
+        try:
+            with open(path, encoding="utf-8") as f:
+                doc = json.load(f)
+            engine.Design(doc, ".", os.path.dirname(path))
+        finally:
+            engine.only = was
+        def holds(x):                                            # a hold is read only when its test is looked up, so its keys are taken from the file
+            if isinstance(x, dict):
+                if isinstance(x.get("hold"), dict):
+                    seen.setdefault("hold", set()).update(x["hold"])
+                for v in x.values():
+                    holds(v)
+            elif isinstance(x, list):
+                for v in x:
+                    holds(v)
+        holds(doc)
+        files = {"accepted", "acceptance"}                       # an acceptances file is not a design, and has no text form yet
+        self.assertEqual({k: sorted(v - seen.get(k, set())) for k, v in engine.KEYS.items() if k not in files and v - seen.get(k, set())}, {})
+
+
 class Named(unittest.TestCase):
     def test_a_design_with_a_named_fact_plays_as_the_one_with_its_meaning_written_out(self):
         self.assertEqual(everything(named()), everything(named(written=True)))

@@ -1,0 +1,344 @@
+{
+  "system": "a desk that uses every key the engine reads",
+  "on": [
+    "below.json"
+  ],
+  "reports": "message",
+  "faults": 2,
+  "places": [
+    {
+      "name": "request",
+      "is": "one",
+      "kind": "outside",
+      "says": "what the person asks for"
+    },
+    {
+      "name": "books",
+      "is": "many",
+      "kind": "lasting",
+      "owner": "lend"
+    },
+    {
+      "name": "loan record",
+      "is": "one",
+      "kind": "lasting"
+    },
+    {
+      "name": "due dates",
+      "is": "one",
+      "kind": "lasting",
+      "in": "loan record"
+    },
+    {
+      "name": "receipt",
+      "is": "one",
+      "kind": "run"
+    },
+    {
+      "name": "message",
+      "is": "one",
+      "kind": "report"
+    },
+    {
+      "name": "ledger",
+      "is": "many",
+      "kind": "lasting",
+      "given": true
+    },
+    {
+      "name": "history",
+      "is": "series",
+      "kind": "lasting"
+    }
+  ],
+  "facts": [
+    {
+      "name": "preview",
+      "says": "--preview is given"
+    },
+    {
+      "name": "the request is unreadable",
+      "fault": true,
+      "about": "request"
+    },
+    {
+      "name": "the card has expired",
+      "fault": true,
+      "at": [
+        "check the card",
+        "file the book"
+      ],
+      "only": {
+        "not": "preview"
+      }
+    },
+    {
+      "name": "fines are waived",
+      "open": true,
+      "says": "nobody has decided"
+    },
+    {
+      "name": "the member may borrow",
+      "means": {
+        "all": [
+          {
+            "not": "the card has expired"
+          },
+          {
+            "not": "preview"
+          }
+        ]
+      },
+      "says": "a member whose card is in date"
+    },
+    {
+      "name": "the book is filed"
+    },
+    {
+      "name": "the dates are stamped"
+    }
+  ],
+  "parts": {
+    "lend": {
+      "name": "lend",
+      "seq": [
+        "check the card",
+        {
+          "use": "file the book",
+          "when": "the member may borrow",
+          "name": "file it",
+          "says": "the book goes on the shelf"
+        },
+        {
+          "all": [
+            "stamp the dates",
+            "write the receipt"
+          ],
+          "name": "paperwork",
+          "when": {
+            "not": "preview"
+          },
+          "handles": [
+            {
+              "when": "the request is unreadable",
+              "then": "warn",
+              "tells": [
+                "message"
+              ]
+            }
+          ],
+          "says": "two jobs, in no order"
+        },
+        {
+          "choose": [
+            {
+              "when": "fines are waived",
+              "run": "say nothing"
+            }
+          ],
+          "otherwise": null,
+          "name": "fines",
+          "when": {
+            "not": "preview"
+          },
+          "handles": [
+            {
+              "then": "tell",
+              "says": "the person hears which way it went"
+            }
+          ],
+          "says": "one of two"
+        }
+      ],
+      "when": {
+        "not": "preview"
+      },
+      "handles": [
+        {
+          "when": "the request is unreadable",
+          "then": "accept",
+          "because": "a later step reads it again"
+        }
+      ],
+      "says": "lend a book"
+    },
+    "check the card": {
+      "do": "check the card",
+      "reads": [
+        "request",
+        {
+          "place": "loan record",
+          "when": {
+            "not": "preview"
+          }
+        }
+      ],
+      "handles": [
+        {
+          "when": "the card has expired",
+          "then": "ask",
+          "no": "stop",
+          "tells": "message",
+          "hold": {
+            "file": "lab/syntax/testdata/every-key.json",
+            "test": "TestCheckTheCard"
+          },
+          "says": "the person may lend anyway"
+        },
+        {
+          "when": "the request is unreadable",
+          "then": "refuse"
+        }
+      ]
+    },
+    "file the book": {
+      "do": "file the book",
+      "uses": "put away",
+      "with": {
+        "shelf": "books"
+      },
+      "makes": {
+        "the book is filed": true
+      },
+      "later": "stands",
+      "because": "a filed book stays filed",
+      "rehearsal": "preview",
+      "when": {
+        "not": "the card has expired"
+      },
+      "handles": [
+        {
+          "when": "the store is closed",
+          "then": "fail"
+        }
+      ],
+      "hold": {
+        "file": "lab/syntax/testdata/every-key.json",
+        "test": "TestFileTheBook"
+      },
+      "says": "the store files it"
+    },
+    "stamp the dates": {
+      "do": "stamp the dates",
+      "reads": [
+        "request"
+      ],
+      "changes": [
+        {
+          "place": "due dates",
+          "how": "replace",
+          "from": "request",
+          "when": {
+            "not": "preview"
+          },
+          "later": "undone",
+          "makes": {
+            "the dates are stamped": true
+          },
+          "hold": {
+            "file": "lab/syntax/testdata/every-key.json",
+            "test": "TestStamp"
+          },
+          "says": "the dates come from the request"
+        }
+      ]
+    },
+    "write the receipt": {
+      "do": "write the receipt",
+      "reads": [
+        "request"
+      ],
+      "changes": [
+        {
+          "place": "receipt",
+          "how": "create",
+          "later": "stands",
+          "because": "a receipt is kept"
+        },
+        {
+          "place": "ledger",
+          "how": "create",
+          "many": true,
+          "later": "stands",
+          "because": "the ledger keeps every line"
+        }
+      ]
+    },
+    "say nothing": {
+      "do": "say nothing",
+      "changes": [
+        {
+          "place": "message",
+          "how": "create"
+        }
+      ]
+    },
+    "clear the dates": {
+      "do": "clear the dates",
+      "reads": [
+        "loan record"
+      ],
+      "changes": [
+        {
+          "place": "loan record",
+          "how": "destroy"
+        }
+      ]
+    }
+  },
+  "runs": [
+    "lend",
+    "clear the dates"
+  ],
+  "expects": [
+    {
+      "name": "a preview, lent or not, changes nothing",
+      "in": "lend",
+      "when": "preview",
+      "on": "success",
+      "never changes": [
+        "books",
+        "loan record"
+      ],
+      "never creates": [
+        "receipt"
+      ],
+      "ends": {
+        "due dates": "untouched",
+        "message": "unchanged"
+      },
+      "runs": [
+        "check the card"
+      ],
+      "never runs": [
+        "stamp the dates"
+      ],
+      "before": "stamp the dates",
+      "place": "receipt",
+      "is": "untouched",
+      "because": "a preview is a look, not a loan",
+      "hold": {
+        "file": "lab/syntax/testdata/every-key.json",
+        "test": "TestPreview"
+      },
+      "says": "nothing is lent in a preview"
+    }
+  ],
+  "rules": [
+    {
+      "rule": "a loan is due in three weeks",
+      "about": "stamp the dates",
+      "when": {
+        "not": "preview"
+      },
+      "hold": {
+        "file": "lab/syntax/testdata/every-key.json",
+        "test": "TestThreeWeeks"
+      },
+      "says": [
+        "three weeks from the day",
+        "counted in days"
+      ]
+    }
+  ]
+}
