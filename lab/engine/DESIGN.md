@@ -514,14 +514,13 @@ read does not say, it has an open fact. Whether a rejected update to a
 tag fails the fetch was settled by running git 2.54: it does.
 
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- pk's design lists 21 facts and git's lists 7. Before it stood on
+- pk's design lists 25 facts and git's lists 7. Before it stood on
   git, pk's listed 32.
-- The design has 397 plays: 92 of changelog, 50 of release, 255 of
+- The design has 593 plays: 168 of changelog, 73 of release, 352 of
   ship.
-- It reports 6 questions:
-  - Four faults of a run's own, carried into something lasting with no
-    answer: a tag that does not name a version, invalid settings, a
-    branch that is not the default, and an unfit working branch.
+- It reports 3 questions:
+  - A fault of a run's own, carried into something lasting with no
+    answer: a tag that does not name a version.
   - Origin already has the tag. git's push refuses it, and neither
     push action answers.
   - Origin has no address. changelog accepts it and writes the section
@@ -530,13 +529,13 @@ tag fails the fetch was settled by running git 2.54: it does.
 - git's reset goes on with a commit held elsewhere and with a tree
   that holds what is kept nowhere. Both come up to `undo`, which
   refuses both. Neither is a fact pk's design lists.
-- `pk-code.json` is that design changed to what pk's code does. In
-  one place it follows an earlier description of the code. In two it
-  keeps what the code does today where the owner has decided
-  otherwise: a dry run fetches the tags, and a rejected update to a tag
-  stops changelog. Played against the design it gives 6 `differs`
-  findings, each naming the facts that cause it: 2 from the first, and
-  4 from the two decisions, which are the changes pk's code needs.
+- `pk-code.json` is that design changed to what pk's code does where
+  the owner has decided otherwise: a dry run fetches the tags, a
+  rejected update to a tag stops changelog, changelog does not check a
+  branch that is behind origin, and changelog says nothing when origin
+  names no default branch. Played against the design it gives 5
+  `differs` findings, each naming the facts that cause it. They are the
+  changes pk's code needs.
 
 ## Converting an older design
 

@@ -110,16 +110,45 @@
       "about": "settings"
     },
     {
-      "name": "the working branch is unfit",
+      "name": "no branch is checked out",
       "fault": true,
       "about": "working branch",
-      "says": "no branch checked out, a protected branch, or a branch that is behind origin or does not hold the last version tag"
+      "says": "HEAD is detached"
+    },
+    {
+      "name": "the working branch is protected",
+      "fault": true,
+      "about": "working branch",
+      "says": "the branch is one guard.branches lists"
+    },
+    {
+      "name": "the working branch is not on origin",
+      "fault": true,
+      "about": "working branch"
+    },
+    {
+      "name": "the working branch is behind origin",
+      "fault": true,
+      "about": "working branch",
+      "says": "origin's tip of the branch, read without a fetch, is not in the branch's history"
+    },
+    {
+      "name": "origin names no default branch",
+      "only": "trunk flow",
+      "says": "origin advertises no HEAD, so the default-branch check cannot run"
     },
     {
       "name": "the branch is not the default",
       "fault": true,
       "about": "working branch",
-      "only": "trunk flow"
+      "only": {
+        "all": [
+          "trunk flow",
+          {
+            "not": "origin names no default branch"
+          }
+        ]
+      }
     },
     {
       "name": "a tag does not name a version",
@@ -168,21 +197,23 @@
     {
       "name": "an --exclude entry matches no commit",
       "fault": true
-    },
-    {
-      "name": "origin names no default branch",
-      "only": "trunk flow"
     }
   ],
   "parts": {
     "changelog": {
-      "choose": [
+      "name": "changelog",
+      "seq": [
+        "load settings",
         {
-          "when": "undo",
-          "run": "undo"
+          "choose": [
+            {
+              "when": "undo",
+              "run": "undo"
+            }
+          ],
+          "otherwise": "make changelog"
         }
-      ],
-      "otherwise": "make changelog"
+      ]
     },
     "undo": {
       "do": "undo",
@@ -213,6 +244,19 @@
             "not": "the last commit is a release commit"
           },
           "then": "refuse"
+        },
+        {
+          "when": {
+            "any": [
+              "the branch is not the default",
+              "no branch is checked out",
+              "the working branch is protected",
+              "the working branch is not on origin",
+              "the working branch is behind origin"
+            ]
+          },
+          "then": "accept",
+          "because": "undo removes only a commit that nothing else holds, so the branch it is on does not matter"
         }
       ],
       "says": "--undo unwinds the release commit and restores the changelog file and the version files"
@@ -253,9 +297,6 @@
     },
     "branch checks": {
       "do": "branch checks",
-      "when": {
-        "not": "dry run"
-      },
       "reads": [
         "settings",
         "working tree",
@@ -264,12 +305,22 @@
       ],
       "handles": [
         {
+          "when": "the working branch is behind origin",
+          "then": "accept",
+          "because": "changelog makes no check for it; release refuses it before tagging"
+        },
+        {
           "when": {
-            "any": [
-              "settings are invalid",
-              "working tree holds what is kept nowhere",
-              "the working branch is unfit",
-              "origin does not answer"
+            "all": [
+              {
+                "not": "dry run"
+              },
+              {
+                "any": [
+                  "working tree holds what is kept nowhere",
+                  "no branch is checked out"
+                ]
+              }
             ]
           },
           "then": "refuse",
@@ -280,11 +331,10 @@
         },
         {
           "when": {
-            "all": [
-              "the branch is not the default",
-              {
-                "not": "origin names no default branch"
-              }
+            "any": [
+              "the working branch is protected",
+              "the working branch is not on origin",
+              "origin does not answer"
             ]
           },
           "then": "refuse",
@@ -292,6 +342,29 @@
             "file": "internal/changelog/changelog_test.go",
             "test": "TestRefusals"
           }
+        },
+        {
+          "when": "the branch is not the default",
+          "then": "refuse",
+          "hold": {
+            "file": "internal/changelog/changelog_test.go",
+            "test": "TestTrunkFlowRefusesNonDefaultBranch"
+          }
+        },
+        {
+          "when": {
+            "any": [
+              "working tree holds what is kept nowhere",
+              "no branch is checked out"
+            ]
+          },
+          "then": "accept",
+          "because": "a dry run writes nothing, so it may read the commits from anywhere"
+        },
+        {
+          "when": "origin names no default branch",
+          "then": "accept",
+          "because": "the check cannot run, and changelog goes on without saying so"
         }
       ]
     },
@@ -529,6 +602,7 @@
     "release": {
       "name": "release",
       "seq": [
+        "load settings",
         "fetch the working branch",
         "pre-flight",
         {
@@ -633,9 +707,12 @@
               {
                 "not": "the last commit is a release commit"
               },
-              "settings are invalid",
               "working tree holds what is kept nowhere",
-              "the working branch is unfit",
+              "no branch is checked out",
+              "the working branch is protected",
+              "the working branch is not on origin",
+              "the working branch is behind origin",
+              "the last version tag is not in the branch's history",
               "a tag does not name a version",
               {
                 "all": [
@@ -668,6 +745,11 @@
             "file": "internal/release/release_test.go",
             "test": "TestTrunkFlowRefusesNonDefaultBranch"
           }
+        },
+        {
+          "when": "origin names no default branch",
+          "then": "tell",
+          "says": "the run says the default-branch check could not run, and goes on"
         }
       ]
     },
@@ -861,6 +943,19 @@
       "seq": [
         "changelog",
         "release"
+      ]
+    },
+    "load settings": {
+      "do": "load settings",
+      "reads": [
+        "settings"
+      ],
+      "handles": [
+        {
+          "when": "settings are invalid",
+          "then": "refuse",
+          "says": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2"
+        }
       ]
     }
   },
