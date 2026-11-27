@@ -619,6 +619,7 @@ class Play:
         self.asked = set()                                 # the faults this play has already put as a question
         self.frames = []                                   # the runs below being played, each for the action that uses it
         self.rode = {p: set() for p in design.places}      # the faults a place's value was made with, accepted or told
+        self.told = {}                                     # action -> the places its answer told the person
         self.now.made.update({f: False for f in design.never_true})   # nothing in the model can have left these true
         self.stop = self.exec(run)                         # the failure that reached the run, or None
 
@@ -721,6 +722,8 @@ class Play:
             if then != "accept":
                 for t in d.told(fired):
                     self.state[t] = "created"
+                if not self.frames:
+                    self.told[name] = d.told(fired)
             if then == "refuse":
                 self.steps.append((name, "refused"))
                 return Failure("failed", name, fired)
@@ -796,6 +799,8 @@ class Play:
             if then != "accept":
                 for t in mine.told(fired):
                     self.state[t] = "created"
+                if not frame:
+                    self.told[name] = mine.told(fired)
             if not frame:
                 self.answered |= named
             elif then in ("accept", "tell", "warn"):   # an answer in a run below is that run's own: what it went on with comes up
@@ -1127,7 +1132,7 @@ def findings(design, plays):
     return sorted(out.values(), key=lambda f: (order_.index(f["kind"]), f["subject"]))
 
 
-DID = {"ran": "goes ahead", "refused": "refuses", "failed": "does its work and then fails", "warned": "warns and goes on", "skipped": "skips it", "declined": "stops at a person's no", "missing": "has no such action"}
+DID = {"ran": "goes ahead", "told": "tells and goes on", "refused": "refuses", "failed": "does its work and then fails", "warned": "warns and goes on", "skipped": "skips it", "declined": "stops at a person's no", "missing": "has no such action"}
 
 
 def read_accepted(path):
@@ -1175,8 +1180,9 @@ def compare(design, code, accepted=None):
                 given = sorted(set(p.given()) | set(c.given()))
                 places = [x for x in shared if p.state[x] != c.state[x]]
                 did = dict(c.steps)
-                parted = [(a, s, did.get(a, "missing")) for a, s in p.steps
-                          if did.get(a, "missing") != s and not (s == "skipped" and a not in did)]   # skipped here and absent there: both do nothing
+                told = lambda play, a, s: "told" if s == "ran" and play.told.get(a) else s   # a step that ran and told the person did something more
+                parted = [(a, told(p, a, s), told(c, a, did.get(a, "missing"))) for a, s in p.steps
+                          if told(c, a, did.get(a, "missing")) != told(p, a, s) and not (s == "skipped" and a not in did)]   # skipped here and absent there: both do nothing
                 if parted:
                     a, ds, cs = parted[0]
                     add(("parts", a, ds, cs), "%s: the design %s, the code %s" % (a, DID[ds], DID[cs]),

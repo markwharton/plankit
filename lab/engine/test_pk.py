@@ -58,10 +58,10 @@ class Pk(unittest.TestCase):
         got = engine.compare(load("pk.json"), load("pk-code.json"))
         self.assertEqual([f["subject"] for f in got], [
             "branch checks: the design refuses, the code goes ahead",                       # a branch behind origin: changelog makes no check
-            "fetch the tags: the design goes ahead, the code does its work and then fails",  # a rejected tag update: the design tells and goes on
+            "branch checks: the design tells and goes on, the code goes ahead",             # no default named: changelog says nothing
             "fetch the tags: the design skips it, the code does its work and then fails",    # a dry run: the design reads origin's tags and fetches nothing
             "fetch the tags: the design skips it, the code goes ahead",
-            "message ends created in the design and untouched in the code"])                # no default named: changelog says nothing
+            "fetch the tags: the design tells and goes on, the code does its work and then fails"])   # a rejected tag update
 
 
 if __name__ == "__main__":

@@ -467,6 +467,20 @@ class Engine(unittest.TestCase):
         self.assertEqual([f["subject"] for f in got], ["save draft: the design goes ahead, the code refuses"])
         self.assertIn("Every play where this happens has: the disk is full.", got[0]["shows"])
 
+    def test_a_step_that_tells_differs_from_one_that_goes_on_without_a_word(self):
+        design, code = notes(), notes()
+        design["facts"].append({"name": "the note is long", "about": "text"})
+        code["facts"].append({"name": "the note is long", "about": "text"})
+        design["parts"]["publish"]["seq"][0]["handles"].append({"when": "the note is long", "then": "tell"})
+        code["parts"]["publish"]["seq"][0]["handles"].append({"when": "the note is long", "then": "accept", "because": "a long note is fine"})
+        design["parts"]["publish"]["seq"][1]["handles"].append({"when": "preview", "then": "accept", "because": "a preview is shown"})
+        code["parts"]["publish"]["seq"][1]["handles"].append({"when": "preview", "then": "tell"})
+        got = engine.compare(engine.Design(design), engine.Design(code))
+        self.assertEqual([f["subject"] for f in got], [                                       # one difference at each step, named for the step
+            "put on site: the design goes ahead, the code tells and goes on",
+            "save draft: the design tells and goes on, the code goes ahead"])
+        self.assertIn("Every play where this happens has: the note is long.", got[1]["shows"])
+
     def test_an_action_the_design_skips_and_the_code_lacks_is_no_difference(self):
         design, code = notes(), notes()
         design["parts"]["publish"]["seq"].insert(0, {"do": "spell check", "when": "preview", "reads": ["text"]})
