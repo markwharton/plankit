@@ -152,8 +152,8 @@
     },
     {
       "name": "a tag does not name a version",
-      "fault": true,
-      "about": "tags"
+      "about": "tags",
+      "says": "the repository has a tag whose name is not a version"
     },
     {
       "name": "the changelog file cannot be read",
@@ -713,7 +713,6 @@
               "the working branch is not on origin",
               "the working branch is behind origin",
               "the last version tag is not in the branch's history",
-              "a tag does not name a version",
               {
                 "all": [
                   {
@@ -1104,6 +1103,15 @@
       "rule": "a preRelease hook that commits produces a commit the tag then covers",
       "about": "preRelease hook",
       "says": "a preRelease hook that commits produces a commit the tag then covers"
+    },
+    {
+      "rule": "version inference passes over a tag that is not a version, and counts a pre-release tag as the latest version",
+      "about": "infer version",
+      "when": "a tag does not name a version",
+      "hold": {
+        "file": "internal/changelog/changelog_test.go",
+        "test": "TestANonVersionTagIsNotARelease"
+      }
     }
   ]
 }

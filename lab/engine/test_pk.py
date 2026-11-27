@@ -33,10 +33,9 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.json")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 168, "release": 73, "ship": 352})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 148, "release": 69, "ship": 312})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [
-            ("unanswered", "a tag does not name a version"),
             ("unanswered", "origin has no address"),                           # changelog accepts it, and a run that reads what changelog left is asked again
             ("unanswered", "origin's tags already has the member")])           # comes up from git's push, and no push action answers it
 
@@ -47,12 +46,6 @@ class Pk(unittest.TestCase):
             mine = [p for p in plays if p.env.get("undo") and p.env.get(fault)]
             self.assertTrue(mine, fault)
             self.assertEqual({(p.outcome(), tuple(p.steps)) for p in mine}, {("failed", (("load settings", "ran"), ("undo", "refused")))}, fault)
-
-    def test_a_bad_tag_is_asked_about_where_the_tags_were_fetched(self):
-        d = load("pk.json")
-        fetched = [p for p in engine.explore(d, "changelog") if p.env.get("no local version tag") and p.env.get("a tag does not name a version")]
-        self.assertTrue(fetched)                           # a fetch adds tags: what can be wrong with a tag still stands
-        self.assertTrue(any(("stamp versions", "a tag does not name a version") in p.open for p in fetched))
 
     def test_the_code_variant_differs_in_five_places(self):
         got = engine.compare(load("pk.json"), load("pk-code.json"))

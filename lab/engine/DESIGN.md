@@ -516,11 +516,9 @@ tag fails the fetch was settled by running git 2.54: it does.
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
 - pk's design lists 25 facts and git's lists 7. Before it stood on
   git, pk's listed 32.
-- The design has 593 plays: 168 of changelog, 73 of release, 352 of
+- The design has 529 plays: 148 of changelog, 69 of release, 312 of
   ship.
-- It reports 3 questions:
-  - A fault of a run's own, carried into something lasting with no
-    answer: a tag that does not name a version.
+- It reports 2 questions:
   - Origin already has the tag. git's push refuses it, and neither
     push action answers.
   - Origin has no address. changelog accepts it and writes the section
@@ -534,7 +532,9 @@ tag fails the fetch was settled by running git 2.54: it does.
   rejected update to a tag stops changelog, changelog does not check a
   branch that is behind origin, and changelog says nothing when origin
   names no default branch. Played against the design it gives 5
-  `differs` findings, each naming the facts that cause it. They are the
+  `differs` findings, each naming the facts that cause it. Its rules in
+  words differ in one more place, which the engine does not play: a
+  pre-release tag counts as the latest version. Together they are the
   changes pk's code needs.
 
 ## Converting an older design
