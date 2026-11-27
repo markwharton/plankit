@@ -1,0 +1,991 @@
+{
+  "system": "pk: changelog and release",
+  "on": ["../../engine/git.json"],
+  "reports": "pk's message",
+  "places": [
+    {
+      "name": ".pk.json",
+      "is": "one",
+      "kind": "outside",
+      "says": "The project config. The changelog and release sections hold the hooks, the types table, the version files and release.branch."
+    },
+    {
+      "name": "working branch",
+      "is": "series",
+      "kind": "lasting",
+      "says": "The branch the run is made from. HEAD is its last commit. In trunk flow the page calls it the default branch."
+    },
+    {
+      "name": "release branch",
+      "is": "series",
+      "kind": "lasting",
+      "says": "release.branch: the branch releases merge into, in merge flow."
+    },
+    {
+      "name": "origin's working branch",
+      "is": "series",
+      "kind": "lasting",
+      "in": "origin"
+    },
+    {
+      "name": "origin's release branch",
+      "is": "series",
+      "kind": "lasting",
+      "in": "origin"
+    },
+    {
+      "name": "CHANGELOG.md",
+      "is": "one",
+      "kind": "lasting",
+      "in": "working tree"
+    },
+    {
+      "name": "version files",
+      "is": "many",
+      "kind": "lasting",
+      "in": "working tree",
+      "says": "changelog.versionFiles names JSON files whose root version field is spliced in place."
+    },
+    {
+      "name": "a hook's own changes",
+      "is": "one",
+      "kind": "lasting",
+      "in": "working tree",
+      "says": "Whatever a changelog hook's command changes in the tree. The page says only that a failure puts it back."
+    },
+    {
+      "name": "the commits",
+      "is": "series",
+      "kind": "run",
+      "says": "The conventional commits since the last version tag, less the excluded ones."
+    },
+    {
+      "name": "the next version",
+      "is": "one",
+      "kind": "run"
+    },
+    {
+      "name": "the section",
+      "is": "one",
+      "kind": "run"
+    },
+    {
+      "name": "the release's name",
+      "is": "one",
+      "kind": "run",
+      "says": "The version and tag read from the Release-Tag trailer on HEAD."
+    },
+    {
+      "name": "standard output",
+      "is": "one",
+      "kind": "report"
+    },
+    {
+      "name": "pk's message",
+      "is": "one",
+      "kind": "report"
+    }
+  ],
+  "facts": [
+    {
+      "name": "dry run",
+      "says": "--dry-run is given"
+    },
+    {
+      "name": "undo",
+      "says": "--undo is given",
+      "only": "in changelog"
+    },
+    {
+      "name": "--bump is given",
+      "says": "--bump major|minor|patch overrides the inference",
+      "only": "in changelog"
+    },
+    {
+      "name": "--exclude is given",
+      "says": "--exclude drops commits by short hash before bump inference",
+      "only": "in changelog"
+    },
+    {
+      "name": "merge flow",
+      "says": "release.branch set selects merge flow; empty selects trunk flow.",
+      "only": "in release"
+    },
+    {
+      "name": "there are no local tags",
+      "says": "A clone with no local tags: a fresh clone that fetched only the working branch.",
+      "about": "tags",
+      "only": "in changelog"
+    },
+    {
+      "name": "no version tag exists",
+      "says": "No version tag means nothing has been released. Here it is so after origin's tags were fetched.",
+      "about": "tags",
+      "only": "there are no local tags"
+    },
+    {
+      "name": "version files are configured",
+      "says": "changelog.versionFiles is not empty; default none.",
+      "only": "in changelog"
+    },
+    {
+      "name": "a postVersion hook is set",
+      "says": "changelog.hooks.postVersion; default none.",
+      "only": "in changelog"
+    },
+    {
+      "name": "a preCommit hook is set",
+      "says": "changelog.hooks.preCommit; default none.",
+      "only": "in changelog"
+    },
+    {
+      "name": "a preRelease hook is set",
+      "says": "release.hooks.preRelease; default none.",
+      "only": "in release"
+    },
+    {
+      "name": "a prePush hook is set",
+      "says": "release.hooks.prePush; default none.",
+      "only": "in release"
+    },
+    {
+      "name": "the preRelease hook commits",
+      "says": "A preRelease hook that commits produces a commit the tag then covers.",
+      "only": "a preRelease hook is set"
+    },
+    {
+      "name": "HEAD carries a Release-Tag trailer",
+      "says": "pk changelog commits with a Release-Tag trailer; pk release reads it on HEAD.",
+      "about": "working branch"
+    },
+    {
+      "name": ".pk.json does not load",
+      "fault": true,
+      "about": ".pk.json",
+      "says": "An unknown key or a value outside these fails the whole file when it loads."
+    },
+    {
+      "name": "the --bump value is not major, minor or patch",
+      "fault": true,
+      "only": "--bump is given",
+      "says": "Any other --bump value is refused as a usage error."
+    },
+    {
+      "name": "HEAD is on a protected branch",
+      "fault": true,
+      "only": "in changelog",
+      "says": "Run it from the working branch. A protected branch is refused."
+    },
+    {
+      "name": "HEAD is detached",
+      "fault": true,
+      "says": "No branch is checked out."
+    },
+    {
+      "name": "the last version tag is not in the branch's history",
+      "fault": true,
+      "says": "A branch rewritten after a release."
+    },
+    {
+      "name": "an excluded hash matches no commit",
+      "fault": true,
+      "only": "--exclude is given"
+    },
+    {
+      "name": "a version file cannot be stamped",
+      "fault": true,
+      "only": "version files are configured",
+      "says": "A version file fails."
+    },
+    {
+      "name": "the postVersion hook fails",
+      "fault": true,
+      "only": "a postVersion hook is set"
+    },
+    {
+      "name": "the preCommit hook fails",
+      "fault": true,
+      "only": "a preCommit hook is set"
+    },
+    {
+      "name": "the Release-Tag trailer is not valid",
+      "fault": true,
+      "about": "working branch",
+      "only": "HEAD carries a Release-Tag trailer",
+      "says": "--undo refuses unless HEAD carries a valid Release-Tag trailer. The release page speaks only of no trailer."
+    },
+    {
+      "name": "the branch is not on origin",
+      "fault": true,
+      "about": "working branch",
+      "only": "in release",
+      "says": "Pre-flight: a branch checked out, on origin."
+    },
+    {
+      "name": "the branch is behind origin",
+      "fault": true,
+      "about": "working branch",
+      "only": "in release",
+      "says": "Pre-flight: not behind it."
+    },
+    {
+      "name": "the release branch cannot be resolved",
+      "fault": true,
+      "about": "release branch",
+      "only": "merge flow",
+      "says": "Pre-flight: release branch resolvable."
+    },
+    {
+      "name": "the branch checked out is not the default branch",
+      "fault": true,
+      "only": { "all": ["in release", { "not": "merge flow" }] },
+      "says": "Trunk flow refuses to run anywhere else."
+    },
+    {
+      "name": "the preRelease hook fails",
+      "fault": true,
+      "at": "run the preRelease hook",
+      "only": "a preRelease hook is set",
+      "says": "The page names the hook and does not say what a failure of it does. It runs before the tag exists, and rollback is said of a failure after tagging."
+    },
+    {
+      "name": "the prePush hook fails",
+      "fault": true,
+      "only": "a prePush hook is set"
+    },
+    {
+      "name": "a changelog dry run fetches origin's tags",
+      "open": true,
+      "says": "pk changelog fetches origin's tags first. --dry-run prints without writing or committing. The page does not say whether a dry run fetches."
+    },
+    {
+      "name": "a changelog dry run runs the hooks",
+      "open": true,
+      "says": "The changelog page does not say whether --dry-run runs postVersion and preCommit."
+    },
+    {
+      "name": "the preCommit hook runs before CHANGELOG.md is written",
+      "open": true,
+      "says": "preCommit runs before the release commit. The page does not say on which side of writing CHANGELOG.md."
+    },
+    {
+      "name": "pre-flight fetches origin's tags",
+      "open": true,
+      "says": "Pre-flight fetches from origin to make these checks. The page does not say whether tags are fetched as well as the branch."
+    },
+    {
+      "name": "the preRelease hook runs before the merge",
+      "open": true,
+      "says": "preRelease runs before the tag exists. The page does not say on which side of the fast-forward."
+    },
+    {
+      "name": "a rehearsed preRelease hook makes its changes",
+      "open": true,
+      "says": "preRelease is rehearsed by --dry-run. The page does not say whether a hook that commits has committed after a rehearsal."
+    }
+  ],
+  "parts": {
+    "load .pk.json and check the flags": {
+      "do": "load .pk.json and check the flags",
+      "reads": [".pk.json"],
+      "handles": [
+        {
+          "when": ".pk.json does not load",
+          "then": "refuse",
+          "says": "An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2."
+        },
+        {
+          "when": "the --bump value is not major, minor or patch",
+          "then": "refuse",
+          "says": "Any other --bump value is refused as a usage error, and nothing is generated."
+        }
+      ]
+    },
+    "run the postVersion hook": {
+      "do": "run the postVersion hook",
+      "says": "Runs after the version files are stamped and before CHANGELOG.md is written, with $VERSION.",
+      "when": {
+        "all": [
+          "a postVersion hook is set",
+          { "any": [{ "not": "dry run" }, "a changelog dry run runs the hooks"] }
+        ]
+      },
+      "reads": [".pk.json", "the next version"],
+      "changes": [
+        {
+          "place": "a hook's own changes",
+          "how": "replace",
+          "later": "undone",
+          "says": "The tree goes back to how the run found it, a hook's own changes included."
+        }
+      ],
+      "handles": [
+        {
+          "when": "the postVersion hook fails",
+          "then": "fail",
+          "says": "When a version file or a hook fails, nothing is committed."
+        }
+      ]
+    },
+    "run the preCommit hook": {
+      "do": "run the preCommit hook",
+      "says": "Runs before the release commit, with $VERSION.",
+      "when": {
+        "all": [
+          "a preCommit hook is set",
+          { "any": [{ "not": "dry run" }, "a changelog dry run runs the hooks"] }
+        ]
+      },
+      "reads": [".pk.json", "the next version"],
+      "changes": [
+        {
+          "place": "a hook's own changes",
+          "how": "replace",
+          "later": "undone",
+          "says": "The tree goes back to how the run found it, a hook's own changes included."
+        }
+      ],
+      "handles": [
+        {
+          "when": "the preCommit hook fails",
+          "then": "fail",
+          "says": "When a version file or a hook fails, nothing is committed."
+        }
+      ]
+    },
+    "generate": {
+      "name": "generate",
+      "seq": [
+        {
+          "do": "check the tree",
+          "reads": ["working tree"],
+          "handles": [
+            {
+              "when": { "all": ["working tree holds what is kept nowhere", "dry run"] },
+              "then": "accept",
+              "because": "--dry-run prints the section to stdout and runs on a dirty tree."
+            },
+            {
+              "when": "working tree holds what is kept nowhere",
+              "then": "refuse",
+              "says": "A run without it refuses a dirty tree."
+            }
+          ]
+        },
+        {
+          "do": "fetch origin's tags",
+          "says": "A clone with no local tags is not a first release when origin has them. pk changelog fetches origin's tags first and says so, then measures from that tag.",
+          "when": {
+            "all": [
+              "there are no local tags",
+              { "any": [{ "not": "dry run" }, "a changelog dry run fetches origin's tags"] }
+            ]
+          },
+          "uses": "fetch tags",
+          "handles": [
+            {
+              "when": "origin does not answer",
+              "then": "refuse",
+              "says": "Only when the fetch itself fails does it stop, with the error and the hint git fetch --tags."
+            },
+            {
+              "when": { "all": ["tags already has the member", "a rejected tag update fails the fetch"] },
+              "then": "refuse",
+              "says": "Only when the fetch itself fails does it stop, with the error and the hint git fetch --tags."
+            }
+          ]
+        },
+        {
+          "do": "read the commits since the last version tag",
+          "reads": ["tags", "working branch"],
+          "changes": [{ "place": "the commits", "how": "create" }],
+          "handles": [
+            {
+              "when": "the last version tag is not in the branch's history",
+              "then": "refuse",
+              "says": "The last version tag must be in the branch's history: a branch rewritten after a release is refused, naming the tag."
+            },
+            {
+              "when": "no version tag exists",
+              "then": "tell",
+              "says": "The run says so first: No release yet: the first release covers all N commits."
+            },
+            {
+              "when": "an excluded hash matches no commit",
+              "then": "tell",
+              "says": "A hash that matches no commit is warned about, and the run goes on."
+            }
+          ]
+        },
+        {
+          "do": "infer the next version",
+          "reads": ["the commits"],
+          "changes": [{ "place": "the next version", "how": "create" }]
+        },
+        {
+          "do": "compose the section",
+          "reads": ["the commits", "the next version", ".pk.json"],
+          "changes": [{ "place": "the section", "how": "create" }]
+        },
+        {
+          "do": "stamp the version files",
+          "when": { "all": ["version files are configured", { "not": "dry run" }] },
+          "reads": [".pk.json", "the next version"],
+          "changes": [
+            {
+              "place": "version files",
+              "how": "replace",
+              "later": "undone",
+              "says": "The tree goes back to how the run found it."
+            }
+          ],
+          "handles": [
+            {
+              "when": "a version file cannot be stamped",
+              "then": "fail",
+              "says": "When a version file or a hook fails, nothing is committed."
+            }
+          ]
+        },
+        "run the postVersion hook",
+        {
+          "name": "preCommit before CHANGELOG.md",
+          "when": "the preCommit hook runs before CHANGELOG.md is written",
+          "seq": ["run the preCommit hook"]
+        },
+        {
+          "do": "write CHANGELOG.md",
+          "when": { "not": "dry run" },
+          "reads": ["the section"],
+          "changes": [
+            {
+              "place": "CHANGELOG.md",
+              "how": "replace",
+              "from": "the section",
+              "later": "undone",
+              "says": "The tree goes back to how the run found it."
+            }
+          ]
+        },
+        {
+          "name": "preCommit after CHANGELOG.md",
+          "when": { "not": "the preCommit hook runs before CHANGELOG.md is written" },
+          "seq": ["run the preCommit hook"]
+        },
+        {
+          "do": "commit the release",
+          "says": "Commits with a Release-Tag trailer.",
+          "when": { "not": "dry run" },
+          "uses": "commit",
+          "with": { "the branch": "working branch" },
+          "makes": { "HEAD carries a Release-Tag trailer": true }
+        },
+        {
+          "do": "print the section",
+          "says": "--dry-run prints the section to stdout.",
+          "when": "dry run",
+          "reads": ["the section"],
+          "changes": [{ "place": "standard output", "how": "create", "from": "the section" }]
+        }
+      ]
+    },
+    "undo": {
+      "name": "undo",
+      "seq": [
+        {
+          "do": "unwind the release commit",
+          "says": "--undo unwinds the release commit, restoring CHANGELOG.md and version files. With --dry-run it makes the same checks and changes nothing.",
+          "uses": "reset to the commit before",
+          "with": { "the branch": "working branch" },
+          "rehearsal": "dry run",
+          "makes": { "HEAD carries a Release-Tag trailer": false },
+          "handles": [
+            {
+              "when": { "not": "HEAD carries a Release-Tag trailer" },
+              "then": "refuse",
+              "says": "It refuses unless HEAD carries a valid Release-Tag trailer."
+            },
+            {
+              "when": "the Release-Tag trailer is not valid",
+              "then": "refuse",
+              "says": "It refuses unless HEAD carries a valid Release-Tag trailer."
+            },
+            {
+              "when": "working tree holds what is kept nowhere",
+              "then": "refuse",
+              "says": "It refuses unless the tree is clean."
+            },
+            {
+              "when": "working branch is held elsewhere",
+              "then": "refuse",
+              "says": "It refuses unless the commit is only on the current branch: not pushed, not tagged, not merged."
+            }
+          ]
+        },
+        {
+          "do": "say what would be unwound",
+          "when": "dry run",
+          "reads": ["working branch"],
+          "changes": [{ "place": "pk's message", "how": "create" }]
+        }
+      ]
+    },
+    "changelog": {
+      "name": "changelog",
+      "seq": [
+        "load .pk.json and check the flags",
+        {
+          "do": "check the branch",
+          "reads": ["working branch"],
+          "handles": [
+            {
+              "when": { "all": ["HEAD is on a protected branch", "dry run"] },
+              "then": "accept",
+              "because": "A protected branch is refused, and so is a detached HEAD, except by --dry-run."
+            },
+            {
+              "when": "HEAD is on a protected branch",
+              "then": "refuse",
+              "says": "A protected branch is refused."
+            },
+            {
+              "when": { "all": ["HEAD is detached", "dry run"] },
+              "then": "accept",
+              "because": "A protected branch is refused, and so is a detached HEAD, except by --dry-run."
+            },
+            {
+              "when": "HEAD is detached",
+              "then": "refuse",
+              "says": "And so is a detached HEAD."
+            }
+          ]
+        },
+        {
+          "choose": [{ "when": "undo", "run": "undo" }],
+          "otherwise": "generate"
+        }
+      ]
+    },
+    "run the preRelease hook": {
+      "do": "run the preRelease hook",
+      "says": "preRelease runs before the tag exists and is rehearsed by --dry-run.",
+      "when": "a preRelease hook is set",
+      "reads": [".pk.json", "the release's name"],
+      "changes": [
+        {
+          "place": "working branch",
+          "how": "create",
+          "when": {
+            "all": [
+              "the preRelease hook commits",
+              { "any": [{ "not": "dry run" }, "a rehearsed preRelease hook makes its changes"] }
+            ]
+          },
+          "says": "A preRelease hook that commits produces a commit the tag then covers. The page does not name the branch."
+        }
+      ]
+    },
+    "run the prePush hook": {
+      "do": "run the prePush hook",
+      "says": "prePush runs with the tag ref in existence, for signing or artifact builds keyed on the tag.",
+      "when": "a prePush hook is set",
+      "reads": [".pk.json", "the release's name", "tags"],
+      "handles": [
+        {
+          "when": "the prePush hook fails",
+          "then": "fail",
+          "says": "A failure after tagging rolls back."
+        }
+      ]
+    },
+    "merge flow release": {
+      "name": "merge flow release",
+      "seq": [
+        {
+          "name": "preRelease before the merge",
+          "when": "the preRelease hook runs before the merge",
+          "seq": ["run the preRelease hook"]
+        },
+        {
+          "do": "fast-forward the release branch",
+          "says": "A release fast-forwards the release branch to the working branch.",
+          "when": { "not": "dry run" },
+          "uses": "fast-forward",
+          "with": { "the branch": "release branch", "the other branch": "working branch" },
+          "later": "undone"
+        },
+        {
+          "name": "preRelease after the merge",
+          "when": { "not": "the preRelease hook runs before the merge" },
+          "seq": ["run the preRelease hook"]
+        },
+        {
+          "name": "tag and push, merge flow",
+          "when": { "not": "dry run" },
+          "seq": [
+            {
+              "do": "tag the release branch",
+              "uses": "tag",
+              "with": { "the branch": "release branch" },
+              "later": "undone"
+            },
+            "run the prePush hook",
+            {
+              "do": "push the release branch and the tag",
+              "says": "Pushes branch and tag together.",
+              "uses": "push the branch and the tag",
+              "with": { "the branch": "release branch", "origin's branch": "origin's release branch" },
+              "later": "stands",
+              "because": "Once the release branch and the tag are on origin the release stands.",
+              "handles": [
+                {
+                  "when": "origin does not answer",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                },
+                {
+                  "when": "origin rejects the push",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                },
+                {
+                  "when": "origin's tags already has the member",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                }
+              ]
+            },
+            {
+              "do": "switch back to the working branch",
+              "uses": "switch",
+              "with": { "the branch": "working branch" },
+              "handles": [
+                {
+                  "when": "the switch fails",
+                  "then": "warn",
+                  "says": "A failure to switch back or to push the working branch is reported as a warning."
+                },
+                {
+                  "when": "working tree holds what is kept nowhere",
+                  "then": "warn",
+                  "says": "A failure to switch back or to push the working branch is reported as a warning."
+                }
+              ]
+            },
+            {
+              "do": "push the working branch",
+              "uses": "push the branch",
+              "with": { "the branch": "working branch", "origin's branch": "origin's working branch" },
+              "handles": [
+                {
+                  "when": "origin does not answer",
+                  "then": "warn",
+                  "says": "A failure to switch back or to push the working branch is reported as a warning."
+                },
+                {
+                  "when": "origin rejects the push",
+                  "then": "warn",
+                  "says": "A failure to switch back or to push the working branch is reported as a warning."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "trunk flow release": {
+      "name": "trunk flow release",
+      "seq": [
+        "run the preRelease hook",
+        {
+          "name": "tag and push, trunk flow",
+          "when": { "not": "dry run" },
+          "seq": [
+            {
+              "do": "tag the default branch",
+              "uses": "tag",
+              "with": { "the branch": "working branch" },
+              "later": "undone"
+            },
+            "run the prePush hook",
+            {
+              "do": "push the default branch and the tag",
+              "says": "Trunk flow: a release tags and pushes the default branch.",
+              "uses": "push the branch and the tag",
+              "with": { "the branch": "working branch", "origin's branch": "origin's working branch" },
+              "later": "stands",
+              "because": "Once the release branch and the tag are on origin the release stands.",
+              "handles": [
+                {
+                  "when": "origin does not answer",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                },
+                {
+                  "when": "origin rejects the push",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                },
+                {
+                  "when": "origin's tags already has the member",
+                  "then": "refuse",
+                  "says": "A failure after tagging rolls back."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "release": {
+      "name": "release",
+      "seq": [
+        "load .pk.json and check the flags",
+        {
+          "do": "read the Release-Tag trailer",
+          "reads": ["working branch"],
+          "changes": [{ "place": "the release's name", "how": "create" }],
+          "handles": [
+            {
+              "when": { "not": "HEAD carries a Release-Tag trailer" },
+              "then": "refuse",
+              "says": "With no Release-Tag trailer on HEAD it refuses, and says to run pk changelog first."
+            }
+          ]
+        },
+        {
+          "do": "fetch the working branch from origin",
+          "says": "Pre-flight fetches from origin to make these checks.",
+          "uses": "fetch the branch",
+          "with": { "origin's branch": "origin's working branch" }
+        },
+        {
+          "do": "fetch origin's tags for pre-flight",
+          "says": "Pre-flight fetches from origin to make these checks.",
+          "when": "pre-flight fetches origin's tags",
+          "uses": "fetch tags"
+        },
+        {
+          "do": "check the release can go ahead",
+          "says": "Pre-flight.",
+          "reads": [
+            "tags",
+            "working tree",
+            "working branch",
+            "remote-tracking branch",
+            { "place": "release branch", "when": "merge flow" }
+          ],
+          "handles": [
+            {
+              "when": "tags already has the member",
+              "then": "refuse",
+              "says": "No tag of the release's name yet."
+            },
+            {
+              "when": "working tree holds what is kept nowhere",
+              "then": "refuse",
+              "says": "Clean tree."
+            },
+            {
+              "when": "HEAD is detached",
+              "then": "refuse",
+              "says": "A branch checked out."
+            },
+            {
+              "when": "the branch is not on origin",
+              "then": "refuse",
+              "says": "On origin."
+            },
+            {
+              "when": "the branch is behind origin",
+              "then": "refuse",
+              "says": "And not behind it."
+            },
+            {
+              "when": "the release branch cannot be resolved",
+              "then": "refuse",
+              "says": "Release branch resolvable."
+            },
+            {
+              "when": { "all": ["merge flow", "the branch cannot be fast-forwarded"] },
+              "then": "refuse",
+              "says": "Release branch not diverged from the working branch."
+            },
+            {
+              "when": "the last version tag is not in the branch's history",
+              "then": "refuse",
+              "says": "The last version tag in the working branch's history."
+            },
+            {
+              "when": "the branch checked out is not the default branch",
+              "then": "refuse",
+              "says": "Trunk flow: a release tags and pushes the default branch, and refuses to run anywhere else."
+            }
+          ]
+        },
+        {
+          "choose": [{ "when": "merge flow", "run": "merge flow release" }],
+          "otherwise": "trunk flow release"
+        }
+      ]
+    }
+  },
+  "runs": ["changelog", "release"],
+  "expects": [
+    {
+      "name": "pk changelog creates no git tag",
+      "in": "changelog",
+      "never creates": ["tags"],
+      "because": "No git tag is created; pk release creates it."
+    },
+    {
+      "name": "a changelog dry run writes nothing and commits nothing",
+      "in": "changelog",
+      "when": "dry run",
+      "never changes": ["CHANGELOG.md", "version files", "working branch"],
+      "never runs": ["commit the release"],
+      "because": "--dry-run: print the section to stdout without writing or committing."
+    },
+    {
+      "name": "an undo dry run changes nothing",
+      "in": "changelog",
+      "when": { "all": ["undo", "dry run"] },
+      "never changes": ["working tree", "working branch", "tags"],
+      "because": "With --dry-run it makes the same checks, says what it would unwind, and changes nothing."
+    },
+    {
+      "name": "a bad --bump value generates nothing",
+      "in": "changelog",
+      "when": "the --bump value is not major, minor or patch",
+      "never changes": ["CHANGELOG.md", "version files", "working branch", "standard output"],
+      "because": "Any other --bump value is refused as a usage error, and nothing is generated."
+    },
+    {
+      "name": "a failed version file or hook commits nothing and leaves the tree as found",
+      "in": "changelog",
+      "when": {
+        "any": ["a version file cannot be stamped", "the postVersion hook fails", "the preCommit hook fails"]
+      },
+      "never runs": ["commit the release"],
+      "ends": { "working tree": "unchanged", "working branch": "unchanged" },
+      "because": "When a version file or a hook fails, nothing is committed and the tree goes back to how the run found it, a hook's own changes included."
+    },
+    {
+      "name": "an undo unwinds the commit and restores the tree",
+      "in": "changelog",
+      "when": { "all": ["undo", { "not": "dry run" }] },
+      "on": "success",
+      "ends": { "working branch": "destroyed", "working tree": "replaced" },
+      "because": "--undo unwinds the release commit, restoring CHANGELOG.md and version files."
+    },
+    {
+      "name": "a release dry run does not merge, tag or push",
+      "in": "release",
+      "when": "dry run",
+      "never runs": [
+        "fast-forward the release branch",
+        "tag the release branch",
+        "tag the default branch",
+        "push the release branch and the tag",
+        "push the default branch and the tag",
+        "push the working branch"
+      ],
+      "because": "--dry-run: validate without merging, tagging, or pushing."
+    },
+    {
+      "name": "the release stands when switching back fails",
+      "in": "release",
+      "when": "the switch fails",
+      "on": "success",
+      "ends": { "tags": "created", "origin's tags": "created", "origin's release branch": "created" },
+      "because": "Once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is reported as a warning."
+    },
+    {
+      "name": "a failed release leaves no local tag",
+      "in": "release",
+      "when": { "not": "pre-flight fetches origin's tags" },
+      "on": "failed",
+      "ends": { "tags": "unchanged" },
+      "because": "A failure after tagging rolls back: the local tag is deleted."
+    }
+  ],
+  "rules": [
+    {
+      "rule": "A breaking change (type!: or a BREAKING CHANGE: footer) bumps major, feat bumps minor, anything else bumps patch.",
+      "about": "infer the next version"
+    },
+    {
+      "rule": "--bump major|minor|patch overrides the inference, and the run names the override next to the version it generates: Generating v0.8.1 (--bump patch; the commits infer minor).",
+      "about": "infer the next version",
+      "when": "--bump is given"
+    },
+    {
+      "rule": "--exclude drops commits by short hash before bump inference.",
+      "about": "read the commits since the last version tag",
+      "when": "--exclude is given"
+    },
+    {
+      "rule": "The first release covers the whole history from an implied v0.0.0, and the run says first: No release yet: the first release covers all N commits.",
+      "about": "read the commits since the last version tag",
+      "when": "no version tag exists"
+    },
+    {
+      "rule": "The refusal names the tag.",
+      "about": "read the commits since the last version tag",
+      "when": "the last version tag is not in the branch's history"
+    },
+    {
+      "rule": "After the fetch the run says Fetched tags from origin: latest is <tag>, then measures from that tag. A failed fetch stops with the error and the hint git fetch --tags.",
+      "about": "fetch origin's tags"
+    },
+    {
+      "rule": "Types map to sections via changelog.types. A hidden type is tracked and never listed. An empty table means the default table.",
+      "about": "compose the section"
+    },
+    {
+      "rule": "changelog.showScope includes each commit's scope in its changelog entry; default false.",
+      "about": "compose the section"
+    },
+    {
+      "rule": "The first release's entry links to the tag's commits rather than a compare.",
+      "about": "compose the section",
+      "when": "no version tag exists"
+    },
+    {
+      "rule": "The root version field of each JSON file is spliced in place, formatting preserved.",
+      "about": "stamp the version files"
+    },
+    {
+      "rule": "The hook runs with $VERSION, no v prefix.",
+      "about": "run the postVersion hook"
+    },
+    {
+      "rule": "The hook runs with $VERSION, no v prefix.",
+      "about": "run the preCommit hook"
+    },
+    {
+      "rule": "The commit carries a Release-Tag trailer.",
+      "about": "commit the release"
+    },
+    {
+      "rule": "The section is printed to stdout.",
+      "about": "print the section"
+    },
+    {
+      "rule": "A config that does not load gives a message naming the key, and the command exits 2. A bad --bump value is a usage error.",
+      "about": "load .pk.json and check the flags"
+    },
+    {
+      "rule": "The refusal says to run pk changelog first.",
+      "about": "read the Release-Tag trailer"
+    },
+    {
+      "rule": "The hook receives $VERSION (no v) and $TAG (with it).",
+      "about": "run the preRelease hook"
+    },
+    {
+      "rule": "The hook receives $VERSION (no v) and $TAG (with it).",
+      "about": "run the prePush hook"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ and whether `DESIGN.md` is enough to write in it: give a new session
 only the reference, the engine and a system's own pages, and have it
 write the design cold.
 
-Five rounds of this shaped the language. Each found gaps that the
+Six rounds of this shaped the language. Each found gaps that the
 writer of the language could not see.
 
 ## Setting it up
@@ -13,7 +13,9 @@ writer of the language could not see.
 1. Make an empty directory. Copy `engine.py` into it, and `DESIGN.md`
    as `LANGUAGE.md` with the section "What it found on pk" taken out
    and its examples changed to ones that are not about the system under
-   test. The page must give away no answer.
+   test. The page must give away no answer. Where the system stands on
+   another, copy that design in too: it is the layer below, and the
+   writer may read it.
 2. Start a new session with the prompt below.
 3. Run the engine on the file it wrote yourself, and check the numbers
    it reported.
@@ -33,8 +35,9 @@ pages>. Read nothing else: no source code, no tests, no other designs.
 2. From the pages alone, write one design file for <the runs>. State
    what the pages say: the places, the facts that change a run, the
    faults, each action in order with what it does about each fault that
-   matters to it, what happens to a change when the run stops later,
-   and each thing that must always be true as an expectation. Put rules
+   matters to it, what happens to a change when a failure leaves the
+   part it is in, and each thing that must always be true as an
+   expectation. Put rules
    about how a value is computed under "rules". Leave "hold" out.
 3. Run the engine. Fix the file only until the engine accepts it. Then
    do NOT change the design to make findings go away. The findings are
@@ -65,6 +68,12 @@ engine.py; every refusal or crash; and counts of what your design has.
 `lab/examples/blind/pk-blind.json` is the design the fifth round wrote
 for pk's changelog and release.
 
+`pk-on-git-blind.json` beside it is the sixth round's, written for the
+same two commands once a design could stand on another. It stands on
+`lab/engine/git.json`, which the writer was given. The engine accepted
+it on the first run. Its `on` path is the one thing changed since it
+was written, so that it finds git's design from where it is kept.
+
 `data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
 designs written the same way for one flow each of three other systems.
 They are kept because each showed something pk could not: a run made a
@@ -81,7 +90,8 @@ names and no more: the places, the facts and the names of the actions.
 
 `lab/examples/blind/pk-code-blind.json` is the description one session
 wrote of pk's changelog and release this way. Played against
-`lab/engine/pk.json` it gives 32 differences. The real ones are in
+`lab/engine/pk.json` as it then was, before pk's design stood on git's,
+it gave 32 differences. The real ones are in
 `docs/control-findings.md`. About a third are noise: the reader split
 the work into actions the design does not have, and the engine reports
 the first action where two plays part.

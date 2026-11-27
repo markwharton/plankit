@@ -15,6 +15,13 @@
       "note": "A fresh session's design of changelog and release, written from pk's two pages alone."
     },
     {
+      "label": "pk on git, written blind from its pages",
+      "definition": "blind/pk-on-git-blind.json",
+      "root": "../..",
+      "readonly": true,
+      "note": "The sixth round: a fresh session's design of changelog and release, standing on git's design, written from pk's two pages alone."
+    },
+    {
       "label": "pk's code, described blind",
       "definition": "blind/pk-code-blind.json",
       "root": "../..",
