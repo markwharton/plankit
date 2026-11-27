@@ -89,6 +89,8 @@ matter to it. Everything else follows from that one mechanism:
 | A failure is dealt with where it is caught | the part that holds the action `handles` it |
 | Nobody has decided this yet | an `open` fact, used wherever the answer would matter. The engine plays it both ways and asks |
 | Why something is fine | `because`, on the statement that lets it through |
+| What a system one layer down does | the action `uses` its run, and repeats nothing about it |
+| What an earlier run left | nothing is written. The engine finds it and asks |
 | A rule holds for every run | an expectation, limited by `when` to the plays it is about |
 | The code must do the same | the code is written in this language too, and played beside the design |
 
@@ -449,6 +451,7 @@ When the code stops differing that way, the acceptance is reported as
 A design is one JSON object. The engine refuses a key it does not know
 and names it.
 
+<!-- keys: held to engine.KEYS by test_engine.py -->
 | Object | Keys |
 |---|---|
 | The design | `system`, `on` (the paths of the designs one layer down, from this design's own directory), `reports` (the place where a person learns of a failure), `faults` (how many may be true in one play; 1 when left out), `places`, `facts`, `parts` (an object: name to part), `runs` (names of parts to play), `expects`, `rules` |
@@ -462,15 +465,20 @@ and names it.
 | Parts that do not depend on each other | `all` (a list of parts), `name`, `when`, `handles` |
 | A choice | `choose` (a list of `{ "when": ..., "run": part }`), `otherwise` (a part, or `null` for nothing), `name`, `when`, `handles` |
 | A part's answer | `{ "when": ..., "then": ... }` where `then` is `warn`, `tell` or `accept`, with `because` and `tells` |
-| A use of a part | the part's name as a string, or `{ "use": name, "when": ..., "says": ... }` |
+| A use of a part | the part's name as a string, or `{ "use": name, "when": ..., "name": ..., "says": ... }` |
 | Where a fact is asked for | a name, `{ "not": f }`, `{ "all": [f, ...] }` or `{ "any": [f, ...] }` |
-| An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `failed` or `declined`), and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
+| An expectation | `name`, `in` (a run), `when`, `on` (`any`, `success`, `failed` or `declined`), `because`, and at least one of: `never changes` (places), `never creates` (places), `ends` (place to state), `runs` (actions), `never runs` (actions), or `before` (an action) with `place` and `is` |
 | A state | `untouched`, `created`, `replaced`, `destroyed`, `undone`; or `changed` for any of the middle three, and `unchanged` for `untouched` or `undone` |
 | A rule in words | `rule`, `about` (an action), `when` (the fact it depends on, when there is one) |
+| A branch of a choice | `{ "when": ..., "run": part }` |
+| A hold | `{ "file": ..., "test": ... }` |
+| An acceptances file | `{ "accepted": [...] }` |
+| An acceptance | `{ "finding": ..., "because": ... }` |
+<!-- /keys -->
 
-An answer, a change, an expectation and a rule can each name a `hold`:
-`{ "file": ..., "test": ... }`, the test that holds it. Any part can
-carry `says`, a sentence it stands for.
+An answer, a change, an action that uses a run, an expectation and a
+rule can each name a `hold`, the test that holds it. Every object can
+carry `says`, the sentence of the source it stands for.
 
 An action is known by its `do`. That is the name an expectation uses in
 `before`, `runs` and `never runs`.
@@ -523,35 +531,74 @@ places had a shape. Its rule is at the top of `convert.py`.
 
 ## What it does not do yet
 
+About facts:
+
 - Define a fact from other facts. A mode that depends on two flags and
   a state has to be written out wherever it is used.
 - Say that an action tries again, or that an open fact has more than
   two outcomes.
+- Say that a fact is a state on one layer and a fault on the layer
+  above. The count of what is wrong in a play is taken from the layer
+  that lists the fact.
+- Tell an `accept` that says a thing cannot happen from one that lets
+  it through. Both come up to the layer above, and both are asked
+  again.
+
+About places:
+
 - Ask anything of a `create` that gives a `one` its state when it
   already has one. Only a `many` brings `already has the member`.
-- Play a run member by member. A fact holds for the whole run, so an
-  import where some names are already there and some are not is one
-  play or the other.
-- Tell a question put to a person from a failure they are told of. Both
-  reach the place the design `reports` to.
-- Say that a run stops and the person is not told, or that a refusal
-  still does something first, such as reading a list again.
+- Play a run member by member. A fact holds for the whole place in a
+  play, so an import where some names are already there and some are
+  not is one play or the other.
+- Say that a `many` is empty. "No local tags" is a fact listed by hand.
+- Say that two names are one place, such as the branch that is checked
+  out and the branch a release starts from.
+- Say that a value is bad in a way that depends on how it was
+  computed. Rules in words carry that.
+
+About layers:
+
+- Bind a `given` place by a fact. pk's push is two actions, one for
+  each flow, with the same answers.
+- Say which `given` place a fault of the run below is about. "The
+  branch cannot be fast-forwarded" names no branch once two are bound.
+- Let an action use a run and also change a place. It is two actions.
+- Answer half of a fault the layer below joined. A fault below that
+  covers two things can only be answered for both.
+- Hold a rehearsal with a test of its own. A rehearsal is the same
+  action, so it has no statement to carry a `hold`.
+
+About order and failure:
+
+- Say that parts run one after another and do not depend on each
+  other. `all` says no dependence and gives no order, and the engine
+  then asks about the order where they touch one place.
+- Say where in the order a step runs when the source does not say.
+- Limit `later` to failures after a named action. A change is undone
+  by any failure that leaves a part it is in, or stands through all of
+  them.
+- Play two runs at once, or anything else about time.
+- Ask about a failure nobody listed. A fault listed `at` a step with
+  no answer is asked. Where nobody lists one, the engine has nothing
+  to ask.
+
+About people:
+
+- Tell a question put to a person from a failure they are told of.
+  Both reach the place the design `reports` to.
+- Say that a refusal reaches only the user of the run. A layer below
+  has no person to tell.
 - Say that a person is offered three things. `ask` has yes and no, so
   a third choice is a fact of its own.
-- Say exit codes, what a message contains, the value an option was
-  given, or that two names are one place.
-- Ask about a failure nobody listed. Where a source names no way for a
-  step to fail, the design has no fault for it and the engine has
-  nothing to ask.
-- Limit `later` to failures after a named action. A change is undone by
-  any failure that leaves a part it is in, or stands through all of
-  them.
-- Play two runs at once, or anything else about time beyond the order
-  of a sequence.
-- Say that a value is bad in a way that depends on how it was computed.
-  Rules in words carry that.
-- Draw anything. With `--json` the engine prints every play, which is
-  what the lab's views would read.
+- Say exit codes, what a message contains, or the value an option was
+  given. These stay rules in words.
+
+About the lab:
+
+- Draw layers. An action that uses a run is one step in each view.
+- Follow the designs a design stands on. The page plays again when the
+  design's own file changes, and not when one below it does.
 
 ## What comes next, and how each would fit
 
@@ -578,8 +625,10 @@ here as a use of facts, so that it is designed in when it is built.
 - **Evidence for a description of the code.** Each statement naming
   the function where the code does it, checked to exist, as the checker
   in `control/` does.
-- **The reference held to the engine.** A test that fails when the
-  table of keys on this page and the keys the engine accepts differ.
+- **The reference held to the engine, both ways.** Two tests hold this
+  page to the engine: the table of what a place brings, and every key
+  the engine accepts. Neither catches a key the page lists and the
+  engine refuses.
 
 ## Its home
 
@@ -609,7 +658,9 @@ To decide before any of it ships:
   definition file. This engine is Python and plays a design. Either the
   engine replaces the checker, or it takes on the two things the
   checker has and it lacks: evidence for each statement about the code,
-  and a reference held to the code by tests.
+  and a reference held to the code by tests. Two things the checker had
+  first are now in this language: a refusal passed to the parent, and
+  Hamilton's rules for types, which the checker holds by checks.
 - The guard's reference files have to be released first, since a design
   cannot be guarded without them.
 
@@ -625,5 +676,6 @@ cd lab/engine
 python3 engine.py pk.json --root ../..                      # plays it and prints each question
 python3 engine.py pk.json --root ../.. --against pk-code.json   # and holds the code to it
 python3 engine.py pk.json --root ../.. --lines              # one line for each finding
-python3 -m unittest test_engine test_pk                     # the engine's tests, and what this page says of pk
+python3 -m unittest test_engine test_convert test_pk        # the engine's tests, the converter's, and what this page says of pk
+python3 convert.py OLD.json                                 # rewrites a design written before places had a shape
 ```

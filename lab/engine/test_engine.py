@@ -737,6 +737,24 @@ class Engine(unittest.TestCase):
         seq[1]["changes"][0]["makes"] = {"a draft is waiting": True}
         self.assertTrue([p for p in engine.explore_all(engine.Design(doc)) if p.ran("remind")])         # now an earlier run can have left one
 
+    def test_the_page_lists_every_key_the_engine_accepts(self):
+        """One way only: a key the engine accepts and the page does not list. "says" and "hold" are stated once, under the table."""
+        rows = {"The design": "design", "A place": "place", "A fact": "fact", "An action": "action", "A read": "read", "A change": "change", "An answer": "handle",
+                "A sequence": "seq", "Parts that do not depend on each other": "all", "A choice": "choose", "A use of a part": "use",
+                "An expectation": "expect", "A rule in words": "rule", "A hold": "hold", "An acceptances file": "accepted", "An acceptance": "acceptance",
+                "A branch of a choice": "branch"}
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "DESIGN.md"), encoding="utf-8") as f:
+            page = f.read()
+        table = page[page.index("<!-- keys"):page.index("<!-- /keys -->")]
+        found = {}
+        for line in table.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) == 2 and cells[0] in rows:
+                found[rows[cells[0]]] = set(re.findall(r"`([a-z ]+)`", cells[1])) | set(re.findall(r'"([a-z ]+)"', cells[1]))
+        self.assertEqual(sorted(found), sorted(engine.KEYS))
+        missing = {kind: sorted(keys - found[kind] - {"says", "hold"}) for kind, keys in engine.KEYS.items()}
+        self.assertEqual({k: v for k, v in missing.items() if v}, {})
+
     def test_a_design_the_engine_cannot_play_is_refused_with_the_reason(self):
         cases = [
             (lambda d: d["places"][0].update(colour="red"), '"colour"'),
