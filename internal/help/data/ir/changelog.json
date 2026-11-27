@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "text": " trailer. No git tag is created; "
+          "text": " trailer. It leaves the release untagged; "
         },
         {
           "type": "code",
@@ -45,7 +45,7 @@
         },
         {
           "type": "text",
-          "text": " creates it, so the release stays a two-step: generate and review, then tag and push."
+          "text": " tags it, so the release stays a two-step: generate and review, then tag and push."
         }
       ]
     },
