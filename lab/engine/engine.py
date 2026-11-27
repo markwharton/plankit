@@ -176,6 +176,14 @@ def only(obj, kind, where):
     extra = sorted(set(obj) - KEYS[kind])
     if extra:
         raise Refused("%s: the key %s is not one a %s has (%s)" % (where, ", ".join('"%s"' % k for k in extra), kind, ", ".join(sorted(KEYS[kind]))))
+    if "hold" in obj and kind != "hold":       # every statement that names a test is checked here, so its hold is too
+        h, at = obj["hold"], where + ", its hold"
+        only(h, "hold", at)
+        for k in ("file", "test"):
+            if k not in h:
+                raise Refused('%s names a file and a test, and has no "%s"' % (at, k))
+            if not isinstance(h[k], str) or not h[k]:
+                raise Refused('%s names a file and a test, and "%s" is not a name' % (at, k))
 
 
 def brought(kind, place):

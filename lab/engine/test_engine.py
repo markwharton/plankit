@@ -872,6 +872,26 @@ def everything(doc):
             engine.findings(d, plays))
 
 
+class Holds(unittest.TestCase):
+    def test_a_hold_is_a_file_and_a_test_and_nothing_else(self):
+        cases = [
+            ({"file": "t.py", "test": "test_it", "line": 3}, 'its hold: the key "line" is not one a hold has (file, test)'),
+            ({"file": "t.py"}, 'its hold names a file and a test, and has no "test"'),
+            ({"file": "t.py", "test": 3}, 'its hold names a file and a test, and "test" is not a name'),
+            ("test_it", "its hold: an object was expected"),
+        ]
+        for hold, reason in cases:
+            with self.subTest(hold=hold):
+                doc = notes()
+                doc["parts"]["publish"]["seq"][0]["handles"][0]["hold"] = hold
+                with self.assertRaises(engine.Refused) as cm:
+                    engine.Design(doc)
+                self.assertIn(reason, str(cm.exception))
+        doc = notes()
+        doc["parts"]["publish"]["seq"][0]["handles"][0]["hold"] = {"file": "t.py", "test": "test_it"}
+        engine.Design(doc)                                         # a hold that is a file and a test loads
+
+
 class TextSyntax(unittest.TestCase):
     def test_the_text_syntax_fixture_uses_every_key_the_engine_reads(self):
         """lab/syntax round-trips this design through its text forms, so a key the engine
@@ -885,20 +905,9 @@ class TextSyntax(unittest.TestCase):
         engine.only = recording
         try:
             with open(path, encoding="utf-8") as f:
-                doc = json.load(f)
-            engine.Design(doc, ".", os.path.dirname(path))
+                engine.Design(json.load(f), ".", os.path.dirname(path))
         finally:
             engine.only = was
-        def holds(x):                                            # a hold is read only when its test is looked up, so its keys are taken from the file
-            if isinstance(x, dict):
-                if isinstance(x.get("hold"), dict):
-                    seen.setdefault("hold", set()).update(x["hold"])
-                for v in x.values():
-                    holds(v)
-            elif isinstance(x, list):
-                for v in x:
-                    holds(v)
-        holds(doc)
         files = {"accepted", "acceptance"}                       # an acceptances file is not a design, and has no text form yet
         self.assertEqual({k: sorted(v - seen.get(k, set())) for k, v in engine.KEYS.items() if k not in files and v - seen.get(k, set())}, {})
 
