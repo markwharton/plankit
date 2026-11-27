@@ -747,8 +747,8 @@ class Play:
         self.frames = outer
         self.saw[name], self.did[name] = frame["saw"], frame["did"]
         if failure:
-            if fired and fired["then"] == "accept" and failure.cause & self.answered:
-                self.steps.append((name, "ran"))           # the run below refused, and this action said that is fine
+            if fired and fired["then"] in ("accept", "tell") and failure.cause & self.answered:
+                self.steps.append((name, "ran"))           # the run below refused, and this action said that is fine, or told the person and went on
                 return None
             for fault in sorted(failure.cause - self.answered):
                 self.ask(name, fault)

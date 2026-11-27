@@ -638,6 +638,17 @@ class Engine(unittest.TestCase):
         p = one(d, "the store is closed")
         self.assertEqual((p.outcome(), p.stop.action, p.steps), ("failed", "shelve it", [("shelve it", "failed")]))   # the run below refused, and it fails here
 
+    def test_a_failure_from_below_told_of_lets_the_run_go_on(self):
+        doc = library()
+        doc["parts"]["return a book"]["seq"][0]["handles"][0] = {"when": "the store is closed", "then": "tell"}
+        d = layers(doc)
+        self.assertEqual(found(d), [])
+        p = one(d, "the store is closed")                  # the person is told, and the run goes on
+        self.assertEqual((p.outcome(), p.steps, p.state["message"]), ("completed", [("shelve it", "ran"), ("note it at the desk", "ran")], "created"))
+        doc["parts"]["return a book"]["seq"][0]["handles"][0] = {"when": "the store is closed", "then": "accept", "because": "a closed store is tried again tomorrow"}
+        p = one(layers(doc), "the store is closed")        # accepted, it goes on and the person is not told
+        self.assertEqual((p.outcome(), p.steps, p.state["message"]), ("completed", [("shelve it", "ran"), ("note it at the desk", "ran")], "untouched"))
+
     def test_what_the_run_below_accepted_is_asked_again(self):
         doc = library()
         del doc["parts"]["return a book"]["seq"][0]["handles"][1]
