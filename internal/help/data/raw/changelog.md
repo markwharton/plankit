@@ -7,9 +7,9 @@ description: Generate CHANGELOG.md from conventional commits and stage a release
 
 Reads the conventional commits since the last version tag, infers the
 next version, writes the section into `CHANGELOG.md`, and commits with
-a `Release-Tag` trailer. No git tag is created; `pk release` creates
-it, so the release stays a two-step: generate and review, then tag
-and push.
+a `Release-Tag` trailer. It leaves the release untagged; `pk release`
+tags it, so the release stays a two-step: generate and review, then
+tag and push.
 
 ## Version inference
 
