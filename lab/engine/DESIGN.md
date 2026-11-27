@@ -354,6 +354,15 @@ release there has been: each run reads what an earlier one left.
 - **Answers are tried in the order written.** The first whose `when`
   holds is the one that applies. An answer with no `when` always
   applies, as when a person is asked every time.
+- **An action that uses a run tries its own answers first.** An
+  answer that applies is chosen before the run below plays. A `tell`
+  with no `when` tells the person every time and answers no fault of
+  the run below, so a failure there still comes up to the action.
+  Written first, it is the answer that applies, and the answers after
+  it never are.
+- **An expectation is judged on the facts a play is given.** Its
+  `when` reads them as the run starts. A change that `makes` a fact
+  true or false does not change which expectations apply.
 - **What can go wrong in writing to a place is a fault at the step.**
   A fault `about` a place is about the value an action reads there. A
   full disk, or a store that will not take a write, is a fault with no
