@@ -1,0 +1,517 @@
+{
+  "system": "pk release",
+  "on": ["git.json"],
+  "reports": "pk's message",
+  "places": [
+    { "name": ".pk.json", "is": "one", "kind": "outside" },
+    { "name": "checked-out branch", "is": "series", "kind": "lasting" },
+    { "name": "release branch", "is": "series", "kind": "lasting" },
+    { "name": "origin's checked-out branch", "is": "series", "kind": "lasting", "in": "origin" },
+    { "name": "origin's release branch", "is": "series", "kind": "lasting", "in": "origin" },
+    { "name": "pk's message", "is": "one", "kind": "report" }
+  ],
+  "facts": [
+    {
+      "name": "--dry-run is given",
+      "says": "The flag. The page: 'Validate without merging, tagging, or pushing'."
+    },
+    {
+      "name": "release.branch is set",
+      "about": ".pk.json",
+      "says": "The page: 'release.branch set selects merge flow; empty selects trunk flow.' The settings list also says 'An absent key means its default' and gives the default as 'the branch pk init ran on'. The page does not say which flow an absent key selects."
+    },
+    {
+      "name": "a preRelease hook is set",
+      "about": ".pk.json",
+      "says": "release.hooks.preRelease: 'a shell command; default none'."
+    },
+    {
+      "name": "a prePush hook is set",
+      "about": ".pk.json",
+      "says": "release.hooks.prePush: 'a shell command; default none'."
+    },
+    {
+      "name": "HEAD carries a Release-Tag trailer",
+      "about": "checked-out branch",
+      "says": "The last commit of the checked-out branch has a Release-Tag trailer. The page says pk changelog stages it. This definition holds no changelog run, so nothing here makes it."
+    },
+    {
+      "name": "the preRelease hook commits",
+      "only": "a preRelease hook is set",
+      "says": "The page: 'A preRelease hook that commits produces a commit the tag then covers.'"
+    },
+    {
+      "name": ".pk.json has an unknown key or a value outside the settings",
+      "fault": true,
+      "about": ".pk.json",
+      "says": "The page: 'An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2'."
+    },
+    {
+      "name": "no branch is checked out",
+      "fault": true,
+      "about": "checked-out branch",
+      "says": "Pre-flight: 'a branch checked out'."
+    },
+    {
+      "name": "the checked-out branch is not on origin",
+      "fault": true,
+      "about": "origin's checked-out branch",
+      "says": "Pre-flight: 'a branch checked out, on origin'."
+    },
+    {
+      "name": "the checked-out branch is behind origin",
+      "fault": true,
+      "about": "checked-out branch",
+      "says": "Pre-flight: 'a branch checked out, on origin and not behind it'."
+    },
+    {
+      "name": "the release branch does not resolve",
+      "fault": true,
+      "about": "release branch",
+      "only": "release.branch is set",
+      "says": "Pre-flight: 'release branch resolvable'."
+    },
+    {
+      "name": "the last version tag is not in the checked-out branch's history",
+      "fault": true,
+      "about": "checked-out branch",
+      "says": "Pre-flight: 'the last version tag in the working branch's history'."
+    },
+    {
+      "name": "the checked-out branch is not the default branch",
+      "fault": true,
+      "about": "checked-out branch",
+      "only": { "not": "release.branch is set" },
+      "says": "Trunk flow: 'a release tags and pushes the default branch, and refuses to run anywhere else'. The page does not say what makes a branch the default branch."
+    },
+    {
+      "name": "the preRelease hook fails",
+      "fault": true,
+      "only": "a preRelease hook is set",
+      "says": "The hook's command exits non-zero. The page does not mention it."
+    },
+    {
+      "name": "the prePush hook fails",
+      "fault": true,
+      "only": "a prePush hook is set",
+      "says": "The hook's command exits non-zero. The page does not mention it."
+    },
+    {
+      "name": "pre-flight fetches origin's tags",
+      "open": true,
+      "says": "The page says 'Pre-flight fetches from origin to make these checks.' It does not say what is fetched: the checked-out branch, the release branch, the tags, or all of them. This definition fetches the checked-out branch, because one check is 'on origin and not behind it', and leaves the tags open. A fetch of the release branch is not modelled."
+    },
+    {
+      "name": "the preRelease hook runs before the merge",
+      "open": true,
+      "says": "The page says preRelease 'runs before the tag exists'. It does not say whether that is before or after the release branch is fast-forwarded, so it does not say which branch a hook's commit lands on in merge flow, or whether a failed hook leaves a merge behind. It also does not say whether the hook runs before or after pre-flight. This definition puts it after."
+    },
+    {
+      "name": "a rehearsed preRelease hook runs its command",
+      "open": true,
+      "says": "The page says preRelease 'is rehearsed by --dry-run'. It does not say whether a rehearsal runs the hook's command, so it does not say whether a hook that commits makes its commit in a dry run."
+    },
+    {
+      "name": "a failing preRelease hook stops the release",
+      "open": true,
+      "says": "The page does not say what release does when the preRelease hook's command exits non-zero."
+    },
+    {
+      "name": "a dry run runs the prePush hook",
+      "open": true,
+      "says": "The page says --dry-run rehearses preRelease. It says prePush 'runs with the tag ref in existence', and a dry run makes no tag. It does not say whether a dry run runs or rehearses prePush."
+    },
+    {
+      "name": "a failing prePush hook stops the release",
+      "open": true,
+      "says": "The page says 'A failure after tagging rolls back'. It does not say whether a prePush hook whose command exits non-zero is such a failure."
+    },
+    {
+      "name": "a failed switch back still pushes the working branch",
+      "open": true,
+      "says": "The page says 'a failure to switch back or to push the working branch is reported as a warning'. It does not say whether the working branch is still pushed after the switch back fails."
+    }
+  ],
+  "parts": {
+    "release": {
+      "name": "release",
+      "says": "Completes what pk changelog staged: reads the Release-Tag trailer on HEAD, runs pre-flight checks, creates the tag, and pushes atomically to origin.",
+      "seq": [
+        "load the settings",
+        "read the trailer",
+        "pre-flight",
+        {
+          "says": "release.branch set selects merge flow; empty selects trunk flow.",
+          "choose": [
+            { "when": "release.branch is set", "run": "merge flow" }
+          ],
+          "otherwise": "trunk flow"
+        }
+      ]
+    },
+    "load the settings": {
+      "do": "load the settings",
+      "says": "The release section of .pk.json. An unknown key or a value outside these fails the whole file when it loads.",
+      "reads": [".pk.json"],
+      "changes": [],
+      "handles": [
+        {
+          "when": ".pk.json has an unknown key or a value outside the settings",
+          "then": "refuse",
+          "says": "pk commands exit 2, with a message naming the key."
+        }
+      ]
+    },
+    "read the trailer": {
+      "do": "read the trailer",
+      "says": "Reads the Release-Tag trailer on HEAD.",
+      "reads": ["checked-out branch"],
+      "changes": [],
+      "handles": [
+        {
+          "when": { "not": "HEAD carries a Release-Tag trailer" },
+          "then": "refuse",
+          "says": "With no Release-Tag trailer on HEAD it refuses, and says to run pk changelog first."
+        }
+      ]
+    },
+    "pre-flight": {
+      "name": "pre-flight",
+      "says": "Pre-flight fetches from origin to make these checks.",
+      "seq": [
+        {
+          "do": "fetch the checked-out branch",
+          "uses": "fetch the branch",
+          "with": { "origin's branch": "origin's checked-out branch" }
+        },
+        {
+          "do": "fetch origin's tags",
+          "when": "pre-flight fetches origin's tags",
+          "uses": "fetch tags"
+        },
+        "check"
+      ]
+    },
+    "check": {
+      "do": "check",
+      "says": "No tag of the release's name yet; clean tree; a branch checked out, on origin and not behind it; release branch resolvable and not diverged from the working branch; the last version tag in the working branch's history. The page lists the checks. It does not say in words that a failed check refuses the release, nor in what order they are made.",
+      "reads": [
+        "tags",
+        "working tree",
+        "checked-out branch",
+        "remote-tracking branch",
+        { "place": "release branch", "when": "release.branch is set" }
+      ],
+      "changes": [],
+      "handles": [
+        {
+          "when": "tags already has the member",
+          "then": "refuse",
+          "says": "No tag of the release's name yet. The page does not say whether this is the local tags, origin's, or both."
+        },
+        {
+          "when": "working tree holds what is kept nowhere",
+          "then": "refuse",
+          "says": "Clean tree."
+        },
+        { "when": "no branch is checked out", "then": "refuse" },
+        { "when": "the checked-out branch is not on origin", "then": "refuse" },
+        { "when": "the checked-out branch is behind origin", "then": "refuse" },
+        { "when": "the release branch does not resolve", "then": "refuse" },
+        {
+          "when": "the branch cannot be fast-forwarded",
+          "then": "refuse",
+          "says": "Release branch not diverged from the working branch. git's fact: the other branch's history does not contain the branch's last commit."
+        },
+        {
+          "when": "the last version tag is not in the checked-out branch's history",
+          "then": "refuse"
+        },
+        {
+          "when": "the checked-out branch is not the default branch",
+          "then": "refuse",
+          "says": "Trunk flow refuses to run anywhere else. The page states this under Two flows, not under Pre-flight."
+        }
+      ]
+    },
+    "run the preRelease hook": {
+      "do": "run the preRelease hook",
+      "when": "a preRelease hook is set",
+      "says": "preRelease runs before the tag exists and is rehearsed by --dry-run.",
+      "reads": [".pk.json"],
+      "changes": [],
+      "handles": [
+        {
+          "when": { "all": ["the preRelease hook fails", "a failing preRelease hook stops the release"] },
+          "then": "refuse"
+        }
+      ]
+    },
+    "preRelease on the checked-out branch": {
+      "name": "preRelease on the checked-out branch",
+      "seq": [
+        "run the preRelease hook",
+        {
+          "do": "the hook's commit on the checked-out branch",
+          "says": "A preRelease hook that commits produces a commit the tag then covers.",
+          "when": {
+            "all": [
+              "a preRelease hook is set",
+              "the preRelease hook commits",
+              { "any": [{ "not": "--dry-run is given" }, "a rehearsed preRelease hook runs its command"] }
+            ]
+          },
+          "uses": "commit",
+          "with": { "the branch": "checked-out branch" }
+        }
+      ]
+    },
+    "preRelease on the release branch": {
+      "name": "preRelease on the release branch",
+      "seq": [
+        "run the preRelease hook",
+        {
+          "do": "the hook's commit on the release branch",
+          "says": "A preRelease hook that commits produces a commit the tag then covers.",
+          "when": {
+            "all": [
+              "a preRelease hook is set",
+              "the preRelease hook commits",
+              { "any": [{ "not": "--dry-run is given" }, "a rehearsed preRelease hook runs its command"] }
+            ]
+          },
+          "uses": "commit",
+          "with": { "the branch": "release branch" }
+        }
+      ]
+    },
+    "run the prePush hook": {
+      "do": "run the prePush hook",
+      "when": {
+        "all": [
+          "a prePush hook is set",
+          { "any": [{ "not": "--dry-run is given" }, "a dry run runs the prePush hook"] }
+        ]
+      },
+      "says": "prePush runs with the tag ref in existence, for signing or artifact builds keyed on the tag. Settings: runs after the tag exists and before the push.",
+      "reads": [".pk.json", "tags"],
+      "changes": [],
+      "handles": [
+        {
+          "when": { "all": ["the prePush hook fails", "a failing prePush hook stops the release"] },
+          "then": "refuse"
+        }
+      ]
+    },
+    "merge flow": {
+      "name": "merge flow",
+      "says": "A release fast-forwards the release branch to it, tags, pushes branch and tag together, switches back, and pushes the working branch.",
+      "seq": [
+        {
+          "use": "preRelease on the checked-out branch",
+          "when": "the preRelease hook runs before the merge"
+        },
+        {
+          "do": "switch to the release branch",
+          "says": "Not stated as a step. The page says the release 'switches back', and that a rollback checks the working branch out, so the release branch is checked out by then. Where in the order the switch comes is not said.",
+          "uses": "switch",
+          "with": { "the branch": "release branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "undone"
+        },
+        {
+          "do": "merge",
+          "says": "A release fast-forwards the release branch to the working branch. On a failure after tagging, the merge is reset. The page does not say what happens to the merge when a failure comes after it and before the tag.",
+          "uses": "fast-forward",
+          "with": { "the branch": "release branch", "the other branch": "checked-out branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "undone"
+        },
+        {
+          "use": "preRelease on the release branch",
+          "when": { "not": "the preRelease hook runs before the merge" }
+        },
+        {
+          "do": "tag the release branch",
+          "says": "Creates the tag. On a failure after tagging, the local tag is deleted.",
+          "uses": "tag",
+          "with": { "the branch": "release branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "undone"
+        },
+        "run the prePush hook",
+        {
+          "do": "push the release branch and the tag",
+          "says": "Pushes branch and tag together.",
+          "uses": "push the branch and the tag",
+          "with": { "the branch": "release branch", "origin's branch": "origin's release branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "stands",
+          "because": "Once the release branch and the tag are on origin the release stands.",
+          "handles": [
+            { "when": "origin does not answer", "then": "refuse", "says": "A failure after tagging rolls back." },
+            { "when": "origin rejects the push", "then": "refuse", "says": "A failure after tagging rolls back." },
+            { "when": "origin's tags already has the member", "then": "refuse", "says": "A failure after tagging rolls back." }
+          ]
+        },
+        "after the release stands"
+      ]
+    },
+    "after the release stands": {
+      "name": "after the release stands",
+      "says": "Once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is reported as a warning.",
+      "choose": [
+        {
+          "when": "a failed switch back still pushes the working branch",
+          "run": { "all": ["switch back", "push the working branch"] }
+        }
+      ],
+      "otherwise": { "seq": ["switch back", "push the working branch"] },
+      "handles": [
+        { "when": "the switch fails", "then": "warn" },
+        { "when": "working tree holds what is kept nowhere", "then": "warn" },
+        { "when": "origin does not answer", "then": "warn" },
+        { "when": "origin rejects the push", "then": "warn" }
+      ]
+    },
+    "switch back": {
+      "do": "switch back",
+      "says": "Switches back.",
+      "uses": "switch",
+      "with": { "the branch": "checked-out branch" },
+      "rehearsal": "--dry-run is given",
+      "handles": [
+        { "when": "the switch fails", "then": "refuse", "says": "Passed to the part, which warns." },
+        { "when": "working tree holds what is kept nowhere", "then": "refuse", "says": "Passed to the part, which warns." }
+      ]
+    },
+    "push the working branch": {
+      "do": "push the working branch",
+      "says": "Pushes the working branch.",
+      "uses": "push the branch",
+      "with": { "the branch": "checked-out branch", "origin's branch": "origin's checked-out branch" },
+      "rehearsal": "--dry-run is given",
+      "handles": [
+        { "when": "origin does not answer", "then": "refuse", "says": "Passed to the part, which warns." },
+        { "when": "origin rejects the push", "then": "refuse", "says": "Passed to the part, which warns." }
+      ]
+    },
+    "trunk flow": {
+      "name": "trunk flow",
+      "says": "Trunk flow keeps one: a release tags and pushes the default branch, and refuses to run anywhere else.",
+      "seq": [
+        "preRelease on the checked-out branch",
+        {
+          "do": "tag the default branch",
+          "says": "Creates the tag. On a failure after tagging, the local tag is deleted.",
+          "uses": "tag",
+          "with": { "the branch": "checked-out branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "undone"
+        },
+        "run the prePush hook",
+        {
+          "do": "push the default branch and the tag",
+          "says": "Pushes atomically to origin.",
+          "uses": "push the branch and the tag",
+          "with": { "the branch": "checked-out branch", "origin's branch": "origin's checked-out branch" },
+          "rehearsal": "--dry-run is given",
+          "later": "stands",
+          "because": "Once the release branch and the tag are on origin the release stands.",
+          "handles": [
+            { "when": "origin does not answer", "then": "refuse", "says": "A failure after tagging rolls back." },
+            { "when": "origin rejects the push", "then": "refuse", "says": "A failure after tagging rolls back." },
+            { "when": "origin's tags already has the member", "then": "refuse", "says": "A failure after tagging rolls back." }
+          ]
+        }
+      ]
+    }
+  },
+  "runs": ["release"],
+  "expects": [
+    {
+      "name": "no trailer, no release",
+      "says": "With no Release-Tag trailer on HEAD it refuses.",
+      "in": "release",
+      "when": { "not": "HEAD carries a Release-Tag trailer" },
+      "on": "any",
+      "never runs": [
+        "merge",
+        "tag the release branch",
+        "tag the default branch",
+        "push the release branch and the tag",
+        "push the default branch and the tag"
+      ]
+    },
+    {
+      "name": "trunk flow releases from the default branch only",
+      "says": "A release tags and pushes the default branch, and refuses to run anywhere else.",
+      "in": "release",
+      "when": { "all": [{ "not": "release.branch is set" }, "the checked-out branch is not the default branch"] },
+      "on": "any",
+      "never runs": ["tag the default branch", "push the default branch and the tag"]
+    },
+    {
+      "name": "a dry run merges and pushes nothing",
+      "says": "--dry-run: Validate without merging, tagging, or pushing.",
+      "in": "release",
+      "when": "--dry-run is given",
+      "on": "any",
+      "never changes": ["release branch", "origin"]
+    },
+    {
+      "name": "a dry run tags nothing",
+      "says": "--dry-run: Validate without merging, tagging, or pushing. Limited to plays with no fetch of tags, because a fetched tag and the release's tag are both members of tags.",
+      "in": "release",
+      "when": { "all": ["--dry-run is given", { "not": "pre-flight fetches origin's tags" }] },
+      "on": "any",
+      "never creates": ["tags"]
+    },
+    {
+      "name": "a release that fails has put nothing on origin",
+      "says": "Pushes atomically to origin. Once the release branch and the tag are on origin the release stands.",
+      "in": "release",
+      "on": "failed",
+      "never changes": ["origin"]
+    },
+    {
+      "name": "a release that reaches the switch back does not fail",
+      "says": "A failure to switch back or to push the working branch is reported as a warning.",
+      "in": "release",
+      "on": "failed",
+      "never runs": ["switch back", "push the working branch"]
+    },
+    {
+      "name": "a failed push rolls the merge back",
+      "says": "A failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out. Limited to the two faults that can only come after the tag, because an expectation cannot say 'after tagging'.",
+      "in": "release",
+      "when": { "any": ["origin rejects the push", "origin's tags already has the member"] },
+      "on": "failed",
+      "ends": { "place": "release branch", "is": "the state it had when the run started" }
+    }
+  ],
+  "rules": [
+    {
+      "rule": "The tag the release creates is the one the Release-Tag trailer on HEAD names.",
+      "about": "read the trailer"
+    },
+    {
+      "rule": "The message says to run pk changelog first.",
+      "about": "read the trailer",
+      "when": { "not": "HEAD carries a Release-Tag trailer" }
+    },
+    {
+      "rule": "The message names the key, and pk exits 2.",
+      "about": "load the settings",
+      "when": ".pk.json has an unknown key or a value outside the settings"
+    },
+    {
+      "rule": "The hook receives $VERSION (no v) and $TAG (with it).",
+      "about": "run the preRelease hook"
+    },
+    {
+      "rule": "The hook receives $VERSION (no v) and $TAG (with it).",
+      "about": "run the prePush hook"
+    }
+  ]
+}
