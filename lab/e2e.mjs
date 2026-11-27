@@ -162,7 +162,7 @@ async function main() {
   check("every view draws the runnable pk", (await js("return document.querySelectorAll('#stage table.m tr').length")) > 20);
   await shot("runnable-matrix");
   await click("#c-run button", "release");
-  await click("#c-path button", "given → the last commit is a release commit");
+  await js("const s = document.querySelector('#s-path'); s.value = [...s.options].find((o) => o.text === 'given → the last commit is a release commit').value; s.dispatchEvent(new Event('change'));");   // release has more than eight choices, so they are a list
   await click("#c-brk button", "origin rejects the push");
   check("a fault of a runnable design reads as the engine played it", /Verdict: refused/.test(await text("#readout")) && /push in merge flow stops the run/.test(await text("#readout")), await text("#readout"));
   await click("#c-view button", "Bus");
@@ -186,6 +186,9 @@ async function main() {
   await click("#c-panel button", "Prompts");
   await until(async () => /Describe what the code does/.test(await text("#panel") || ""), "the runnable prompts");
   check("a runnable design offers its own prompts", /Write a design from what a system should do/.test(await text("#panel")));
+  await click("#c-panel button", "Findings");
+  check("a design with no questions says so", /Questions for the owner/.test(await text("#panel")) && /No findings\./.test(await text("#panel")), await text("#panel"));
+  await open("pk on git, written blind from its pages");
   await click("#c-panel button", "Findings");
   check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
   await open("notes/notes.json");

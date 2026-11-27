@@ -89,6 +89,11 @@
       "name": "a merge refuses a tree with changes it would overwrite",
       "open": true,
       "says": "git merge --ff-only stops when the working tree has uncommitted changes to files the merge changes. The part of the manual read does not say."
+    },
+    {
+      "name": "origin's tag names the commit pushed",
+      "says": "origin already has the tag, on the commit the push sends",
+      "only": "origin's tags already has the member"
     }
   ],
   "parts": {
@@ -310,9 +315,14 @@
           "then": "refuse"
         },
         {
+          "when": "origin's tag names the commit pushed",
+          "then": "accept",
+          "because": "the ref is already what the push sends, so git takes the push"
+        },
+        {
           "when": "origin's tags already has the member",
           "then": "refuse",
-          "says": "An update to a tag origin already has is rejected without --force."
+          "says": "An update to a tag origin already has on another commit is rejected without --force."
         }
       ]
     },

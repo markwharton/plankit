@@ -201,8 +201,8 @@
     {
       "name": "origin's last version tag names a commit the clone does not have",
       "fault": true,
-      "about": "origin's tags",
-      "only": "dry run"
+      "only": "dry run",
+      "at": "read origin's tags"
     }
   ],
   "parts": {
@@ -726,7 +726,8 @@
           }
         },
         "tags",
-        "remote-tracking branch"
+        "remote-tracking branch",
+        "origin's tags"
       ],
       "handles": [
         {
@@ -756,6 +757,18 @@
             "file": "internal/release/release_test.go",
             "test": "TestRefusals"
           }
+        },
+        {
+          "when": {
+            "all": [
+              "origin's tags already has the member",
+              {
+                "not": "origin's tag names the commit pushed"
+              }
+            ]
+          },
+          "then": "refuse",
+          "says": "pre-flight reads origin's tags without a fetch and refuses a tag of the release's name on another commit"
         },
         {
           "when": "the branch is not the default",
@@ -888,7 +901,15 @@
           "when": {
             "any": [
               "origin does not answer",
-              "origin rejects the push"
+              "origin rejects the push",
+              {
+                "all": [
+                  "origin's tags already has the member",
+                  {
+                    "not": "origin's tag names the commit pushed"
+                  }
+                ]
+              }
             ]
           },
           "then": "refuse",
@@ -896,6 +917,16 @@
             "file": "internal/release/release_test.go",
             "test": "TestRejectedPushRollsEverythingBack"
           }
+        },
+        {
+          "when": {
+            "all": [
+              "origin's tags already has the member",
+              "origin's tag names the commit pushed"
+            ]
+          },
+          "then": "accept",
+          "because": "origin already has the tag on the commit the release pushes, so git takes the push"
         }
       ]
     },
@@ -913,7 +944,15 @@
           "when": {
             "any": [
               "origin does not answer",
-              "origin rejects the push"
+              "origin rejects the push",
+              {
+                "all": [
+                  "origin's tags already has the member",
+                  {
+                    "not": "origin's tag names the commit pushed"
+                  }
+                ]
+              }
             ]
           },
           "then": "refuse",
@@ -921,6 +960,16 @@
             "file": "internal/release/release_test.go",
             "test": "TestRejectedPushRollsEverythingBack"
           }
+        },
+        {
+          "when": {
+            "all": [
+              "origin's tags already has the member",
+              "origin's tag names the commit pushed"
+            ]
+          },
+          "then": "accept",
+          "because": "origin already has the tag on the commit the release pushes, so git takes the push"
         }
       ],
       "says": "the release branch and the tag are pushed together"

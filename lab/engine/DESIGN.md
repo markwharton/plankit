@@ -511,16 +511,16 @@ that sentence. Held by `lab/engine/test_pk.py`.
 `git.json` was written from git's manual for each operation, and from
 pk's code for which commands it runs. Where the part of the manual
 read does not say, it has an open fact. Whether a rejected update to a
-tag fails the fetch was settled by running git 2.54: it does.
+tag fails the fetch was settled by running git 2.54: it does. So was
+what a push does with a tag origin already has: git takes it when the
+tag is on the commit pushed, and refuses it otherwise.
 
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
-- pk's design lists 25 facts and git's lists 7. Before it stood on
+- pk's design lists 25 facts and git's lists 8. Before it stood on
   git, pk's listed 32.
-- The design has 548 plays: 146 of changelog, 61 of release, 341 of
+- The design has 589 plays: 146 of changelog, 66 of release, 377 of
   ship.
-- It reports 1 question:
-  - Origin already has the tag. git's push refuses it, and neither
-    push action answers.
+- It reports no questions.
 - git's reset goes on with a commit held elsewhere and with a tree
   that holds what is kept nowhere. Both come up to `undo`, which
   refuses both. Neither is a fact pk's design lists.
@@ -528,8 +528,9 @@ tag fails the fetch was settled by running git 2.54: it does.
   the owner has decided otherwise: a dry run fetches the tags, a
   rejected update to a tag stops changelog, changelog does not check a
   branch that is behind origin, and changelog says nothing when origin
-  names no default branch or when the section has no link. Played
-  against the design it gives 6 `differs` findings, each naming the
+  names no default branch or when the section has no link, and
+  release does not read origin's tags before it tags. Played against
+  the design it gives 8 `differs` findings, each naming the
   facts that cause it. Its words differ in two more places, which the
   engine does not play: a pre-release tag counts as the latest version,
   and a local path as origin gives a link made from the path. Together
