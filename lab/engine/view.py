@@ -101,15 +101,21 @@ def view_model(d, plays, findings, tests, shown):
         touched = [p["name"] for p in d.places.values() if any(p["name"] in n["reads"] or any(w["place"] == p["name"] for w in n["writes"])
                                                            for n in leaves if n["name"] in names[run].values())]
         rv = {"run": run, "paths": [], "traces": [], "baselines": [], "faults": []}
-        flags_of = lambda p: tuple(f for f in p.given() if not d.is_fault(f))
-        faults_of = lambda p: [f for f in p.given() if d.is_fault(f)]
-        order = []
+        given = {id(p): p.given() for p in mine}           # each play's facts, worked out once
+        flags_by = {k: tuple(f for f in g if not d.is_fault(f)) for k, g in given.items()}
+        faults_by = {k: [f for f in g if d.is_fault(f)] for k, g in given.items()}
+        flags_of = lambda p: flags_by[id(p)]
+        faults_of = lambda p: faults_by[id(p)]
+        order, groups = [], {}
         for p in sorted(mine, key=lambda p: (len(faults_of(p)), flags_of(p))):
-            if flags_of(p) not in order:
+            if flags_of(p) not in groups:
                 order.append(flags_of(p))
+                groups[flags_of(p)] = []
+        for p in mine:                                     # one pass, in the run's order, as each group was before
+            groups[flags_of(p)].append(p)
         for i, flags in enumerate(order):
             rv["paths"].append([{"or": "given", "child": " and ".join(flags) or "nothing special"}])
-            group = [p for p in mine if flags_of(p) == flags]
+            group = groups[flags]
             group.sort(key=lambda p: len(faults_of(p)))
             for j, p in enumerate(group):
                 bad = set(faults_of(p))
