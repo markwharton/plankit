@@ -358,6 +358,10 @@ def runnable_prompts():
 def make_handler(library, checker):
     cache, cache_lock = {}, threading.Lock()
 
+    def public(r):
+        """A result as the page gets it: the whole traces stay here, and /api/trace sends one."""
+        return {k: v for k, v in r.items() if k != "traces"}
+
     def result(sc, text=None):
         key = (sc.id, sc.stamp(), checker.stamp(), hashlib.sha1(text.encode()).hexdigest() if text is not None else None)
         with cache_lock:
@@ -421,7 +425,7 @@ def make_handler(library, checker):
             if url.path == "/api/scenarios":
                 return self.send(200, {"scenarios": [s.listing() for s in library.scenarios()], "checker": checker.stamp()})
             if url.path == "/api/model":
-                return self.send(200, result(library.get(q.get("id", ""))))
+                return self.send(200, public(result(library.get(q.get("id", "")))))
             if url.path == "/api/source":
                 sc = library.get(q.get("id", ""))
                 with open(sc.definition, encoding="utf-8") as f:
@@ -440,11 +444,13 @@ def make_handler(library, checker):
                 body = json.loads(self.rfile.read(length) or b"{}")
             except ValueError:
                 raise LabError(400, "the request is not JSON")
+            if self.path == "/api/trace" and isinstance(body, dict):
+                return self.send(200, self.trace(body))
             if not isinstance(body, dict) or not isinstance(body.get("text"), str):
                 raise LabError(400, "the request needs the definition's text")
             sc = library.get(body.get("id", ""))
             if self.path == "/api/check":
-                return self.send(200, result(sc, body["text"]))
+                return self.send(200, public(result(sc, body["text"])))
             if self.path == "/api/save":
                 return self.send(200, self.save(sc, body))
             if self.path == "/api/format":
@@ -455,6 +461,21 @@ def make_handler(library, checker):
                 except engine.Refused as e:
                     return self.send(200, {"refused": [str(e)]})
             raise LabError(404, "nothing at %s" % self.path)
+
+        def trace(self, body):
+            """One play's whole trace, from the result the lab keeps for the scenario and the text it was checked with (none: the file)."""
+            text = body.get("text")
+            if text is not None and not isinstance(text, str):
+                raise LabError(400, "the trace's text is the definition's text, or null for the file")
+            got = result(library.get(body.get("id", "")), text).get("traces")
+            run, n = body.get("run"), body.get("n")
+            if got is None:
+                raise LabError(400, "this definition's model carries its traces whole")
+            if run not in got:
+                raise LabError(400, "no run %r in this definition" % run)
+            if not isinstance(n, int) or isinstance(n, bool) or not 0 <= n < len(got[run]):
+                raise LabError(400, "no trace %s in run %s: it has %d" % (n, run, len(got[run])))
+            return {"trace": got[run][n]}
 
         def save(self, sc, body):
             if sc.readonly:

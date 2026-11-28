@@ -198,6 +198,23 @@ class LabServer(unittest.TestCase):
                 if os.path.exists(os.path.join(self.designs, "notes", name)):
                     os.remove(os.path.join(self.designs, "notes", name))
 
+    def test_a_runnable_design_sends_summaries_and_a_whole_trace_on_request(self):
+        sc = self.scenario("notes/notes.design")
+        _, res = self.call("/api/model?id=" + sc["id"])
+        rv = res["model"]["runs"][0]
+        for t in rv["traces"]:
+            self.assertFalse({"start", "end"} & set(t), t)                     # a summary: the page asks for the rest
+            self.assertTrue(all(set(s) == {"element", "outcome"} for s in t["steps"]), t["steps"])
+        status, whole = self.call("/api/trace", {"id": sc["id"], "text": None, "run": rv["run"], "n": 1})
+        self.assertEqual(status, 200, whole)
+        self.assertIn("start", whole["trace"])
+        self.assertIn("end", whole["trace"])
+        self.assertEqual([(s["element"], s["outcome"]) for s in whole["trace"]["steps"]], [(s["element"], s["outcome"]) for s in rv["traces"][1]["steps"]])
+        self.assertEqual(whole["trace"]["refusals"], rv["traces"][1]["refusals"])
+        status, got = self.call("/api/trace", {"id": sc["id"], "text": None, "run": rv["run"], "n": len(rv["traces"])})
+        self.assertEqual(status, 400)
+        self.assertIn("no trace %d" % len(rv["traces"]), json.dumps(got))
+
     def test_a_named_fact_is_listed_with_its_meaning(self):
         sc = self.scenario("notes/notes.design")
         _, src = self.call("/api/source?id=" + sc["id"])

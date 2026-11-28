@@ -252,12 +252,28 @@ function cur() {
   const faults = rv.faults.filter((f) => f.path === S.path);
   const fault = S.place ? faults.filter((f) => f.place === S.place)[0] || null : null;
   if (S.place && !fault) S.place = null;
-  const trace = rv.traces[fault ? fault.trace : rv.baselines[S.path]];
+  const trace = whole(rv, fault ? fault.trace : rv.baselines[S.path]);
   const step = {}, chosen = {};
   trace.steps.forEach((s) => { step[s.element] = s; });
   trace.path.forEach((p) => { chosen[p.or] = p.child; });
   if (S.t > trace.steps.length || S.t < 0) S.t = trace.steps.length;
   return { V, NODE, PLACE, ri, rv, faults, fault, trace, step, chosen };
+}
+/* A run's trace i, whole. The engine's model sends each trace as a summary, and the server
+   sends one whole on request, for the text the shown result was checked with; until it comes
+   the summary is drawn with no reads, writes or states. The older checker's traces come whole. */
+function whole(rv, i) {
+  const t = rv.traces[i];
+  if (t.start) return t;
+  rv.whole = rv.whole || {};
+  if (rv.whole[i]) return rv.whole[i];
+  rv.asked = rv.asked || {};
+  if (!rv.asked[i]) {
+    rv.asked[i] = true;
+    const text = shownRes() === A.draft ? A.draftText : null;
+    api("/api/trace", { id: A.id, text, run: rv.run, n: i }).then((r) => { rv.whole[i] = r.trace; render(); }, (e) => { rv.asked[i] = false; toast(e.message); });
+  }
+  return { path: rv.paths[t.path], given: t.given, refusals: t.refusals, start: [], end: [], steps: t.steps.map((s) => ({ element: s.element, outcome: s.outcome, reads: [], writes: [] })) };
 }
 function leavesUnder(C, name) { const n = C.NODE[name]; return n.children.length ? [].concat(...n.children.map((k) => leavesUnder(C, k))) : [name]; }
 function under(C, name, top) { for (let at = name; at; at = C.NODE[at].parent) if (at === top) return true; return false; }
@@ -841,7 +857,7 @@ async function checkDraft() {
     const res = await api("/api/check", { id: A.id, text });
     if (seq !== A.seq) return;
     A.error = null;
-    if (res.ok) { A.draft = res; A.refused = null; } else A.refused = res.refused;
+    if (res.ok) { A.draft = res; A.draftText = text; A.refused = null; } else A.refused = res.refused;
   } catch (e) { if (seq !== A.seq) return; A.error = e.message; }
   A.checking = false;
   render();
