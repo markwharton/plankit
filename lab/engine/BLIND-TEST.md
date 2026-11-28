@@ -97,6 +97,37 @@ cannot be made. Its expectation that changelog creates no tag failed
 where changelog fetches origin's tags: the page said "No git tag is
 created", and meant the release tag.
 
+`pk-on-git-blind-8.design` beside it is the eighth round's, the first
+written as text, in form A, from the same three pages. It stands on
+`git-at-round-8.design`, git's design written as text as the writer
+was given it. The writer had `LANGUAGE.md` made as for round seven,
+with the text section's examples changed too, a built syntax tool, and
+git's design as its one whole example of the text form. Neither the
+syntax tool nor the engine refused the file: 9,814 plays and 10
+questions. The writer looked one thing up in `engine.py`, why an
+expectation held where a change was left behind. The round cost about
+138,000 tokens. The record is as its writer wrote it; a design kept
+here is the printer's text, and a record need not be. It is not listed
+in the lab: at 9,814 plays the lab's view of it takes over a minute to
+build, which is the view's to fix.
+
+The writer named one fact, "nothing has been released", for no local
+version tag and none on origin.
+
+It found four gaps in `LANGUAGE.md`, now closed in `DESIGN.md`: the
+page showed one statement in the text form, so the writer printed
+small JSON designs to learn the rest; it did not say which name comes
+first in `ACTION undo AS unwind a release commit`; it counted facts
+where the printer counts the parts at a condition's top; and it did
+not say an action that uses a run can answer `fail`.
+
+Its questions found two things to decide. A preRelease hook may
+commit, and when the release half of ship fails, that commit is left
+behind, on top of the changelog commit ship means to undo. And an
+expectation that a failed ship leaves the working branch as it found
+it held in those same plays, because the engine keeps one state for a
+place, and undoing the changelog commit covered the hook's commit.
+
 `data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
 designs written the same way for one flow each of three other systems.
 They are kept because each showed something pk could not: a run made a

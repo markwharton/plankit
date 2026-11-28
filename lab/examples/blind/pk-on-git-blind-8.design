@@ -1,0 +1,542 @@
+SYSTEM pk: the release commands changelog, release and ship
+ON git-at-round-8.design
+REPORTS pk's message
+RUNS
+    changelog
+    release
+    ship
+
+PLACE pk's message ONE REPORT
+    SAYS What pk prints to the person: refusals, warnings, and what it did.
+PLACE stdout ONE REPORT
+    SAYS Where --dry-run prints the section.
+PLACE .pk.json ONE OUTSIDE
+    SAYS The project config; the commands read it and never write it.
+PLACE the command line ONE OUTSIDE
+    SAYS The flags the person gave.
+PLACE CHANGELOG.md ONE LASTING IN working tree
+PLACE the version files ONE LASTING IN working tree
+    SAYS The JSON files changelog.versionFiles names, stamped together.
+PLACE the section ONE RUN
+    SAYS The changelog section generated from the commits since the last version tag.
+PLACE the working branch SERIES LASTING
+    SAYS The branch the run is on. In trunk flow it is the default branch.
+PLACE the release branch SERIES LASTING
+    SAYS release.branch, in merge flow.
+PLACE origin's working branch SERIES LASTING IN origin
+PLACE origin's release branch SERIES LASTING IN origin
+
+FACT dry run
+    SAYS --dry-run
+FACT undo ONLY in changelog
+    SAYS --undo
+FACT a bump is given ONLY NOT in release
+    SAYS --bump
+FACT commits are excluded ONLY NOT in release
+    SAYS --exclude
+FACT merge flow
+    SAYS release.branch is set. Empty selects trunk flow.
+FACT version files are set
+    SAYS changelog.versionFiles names files.
+FACT the postVersion hook is set
+FACT the preCommit hook is set
+FACT the preRelease hook is set
+FACT the prePush hook is set
+FACT the preRelease hook commits ONLY the preRelease hook is set
+    SAYS A preRelease hook that commits produces a commit the tag then covers.
+FACT HEAD carries a valid Release-Tag trailer
+    SAYS A release is pending: pk changelog committed it and pk release has not tagged it.
+FACT there is a local version tag
+FACT origin has a version tag ONLY NOT there is a local version tag
+    SAYS A clone with no local tags, when origin has them.
+FACT nothing has been released MEANS NOT there is a local version tag AND NOT origin has a version tag
+    SAYS No version tag, locally or on origin.
+
+OPEN a dry run fetches origin's tags ONLY dry run
+    SAYS The changelog page says the run fetches origin's tags when it has none, and that --dry-run writes nothing. It does not say whether a dry run fetches.
+OPEN pre-flight fetches the release branch ONLY merge flow
+    SAYS Pre-flight fetches from origin to make its checks. The page does not say which refs.
+
+FAULT .pk.json is invalid ABOUT .pk.json
+    SAYS An unknown key or a value outside the settings fails the whole file when it loads.
+FAULT the bump is not major, minor or patch ONLY a bump is given
+FAULT the branch is protected
+FAULT HEAD is detached
+FAULT the last version tag is not in the branch's history ONLY NOT nothing has been released
+    SAYS A branch rewritten after a release.
+FAULT an excluded hash matches no commit ONLY commits are excluded
+FAULT a version file cannot be stamped ONLY version files are set
+FAULT the postVersion hook fails ONLY the postVersion hook is set
+FAULT the preCommit hook fails ONLY the preCommit hook is set
+FAULT the preRelease hook fails ONLY the preRelease hook is set
+FAULT the prePush hook fails ONLY the prePush hook is set
+FAULT the working branch is not on origin
+FAULT the working branch is behind origin
+FAULT the release branch cannot be resolved ONLY merge flow
+FAULT the branch is not the default branch ONLY NOT merge flow
+    SAYS Trunk flow refuses to run anywhere but the default branch.
+FAULT switching back fails ONLY merge flow
+    SAYS The switch back to the working branch fails, after the release branch and the tag are on origin.
+FAULT the working branch cannot be pushed ONLY merge flow
+    SAYS The push of the working branch fails, after the release branch and the tag are on origin.
+
+SEQ changelog
+    load the config
+    check the bump
+    check the branch
+    CHOOSE
+        WHEN undo
+            undo the release commit
+        OTHERWISE
+            generate
+
+SEQ generate
+    check the tree
+    fetch origin's tags
+    find the last version tag
+    compute the section
+    CHOOSE
+        WHEN dry run
+            print the section
+        OTHERWISE
+            write and commit
+
+SEQ write and commit
+    stamp the version files
+    run the postVersion hook
+    write CHANGELOG.md
+    run the preCommit hook
+    commit the release
+
+SEQ release
+    load the config
+    release the pending commit
+
+SEQ release the pending commit
+    read the Release-Tag trailer
+    fetch the working branch
+    fetch the release branch
+    check before releasing
+    run the preRelease hook
+    publish WHEN NOT dry run
+
+CHOOSE publish
+    WHEN merge flow
+        merge and push
+    OTHERWISE
+        tag and push
+
+SEQ merge and push
+    switch to the release branch
+    fast-forward the release branch
+    tag the release branch
+    run the prePush hook
+    push the release branch and the tag
+    switch back to the working branch
+    push the working branch
+
+SEQ tag and push
+    tag the working branch
+    run the prePush hook
+    push the working branch and the tag
+
+SEQ ship
+    load the config
+    CHOOSE
+        WHEN HEAD carries a valid Release-Tag trailer
+            release the pending commit
+        OTHERWISE
+            SEQ
+                check the bump
+                check the branch
+                generate
+                release the pending commit WHEN NOT dry run
+    SAYS Runs pk changelog then pk release as one invocation. A Release-Tag commit already pending sends ship straight to release.
+
+ACTION load the config
+    READS .pk.json
+    REFUSE WHEN .pk.json is invalid
+        SAYS pk commands exit 2, with a message naming the key.
+
+ACTION check the bump WHEN a bump is given
+    READS the command line
+    REFUSE WHEN the bump is not major, minor or patch
+        SAYS Any other --bump value is refused as a usage error, and nothing is generated.
+
+ACTION check the branch
+    READS the working branch
+    REFUSE WHEN the branch is protected AND NOT dry run
+    REFUSE WHEN HEAD is detached AND NOT dry run
+    ACCEPT WHEN the branch is protected OR HEAD is detached
+        BECAUSE A protected branch is refused, and so is a detached HEAD, except by --dry-run.
+
+ACTION check the tree
+    READS working tree
+    REFUSE WHEN working tree holds what is kept nowhere AND NOT dry run
+        SAYS A run without --dry-run refuses a dirty tree.
+    ACCEPT WHEN working tree holds what is kept nowhere
+        BECAUSE --dry-run prints the section to stdout and runs on a dirty tree.
+
+ACTION fetch origin's tags WHEN NOT there is a local version tag AND (NOT dry run OR a dry run fetches origin's tags)
+    USES fetch tags
+    LATER STANDS
+    BECAUSE What pk ship fetched from origin stays; the page for pk changelog says nothing else.
+    REFUSE WHEN origin does not answer
+        SAYS Only when the fetch itself fails does it stop, with the error and the hint git fetch --tags.
+    ACCEPT WHEN tags is given a key twice
+        BECAUSE A remote holds one tag of each name.
+    TELL WHEN origin has a version tag
+        SAYS Fetched tags from origin: latest is v1.2.0
+    SAYS A clone with no local tags is not a first release when origin has them. pk changelog fetches origin's tags first and says so.
+
+ACTION find the last version tag
+    READS tags
+    READS the working branch
+    REFUSE WHEN the last version tag is not in the branch's history
+        SAYS The last version tag must be in the branch's history: a branch rewritten after a release is refused, naming the tag.
+    TELL WHEN nothing has been released
+        SAYS No release yet: the first release covers all N commits
+
+ACTION compute the section
+    READS the working branch
+    READS tags
+    READS .pk.json
+    CREATE the section
+    TELL WHEN an excluded hash matches no commit
+        SAYS A hash that matches no commit is warned about, and the run goes on.
+
+ACTION print the section
+    READS the section
+    CREATE stdout FROM the section
+
+ACTION stamp the version files WHEN version files are set
+    READS the version files
+    REPLACE the version files
+        LATER UNDONE
+    FAIL WHEN a version file cannot be stamped
+        SAYS When a version file fails, nothing is committed and the tree goes back to how the run found it.
+
+ACTION run the postVersion hook WHEN the postVersion hook is set
+    READS working tree
+    REPLACE working tree
+        LATER UNDONE
+    FAIL WHEN the postVersion hook fails
+        SAYS When a hook fails, nothing is committed and the tree goes back to how the run found it, a hook's own changes included.
+
+ACTION write CHANGELOG.md
+    READS the section
+    READS CHANGELOG.md
+    REPLACE CHANGELOG.md
+        LATER UNDONE
+
+ACTION run the preCommit hook WHEN the preCommit hook is set
+    READS working tree
+    REPLACE working tree
+        LATER UNDONE
+    FAIL WHEN the preCommit hook fails
+        SAYS When a hook fails, nothing is committed and the tree goes back to how the run found it, a hook's own changes included.
+
+ACTION commit the release
+    USES commit
+        WITH the branch = the working branch
+    MAKES HEAD carries a valid Release-Tag trailer
+    LATER UNDONE
+    SAYS Commits with a Release-Tag trailer. If the release half of pk ship fails, ship undoes the changelog commit and restores the tree.
+
+ACTION undo the release commit
+    USES reset to the commit before
+        WITH the branch = the working branch
+    MAKES NOT HEAD carries a valid Release-Tag trailer
+    REHEARSAL dry run
+    REFUSE WHEN NOT HEAD carries a valid Release-Tag trailer
+    REFUSE WHEN working tree holds what is kept nowhere
+        SAYS The tree is clean.
+    REFUSE WHEN the working branch is held elsewhere
+        SAYS The commit is only on the current branch: not pushed, not tagged, not merged.
+    TELL WHEN dry run
+        SAYS With --dry-run it makes the same checks, says what it would unwind, and changes nothing.
+    SAYS --undo unwinds the release commit, restoring CHANGELOG.md and version files.
+
+ACTION read the Release-Tag trailer
+    READS the working branch
+    REFUSE WHEN NOT HEAD carries a valid Release-Tag trailer
+        SAYS With no Release-Tag trailer on HEAD it refuses, and says to run pk changelog first.
+
+ACTION fetch the working branch
+    USES fetch the branch
+        WITH origin's branch = origin's working branch
+    LATER STANDS
+    BECAUSE What pk ship fetched from origin stays.
+    ACCEPT WHEN remote-tracking branch holds what is kept nowhere
+        BECAUSE A remote-tracking branch is a copy of origin's branch, and a fetch makes it again.
+    SAYS Pre-flight fetches from origin to make these checks.
+
+ACTION fetch the release branch WHEN merge flow AND pre-flight fetches the release branch
+    USES fetch the branch
+        WITH origin's branch = origin's release branch
+    LATER STANDS
+    BECAUSE What pk ship fetched from origin stays.
+    ACCEPT WHEN remote-tracking branch holds what is kept nowhere
+        BECAUSE A remote-tracking branch is a copy of origin's branch, and a fetch makes it again.
+
+ACTION check before releasing
+    READS tags
+    READS working tree
+    READS the working branch
+    READS remote-tracking branch
+    READS the release branch WHEN merge flow
+    REFUSE WHEN tags already has the member
+        SAYS No tag of the release's name yet.
+    REFUSE WHEN working tree holds what is kept nowhere
+        SAYS Clean tree.
+    REFUSE WHEN HEAD is detached
+        SAYS A branch checked out.
+    REFUSE WHEN the working branch is not on origin
+    REFUSE WHEN the working branch is behind origin
+    REFUSE WHEN the release branch cannot be resolved
+    REFUSE WHEN merge flow AND the branch cannot be fast-forwarded
+        SAYS The release branch is not diverged from the working branch.
+    REFUSE WHEN the branch is not the default branch
+    REFUSE WHEN the last version tag is not in the branch's history
+        SAYS The last version tag in the working branch's history.
+    SAYS Pre-flight.
+
+ACTION run the preRelease hook WHEN the preRelease hook is set
+    READS working tree
+    CREATE the working branch WHEN the preRelease hook commits
+    FAIL WHEN the preRelease hook fails
+    SAYS preRelease runs before the tag exists and is rehearsed by --dry-run.
+
+ACTION switch to the release branch
+    USES switch
+        WITH the branch = the release branch
+    LATER UNDONE
+    SAYS A failure after tagging rolls back: the working branch is checked out.
+
+ACTION fast-forward the release branch
+    USES fast-forward
+        WITH the branch = the release branch
+        WITH the other branch = the working branch
+    LATER UNDONE
+    SAYS A failure after tagging rolls back: the merge is reset.
+
+ACTION tag the release branch
+    USES tag
+        WITH the branch = the release branch
+    MAKES there is a local version tag
+    LATER UNDONE
+    SAYS A failure after tagging rolls back: the local tag is deleted.
+
+ACTION run the prePush hook WHEN the prePush hook is set
+    READS tags
+    FAIL WHEN the prePush hook fails
+    SAYS prePush runs with the tag ref in existence, for signing or artifact builds keyed on the tag.
+
+ACTION push the release branch and the tag
+    USES push the branch and the tag
+        WITH the branch = the release branch
+        WITH origin's branch = origin's release branch
+    LATER STANDS
+    BECAUSE Once the release branch and the tag are on origin the release stands.
+    REFUSE WHEN origin does not answer
+        SAYS A failure after tagging rolls back.
+    REFUSE WHEN origin rejects the push
+        SAYS A failure after tagging rolls back.
+
+ACTION switch back to the working branch
+    USES switch
+        WITH the branch = the working branch
+    WARN WHEN switching back fails
+    WARN WHEN the switch fails
+    WARN WHEN working tree holds what is kept nowhere
+    SAYS A failure to switch back is reported as a warning.
+
+ACTION push the working branch
+    USES push the branch
+        WITH the branch = the working branch
+        WITH origin's branch = origin's working branch
+    WARN WHEN the working branch cannot be pushed
+    WARN WHEN origin does not answer
+    WARN WHEN origin rejects the push
+    SAYS A failure to push the working branch is reported as a warning.
+
+ACTION tag the working branch
+    USES tag
+        WITH the branch = the working branch
+    MAKES there is a local version tag
+    LATER UNDONE
+    SAYS Trunk flow tags the default branch. A failure after tagging rolls back: the local tag is deleted.
+
+ACTION push the working branch and the tag
+    USES push the branch and the tag
+        WITH the branch = the working branch
+        WITH origin's branch = origin's working branch
+    LATER STANDS
+    BECAUSE Once the branch and the tag are on origin the release stands.
+    REFUSE WHEN origin does not answer
+        SAYS A failure after tagging rolls back.
+    REFUSE WHEN origin rejects the push
+        SAYS A failure after tagging rolls back.
+
+EXPECT a changelog dry run writes nothing
+    IN changelog
+    WHEN dry run
+    NEVER CHANGES
+        CHANGELOG.md
+        the version files
+        working tree
+        the working branch
+    BECAUSE --dry-run prints the section without writing or committing; with --undo it changes nothing.
+
+EXPECT a refused bump generates nothing
+    WHEN the bump is not major, minor or patch
+    NEVER RUNS compute the section
+    NEVER CHANGES
+        CHANGELOG.md
+        the working branch
+    BECAUSE Any other --bump value is refused as a usage error, and nothing is generated.
+
+EXPECT a failed version file or hook leaves the tree as the run found it
+    WHEN a version file cannot be stamped OR the postVersion hook fails OR the preCommit hook fails
+    NEVER CHANGES
+        CHANGELOG.md
+        the version files
+        working tree
+        the working branch
+    BECAUSE Nothing is committed and the tree goes back to how the run found it, a hook's own changes included.
+
+EXPECT changelog leaves the release untagged
+    IN changelog
+    NEVER RUNS
+        tag the release branch
+        tag the working branch
+    BECAUSE pk release tags it.
+
+EXPECT a protected branch or a detached HEAD is refused
+    WHEN (the branch is protected OR HEAD is detached) AND NOT dry run
+    NEVER CHANGES
+        CHANGELOG.md
+        the working branch
+        tags
+        origin
+
+EXPECT a rewritten branch is refused
+    WHEN the last version tag is not in the branch's history
+    NEVER CHANGES
+        CHANGELOG.md
+        the working branch
+        the release branch
+        origin
+
+EXPECT undo refuses what it cannot unwind
+    IN changelog
+    WHEN undo AND (NOT HEAD carries a valid Release-Tag trailer OR working tree holds what is kept nowhere OR the working branch is held elsewhere)
+    NEVER CHANGES
+        the working branch
+        working tree
+
+EXPECT release refuses with nothing pending
+    IN release
+    WHEN NOT HEAD carries a valid Release-Tag trailer
+    NEVER CHANGES
+        tags
+        the working branch
+        the release branch
+        origin
+    BECAUSE With no Release-Tag trailer on HEAD it refuses, and says to run pk changelog first.
+
+EXPECT a release dry run merges, tags and pushes nothing
+    IN release
+    WHEN dry run
+    NEVER CHANGES
+        tags
+        the release branch
+        origin
+    BECAUSE --dry-run validates without merging, tagging, or pushing.
+
+EXPECT a failure after tagging rolls back
+    IN release
+    WHEN the prePush hook fails OR origin rejects the push
+    ON FAILED
+    NEVER CHANGES
+        tags
+        the release branch
+    BECAUSE A failure after tagging rolls back: the local tag is deleted, the merge is reset, and the working branch is checked out.
+
+EXPECT the release stands once it is on origin
+    WHEN (switching back fails OR the working branch cannot be pushed) AND NOT dry run
+    ON SUCCESS
+    ENDS origin's release branch CREATED
+    ENDS origin's tags CREATED
+    BECAUSE Once the release branch and the tag are on origin the release stands: a failure to switch back or to push the working branch is reported as a warning.
+
+EXPECT ship rolls back what it made when it fails
+    IN ship
+    WHEN NOT HEAD carries a valid Release-Tag trailer
+    ON FAILED
+    NEVER CHANGES
+        CHANGELOG.md
+        the version files
+        the working branch
+        the release branch
+    BECAUSE If the release half fails, ship deletes the release tag, resets the merge, undoes the changelog commit and restores the tree.
+
+EXPECT ship leaves a pending changelog commit alone
+    IN ship
+    WHEN HEAD carries a valid Release-Tag trailer
+    NEVER RUNS
+        commit the release
+        compute the section
+    BECAUSE A Release-Tag commit already pending sends ship straight to release, and is left alone.
+
+EXPECT a ship dry run with nothing pending only previews the section
+    IN ship
+    WHEN dry run AND NOT HEAD carries a valid Release-Tag trailer
+    ON SUCCESS
+    RUNS print the section
+    NEVER RUNS read the Release-Tag trailer
+    BECAUSE The release half cannot be rehearsed before its changelog commit exists.
+
+EXPECT a ship dry run with a pending commit rehearses the release
+    IN ship
+    WHEN dry run AND HEAD carries a valid Release-Tag trailer
+    ON SUCCESS
+    RUNS check before releasing
+    NEVER RUNS print the section
+    BECAUSE --dry-run rehearses the release when a Release-Tag commit exists.
+
+RULE A breaking change (type!: or a BREAKING CHANGE: footer) bumps major, feat bumps minor, anything else bumps patch.
+    ABOUT compute the section
+RULE --bump major|minor|patch overrides the inference, and the run names the override next to the version it generates.
+    ABOUT compute the section
+    WHEN a bump is given
+RULE --exclude drops commits by short hash before bump inference.
+    ABOUT compute the section
+    WHEN commits are excluded
+RULE Types map to sections via changelog.types; hidden types are tracked and never listed; an empty table means the default table; showScope includes each commit's scope.
+    ABOUT compute the section
+RULE The first release covers the whole history from an implied v0.0.0, and its entry links to the tag's commits rather than a compare.
+    ABOUT compute the section
+    WHEN nothing has been released
+RULE The root version field of each version file is spliced in place, formatting preserved.
+    ABOUT stamp the version files
+RULE The postVersion hook runs with $VERSION, with no v prefix.
+    ABOUT run the postVersion hook
+RULE The preCommit hook runs with $VERSION, with no v prefix.
+    ABOUT run the preCommit hook
+RULE The preRelease hook receives $VERSION (no v) and $TAG (with it).
+    ABOUT run the preRelease hook
+RULE The prePush hook receives $VERSION (no v) and $TAG (with it).
+    ABOUT run the prePush hook
+RULE The release commit carries a Release-Tag trailer naming the release's tag.
+    ABOUT commit the release
+RULE The tag's name is read from the Release-Tag trailer on HEAD.
+    ABOUT read the Release-Tag trailer
+RULE An invalid .pk.json makes the command exit 2 with a message naming the key.
+    ABOUT load the config
+RULE A --bump value other than major, minor or patch is a usage error.
+    ABOUT check the bump
+RULE A failed fetch of origin's tags stops with the error and the hint git fetch --tags.
+    ABOUT fetch origin's tags
+RULE The refusal of a rewritten branch names the tag.
+    ABOUT find the last version tag

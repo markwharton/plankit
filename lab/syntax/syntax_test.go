@@ -198,7 +198,8 @@ func TestEveryDesignFileIsThePrintersText(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		if text, err := Print(A, doc); err != nil || text != string(data) {
+		// a design we keep is the printer's text; a blind round's record stays as its writer wrote it
+		if text, err := Print(A, doc); !strings.Contains(path, filepath.Join("examples", "blind")) && (err != nil || text != string(data)) {
 			t.Errorf("%s is not the text the printer writes: run syntax format A on it (%v)", path, err)
 		}
 		other, err := Print(B, doc)
