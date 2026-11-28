@@ -834,17 +834,23 @@ async function openScenario(id, keep) {
   $("cols").dataset.open = ""; $("ed").disabled = true;   /* typing while a design loads would be overwritten */
   store.set("scenario", id);
   if (!keep) { S.runName = null; S.path = 0; S.place = null; S.hover = null; }
-  /* a large design takes seconds to play: say so, and take the last design off the stage */
-  A.opening = Date.now(); renderTop();
-  $("stage").innerHTML = '<p class="empty">Opening the design…</p>';
-  const ticking = setInterval(renderTop, 500);
+  /* a large design takes seconds to play: past a moment, say so and take the last design off
+     the stage; a small one opens before anything shows. poll waits while a design opens. */
+  A.loading = true;
+  const started = Date.now();
+  let ticking = null;
+  const showing = setTimeout(() => {
+    A.opening = started; renderTop();
+    $("stage").innerHTML = '<p class="empty">Opening the design…</p>';
+    ticking = setInterval(renderTop, 500);
+  }, 400);
   try {
     const [src, res] = await Promise.all([api("/api/source?id=" + id), api("/api/model?id=" + id)]);
     A.text = A.disk = src.text; $("ed").value = src.text;
     A.live = res.ok ? res : null; A.refused = res.ok ? null : res.refused;
     const sc = scenario(); A.stamp = sc ? sc.stamp : null;
   } catch (e) { A.live = null; A.error = e.message; }
-  clearInterval(ticking); A.opening = null;
+  clearTimeout(showing); clearInterval(ticking); A.opening = null; A.loading = false;
   S.t = 1e9;
   render();
   $("ed").disabled = false; $("cols").dataset.open = id;
@@ -897,6 +903,7 @@ const STARTER = { system: "my system", places: [
       rejects: { reason: "the input is invalid", to: "message" } } ], unsaid: [] };
 
 async function poll() {
+  if (A.loading) return;                                   /* the design being opened has not got its stamp yet */
   try {
     const before = A.scenarios.map((s) => s.id).join(","), checker = A.checker, l = await refreshList(), sc = scenario();
     if (A.error) { A.error = null; return openScenario(A.id || (A.scenarios[0] && A.scenarios[0].id), true); }

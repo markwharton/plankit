@@ -194,12 +194,14 @@ async function main() {
   await click("#c-panel button", "Findings");
   check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
   const started = Date.now();
+  await js("window.__models = 0; const f = window.fetch; window.fetch = (u, o) => { if (String(u).indexOf('/api/model') >= 0) window.__models++; return f(u, o); };");
   await js("const s = document.getElementById('scn'); s.value = [...s.options].find((x) => x.textContent === 'pk on git, written blind in text').value; s.dispatchEvent(new Event('change'));");
   await until(async () => /Opening the design/.test(await text("#state")), "the page to say it is opening the design");
   check("a design that takes a while says it is opening, and clears the stage", /Opening the design/.test(await text("#stage")), await text("#stage"));
   await loaded("pk on git, written blind in text", 120000);
   await click("#c-panel button", "Findings");
   check("a design of 9,814 plays opens (" + ((Date.now() - started) / 1000).toFixed(1) + " s)", /left-behind/.test(await text("#panel")), await text("#panel"));
+  check("a design that takes a while is asked for once", (await js("return window.__models")) === 1, "asked " + (await js("return window.__models")) + " times");
   await open("notes/notes.design");
   const note = readFileSync(join(designs, "notes", "notes.design"), "utf8");
   await type(note.replace("        REFUSE WHEN the note is empty\n", ""));
