@@ -29,6 +29,13 @@
       "note": "The seventh round: a fresh session's design of changelog, release and ship, standing on git's design, written from pk's three pages alone."
     },
     {
+      "label": "pk on git, written blind in text",
+      "definition": "blind/pk-on-git-blind-8.design",
+      "root": "../..",
+      "readonly": true,
+      "note": "The eighth round: the same three pages, written as text in form A by a fresh session, standing on git's design written as text."
+    },
+    {
       "label": "pk's code, described blind",
       "definition": "blind/pk-code-blind.json",
       "root": "../..",

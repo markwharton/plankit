@@ -50,12 +50,12 @@ async function main() {
   };
   const text = (sel) => js("const e = document.querySelector(" + JSON.stringify(sel) + "); return e ? e.textContent : null;");
   const click = (sel, label) => js("const b = [...document.querySelectorAll(" + JSON.stringify(sel) + ")].find((x) => " + (label === undefined ? "true" : "x.textContent.trim().startsWith(" + JSON.stringify(label) + ")") + "); if (!b) throw new Error('no " + sel + " " + (label || "") + "'); b.click();");
-  const open = async (label) => {
+  const open = async (label, ms) => {
     await js("const s = document.getElementById('scn'); const o = [...s.options].find((x) => x.textContent === " + JSON.stringify(label) + "); if (!o) throw new Error('no design " + label + "'); s.value = o.value; s.dispatchEvent(new Event('change'));");
-    await loaded(label);
+    await loaded(label, ms);
   };
   // A design is open once the page marks it so: the select changes before the files arrive.
-  const loaded = (label) => until(() => js("const s = document.getElementById('scn'); return s.selectedOptions[0] && s.selectedOptions[0].textContent === " + JSON.stringify(label) + " && document.getElementById('cols').dataset.open === s.value && document.getElementById('state').textContent === 'Live: as saved';"), "the design " + label);
+  const loaded = (label, ms) => until(() => js("const s = document.getElementById('scn'); return s.selectedOptions[0] && s.selectedOptions[0].textContent === " + JSON.stringify(label) + " && document.getElementById('cols').dataset.open === s.value && document.getElementById('state').textContent === 'Live: as saved';"), "the design " + label, ms);
   const type = (value) => js("const e = document.getElementById('ed'); e.value = " + JSON.stringify(value) + "; e.dispatchEvent(new Event('input'));");
   const shot = async (name) => {
     if (!shots) return;
@@ -193,6 +193,10 @@ async function main() {
   await open("pk on git, written blind from its pages");
   await click("#c-panel button", "Findings");
   check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
+  const started = Date.now();
+  await open("pk on git, written blind in text", 120000);
+  await click("#c-panel button", "Findings");
+  check("a design of 9,814 plays opens (" + ((Date.now() - started) / 1000).toFixed(1) + " s)", /left-behind/.test(await text("#panel")), await text("#panel"));
   await open("notes/notes.design");
   const note = readFileSync(join(designs, "notes", "notes.design"), "utf8");
   await type(note.replace("        REFUSE WHEN the note is empty\n", ""));

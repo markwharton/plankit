@@ -107,9 +107,7 @@ syntax tool nor the engine refused the file: 9,814 plays and 10
 questions. The writer looked one thing up in `engine.py`, why an
 expectation held where a change was left behind. The round cost about
 138,000 tokens. The record is as its writer wrote it; a design kept
-here is the printer's text, and a record need not be. It is not listed
-in the lab: at 9,814 plays the lab's view of it takes over a minute to
-build, which is the view's to fix.
+here is the printer's text, and a record need not be.
 
 The writer named one fact, "nothing has been released", for no local
 version tag and none on origin.
