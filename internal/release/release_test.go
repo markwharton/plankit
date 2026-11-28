@@ -436,3 +436,74 @@ func TestAnOriginThatDoesNotAnswerIsAPrecondition(t *testing.T) {
 		t.Fatalf("refused, yet the tags are %v", tags)
 	}
 }
+
+// hookCommits is a preRelease hook that commits, as one that stamps a file would.
+const hookCommits = `git commit -q --allow-empty -m "chore: stamped by the hook"`
+
+// TestAPreReleaseCommitIsMergedAndTaggedWithTheRelease: preRelease runs on the
+// working branch before the merge, so its commit reaches the release branch
+// with the rest, the tag is on it, and the working branch has it too.
+func TestAPreReleaseCommitIsMergedAndTaggedWithTheRelease(t *testing.T) {
+	dir, bare := repo(t, func(c *config.PkConfig) { c.Release.Hooks.PreRelease = hookCommits })
+	pending(t, dir)
+	if code, errw := runRel(t, dir); code != cli.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	develop, _ := git.Exec(dir, "rev-parse", "refs/heads/develop")
+	main, _ := git.Exec(dir, "rev-parse", "refs/heads/main")
+	tagged, _ := git.Exec(dir, "rev-parse", "v0.1.0^{commit}")
+	if develop != main || main != tagged {
+		t.Fatalf("develop %s, main %s and the tag %s should be one commit", develop, main, tagged)
+	}
+	if subject, _ := git.Exec(dir, "log", "-1", "--format=%s", tagged); subject != "chore: stamped by the hook" {
+		t.Fatalf("the tag is on %q, not the hook's commit", subject)
+	}
+	if got := bareRef(t, bare, "refs/heads/develop"); got != develop {
+		t.Fatal("origin's develop does not have the hook's commit")
+	}
+}
+
+// TestAFailureAfterPreReleaseUndoesItsCommit: in trunk flow, a release that
+// fails after the hook committed leaves the branch on the changelog commit.
+func TestAFailureAfterPreReleaseUndoesItsCommit(t *testing.T) {
+	dir, _ := repo(t, func(c *config.PkConfig) {
+		c.Release.Branch = ""
+		c.Guard.Branches = nil
+		c.Release.Hooks.PreRelease = hookCommits
+		c.Release.Hooks.PrePush = "exit 7"
+	})
+	mustGit(t, dir, "switch", "-q", "main")
+	mustGit(t, dir, "merge", "-q", "--ff-only", "develop")
+	writeF(t, dir, "work.txt", "w\n")
+	mustGit(t, dir, "add", ".")
+	mustGit(t, dir, "commit", "-q", "-m", "feat: trunk work")
+	mustGit(t, dir, "push", "-q", "origin", "main")
+	var out, errw bytes.Buffer
+	if code := cli.RunIO([]string{"pk", "changelog", "--project-dir", dir}, []*cli.Command{changelog.Cmd}, nil, &out, &errw); code != 0 {
+		t.Fatalf("changelog: %s", errw.String())
+	}
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+	if code, _ := runRel(t, dir); code == cli.ExitOK {
+		t.Fatal("the release should fail at prePush")
+	}
+	if now, _ := git.Exec(dir, "rev-parse", "HEAD"); now != head {
+		t.Fatal("the hook's commit was left on top of the changelog commit")
+	}
+	if _, err := git.Exec(dir, "rev-parse", "-q", "--verify", "refs/tags/v0.1.0"); err == nil {
+		t.Fatal("the tag survived the failure")
+	}
+}
+
+// TestADryRunUndoesAPreReleaseCommit: a dry run writes nothing, so a commit
+// the rehearsed hook makes is undone.
+func TestADryRunUndoesAPreReleaseCommit(t *testing.T) {
+	dir, _ := repo(t, func(c *config.PkConfig) { c.Release.Hooks.PreRelease = hookCommits })
+	pending(t, dir)
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+	if code, errw := runRel(t, dir, "--dry-run"); code != cli.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if now, _ := git.Exec(dir, "rev-parse", "HEAD"); now != head {
+		t.Fatal("the dry run left the hook's commit")
+	}
+}

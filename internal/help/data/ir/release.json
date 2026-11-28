@@ -167,7 +167,7 @@
         },
         {
           "type": "text",
-          "text": " runs before the tag exists and is rehearsed by "
+          "text": " runs on the working branch, before the merge and the tag, and is rehearsed by "
         },
         {
           "type": "code",
@@ -175,15 +175,7 @@
         },
         {
           "type": "text",
-          "text": ". A "
-        },
-        {
-          "type": "code",
-          "text": "preRelease"
-        },
-        {
-          "type": "text",
-          "text": " hook that commits produces a commit the tag then covers. "
+          "text": ". A commit it makes is merged and tagged with the release; when the release does not complete, or after a dry run, that commit is undone. "
         },
         {
           "type": "code",
@@ -390,7 +382,7 @@
               },
               {
                 "type": "text",
-                "text": ": a shell command; default none. Runs before the tag is created, with "
+                "text": ": a shell command; default none. Runs on the working branch before the merge and the tag, with "
               },
               {
                 "type": "code",
@@ -406,7 +398,7 @@
               },
               {
                 "type": "text",
-                "text": "; "
+                "text": "; a commit it makes is released with the rest; "
               },
               {
                 "type": "code",

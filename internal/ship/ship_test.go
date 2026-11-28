@@ -436,3 +436,29 @@ func TestStrayArgumentRefusedBeforeAnythingRuns(t *testing.T) {
 		t.Fatal("something committed")
 	}
 }
+
+// TestShipUndoesAPreReleaseCommitAndThenTheChangelogCommit: when the release
+// half fails after a preRelease hook committed, the hook's commit is undone
+// first, so ship's undo finds the changelog commit and removes it.
+func TestShipUndoesAPreReleaseCommitAndThenTheChangelogCommit(t *testing.T) {
+	dir, _ := repoWith(t, func(c *config.PkConfig) {
+		c.Release.Branch = ""
+		c.Guard.Branches = nil
+		c.Release.Hooks.PreRelease = `git commit -q --allow-empty -m "chore: stamped by the hook"`
+		c.Release.Hooks.PrePush = "exit 7"
+	})
+	mustGit(t, dir, "switch", "-q", "main")
+	writeF(t, dir, "work.txt", "work\n")
+	mustGit(t, dir, "add", ".")
+	mustGit(t, dir, "commit", "-q", "-m", "feat: the work")
+	mustGit(t, dir, "push", "-q", "origin", "main")
+	workHead, _ := git.Exec(dir, "rev-parse", "HEAD")
+
+	code, _, errw := runShip(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "prePush hook failed") || !strings.Contains(errw, "Undid release commit v0.1.0") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if h, _ := git.Exec(dir, "rev-parse", "HEAD"); h != workHead {
+		t.Fatal("ship did not end where it started")
+	}
+}

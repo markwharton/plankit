@@ -192,8 +192,8 @@ func (c ChangelogConfig) ResolvedTypes() []TypeConfig {
 }
 
 // ReleaseHooks holds lifecycle hooks for the release process. preRelease
-// runs before the tag is created; prePush runs after tagging, before the
-// push, when the tag ref exists.
+// runs on the working branch before the merge and the tag; prePush runs
+// after tagging, before the push, when the tag ref exists.
 type ReleaseHooks struct {
 	PrePush    string `json:"prePush,omitempty"`
 	PreRelease string `json:"preRelease,omitempty"`
