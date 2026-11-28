@@ -32,7 +32,7 @@ class Pk(unittest.TestCase):
     def test_the_plays_and_the_questions_are_the_ones_the_page_gives(self):
         d = load("pk.design")
         plays = engine.explore_all(d)
-        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 150, "release": 79, "ship": 350})
+        self.assertEqual(collections.Counter(p.run for p in plays), {"changelog": 150, "release": 78, "ship": 349})
         found = [(f["kind"], f["subject"]) for f in engine.findings(d, plays)]
         self.assertEqual(found, [])
 

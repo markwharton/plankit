@@ -264,8 +264,8 @@ SEQ release
     fetch the working branch
     fetch the release branch WHEN NOT trunk flow AND NOT the release branch is not on origin
     pre-flight
-    merge WHEN NOT trunk flow
     preRelease hook
+    merge WHEN NOT trunk flow
     tag the release WHEN NOT dry run
     prePush hook WHEN NOT dry run
     CHOOSE WHEN NOT dry run

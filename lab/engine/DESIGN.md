@@ -781,7 +781,7 @@ tag is on the commit pushed, and refuses it otherwise.
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
 - pk's design lists 27 facts and git's lists 8. Before it stood on
   git, pk's listed 32.
-- The design has 579 plays: 150 of changelog, 79 of release, 350 of
+- The design has 577 plays: 150 of changelog, 78 of release, 349 of
   ship.
 - It reports no questions.
 - git's reset goes on with a commit held elsewhere and with a tree

@@ -237,8 +237,8 @@ SEQ release
     load settings
     fetch the working branch
     pre-flight
-    merge WHEN merge flow
     preRelease hook
+    merge WHEN merge flow
     tag the release WHEN NOT dry run
     prePush hook WHEN NOT dry run
     CHOOSE WHEN NOT dry run
