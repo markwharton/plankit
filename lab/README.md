@@ -1,5 +1,8 @@
 # control lab
 
+Start with `OVERVIEW.md`: what the pieces are and how they fit
+together. This page is the reference for the lab's page.
+
 A local page for designing a system as a definition file. It runs a
 design on every change and draws the result five ways. It opens the
 checker's definition files and designs you can run, and it changes

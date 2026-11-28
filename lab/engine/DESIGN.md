@@ -8,6 +8,10 @@ the code to it afterwards?
 A design is a model of the system's runs. The engine plays every run
 the design allows and reports each one that leaves a question open.
 
+This page is the reference for the language. `../OVERVIEW.md` says
+what the pieces are, the engine, the parser, the lab and a design,
+and how they work together.
+
 ## Who does what
 
 | Who | Does |
