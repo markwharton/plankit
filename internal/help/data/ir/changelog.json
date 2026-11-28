@@ -65,6 +65,23 @@
       "inlines": [
         {
           "type": "text",
+          "text": "The last version tag is the highest tag that names a release. A pre-release tag, such as "
+        },
+        {
+          "type": "code",
+          "text": "v1.2.0-rc.1"
+        },
+        {
+          "type": "text",
+          "text": ", is not one, and is passed over."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
           "text": "A breaking change ("
         },
         {
@@ -454,7 +471,23 @@
         },
         {
           "type": "text",
-          "text": "."
+          "text": ". "
+        },
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " fetches nothing: it reads origin's tags and says so, "
+        },
+        {
+          "type": "code",
+          "text": "Read origin's tags without fetching: latest is v1.2.0"
+        },
+        {
+          "type": "text",
+          "text": ", and when that tag is on a commit the clone does not have, it stops and gives the same hint."
         }
       ]
     },

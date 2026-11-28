@@ -83,7 +83,8 @@ func TestLatest(t *testing.T) {
 		{[]string{"vnext", "v1.0.0", "vscode-1.0"}, "v1.0.0"},
 		{[]string{"2.0.0", "v1.0.0"}, "v1.0.0"},
 		{[]string{"v1.0.0-rc1", "v1.0.0"}, "v1.0.0"},
-		{[]string{"v1.0.0", "v1.1.0-rc1"}, "v1.1.0-rc1"},
+		{[]string{"v1.0.0", "v1.1.0-rc1"}, "v1.0.0"}, // a pre-release is not a release
+		{[]string{"v1.0.0-rc1"}, ""},
 	}
 	for _, c := range cases {
 		got, sv, ok := Latest(c.names)

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -115,19 +116,39 @@ func Tags(dir string) ([]string, error) {
 // dropped, or nil when origin has none or cannot be asked. It reads the
 // remote and writes nothing.
 func RemoteTags(dir string) []string {
-	out, err := Exec(dir, "ls-remote", "--tags", "origin")
+	commits, err := RemoteTagCommits(dir)
 	if err != nil {
 		return nil
 	}
-	var tags []string
+	tags := make([]string, 0, len(commits))
+	for tag := range commits {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags
+}
+
+// RemoteTagCommits reads origin's tags without fetching them: each tag's
+// name and the commit it names, an annotated tag's peeled to its commit.
+// The error is origin's when it does not answer.
+func RemoteTagCommits(dir string) (map[string]string, error) {
+	out, err := Exec(dir, "ls-remote", "--tags", "origin")
+	if err != nil {
+		return nil, err
+	}
+	commits := map[string]string{}
 	for _, line := range strings.Split(out, "\n") {
-		_, ref, found := strings.Cut(line, "\trefs/tags/")
-		if !found || strings.HasSuffix(ref, "^{}") {
+		sha, ref, found := strings.Cut(line, "\trefs/tags/")
+		if !found {
 			continue
 		}
-		tags = append(tags, ref)
+		if name, peeled := strings.CutSuffix(ref, "^{}"); peeled {
+			commits[name] = sha
+		} else if _, seen := commits[ref]; !seen {
+			commits[ref] = sha
+		}
 	}
-	return tags
+	return commits, nil
 }
 
 // CountCommits returns the number of commits in revRange, a revision
@@ -355,11 +376,26 @@ func BranchExists(dir, name string) bool {
 // queried, so a caller never mistakes an unreachable origin for an
 // absent branch.
 func RemoteBranchExists(dir, name string) (bool, error) {
+	sha, err := RemoteBranchCommit(dir, name)
+	return sha != "", err
+}
+
+// RemoteBranchCommit reads the commit origin's branch is at, without
+// fetching it; "" when origin has no such branch. The error is origin's
+// when it does not answer.
+func RemoteBranchCommit(dir, name string) (string, error) {
 	out, err := Exec(dir, "ls-remote", "--heads", "origin", "refs/heads/"+name)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	return out != "", nil
+	sha, _, _ := strings.Cut(out, "\t")
+	return sha, nil
+}
+
+// HasCommit reports whether the clone has the commit.
+func HasCommit(dir, sha string) bool {
+	_, err := Exec(dir, "cat-file", "-e", sha+"^{commit}")
+	return err == nil
 }
 
 // HasRemote reports whether a remote of that name is configured.

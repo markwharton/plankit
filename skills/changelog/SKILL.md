@@ -13,6 +13,9 @@ tag and push.
 
 ## Version inference
 
+The last version tag is the highest tag that names a release. A
+pre-release tag, such as `v1.2.0-rc.1`, is not one, and is passed over.
+
 A breaking change (`type!:` or a `BREAKING CHANGE:` footer) bumps
 major, `feat` bumps minor, anything else bumps patch. The commits
 decide the version; `--dry-run` shows the one they infer, and a version
@@ -110,7 +113,10 @@ them: a fresh clone that fetched only the working branch, as a cloud
 sandbox does. `pk changelog` fetches origin's tags first and says so,
 `Fetched tags from origin: latest is v1.2.0`, then measures from that
 tag. Only when the fetch itself fails does it stop, with the error and
-the hint `git fetch --tags`.
+the hint `git fetch --tags`. `--dry-run` fetches nothing: it reads
+origin's tags and says so, `Read origin's tags without fetching: latest
+is v1.2.0`, and when that tag is on a commit the clone does not have,
+it stops and gives the same hint.
 
 ## Flags
 

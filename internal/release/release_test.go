@@ -507,3 +507,74 @@ func TestADryRunUndoesAPreReleaseCommit(t *testing.T) {
 		t.Fatal("the dry run left the hook's commit")
 	}
 }
+
+// refs is every ref in a clone and the commit it names, so a test can show
+// that a dry run wrote none.
+func refs(t *testing.T, dir string) string {
+	t.Helper()
+	out, err := git.Exec(dir, "for-each-ref", "--format=%(refname) %(objectname)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// pushFrom commits on branch in a second clone of origin and pushes it, so
+// origin is ahead of a clone that has not fetched.
+func pushFrom(t *testing.T, bare, branch, message string) {
+	t.Helper()
+	other := t.TempDir()
+	mustGit(t, other, "clone", "-q", "-b", branch, bare, ".")
+	mustGit(t, other, "config", "user.email", "t@t")
+	mustGit(t, other, "config", "user.name", "t")
+	mustGit(t, other, "commit", "-q", "--allow-empty", "-m", message)
+	mustGit(t, other, "push", "-q", "origin", branch)
+}
+
+// TestADryRunFetchesNothing: a dry run writes nothing, so it reads origin's
+// branches without fetching them into the clone's remote-tracking refs.
+func TestADryRunFetchesNothing(t *testing.T) {
+	dir, _ := repo(t, nil)
+	pending(t, dir)
+	mustGit(t, dir, "update-ref", "-d", "refs/remotes/origin/develop") // a fetch would make these again
+	mustGit(t, dir, "update-ref", "-d", "refs/remotes/origin/main")
+	before := refs(t, dir)
+	if code, errw := runRel(t, dir, "--dry-run"); code != cli.ExitOK {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if refs(t, dir) != before {
+		t.Fatal("a dry run wrote a ref")
+	}
+}
+
+// TestADryRunBehindOriginIsRefusedWithoutAFetch: origin's tip of the working
+// branch, read with ls-remote, is a commit the clone does not have.
+func TestADryRunBehindOriginIsRefusedWithoutAFetch(t *testing.T) {
+	dir, bare := repo(t, nil)
+	pending(t, dir)
+	pushFrom(t, bare, "develop", "chore: elsewhere")
+	before := refs(t, dir)
+	code, errw := runRel(t, dir, "--dry-run")
+	if code != cli.ExitState || !strings.Contains(errw, "behind origin/develop") {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if refs(t, dir) != before {
+		t.Fatal("a dry run wrote a ref")
+	}
+}
+
+// TestADryRunSaysToFetchAReleaseBranchItLacks: in merge flow the rehearsal
+// needs origin's release-branch commit, and a dry run does not fetch it.
+func TestADryRunSaysToFetchAReleaseBranchItLacks(t *testing.T) {
+	dir, bare := repo(t, nil)
+	pending(t, dir)
+	pushFrom(t, bare, "main", "chore: on main elsewhere")
+	before := refs(t, dir)
+	code, errw := runRel(t, dir, "--dry-run")
+	if code != cli.ExitState || !strings.Contains(errw, "git fetch origin main") {
+		t.Fatalf("exit %d:\n%s", code, errw)
+	}
+	if refs(t, dir) != before {
+		t.Fatal("a dry run wrote a ref")
+	}
+}
