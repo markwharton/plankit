@@ -293,6 +293,7 @@ question for the owner, and an unanswered failure fails the action.
 | `warn` | The person is told, the run below is not played, and the run goes on. |
 | `accept` | The run goes on, the person is not told, and the answer says `because`. |
 | `tell` | The person is told, and the run goes on. |
+| `fail` | The run below is played, and then the action fails: what it changed is there when the failure goes to the parent. |
 
 The engine tries the action's answers first, so a fault the action
 answers never reaches the run below in that play. The end is the same
@@ -587,7 +588,7 @@ seq [ship]
 - **A change says how first**: `CREATE tags MANY FROM origin's tags`.
 - **A condition is written with `NOT`, `AND`, `OR` and brackets.** On
   an answer, a fact, an action, an expectation or a rule, one that
-  joins more than three facts goes below the line, as `WHEN ANY` or
+  joins more than three parts at its top goes below the line, as `WHEN ANY` or
   `WHEN ALL` with one part to a line.
 - **Text runs to the end of its line**: after `SYSTEM`, `SAYS`,
   `BECAUSE` and `RULE`. A path follows `ON`, and a file and a test
@@ -595,7 +596,9 @@ seq [ship]
 - **A use of a part is its name**, with `AS` and `WHEN` after it.
   `OTHERWISE NOTHING` is the JSON's `null`.
 - **A part at the top is named by its key.** An action whose key is
-  not its `do` says so: `ACTION undo AS unwind a release commit`.
+  not its `do` gives the `do` first and the key after `AS`:
+  `ACTION undo AS unwind a release commit` does `undo`, and is the part
+  named `unwind a release commit`.
 
 In A, a name runs until a keyword, a bracket, `=` or the end of the
 line, so a name may not hold a capitalised keyword; written in lower
@@ -603,6 +606,135 @@ case inside the name, the word is fine. A list goes one name to a line,
 since a name may hold a comma. In B, a list goes on one line,
 separated by commas. In neither may a name hold `=`, a bracket or a
 tab.
+
+A design that uses every statement, in form A. It is a library desk,
+standing on a store one layer down:
+
+<!-- every statement: the printer's text of lab/syntax/testdata/every-key.json, held by lab/syntax's tests -->
+```
+SYSTEM a desk that uses every key the engine reads
+ON below.json
+REPORTS message
+FAULTS 2
+RUNS
+    lend
+    clear the dates
+
+PLACE request ONE OUTSIDE
+    SAYS what the person asks for
+PLACE books MANY LASTING OWNER lend
+PLACE loan record ONE LASTING
+PLACE due dates ONE LASTING IN loan record
+PLACE receipt ONE RUN
+PLACE message ONE REPORT
+PLACE ledger MANY LASTING GIVEN
+PLACE history SERIES LASTING
+
+FACT preview
+    SAYS --preview is given
+FAULT the request is unreadable ABOUT request
+FAULT the card has expired ONLY NOT preview
+    AT
+        check the card
+        file the book
+OPEN fines are waived
+    SAYS nobody has decided
+FACT the member may borrow MEANS NOT the card has expired AND NOT preview
+    SAYS a member whose card is in date
+FACT the book is filed
+FACT the dates are stamped
+
+SEQ lend WHEN NOT preview
+    check the card
+    file the book AS file it WHEN the member may borrow
+        SAYS the book goes on the shelf
+    ALL paperwork WHEN NOT preview
+        stamp the dates
+        write the receipt
+        WARN WHEN the request is unreadable
+            TELLS message
+        SAYS two jobs, in no order
+    CHOOSE fines WHEN NOT preview
+        WHEN fines are waived
+            say nothing
+        OTHERWISE
+            NOTHING
+        TELL
+            SAYS the person hears which way it went
+        SAYS one of two
+    ACCEPT WHEN the request is unreadable
+        BECAUSE a later step reads it again
+    SAYS lend a book
+
+ACTION check the card
+    READS request
+    READS loan record WHEN NOT preview
+    ASK NO STOP WHEN the card has expired
+        TELLS message
+        SAYS the person may lend anyway
+        HOLD lab/syntax/testdata/every-key.json TestCheckTheCard
+    REFUSE WHEN the request is unreadable
+
+ACTION file the book WHEN NOT the card has expired
+    USES put away
+        WITH shelf = books
+    MAKES the book is filed
+    LATER STANDS
+    REHEARSAL preview
+    FAIL WHEN the store is closed
+    SAYS the store files it
+    BECAUSE a filed book stays filed
+    HOLD lab/syntax/testdata/every-key.json TestFileTheBook
+
+ACTION stamp the dates
+    READS request
+    REPLACE due dates FROM request WHEN NOT preview
+        MAKES the dates are stamped
+        LATER UNDONE
+        SAYS the dates come from the request
+        HOLD lab/syntax/testdata/every-key.json TestStamp
+
+ACTION write the receipt
+    READS request
+    CREATE receipt
+        LATER STANDS
+        BECAUSE a receipt is kept
+    CREATE ledger MANY
+        LATER STANDS
+        BECAUSE the ledger keeps every line
+
+ACTION say nothing
+    CREATE message
+
+ACTION clear the dates
+    READS loan record
+    DESTROY loan record
+
+EXPECT a preview, lent or not, changes nothing
+    IN lend
+    WHEN preview
+    ON SUCCESS
+    NEVER CHANGES
+        books
+        loan record
+    NEVER CREATES receipt
+    RUNS check the card
+    NEVER RUNS stamp the dates
+    ENDS due dates UNTOUCHED
+    ENDS message UNCHANGED
+    BEFORE stamp the dates PLACE receipt IS UNTOUCHED
+    SAYS nothing is lent in a preview
+    BECAUSE a preview is a look, not a loan
+    HOLD lab/syntax/testdata/every-key.json TestPreview
+
+RULE a loan is due in three weeks
+    ABOUT stamp the dates
+    WHEN NOT preview
+    SAYS three weeks from the day
+    SAYS counted in days
+    HOLD lab/syntax/testdata/every-key.json TestThreeWeeks
+```
+<!-- /every statement -->
 
 Three things a JSON design can say, the text says one way. A part at
 the top always carries its key as its name. An empty list at the top

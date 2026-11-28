@@ -233,3 +233,27 @@ func TestTheCommandReadsStandardInputAndFormats(t *testing.T) {
 		t.Errorf("a form it does not know: exit %d", code)
 	}
 }
+
+// TestThePageShowsEveryStatementAsThePrinterWritesIt holds DESIGN.md's example of every statement to the printer.
+func TestThePageShowsEveryStatementAsThePrinterWritesIt(t *testing.T) {
+	page, err := os.ReadFile("../engine/DESIGN.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const open, closing = "<!-- every statement:", "<!-- /every statement -->"
+	s := string(page)
+	i, j := strings.Index(s, open), strings.Index(s, closing)
+	if i < 0 || j < i {
+		t.Fatal("DESIGN.md has no example of every statement between its markers")
+	}
+	block := s[i:j]
+	start := strings.Index(block, "```\n") + len("```\n")
+	end := strings.LastIndex(block, "```")
+	text, err := Print(A, load(t, "testdata/every-key.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if block[start:end] != text {
+		t.Errorf("DESIGN.md's example of every statement is not the printer's text of testdata/every-key.json: print it again with go run . print A testdata/every-key.json")
+	}
+}
