@@ -66,6 +66,10 @@ FAULT the preCommit command fails
 FAULT the preRelease command fails
 FAULT the prePush command fails
 FAULT the --bump value is not a level
+FAULT origin's last version tag names a commit the clone does not have ONLY dry run
+    SAYS a dry run reads origin's tags and fetches nothing, so it needs the commit the last one names
+FAULT origin's release branch is at a commit the clone does not have ONLY dry run AND NOT trunk flow AND NOT the release branch is not on origin
+    SAYS a dry run reads origin's release branch and fetches nothing, so it needs the commit it is at
 FAULT an --exclude entry matches no commit
 FAULT not a git repository
     SAYS no git repository encloses the project directory
@@ -117,7 +121,8 @@ ACTION undo
 
 SEQ make changelog
     branch checks
-    fetch the tags WHEN no local version tag
+    fetch the tags WHEN no local version tag AND NOT dry run
+    read origin's tags WHEN no local version tag AND dry run
     measure the commits
     CHOOSE
         WHEN nothing to release
@@ -165,8 +170,8 @@ ACTION branch checks
 ACTION fetch the tags
     USES fetch tags
     LATER STANDS
-    ACCEPT WHEN origin does not answer
-        BECAUSE the fetch fails, the ls-remote of origin's tags fails too, and the run goes on as a first release without a word
+    REFUSE WHEN origin does not answer
+        SAYS when the fetch fails, the run stops unless origin answers and has no tags
     FAIL WHEN tags already has the member
         SAYS the fetch exits 1 after creating the other tags; ls-remote finds origin's tags, and pk refuses and says to fetch them
     ACCEPT WHEN tags is given a key twice
@@ -182,10 +187,17 @@ ACTION infer version
     ACCEPT WHEN the --bump value is not a level
         BECAUSE when every commit is excluded the run says nothing to release before it reads --bump
 
+ACTION read origin's tags
+    READS origin's tags
+    REFUSE WHEN origin does not answer
+    REFUSE WHEN origin's last version tag names a commit the clone does not have
+    REFUSE WHEN the last version tag is not in the branch's history
+    SAYS a dry run measures from origin's last version tag without fetching it
+
 ACTION pending release check WHEN NOT dry run
     READS working branch
-    ACCEPT WHEN the Release-Tag trailer is not a version
-        BECAUSE the check refuses only a trailer it can read as a version
+    REFUSE WHEN the Release-Tag trailer is not a version
+        SAYS pk cannot tell what the commit meant to release, so the person drops or amends it
     REFUSE WHEN the last commit is a release commit
 
 ACTION say nothing to release
@@ -261,8 +273,10 @@ SEQ release
     load settings
     read the pending release
     check the branch on origin
-    fetch the working branch
-    fetch the release branch WHEN NOT trunk flow AND NOT the release branch is not on origin
+    fetch the working branch WHEN NOT dry run
+    read origin's working branch WHEN dry run
+    fetch the release branch WHEN NOT trunk flow AND NOT the release branch is not on origin AND NOT dry run
+    read origin's release branch WHEN NOT trunk flow AND NOT the release branch is not on origin AND dry run
     pre-flight
     preRelease hook
     merge WHEN NOT trunk flow
@@ -400,6 +414,17 @@ ACTION load settings
     REFUSE WHEN settings are invalid
         SAYS An unknown key or a value outside these fails the whole file when it loads, with a message naming the key: pk commands exit 2
 
+ACTION read origin's working branch
+    READS origin's working branch
+    REFUSE WHEN origin does not answer
+    SAYS a dry run reads origin's tip with ls-remote; a tip the clone does not have is ahead, which pre-flight refuses as behind
+
+ACTION read origin's release branch
+    READS origin's release branch
+    REFUSE WHEN origin does not answer
+    REFUSE WHEN origin's release branch is at a commit the clone does not have
+        SAYS the run says to fetch it, and runs the dry run again
+
 ACTION measure the commits
     READS
         tags
@@ -534,7 +559,7 @@ RULE a preRelease hook that commits produces a commit the tag then covers
     ABOUT preRelease hook
     SAYS a preRelease hook that commits produces a commit the tag then covers
 
-RULE version inference passes over a tag that is not a version, and counts a pre-release tag as the latest version
+RULE version inference passes over a tag that is not a release version, a pre-release tag among them
     ABOUT infer version
     WHEN a tag does not name a version
     HOLD internal/changelog/changelog_test.go TestANonVersionTagIsNotARelease
