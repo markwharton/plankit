@@ -71,6 +71,55 @@
       "note": "A fourth system: stopping a running timer and logging its hours, designed from its pages alone."
     },
     {
+      "label": "certificate import 1: as first told",
+      "definition": "certificate-import/1-as-told.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 1 of the certificate import, in certificate-import/README.md. PDFs from the business system, one record for each certificate number."
+    },
+    {
+      "label": "certificate import 2: the file is kept too",
+      "definition": "certificate-import/2-the-files-too.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 2 of the certificate import, in certificate-import/README.md. The first version: each PDF saved in a library by its number, and a number already in the register skipped."
+    },
+    {
+      "label": "certificate import 3: one file, many certificates",
+      "definition": "certificate-import/3-one-file-many-certificates.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 3 of the certificate import, in certificate-import/README.md. The answers the history reached for numbers used twice."
+    },
+    {
+      "label": "certificate import 4: what nobody said",
+      "definition": "certificate-import/4-what-nobody-said.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 4 of the certificate import, in certificate-import/README.md. Scans, hand edits, another system and wrong numbers, each a fault of the PDF."
+    },
+    {
+      "label": "certificate import 5: what nobody knows",
+      "definition": "certificate-import/5-what-nobody-knows.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 5 of the certificate import, in certificate-import/README.md. A check before anything is saved, a form nobody has seen refused, and another system left open."
+    },
+    {
+      "label": "certificate import 6: a known wrong form, accepted",
+      "definition": "certificate-import/6-a-known-wrong-form.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 6 of the certificate import, in certificate-import/README.md. A form known to be wrong and needed in the register, accepted with its reason."
+    },
+    {
+      "label": "certificate import 7: a corrected file replaces the first",
+      "definition": "certificate-import/7-a-corrected-file.design",
+      "root": "certificate-import",
+      "readonly": true,
+      "note": "Stage 7 of the certificate import, in certificate-import/README.md. A second run that replaces a file already imported, and meets every question the first one did."
+    },
+    {
       "label": "contacts 1: name the places and one step",
       "definition": "contacts/01/contacts.json",
       "root": "contacts/01",
