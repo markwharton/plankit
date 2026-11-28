@@ -194,7 +194,10 @@ async function main() {
   await click("#c-panel button", "Findings");
   check("its questions are listed", /unanswered/.test(await text("#panel")) && /Questions for the owner/.test(await text("#panel")));
   const started = Date.now();
-  await open("pk on git, written blind in text", 120000);
+  await js("const s = document.getElementById('scn'); s.value = [...s.options].find((x) => x.textContent === 'pk on git, written blind in text').value; s.dispatchEvent(new Event('change'));");
+  await until(async () => /Opening the design/.test(await text("#state")), "the page to say it is opening the design");
+  check("a design that takes a while says it is opening, and clears the stage", /Opening the design/.test(await text("#stage")), await text("#stage"));
+  await loaded("pk on git, written blind in text", 120000);
   await click("#c-panel button", "Findings");
   check("a design of 9,814 plays opens (" + ((Date.now() - started) / 1000).toFixed(1) + " s)", /left-behind/.test(await text("#panel")), await text("#panel"));
   await open("notes/notes.design");

@@ -758,7 +758,8 @@ function renderTop() {
   sel.innerHTML = A.scenarios.map((s) => '<option value="' + s.id + '"' + (s.id === A.id ? " selected" : "") + ">" + esc(s.label) + "</option>").join("");
   sel.title = sc ? sc.note || sc.file : "";
   const st = $("state");
-  if (A.error) { st.className = "refused"; st.textContent = A.error; }
+  if (A.opening) { st.className = "draft"; st.textContent = "Opening the design… " + Math.floor((Date.now() - A.opening) / 1000) + " s"; }
+  else if (A.error) { st.className = "refused"; st.textContent = A.error; }
   else if (A.refused) { st.className = "refused"; st.textContent = dirty() ? "The checker refuses this text" : "The checker refuses this file"; }
   else if (dirty()) { st.className = "draft"; st.textContent = A.checking ? "Checking…" : "Draft: not saved"; }
   else { st.className = "live"; st.textContent = "Live: as saved"; }
@@ -833,12 +834,17 @@ async function openScenario(id, keep) {
   $("cols").dataset.open = ""; $("ed").disabled = true;   /* typing while a design loads would be overwritten */
   store.set("scenario", id);
   if (!keep) { S.runName = null; S.path = 0; S.place = null; S.hover = null; }
+  /* a large design takes seconds to play: say so, and take the last design off the stage */
+  A.opening = Date.now(); renderTop();
+  $("stage").innerHTML = '<p class="empty">Opening the design…</p>';
+  const ticking = setInterval(renderTop, 500);
   try {
     const [src, res] = await Promise.all([api("/api/source?id=" + id), api("/api/model?id=" + id)]);
     A.text = A.disk = src.text; $("ed").value = src.text;
     A.live = res.ok ? res : null; A.refused = res.ok ? null : res.refused;
     const sc = scenario(); A.stamp = sc ? sc.stamp : null;
   } catch (e) { A.live = null; A.error = e.message; }
+  clearInterval(ticking); A.opening = null;
   S.t = 1e9;
   render();
   $("ed").disabled = false; $("cols").dataset.open = id;
