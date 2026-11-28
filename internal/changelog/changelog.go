@@ -146,9 +146,25 @@ func run(ctx *cli.Context) error {
 		// No local tag: common in a fresh clone that fetched only the
 		// working branch, such as a cloud sandbox. Origin's tags decide
 		// whether this is a first release, so fetch them and measure
-		// again. Only when the fetch itself fails does the user hear
-		// about it, and only if origin does have tags.
-		if _, ferr := git.Exec(root, "fetch", "origin", "--tags", "--quiet"); ferr == nil {
+		// again; a dry run reads them instead and fetches nothing. Only
+		// when the fetch itself fails does the user hear about it, and
+		// only if origin does have tags.
+		//
+		// Parked: if origin stops answering between the branch-on-origin
+		// check above and this fetch, the ls-remote below fails too and
+		// the run goes on as a first release without a word. The fix is
+		// to refuse unless origin answers and has no tags; testing it
+		// needs the ls-remote call stubbed, as now is.
+		if dryRun {
+			fromOrigin, found, err := sinceOriginTag(root, branch)
+			if err != nil {
+				return err
+			}
+			if found {
+				since = fromOrigin
+				msg.Sayf(ctx.Stderr, "Read origin's tags without fetching: latest is %s", since.LatestTag)
+			}
+		} else if _, ferr := git.Exec(root, "fetch", "origin", "--tags", "--quiet"); ferr == nil {
 			if since, err = commitsSinceLastTag(root, branch); err != nil {
 				return err
 			}
@@ -472,15 +488,52 @@ func commitsSinceLastTag(root, branch string) (sinceTag, error) {
 	if outside != "" {
 		return sinceTag{}, cli.Statef("%s", outside)
 	}
+	return measure(root, latestTag, base, latestTag)
+}
+
+// measure is the commits since the last release, which is tag at from: the
+// tag itself, or the commit origin's tag names when it is not fetched.
+func measure(root, tag string, base version.Semver, from string) (sinceTag, error) {
 	logRange := "HEAD"
-	if latestTag != "" {
-		logRange = latestTag + "..HEAD"
+	if from != "" {
+		logRange = from + "..HEAD"
 	}
 	logOutput, err := git.Exec(root, "log", "--format=%h%x00%s%x00%b%x00", logRange, "--reverse")
 	if err != nil {
 		return sinceTag{}, err
 	}
-	return sinceTag{LatestTag: latestTag, Base: base, Range: logRange, Commits: parseLog(logOutput)}, nil
+	return sinceTag{LatestTag: tag, Base: base, Range: logRange, Commits: parseLog(logOutput)}, nil
+}
+
+// sinceOriginTag measures from origin's last release tag without fetching
+// it, for a dry run in a clone with no tags: a dry run writes nothing. The
+// commit the tag names must be in the clone, and in the branch's history.
+func sinceOriginTag(root, branch string) (sinceTag, bool, error) {
+	commits, err := git.RemoteTagCommits(root)
+	if err != nil {
+		return sinceTag{}, false, OriginUnreachable(err)
+	}
+	names := make([]string, 0, len(commits))
+	for name := range commits {
+		names = append(names, name)
+	}
+	tag, base, ok := version.Latest(names)
+	if !ok {
+		return sinceTag{}, false, nil
+	}
+	sha := commits[tag]
+	if _, err := git.Exec(root, "cat-file", "-e", sha+"^{commit}"); err != nil {
+		return sinceTag{}, false, cli.WithHint(
+			cli.Statef("origin's last version tag, %s, names a commit this clone does not have, and a dry run fetches nothing", tag),
+			"fetch it, then run the dry run again: git fetch --tags")
+	}
+	if in, err := git.IsAncestor(root, sha, "HEAD"); err != nil {
+		return sinceTag{}, false, err
+	} else if !in {
+		return sinceTag{}, false, cli.Statef("origin's last version tag, %s, is not in %s's history", tag, branch)
+	}
+	since, err := measure(root, tag, base, sha)
+	return since, true, err
 }
 
 // ErrNoCommits reports a range with no conventional commits: nothing to

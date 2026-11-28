@@ -668,7 +668,7 @@ func TestNoLocalTagsButOriginHasThem(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
-	if !strings.Contains(errw, "Fetched tags from origin: latest is v0.0.0") {
+	if !strings.Contains(errw, "Read origin's tags without fetching: latest is v0.0.0") {
 		t.Fatalf("errw = %q", errw)
 	}
 	if !strings.HasPrefix(out, "## [v0.1.0] - 2026-09-05") {
@@ -677,8 +677,31 @@ func TestNoLocalTagsButOriginHasThem(t *testing.T) {
 	if strings.Contains(errw, "first release") {
 		t.Fatalf("measured as a first release: %q", errw)
 	}
-	if tags, _ := git.Exec(dir, "tag", "--list", "v0.0.0"); tags != "v0.0.0" {
-		t.Fatalf("tag not fetched: %q", tags)
+	if tags, _ := git.Exec(dir, "tag", "--list"); tags != "" {
+		t.Fatalf("a dry run fetched tags: %q", tags) // a dry run writes nothing
+	}
+}
+
+// TestADryRunRefusesAnOriginTagOnACommitTheCloneLacks: without a fetch the
+// dry run cannot measure from it, so it says to fetch.
+func TestADryRunRefusesAnOriginTagOnACommitTheCloneLacks(t *testing.T) {
+	dir := repo(t, nil)
+	bare, _ := git.Exec(dir, "remote", "get-url", "origin")
+	other := t.TempDir()
+	mustGit(t, other, "clone", "-q", bare, ".")
+	mustGit(t, other, "config", "user.email", "t@t")
+	mustGit(t, other, "config", "user.name", "t")
+	mustGit(t, other, "commit", "-q", "--allow-empty", "-m", "feat: elsewhere")
+	mustGit(t, other, "tag", "v0.5.0")
+	mustGit(t, other, "push", "-q", "origin", "v0.5.0")
+	mustGit(t, dir, "tag", "-d", "v0.0.0")
+	commit(t, dir, "feat: x")
+	code, _, errw := runCL(t, dir, "--dry-run")
+	if code != cli.ExitState || !strings.Contains(errw, "v0.5.0") || !strings.Contains(errw, "git fetch --tags") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if tags, _ := git.Exec(dir, "tag", "--list"); tags != "" {
+		t.Fatalf("a dry run fetched tags: %q", tags)
 	}
 }
 
@@ -691,12 +714,12 @@ func TestNoLocalTagsAndFetchFails(t *testing.T) {
 	// Fetching into the checked-out branch is refused by git, so the
 	// fetch fails while ls-remote still answers.
 	mustGit(t, dir, "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*")
-	code, _, errw := runCL(t, dir, "--dry-run")
+	code, _, errw := runCL(t, dir) // a real run fetches; a dry run reads origin's tags instead
 	if code != cli.ExitState || !strings.Contains(errw, "git fetch failed") || !strings.Contains(errw, "git fetch --tags") {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 	if headSubject(t, dir) != "feat: x" {
-		t.Fatal("dry-run committed")
+		t.Fatal("a refused run committed")
 	}
 }
 
