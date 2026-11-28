@@ -1,0 +1,85 @@
+SYSTEM a certificate import where a corrected file replaces the first
+REPORTS message
+RUNS
+    import
+    replace
+
+PLACE pdf ONE OUTSIDE
+    SAYS a PDF from anywhere: the business system, a hand edit, another system, or a source nobody has named
+PLACE register MANY LASTING
+    SAYS one record for each certificate number
+PLACE files MANY LASTING
+    SAYS the library of PDFs, one file for each certificate number
+PLACE message ONE REPORT
+
+FAULT the pdf cannot be read ABOUT pdf
+FAULT a page has no number ABOUT pdf
+FAULT the pdf is a scan with no text ABOUT pdf
+FAULT a field was edited by hand into a form the import does not read ABOUT pdf
+FAULT the number on the pdf is not this certificate's ABOUT pdf
+    SAYS a wrong number: one allocated to another certificate, or one never used
+FAULT the pdf is not a form the import knows ABOUT pdf
+    SAYS a layout from a source nobody has named
+FAULT the form is a variant the business system does not make yet ABOUT pdf
+    SAYS a form known to be wrong, needed in the register all the same
+OPEN the pdf comes from another system
+    SAYS nobody has decided what an import from another system may do
+
+SEQ import
+    check it
+    split it
+    record it
+
+SEQ replace
+    check it
+    rewrite it
+
+ACTION check it
+    READS
+        pdf
+        register
+    REFUSE WHEN a field was edited by hand into a form the import does not read
+    ACCEPT WHEN the form is a variant the business system does not make yet
+        SAYS the upload is held for review before anything is saved
+        BECAUSE the register needs these certificates now, and the proper form is not agreed yet
+
+ACTION split it
+    READS pdf
+    CREATE files MANY FROM pdf
+        LATER STANDS
+        BECAUSE the file is the certificate as it was uploaded
+    REFUSE
+        WHEN ANY
+            the pdf cannot be read
+            a page has no number
+            the pdf is a scan with no text
+            the pdf is not a form the import knows
+            files already has the member
+        SAYS the upload is held for review and says why: never a success with nothing imported
+    ACCEPT WHEN files is given a key twice
+        BECAUSE pages that reuse a number one after another are one certificate
+
+ACTION record it WHEN NOT the pdf comes from another system
+    READS pdf
+    CREATE register MANY FROM pdf
+    REFUSE WHEN register already has the member
+        SAYS the number is already in the register, so the upload is held for review
+    ACCEPT WHEN register is given a key twice
+        BECAUSE the split made one certificate of the pages that share a number
+
+ACTION rewrite it
+    READS pdf
+    REPLACE files FROM pdf
+    REPLACE register FROM pdf
+    REFUSE
+        WHEN ANY
+            the pdf cannot be read
+            a page has no number
+            the pdf is a scan with no text
+            the pdf is not a form the import knows
+            files holds another's member
+            register holds another's member
+        SAYS the corrected file is held for review and says why
+    ACCEPT WHEN files holds what is kept nowhere
+        BECAUSE the library keeps each file's earlier versions
+    SAYS a corrected file replaces the one imported, and its record is rewritten from it

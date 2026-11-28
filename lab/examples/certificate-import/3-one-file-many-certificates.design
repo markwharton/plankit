@@ -1,0 +1,37 @@
+SYSTEM a certificate import where one file holds many certificates
+REPORTS message
+RUNS import
+
+PLACE pdf ONE OUTSIDE
+    SAYS a PDF of one or more certificates, a page or more each
+PLACE register MANY LASTING
+    SAYS one record for each certificate number
+PLACE files MANY LASTING
+    SAYS the library of PDFs, one file for each certificate number
+PLACE message ONE REPORT
+
+FAULT the pdf cannot be read ABOUT pdf
+FAULT a page has no number ABOUT pdf
+
+SEQ import
+    split it
+    record it
+
+ACTION split it
+    READS pdf
+    CREATE files MANY FROM pdf
+        LATER STANDS
+        BECAUSE the file is the certificate as it was uploaded
+    REFUSE WHEN the pdf cannot be read OR a page has no number
+    REFUSE WHEN files already has the member
+        SAYS a number already in the library is not saved over
+    ACCEPT WHEN files is given a key twice
+        BECAUSE pages that reuse a number one after another are one certificate
+
+ACTION record it
+    READS pdf
+    CREATE register MANY FROM pdf
+    REFUSE WHEN register already has the member
+        SAYS the number is already in the register, so the upload is held for review
+    ACCEPT WHEN register is given a key twice
+        BECAUSE the split made one certificate of the pages that share a number

@@ -1,0 +1,16 @@
+SYSTEM a certificate import, as first told
+REPORTS message
+RUNS import
+
+PLACE pdf ONE OUTSIDE
+    SAYS a certificate PDF the business system made, uploaded by a user
+PLACE register MANY LASTING
+    SAYS one record for each certificate number
+PLACE message ONE REPORT
+
+FAULT the pdf cannot be read ABOUT pdf
+
+ACTION import
+    READS pdf
+    CREATE register MANY FROM pdf
+    REFUSE WHEN the pdf cannot be read

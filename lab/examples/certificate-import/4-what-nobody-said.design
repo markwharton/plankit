@@ -1,0 +1,45 @@
+SYSTEM a certificate import, told what the uploads really are
+REPORTS message
+RUNS import
+
+PLACE pdf ONE OUTSIDE
+    SAYS a PDF of one or more certificates, from the business system, edited by hand, or from another system
+PLACE register MANY LASTING
+    SAYS one record for each certificate number
+PLACE files MANY LASTING
+    SAYS the library of PDFs, one file for each certificate number
+PLACE message ONE REPORT
+
+FAULT the pdf cannot be read ABOUT pdf
+FAULT a page has no number ABOUT pdf
+FAULT the pdf is a scan with no text ABOUT pdf
+FAULT a field was edited by hand into a form the import does not read ABOUT pdf
+FAULT the pdf comes from another system ABOUT pdf
+FAULT the number on the pdf is not this certificate's ABOUT pdf
+    SAYS a wrong number: one allocated to another certificate, or one never used
+
+SEQ import
+    split it
+    record it
+
+ACTION split it
+    READS pdf
+    CREATE files MANY FROM pdf
+        LATER STANDS
+        BECAUSE the file is the certificate as it was uploaded
+    REFUSE
+        WHEN ANY
+            the pdf cannot be read
+            a page has no number
+            the pdf is a scan with no text
+            files already has the member
+    ACCEPT WHEN files is given a key twice
+        BECAUSE pages that reuse a number one after another are one certificate
+
+ACTION record it
+    READS pdf
+    CREATE register MANY FROM pdf
+    REFUSE WHEN register already has the member
+        SAYS the number is already in the register, so the upload is held for review
+    ACCEPT WHEN register is given a key twice
+        BECAUSE the split made one certificate of the pages that share a number
