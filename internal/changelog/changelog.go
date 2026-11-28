@@ -214,10 +214,18 @@ func run(ctx *cli.Context) error {
 	// Refuse when HEAD already carries a Release-Tag trailer: one pending
 	// release at a time.
 	if !dryRun {
-		if _, pending, err := ReadReleaseTagTrailer(root); err == nil {
+		_, pending, err := ReadReleaseTagTrailer(root)
+		switch {
+		case err == nil:
 			return cli.WithHint(
 				cli.Statef("changelog for %s is already pending (HEAD has Release-Tag: %s)", pending, pending),
 				"to complete the release: pk release; to undo and start over: pk changelog --undo")
+		case errors.Is(err, ErrInvalidTrailer):
+			// Neither a pending release nor one --undo can remove: pk cannot
+			// tell what the commit meant to release, so the person decides.
+			return cli.WithHint(
+				cli.Statef("%v, so HEAD is not a version pk can release or undo", err),
+				"drop or amend that commit by hand, then run pk changelog again")
 		}
 	}
 

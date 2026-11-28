@@ -811,3 +811,20 @@ func TestAChangelogThatIsThereMustBeReadable(t *testing.T) {
 		t.Fatalf("code=%d errw=%q", code, errw)
 	}
 }
+
+// TestATrailerThatIsNotAVersionIsRefused: a Release-Tag commit whose
+// trailer does not name a version is not a pending release that can be
+// undone or released, so changelog refuses to commit another on top.
+func TestATrailerThatIsNotAVersionIsRefused(t *testing.T) {
+	dir := repo(t, nil)
+	commit(t, dir, "feat: x")
+	mustGit(t, dir, "commit", "-q", "--allow-empty", "-m", "chore: release by hand", "-m", "Release-Tag: banana")
+	head, _ := git.Exec(dir, "rev-parse", "HEAD")
+	code, _, errw := runCL(t, dir)
+	if code != cli.ExitState || !strings.Contains(errw, "banana") || !strings.Contains(errw, "not a version") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if now, _ := git.Exec(dir, "rev-parse", "HEAD"); now != head {
+		t.Fatal("changelog committed on top of the broken trailer")
+	}
+}
