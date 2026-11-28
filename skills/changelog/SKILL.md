@@ -7,11 +7,14 @@ description: Generate CHANGELOG.md from conventional commits and stage a release
 
 Reads the conventional commits since the last version tag, infers the
 next version, writes the section into `CHANGELOG.md`, and commits with
-a `Release-Tag` trailer. No git tag is created; `pk release` creates
-it, so the release stays a two-step: generate and review, then tag
-and push.
+a `Release-Tag` trailer. It leaves the release untagged; `pk release`
+tags it, so the release stays a two-step: generate and review, then
+tag and push.
 
 ## Version inference
+
+The last version tag is the highest tag that names a release. A
+pre-release tag, such as `v1.2.0-rc.1`, is not one, and is passed over.
 
 A breaking change (`type!:` or a `BREAKING CHANGE:` footer) bumps
 major, `feat` bumps minor, anything else bumps patch. The commits
@@ -71,7 +74,9 @@ pk changelog --undo
 `--exclude` drops commits by short hash before bump inference.
 `--undo` unwinds the release commit, restoring `CHANGELOG.md` and
 version files. It refuses unless the tree is clean and the commit is
-only on the current branch: not pushed, not tagged, not merged.
+only on the current branch: not pushed, not tagged, not merged. With
+`--dry-run` it makes the same checks, says what it would unwind, and
+changes nothing.
 
 `changelog.versionFiles` names JSON files whose root `version` field
 is spliced in place, formatting preserved. `postVersion` and
@@ -102,7 +107,10 @@ them: a fresh clone that fetched only the working branch, as a cloud
 sandbox does. `pk changelog` fetches origin's tags first and says so,
 `Fetched tags from origin: latest is v1.2.0`, then measures from that
 tag. Only when the fetch itself fails does it stop, with the error and
-the hint `git fetch --tags`.
+the hint `git fetch --tags`. `--dry-run` fetches nothing: it reads
+origin's tags and says so, `Read origin's tags without fetching: latest
+is v1.2.0`, and when that tag is on a commit the clone does not have,
+it stops and gives the same hint.
 
 ## Flags
 
@@ -111,7 +119,7 @@ the hint `git fetch --tags`.
   --bump <value>
         Override the inferred bump: major, minor, or patch (the developer's call)
   --dry-run
-        Print the section to stdout without writing or committing
+        Print the section to stdout without writing or committing; with --undo, say what would be unwound
   --exclude <value>
         Comma-separated commit SHAs to drop from the section (the developer's call)
   --undo
