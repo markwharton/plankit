@@ -881,6 +881,21 @@ def played(d):
             [(f["kind"], f["subject"]) for f in engine.findings(d, plays)])
 
 
+class Undoing(unittest.TestCase):
+    def test_undoing_a_change_does_not_hide_a_later_one_that_stays(self):
+        doc = notes()
+        seq = doc["parts"]["publish"]["seq"]
+        seq.insert(1, {"do": "note the time", "reads": ["text"], "changes": [{"place": "draft", "how": "replace"}]})   # says nothing about later
+        doc["expects"] = [{"name": "a failed publish leaves the draft as it was", "on": "failed", "never changes": ["draft"]}]
+        d = engine.Design(doc)
+        p = [p for p in engine.explore_all(d) if p.given() == ["the site is down"]][0]
+        self.assertEqual(p.state["draft"], "replaced")               # the save is undone, and the later change is still there
+        self.assertIn(("expect", "a failed publish leaves the draft as it was"), [(f["kind"], f["subject"]) for f in engine.findings(d, engine.explore_all(d))])
+        doc["parts"]["publish"]["seq"][1]["changes"][0]["later"] = "undone"
+        p = [p for p in engine.explore_all(engine.Design(doc)) if p.given() == ["the site is down"]][0]
+        self.assertEqual(p.state["draft"], "undone")                 # both undone: the draft is as it was
+
+
 class WrittenAsText(unittest.TestCase):
     def as_text(self, base, name):
         """name.json in base, printed as name.design by the syntax tool."""

@@ -807,21 +807,27 @@ class Play:
         mark = len(self.effects)
         failure = self.play(part)
         if failure:
+            kept = set()                                   # places a later change stays on: undoing an earlier one does not hide it
             for e in reversed(self.effects[mark:]):
                 if e.get("decided"):
+                    if e["later"] != "undone":
+                        kept.update(e["was"])
                     continue
                 e["decided"] = True
                 if e["later"] == "undone":
                     for place, was in e["was"].items():
-                        self.state[place] = was if was != "untouched" else "undone"
+                        if place not in kept:
+                            self.state[place] = was if was != "untouched" else "undone"
                     self.rests.update(e["rested"])
                     for fact, was in e["made"].items():
                         if was is None:
                             self.now.made.pop(fact, None)
                         else:
                             self.now.made[fact] = was
-                elif e["later"] is None and self.d.places[e["place"]]["kind"] == "lasting":
-                    self.left.append(dict(e, at=failure.action))
+                else:
+                    kept.update(e["was"])
+                    if e["later"] is None and self.d.places[e["place"]]["kind"] == "lasting":
+                        self.left.append(dict(e, at=failure.action))
         return failure
 
     def holds(self, c):

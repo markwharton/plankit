@@ -127,6 +127,8 @@ behind, on top of the changelog commit ship means to undo. And an
 expectation that a failed ship leaves the working branch as it found
 it held in those same plays, because the engine keeps one state for a
 place, and undoing the changelog commit covered the hook's commit.
+The engine was fixed so that undoing a change does not hide a later
+one that stays, and now reports that expectation in 1,104 plays.
 
 `data-pull.json`, `disk-import.json` and `timer-stop.json` beside it are
 designs written the same way for one flow each of three other systems.
