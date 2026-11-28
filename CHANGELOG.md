@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.10.4] - 2026-11-28
+
+### Fixed
+
+- rehearse a dry run when the release branch is only on origin (75873fb)
+- make --undo with --dry-run change nothing (8da1795)
+- run preRelease on the working branch, before the merge (0496aec)
+- pass over a pre-release tag when finding the last release (02571be)
+- refuse a Release-Tag trailer that is not a version (a1818e1)
+- a dry run reads origin's tags and fetches nothing (6c15df7)
+- refuse when the tag fetch fails and origin does not answer (73cdeaa)
+- a dry run reads origin's branches and fetches nothing (e15ac39)
+
+### Documentation
+
+- name what a failed ship undoes, and what stays (a472538)
+- say the release is left untagged (93d4e55)
+
 ## [v1.10.3] - 2026-11-22
 
 ### Fixed
@@ -1526,3 +1544,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 [v1.10.1]: https://github.com/markwharton/plankit/compare/v1.10.0...v1.10.1
 [v1.10.2]: https://github.com/markwharton/plankit/compare/v1.10.1...v1.10.2
 [v1.10.3]: https://github.com/markwharton/plankit/compare/v1.10.2...v1.10.3
+[v1.10.4]: https://github.com/markwharton/plankit/compare/v1.10.3...v1.10.4
