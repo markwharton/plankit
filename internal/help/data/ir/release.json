@@ -204,6 +204,19 @@
       "text": "pk release --dry-run\npk release\n"
     },
     {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "code",
+          "text": "--dry-run"
+        },
+        {
+          "type": "text",
+          "text": " makes the same checks and writes nothing. It reads origin's branches without fetching them; when origin is at a commit the clone does not have, it says so and how to fetch it."
+        }
+      ]
+    },
+    {
       "type": "heading",
       "level": 2,
       "id": "flags",
@@ -216,7 +229,7 @@
     },
     {
       "type": "codeblock",
-      "text": "  --dry-run\n        Validate without merging, tagging, or pushing\n"
+      "text": "  --dry-run\n        Validate without fetching, merging, tagging, or pushing\n"
     },
     {
       "type": "para",

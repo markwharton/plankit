@@ -376,11 +376,26 @@ func BranchExists(dir, name string) bool {
 // queried, so a caller never mistakes an unreachable origin for an
 // absent branch.
 func RemoteBranchExists(dir, name string) (bool, error) {
+	sha, err := RemoteBranchCommit(dir, name)
+	return sha != "", err
+}
+
+// RemoteBranchCommit reads the commit origin's branch is at, without
+// fetching it; "" when origin has no such branch. The error is origin's
+// when it does not answer.
+func RemoteBranchCommit(dir, name string) (string, error) {
 	out, err := Exec(dir, "ls-remote", "--heads", "origin", "refs/heads/"+name)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	return out != "", nil
+	sha, _, _ := strings.Cut(out, "\t")
+	return sha, nil
+}
+
+// HasCommit reports whether the clone has the commit.
+func HasCommit(dir, sha string) bool {
+	_, err := Exec(dir, "cat-file", "-e", sha+"^{commit}")
+	return err == nil
 }
 
 // HasRemote reports whether a remote of that name is configured.

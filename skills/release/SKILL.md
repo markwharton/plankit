@@ -60,12 +60,16 @@ pk release --dry-run
 pk release
 ```
 
+`--dry-run` makes the same checks and writes nothing. It reads
+origin's branches without fetching them; when origin is at a commit
+the clone does not have, it says so and how to fetch it.
+
 ## Flags
 
 <!-- generated: flags -->
 ```
   --dry-run
-        Validate without merging, tagging, or pushing
+        Validate without fetching, merging, tagging, or pushing
 ```
 
 Every command also accepts `--plain`, `--project-dir <value>`, and `--quiet`; see `pk help help`.

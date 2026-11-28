@@ -29,7 +29,7 @@ var Cmd = &cli.Command{
 	Name:    "release",
 	Summary: "Tag the pending release from the Release-Tag trailer and push it to origin",
 	Flags: []cli.FlagSpec{
-		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Validate without merging, tagging, or pushing"},
+		{Name: "dry-run", Type: cli.BoolFlag, Usage: "Validate without fetching, merging, tagging, or pushing"},
 	},
 	Run: run,
 }
@@ -116,13 +116,21 @@ func run(ctx *cli.Context) error {
 	}
 	msg.Itemf(w, "%s exists on origin", sourceBranch)
 
-	// Source must not be behind origin.
-	if _, err := git.Exec(root, "fetch", "origin", sourceBranch, "--quiet"); err != nil {
+	// Source must not be behind origin. A dry run reads origin's tip with
+	// ls-remote and fetches nothing: a tip the clone does not have is ahead.
+	originTip := "origin/" + sourceBranch
+	if dryRun {
+		if originTip, err = git.RemoteBranchCommit(root, sourceBranch); err != nil {
+			return changelog.OriginUnreachable(err)
+		}
+	} else if _, err := git.Exec(root, "fetch", "origin", sourceBranch, "--quiet"); err != nil {
 		return changelog.OriginUnreachable(err)
 	}
-	upToDate, err := git.IsAncestor(root, "origin/"+sourceBranch, "HEAD")
-	if err != nil {
-		return err
+	upToDate := git.HasCommit(root, originTip)
+	if upToDate {
+		if upToDate, err = git.IsAncestor(root, originTip, "HEAD"); err != nil {
+			return err
+		}
 	}
 	if !upToDate {
 		return cli.Statef("local %s is behind origin/%s; pull first", sourceBranch, sourceBranch)
@@ -134,17 +142,26 @@ func run(ctx *cli.Context) error {
 	// ancestor of HEAD or the atomic push would be rejected. Catch both
 	// here, before tagging. A branch only local (pk init without --push)
 	// is a first release: the release push creates it on origin.
+	releaseTip := "origin/" + releaseBranch // what a dry run rehearses against when there is no local release branch
 	if needsMerge {
-		onOrigin, err := git.RemoteBranchExists(root, releaseBranch)
+		onOrigin, err := git.RemoteBranchCommit(root, releaseBranch)
 		if err != nil {
 			return changelog.OriginUnreachable(err)
 		}
 		switch {
-		case onOrigin:
-			if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
+		case onOrigin != "":
+			if dryRun {
+				// A dry run fetches nothing, so it needs the commit already.
+				if !git.HasCommit(root, onOrigin) {
+					return cli.WithHint(
+						cli.Statef("origin's %s is at a commit this clone does not have, and a dry run fetches nothing", releaseBranch),
+						"fetch it, then run the dry run again: git fetch origin %s", releaseBranch)
+				}
+				releaseTip = onOrigin
+			} else if _, err := git.Exec(root, "fetch", "origin", releaseBranch, "--quiet"); err != nil {
 				return changelog.OriginUnreachable(err)
 			}
-			contained, err := git.IsAncestor(root, "origin/"+releaseBranch, "HEAD")
+			contained, err := git.IsAncestor(root, releaseTip, "HEAD")
 			if err != nil {
 				return err
 			}
@@ -255,7 +272,7 @@ func run(ctx *cli.Context) error {
 			// rehearsal asks the same question of the same commit.
 			from := releaseBranch
 			if !git.BranchExists(root, releaseBranch) {
-				from = "origin/" + releaseBranch
+				from = releaseTip
 			}
 			ff, err := git.IsAncestor(root, from, sourceBranch)
 			if err != nil {
