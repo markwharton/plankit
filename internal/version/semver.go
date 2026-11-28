@@ -85,16 +85,17 @@ func ParseSemver(s string) (Semver, bool) {
 
 // Latest returns the highest release tag among names by Compare, and
 // its version; the bool is false when none of them is a release tag. A
-// release tag is a name that parses and renders back to itself, so a
-// name without the v prefix and a v-prefixed name that is not a version
-// are both passed over. It is the one chooser of the latest release:
+// release tag is a name that parses, renders back to itself, and has no
+// pre-release part, so a name without the v prefix, a v-prefixed name
+// that is not a version, and a pre-release such as v1.1.0-rc1 are all
+// passed over. It is the one chooser of the latest release:
 // callers list names, from the clone or from origin, and ask here.
 func Latest(names []string) (string, Semver, bool) {
 	var best string
 	var bestV Semver
 	for _, name := range names {
 		sv, ok := ParseSemver(name)
-		if !ok || sv.String() != name {
+		if !ok || sv.String() != name || sv.PreRelease != "" {
 			continue
 		}
 		if best == "" || sv.Compare(bestV) > 0 {

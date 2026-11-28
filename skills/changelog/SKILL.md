@@ -13,6 +13,9 @@ tag and push.
 
 ## Version inference
 
+The last version tag is the highest tag that names a release. A
+pre-release tag, such as `v1.2.0-rc.1`, is not one, and is passed over.
+
 A breaking change (`type!:` or a `BREAKING CHANGE:` footer) bumps
 major, `feat` bumps minor, anything else bumps patch. The commits
 decide the version; `--dry-run` shows the one they infer, and a version

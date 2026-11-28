@@ -65,6 +65,23 @@
       "inlines": [
         {
           "type": "text",
+          "text": "The last version tag is the highest tag that names a release. A pre-release tag, such as "
+        },
+        {
+          "type": "code",
+          "text": "v1.2.0-rc.1"
+        },
+        {
+          "type": "text",
+          "text": ", is not one, and is passed over."
+        }
+      ]
+    },
+    {
+      "type": "para",
+      "inlines": [
+        {
+          "type": "text",
           "text": "A breaking change ("
         },
         {
