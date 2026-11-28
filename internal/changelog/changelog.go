@@ -146,15 +146,9 @@ func run(ctx *cli.Context) error {
 		// No local tag: common in a fresh clone that fetched only the
 		// working branch, such as a cloud sandbox. Origin's tags decide
 		// whether this is a first release, so fetch them and measure
-		// again; a dry run reads them instead and fetches nothing. Only
-		// when the fetch itself fails does the user hear about it, and
-		// only if origin does have tags.
-		//
-		// Parked: if origin stops answering between the branch-on-origin
-		// check above and this fetch, the ls-remote below fails too and
-		// the run goes on as a first release without a word. The fix is
-		// to refuse unless origin answers and has no tags; testing it
-		// needs the ls-remote call stubbed, as now is.
+		// again; a dry run reads them instead and fetches nothing. When
+		// the fetch fails, the run stops unless origin answers and has no
+		// tags.
 		if dryRun {
 			fromOrigin, found, err := sinceOriginTag(root, branch)
 			if err != nil {
@@ -171,9 +165,16 @@ func run(ctx *cli.Context) error {
 			if since.LatestTag != "" {
 				msg.Sayf(ctx.Stderr, "Fetched tags from origin: latest is %s", since.LatestTag)
 			}
-		} else if remoteTags, err := git.Exec(root, "ls-remote", "--tags", "origin"); err == nil && strings.TrimSpace(remoteTags) != "" {
-			return cli.WithHint(cli.Statef("no version tags found locally: %v", ferr),
-				"origin has tags; fetch them: git fetch --tags")
+		} else {
+			// The fetch failed: only origin saying it has no tags makes this a first release.
+			remoteTags, err := lsRemoteTags(root)
+			switch {
+			case err != nil:
+				return OriginUnreachable(err)
+			case strings.TrimSpace(remoteTags) != "":
+				return cli.WithHint(cli.Statef("no version tags found locally: %v", ferr),
+					"origin has tags; fetch them: git fetch --tags")
+			}
 		}
 	}
 	latestTag, baseVersion, logRange, commits := since.LatestTag, since.Base, since.Range, since.Commits
@@ -489,6 +490,12 @@ func commitsSinceLastTag(root, branch string) (sinceTag, error) {
 		return sinceTag{}, cli.Statef("%s", outside)
 	}
 	return measure(root, latestTag, base, latestTag)
+}
+
+// lsRemoteTags asks origin for its tags. A variable, as now is, so a test
+// can have origin stop answering between the tag fetch and this call.
+var lsRemoteTags = func(root string) (string, error) {
+	return git.Exec(root, "ls-remote", "--tags", "origin")
 }
 
 // measure is the commits since the last release, which is tag at from: the

@@ -3,6 +3,7 @@ package changelog
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -849,5 +850,25 @@ func TestATrailerThatIsNotAVersionIsRefused(t *testing.T) {
 	}
 	if now, _ := git.Exec(dir, "rev-parse", "HEAD"); now != head {
 		t.Fatal("changelog committed on top of the broken trailer")
+	}
+}
+
+// TestAFailedTagFetchWithOriginSilentIsRefused: when the tag fetch fails
+// and origin then does not answer ls-remote either, nothing says whether
+// origin has tags, so the run refuses rather than measure a first release.
+func TestAFailedTagFetchWithOriginSilentIsRefused(t *testing.T) {
+	dir := repo(t, nil)
+	mustGit(t, dir, "tag", "-d", "v0.0.0")
+	commit(t, dir, "feat: x")
+	mustGit(t, dir, "config", "remote.origin.fetch", "+refs/heads/*:refs/heads/*") // the fetch fails; see TestNoLocalTagsAndFetchFails
+	was := lsRemoteTags
+	lsRemoteTags = func(string) (string, error) { return "", fmt.Errorf("origin went away") }
+	t.Cleanup(func() { lsRemoteTags = was })
+	code, _, errw := runCL(t, dir)
+	if code != cli.ExitState || strings.Contains(errw, "first release") {
+		t.Fatalf("code=%d errw=%q", code, errw)
+	}
+	if headSubject(t, dir) != "feat: x" {
+		t.Fatal("a refused run committed")
 	}
 }
