@@ -97,11 +97,12 @@ trailer. No tag exists yet; the commit is there to review, and
 branch.
 
 `pk release` reads the trailer. It checks the tree is clean, the
-branch is on origin, and nothing has diverged. It fast-forwards the
-release branch, runs the pre-release hook, tags, runs the pre-push
-hook, and pushes the branch and the tag together. A failure after the
-tag exists rolls back: the tag is deleted, the merge is reset, and the
-working branch is checked out again.
+branch is on origin, and nothing has diverged. It runs the
+pre-release hook on the working branch, fast-forwards the release
+branch, tags, runs the pre-push hook, and pushes the branch and the
+tag together. A failure after the hook rolls back: the tag is deleted,
+the merge is reset, the working branch is checked out again, and a
+commit the hook made is undone.
 
 `pk ship` runs changelog then release. Its only state is the trailer
 and whether its tag exists, so a pending Release-Tag commit sends it

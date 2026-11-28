@@ -55,7 +55,7 @@ func Settings() []Setting {
 		{Key: "release.hooks.prePush", Kind: "a shell command", Shape: `"<command>"`, Default: "none",
 			Doc: "Runs after the tag exists and before the push, with `$VERSION` and `$TAG`."},
 		{Key: "release.hooks.preRelease", Kind: "a shell command", Shape: `"<command>"`, Default: "none",
-			Doc: "Runs before the tag is created, with `$VERSION` and `$TAG`; `--dry-run` rehearses it."},
+			Doc: "Runs on the working branch before the merge and the tag, with `$VERSION` and `$TAG`; a commit it makes is released with the rest; `--dry-run` rehearses it."},
 	}
 }
 

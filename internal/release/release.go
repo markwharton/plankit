@@ -190,6 +190,7 @@ func run(ctx *cli.Context) error {
 	released := false
 	switchedBack := true
 	preMergeHead := ""
+	preHookHead := ""
 	defer func() {
 		if tagCreated && !released {
 			if _, err := git.Exec(root, "tag", "-d", tag); err != nil {
@@ -208,7 +209,44 @@ func run(ctx *cli.Context) error {
 		if !switchedBack {
 			switchBack()
 		}
+		// A commit preRelease made on the working branch goes too, so
+		// ship's undo finds the changelog commit on HEAD; a dry run ends here.
+		if preHookHead != "" && !released {
+			now, _ := git.Exec(root, "rev-parse", "HEAD")
+			on, _ := git.CurrentBranch(root)
+			switch {
+			case now == preHookHead:
+			case on != sourceBranch:
+				msg.Warnf(w, "the preRelease commit on %s stays: %s is not checked out", sourceBranch, sourceBranch)
+			default:
+				if _, err := git.Exec(root, "reset", "--hard", preHookHead); err != nil {
+					msg.Warnf(w, "failed to roll back the preRelease commit on %s: %v", sourceBranch, err)
+				} else {
+					msg.Sayf(w, "Rolled back the preRelease commit on %s", sourceBranch)
+				}
+			}
+		}
 	}()
+
+	// Env shared by both hooks, matching the changelog hooks' contract:
+	// VERSION without the v (for stamping files), TAG with it (the ref
+	// name). The tag ref itself does not exist until after preRelease.
+	hookEnv := map[string]string{
+		"VERSION": strings.TrimPrefix(tag, "v"),
+		"TAG":     tag,
+	}
+
+	// preRelease runs on the working branch, before the merge and the
+	// tag: rehearsable in --dry-run, and a hook that commits produces a
+	// commit that is merged and tagged with the rest. The defer undoes
+	// it when the release does not complete. A hook that needs the tag
+	// ref wants prePush.
+	if preHookHead, err = git.Exec(root, "rev-parse", "HEAD"); err != nil {
+		return err
+	}
+	if err := hookio.RunHook(w, root, "preRelease", pk.Release.Hooks.PreRelease, hookEnv); err != nil {
+		return err
+	}
 
 	if needsMerge {
 		if dryRun {
@@ -251,21 +289,6 @@ func run(ctx *cli.Context) error {
 			// not run (origin advertises no HEAD symref).
 			msg.Itemf(w, "On %s branch", sourceBranch)
 		}
-	}
-
-	// Env shared by both hooks, matching the changelog hooks' contract:
-	// VERSION without the v (for stamping files), TAG with it (the ref
-	// name). The tag ref itself does not exist until after preRelease.
-	hookEnv := map[string]string{
-		"VERSION": strings.TrimPrefix(tag, "v"),
-		"TAG":     tag,
-	}
-
-	// preRelease runs before the tag exists: rehearsable in --dry-run,
-	// and a hook that commits produces a commit the tag then covers. A
-	// hook that needs the tag ref wants prePush.
-	if err := hookio.RunHook(w, root, "preRelease", pk.Release.Hooks.PreRelease, hookEnv); err != nil {
-		return err
 	}
 
 	// The push publishes the release branch in merge flow, the source
