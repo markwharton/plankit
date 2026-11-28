@@ -781,7 +781,7 @@ tag is on the commit pushed, and refuses it otherwise.
 - Of the 21 statements, 16 are played by the engine and 5 stay words.
 - pk's design lists 27 facts and git's lists 8. Before it stood on
   git, pk's listed 32.
-- The design has 577 plays: 150 of changelog, 78 of release, 349 of
+- The design has 635 plays: 150 of changelog, 118 of release, 367 of
   ship.
 - It reports no questions.
 - git's reset goes on with a commit held elsewhere and with a tree
@@ -790,7 +790,7 @@ tag is on the commit pushed, and refuses it otherwise.
 - `pk-code.design` is what pk's code does, in the code's order and with
   the design's names, written after a cold description of the code
   (`BLIND-TEST.md`) and described again for v1.10.4. Played against
-  the design it gives 23 `differs` findings, each naming the facts
+  the design it gives 25 `differs` findings, each naming the facts
   that cause it. Six are decisions the code does not follow yet:
   - a rejected update to a tag stops changelog;
   - changelog does not check a branch that is behind origin;
@@ -803,11 +803,7 @@ tag is on the commit pushed, and refuses it otherwise.
   a local path as origin gives a link made from the path. Those are
   the changes pk's code needs.
 
-  One is the design's to change: the code's `release --dry-run` reads
-  origin's branches and fetches nothing, as the owner decided for
-  v1.10.4, and the design still fetches.
-
-  The other 16 are what the code does that the design does not say:
+  The other 19 are what the code does that the design does not say:
   - release reads the branch and the pending release first, and
     fetches only after the checks that need no fetch;
   - release does not refuse a protected branch;

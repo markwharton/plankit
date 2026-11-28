@@ -235,7 +235,8 @@ ACTION commit the release
 
 SEQ release
     load settings
-    fetch the working branch
+    fetch the working branch WHEN NOT dry run
+    read origin's working branch WHEN dry run
     pre-flight
     preRelease hook
     merge WHEN merge flow
@@ -249,6 +250,11 @@ SEQ release
     switch back WHEN NOT dry run AND merge flow
     push the working branch WHEN NOT dry run AND merge flow
     SAYS in trunk flow there is no merge: the release tags and pushes the default branch
+
+ACTION read origin's working branch
+    READS origin's working branch
+    REFUSE WHEN origin does not answer
+    SAYS a dry run reads origin's tip and fetches nothing; pre-flight refuses a tip the branch does not have as behind
 
 ACTION fetch the working branch
     USES fetch the branch
